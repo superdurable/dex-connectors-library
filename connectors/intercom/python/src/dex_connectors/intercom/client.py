@@ -173,7 +173,7 @@ class Client:
                 ),
             )
         try:
-            response = await self.http_client.send(request)
+            response = await self.http_client.send(request, stream=True)
         except httpx.ConnectError:
             return Exchange(
                 "notSent",
@@ -188,9 +188,24 @@ class Client:
                     operation, FailureKind.TRANSPORT, "Intercom request failed before a response arrived"
                 ),
             )
+        try:
+            chunks = bytearray()
+            async for chunk in response.aiter_bytes(chunk_size=min(self.max_response_bytes + 1, 65536)):
+                remaining = self.max_response_bytes + 1 - len(chunks)
+                chunks.extend(chunk[:remaining])
+                if len(chunks) > self.max_response_bytes:
+                    break
+            body = bytes(chunks)
+        except httpx.HTTPError:
+            return Exchange(
+                "unconfirmed",
+                failure=self.failure(operation, FailureKind.TRANSPORT, "Intercom response could not be read"),
+            )
+        finally:
+            await response.aclose()
         status = response.status_code
         if 200 <= status < 300:
-            if len(response.content) > self.max_response_bytes:
+            if len(body) > self.max_response_bytes:
                 return Exchange(
                     "invalid",
                     failure=self.failure(
@@ -199,7 +214,7 @@ class Client:
                         "Intercom response exceeds the configured maxResponseBytes limit",
                     ),
                 )
-            if credentials.access_token.reveal().encode() in response.content:
+            if credentials.access_token.reveal().encode() in body:
                 return Exchange(
                     "invalid",
                     failure=self.failure(
@@ -208,8 +223,8 @@ class Client:
                         "Intercom response reflected the connection credential",
                     ),
                 )
-            return Exchange("succeeded", body=response.content)
-        body = response.content[: self.max_response_bytes]
+            return Exchange("succeeded", body=body)
+        body = body[: self.max_response_bytes]
         summary, request_id = _error_summary(body)
 
         def with_summary(message: str) -> str:
@@ -227,7 +242,7 @@ class Client:
                         if reset > 0
                         else timedelta()
                     )
-                except ValueError:
+                except (ValueError, OverflowError, OSError):
                     retry_after = timedelta()
             return Exchange(
                 "rateLimited",
@@ -300,17 +315,28 @@ def _error_summary(body: bytes) -> tuple[str, str]:
     if not isinstance(document, dict):
         return "", ""
     request_id = document.get("request_id", "")
-    if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9-]{1,64}", request_id):
+    entries = document.get("errors")
+    if not isinstance(request_id, str) or (entries is not None and not isinstance(entries, list)):
+        return "", ""
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,64}", request_id):
         request_id = ""
     codes: list[str] = []
     fields: list[str] = []
-    if isinstance(document.get("errors"), list):
-        for entry in document["errors"][:3]:
-            if isinstance(entry, dict):
-                for key, values in (("code", codes), ("field", fields)):
-                    value = entry.get(key)
-                    if isinstance(value, str) and re.fullmatch(r"[a-z][a-z0-9_.]{0,63}", value):
-                        values.append(value)
+    for entry in entries or []:
+        if len(codes) == 3:
+            break
+        if entry is None:
+            entry = {}
+        if not isinstance(entry, dict):
+            return "", ""
+        code = entry.get("code", "")
+        field = entry.get("field", "")
+        if not isinstance(code, str) or not isinstance(field, str):
+            return "", ""
+        if re.fullmatch(r"[a-z][a-z0-9_.]{0,63}", code):
+            codes.append(code)
+        if re.fullmatch(r"[a-z][a-z0-9_.]{0,63}", field):
+            fields.append(field)
     pieces = []
     if codes:
         pieces.append(", ".join(codes))

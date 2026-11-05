@@ -2,9 +2,20 @@
 # SPDX-License-Identifier: MIT
 """Focused input and provider-field validation parity checks."""
 
+from datetime import UTC, datetime
+from functools import cmp_to_key
+
 import pytest
 
-from dex_connectors.intercom.operations import _bare_email, _rfc3339, _time
+from dex_connectors.intercom.client import _error_summary
+from dex_connectors.intercom.models import ConversationPart
+from dex_connectors.intercom.operations import (
+    _bare_email,
+    _compare_parts_newest_first,
+    _rfc3339,
+    _time,
+    _validate_conversation_wire,
+)
 
 
 @pytest.mark.parametrize("address", ["ada@example.com", "δοκιμή@παράδειγμα.δοκιμή", "user@[127.0.0.1]"])
@@ -26,11 +37,62 @@ def test_invalid_calendar_instants(instant: str) -> None:
 
 
 def test_extended_offset_and_comma_fraction() -> None:
-    """Accept Go's extended numeric offset and comma fractions."""
-    assert _rfc3339("2026-01-01T00:00:00,1+99:59") is not None
+    """Go accepts comma fractions and offset hours through 24 only."""
+    assert _rfc3339("2026-01-01T00:00:00,1+24:00") is not None
+    assert _rfc3339("2026-01-01T00:00:00,1+25:00") is None
 
 
 def test_wrong_typed_provider_timestamp() -> None:
     """Reject a provider timestamp that Go cannot decode."""
     with pytest.raises(ValueError):
         _time(1.2)
+
+
+def test_provider_wire_rejects_unused_wrong_typed_fields() -> None:
+    """Decode the complete Go wire shape before selecting response fields."""
+    with pytest.raises(ValueError):
+        _validate_conversation_wire({"id": "123", "title": 5})
+    with pytest.raises(ValueError):
+        _validate_conversation_wire(
+            {"id": "123", "conversation_parts": {"conversation_parts": [{"body": 5}]}}
+        )
+
+
+def test_part_sort_matches_go_for_mixed_and_leading_zero_ids() -> None:
+    """Keep Go's textual fallback and length-first numeric comparison."""
+    instant = datetime(2026, 1, 1, tzinfo=UTC)
+    parts = [
+        ConversationPart(id=part_id, part_type="comment", created_at=instant)
+        for part_id in ("123", "abc", "00123", "9")
+    ]
+    assert [part.id for part in sorted(parts, key=cmp_to_key(_compare_parts_newest_first))] == [
+        "abc",
+        "00123",
+        "123",
+        "9",
+    ]
+
+
+def test_unrepresentable_provider_timestamp_names_field() -> None:
+    """A Go timestamp outside Python's datetime range is terminal."""
+    with pytest.raises(ValueError, match="created_at"):
+        _time(2**63 - 1, "created_at")
+
+
+def test_error_summary_collects_three_valid_codes() -> None:
+    """Invalid codes do not consume Go's three-code limit."""
+    summary, request_id = _error_summary(
+        b'{"request_id":"request-1","errors":['
+        b'{"code":"INVALID","field":"first"},'
+        b'{"code":"one"},{"code":"two"},{"code":"three"},{"code":"four"}]}'
+    )
+    assert summary == "one, two, three; fields: first"
+    assert request_id == "request-1"
+
+
+def test_error_summary_discards_wrong_typed_fields() -> None:
+    """Go discards the entire decoded summary on a struct field type error."""
+    assert _error_summary(b'{"request_id":"request-1","errors":[{"code":"one","field":4}]}') == (
+        "",
+        "",
+    )

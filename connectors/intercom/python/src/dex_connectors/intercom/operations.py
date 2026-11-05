@@ -10,6 +10,7 @@ from dataclasses import field as dataclass_field
 from datetime import UTC, datetime
 from email._header_value_parser import get_addr_spec
 from email.errors import HeaderParseError
+from functools import cmp_to_key
 from ipaddress import IPv4Address
 from typing import Any
 from urllib.parse import quote
@@ -80,7 +81,7 @@ def _identifier(value: Any) -> str:
         return ""
     if isinstance(value, str):
         return value
-    if type(value) is int and len(str(value).lstrip("-")) <= 24:
+    if type(value) is int and len(str(value)) <= 24 and re.fullmatch(r"-?[0-9]{1,24}", str(value)):
         return str(value)
     raise ValueError("identifier is not a string or an integer")
 
@@ -97,9 +98,12 @@ def _seconds(value: Any) -> int:
     return seconds
 
 
-def _time(value: Any) -> datetime:
+def _time(value: Any, field_name: str = "timestamp") -> datetime:
     seconds = _seconds(value)
-    return datetime.fromtimestamp(seconds, UTC) if seconds else _ZERO_TIME
+    try:
+        return datetime.fromtimestamp(seconds, UTC) if seconds else _ZERO_TIME
+    except (OverflowError, OSError, ValueError):
+        raise ValueError(f"{field_name} is outside Python's representable timestamp range") from None
 
 
 def _integer(value: Any) -> int:
@@ -107,7 +111,62 @@ def _integer(value: Any) -> int:
         return 0
     if type(value) is not int:
         raise ValueError("integer field is invalid")
+    if not -(2**63) <= value <= 2**63 - 1:
+        raise ValueError("integer field is outside Go int range")
     return value
+
+
+def _wire_array(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError("array field is invalid")
+    return value
+
+
+def _validate_author_wire(value: Any) -> None:
+    wire = _object(value)
+    for name in ("type", "name", "email"):
+        _string(wire.get(name))
+    _identifier(wire.get("id"))
+
+
+def _validate_part_wire(value: Any) -> None:
+    wire = _object(value)
+    _identifier(wire.get("id"))
+    for name in ("part_type", "body"):
+        _string(wire.get(name))
+    _validate_author_wire(wire.get("author"))
+    _seconds(wire.get("created_at"))
+
+
+def _validate_conversation_wire(value: Any) -> dict[str, Any]:
+    wire = _object(value)
+    for name in ("type", "title", "state", "priority"):
+        _string(wire.get(name))
+    for name in ("id", "admin_assignee_id", "team_assignee_id"):
+        _identifier(wire.get(name))
+    for name in ("open", "read"):
+        _boolean(wire.get(name))
+    for name in ("created_at", "updated_at", "waiting_since", "snoozed_until"):
+        _seconds(wire.get(name))
+    source = _object(wire.get("source"))
+    for name in ("type", "delivered_as", "subject", "body"):
+        _string(source.get(name))
+    _validate_author_wire(source.get("author"))
+    for entry in _wire_array(_object(wire.get("contacts")).get("contacts")):
+        contact = _object(entry)
+        _identifier(contact.get("id"))
+        _string(contact.get("external_id"))
+    for entry in _wire_array(_object(wire.get("tags")).get("tags")):
+        tag = _object(entry)
+        _identifier(tag.get("id"))
+        _string(tag.get("name"))
+    parts = _object(wire.get("conversation_parts"))
+    _integer(parts.get("total_count"))
+    for part in _wire_array(parts.get("conversation_parts")):
+        _validate_part_wire(part)
+    return wire
 
 
 def _boolean(value: Any) -> bool:
@@ -137,6 +196,7 @@ def _author(value: Any) -> ConversationAuthor:
 
 
 def _conversation(wire: dict[str, Any], include_body: bool = False) -> Conversation:
+    _validate_conversation_wire(wire)
     if _string(wire.get("type")) not in ("", "conversation"):
         raise ValueError("object is not a conversation")
     identifier = _identifier(wire.get("id"))
@@ -146,7 +206,7 @@ def _conversation(wire: dict[str, Any], include_body: bool = False) -> Conversat
     body, truncated = _body(source.get("body")) if include_body else ("", False)
     contacts = []
     contact_values = _object(wire.get("contacts")).get("contacts")
-    for value in contact_values or []:
+    for value in _wire_array(contact_values):
         entry = _object(value)
         contact_id = _identifier(entry.get("id"))
         if not contact_id:
@@ -154,7 +214,7 @@ def _conversation(wire: dict[str, Any], include_body: bool = False) -> Conversat
         contacts.append(ConversationContact(contact_id, _string(entry.get("external_id"))))
     tags = []
     tag_values = _object(wire.get("tags")).get("tags")
-    for value in tag_values or []:
+    for value in _wire_array(tag_values):
         entry = _object(value)
         tag_id = _identifier(entry.get("id"))
         if not tag_id:
@@ -183,14 +243,15 @@ def _conversation(wire: dict[str, Any], include_body: bool = False) -> Conversat
         ),
         contacts=tuple(contacts),
         tags=tuple(tags),
-        created_at=_time(wire.get("created_at")),
-        updated_at=_time(wire.get("updated_at")),
-        waiting_since=_time(waiting) if waiting else None,
-        snoozed_until=_time(snoozed) if snoozed else None,
+        created_at=_time(wire.get("created_at"), "created_at"),
+        updated_at=_time(wire.get("updated_at"), "updated_at"),
+        waiting_since=_time(waiting, "waiting_since") if waiting else None,
+        snoozed_until=_time(snoozed, "snoozed_until") if snoozed else None,
     )
 
 
 def _part(value: Any) -> ConversationPart:
+    _validate_part_wire(value)
     wire = _object(value)
     part_id = _identifier(wire.get("id"))
     if not part_id:
@@ -202,13 +263,13 @@ def _part(value: Any) -> ConversationPart:
         body,
         truncated,
         _author(wire.get("author")),
-        _time(wire.get("created_at")),
+        _time(wire.get("created_at"), "created_at"),
     )
 
 
 def _envelope(exchange: Exchange, conversation_id: str) -> dict[str, Any]:
     try:
-        wire = _object(json.loads(exchange.body))
+        wire = _validate_conversation_wire(json.loads(exchange.body))
     except (ValueError, UnicodeDecodeError):
         raise ValueError("conversation response is not a conversation object") from None
     if _identifier(wire.get("id")) != conversation_id:
@@ -218,7 +279,19 @@ def _envelope(exchange: Exchange, conversation_id: str) -> dict[str, Any]:
 
 def _parts(wire: dict[str, Any]) -> list[dict[str, Any]]:
     values = _object(wire.get("conversation_parts")).get("conversation_parts")
-    return [_object(value) for value in values or []]
+    return [_object(value) for value in _wire_array(values)]
+
+
+def _compare_part_ids(left: str, right: str) -> int:
+    if len(left) != len(right) and _NUMERIC_ID.fullmatch(left) and _NUMERIC_ID.fullmatch(right):
+        return (len(left) > len(right)) - (len(left) < len(right))
+    return (left > right) - (left < right)
+
+
+def _compare_parts_newest_first(left: ConversationPart, right: ConversationPart) -> int:
+    if left.created_at != right.created_at:
+        return (right.created_at > left.created_at) - (right.created_at < left.created_at)
+    return _compare_part_ids(right.id, left.id)
 
 
 def _zero_conversation() -> Conversation:
@@ -310,7 +383,7 @@ def _rfc3339(value: str) -> int | None:
     year, month, day, hour, minute, second = map(int, matched.group(1, 2, 3, 4, 5, 6))
     offset_hours = int(matched.group(9) or 0)
     offset_minutes = int(matched.group(10) or 0)
-    if hour > 23 or minute > 59 or second > 59 or offset_hours > 99 or offset_minutes > 59:
+    if hour > 23 or minute > 59 or second > 59 or offset_hours > 24 or offset_minutes > 59:
         return None
     try:
         instant = datetime(year, month, day, hour, minute, second, tzinfo=UTC)
@@ -335,8 +408,7 @@ def _search_query(input: SearchConversationsInput) -> dict[str, Any]:
     ):
         if len(values) > 15:
             raise ValueError(f"{name} has more than 15 values")
-        if len(set(values)) != len(values):
-            raise ValueError(f"{name} lists an entry twice")
+        seen: set[str] = set()
         for value in values:
             if name == "states" and value not in ("open", "closed", "snoozed"):
                 raise ValueError(
@@ -346,6 +418,9 @@ def _search_query(input: SearchConversationsInput) -> dict[str, Any]:
                 raise ValueError(f'contactIds entry "{value}" is not an Intercom contact ID')
             if name == "tagIds" and not _NUMERIC_ID.fullmatch(value):
                 raise ValueError(f'tagIds entry "{value}" is not an Intercom tag ID of digits')
+            if value in seen:
+                raise ValueError(f'{name} lists "{value}" twice')
+            seen.add(value)
         if values:
             elements = [_filter(field, value) for value in values]
             filters.append(elements[0] if len(elements) == 1 else {"operator": "OR", "value": elements})
@@ -356,7 +431,10 @@ def _search_query(input: SearchConversationsInput) -> dict[str, Any]:
     if input.updated_since:
         seconds = _rfc3339(input.updated_since)
         if seconds is None or seconds < 0:
-            raise ValueError("updatedSince must be an RFC 3339 instant with an explicit offset")
+            raise ValueError(
+                "updatedSince must be an RFC 3339 instant with an explicit offset, "
+                "such as 2026-01-21T00:00:00Z"
+            )
         filters.append({"field": "updated_at", "operator": ">", "value": seconds})
     if not filters:
         raise ValueError(
@@ -422,14 +500,19 @@ class SearchConversationsOperation:
                 raise ValueError("search page has no conversations array")
             if len(values) > (input.page_size or 20):
                 raise ValueError("search page is larger than requested")
-            conversations = tuple(_conversation(_object(value)) for value in values)
+            conversations = []
+            for index, value in enumerate(values):
+                try:
+                    conversations.append(_conversation(_object(value)))
+                except ValueError as error:
+                    raise ValueError(f"conversation {index}: {error}") from None
             next_page = _object(_object(page.get("pages")).get("next"))
             cursor = _string(next_page.get("starting_after"))
             if cursor and (len(cursor.encode()) > 2048 or any(ord(c) < 33 or ord(c) > 126 for c in cursor)):
                 raise ValueError("search page cursor is not printable")
             return QueryAttempt.branch_result(
                 "searched",
-                SearchConversationsOutput(conversations, _integer(page.get("total_count")), cursor),
+                SearchConversationsOutput(tuple(conversations), _integer(page.get("total_count")), cursor),
                 receipt,
             )
         except (ValueError, TypeError, OverflowError) as error:
@@ -480,14 +563,13 @@ class GetConversationOperation:
         try:
             wire = _envelope(exchange, input.conversation_id)
             conversation = _conversation(wire, True)
-            parts = [_part(value) for value in _parts(wire)]
-            parts.sort(
-                key=lambda part: (
-                    part.created_at,
-                    int(part.id) if _NUMERIC_ID.fullmatch(part.id) else part.id,
-                ),
-                reverse=True,
-            )
+            parts = []
+            for index, value in enumerate(_parts(wire)):
+                try:
+                    parts.append(_part(value))
+                except ValueError as error:
+                    raise ValueError(f"part {index}: {error}") from None
+            parts.sort(key=cmp_to_key(_compare_parts_newest_first))
             latest = tuple(parts[: input.latest_part_limit or 10])
             count = max(_integer(_object(wire.get("conversation_parts")).get("total_count")), len(parts))
             return QueryAttempt.branch_result(
@@ -616,7 +698,10 @@ def _reply_problem(input: ReplyToConversationInput) -> str:
     if not _NUMERIC_ID.fullmatch(input.conversation_id):
         return "conversationId must be an Intercom conversation ID of digits, such as 215472658213"
     if not _NUMERIC_ID.fullmatch(input.admin_id):
-        return "adminId must be an Intercom admin ID of digits, such as 12345"
+        return (
+            "adminId must be an Intercom admin ID of digits, such as 5017691; "
+            "choose one with the adminPicker unit"
+        )
     if input.message_type not in ("comment", "note"):
         return (
             f'messageType "{input.message_type}" must be comment, for a reply the customer sees, '
@@ -876,7 +961,10 @@ class UpdateConversationStateOperation:
         problem = (
             "conversationId must be an Intercom conversation ID of digits, such as 215472658213"
             if not _NUMERIC_ID.fullmatch(input.conversation_id)
-            else "adminId must be an Intercom admin ID of digits, such as 12345"
+            else (
+                "adminId must be an Intercom admin ID of digits, such as 5017691; "
+                "choose one with the adminPicker unit"
+            )
             if not _NUMERIC_ID.fullmatch(input.admin_id)
             else f'state "{input.state}" is not an Intercom conversation state; use open, closed, or snoozed'
             if input.state not in ("open", "closed", "snoozed")

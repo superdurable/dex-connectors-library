@@ -29,7 +29,7 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		var previous struct {
 			Value struct {
 				DispatchedCallID string `json:"intercomReplyDispatchedCallId"`
-				DispatchedAt int64 `json:"intercomReplyDispatchedAt"`
+				DispatchedAt     int64  `json:"intercomReplyDispatchedAt"`
 			} `json:"value"`
 		}
 		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &previous))
