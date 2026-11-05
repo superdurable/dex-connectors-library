@@ -1,0 +1,3485 @@
+{
+  "connector": "google-workspace-admin",
+  "scenarios": [
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":false,\"isMailboxSetup\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "1001",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": true,
+          "isSuspended": false,
+          "name": {
+            "familyName": "Lovelace",
+            "fullName": "Ada Lovelace",
+            "givenName": "Ada"
+          },
+          "orgUnitPath": "/Engineering",
+          "primaryEmail": "ada@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "getUser-success",
+      "operation": "getUser"
+    },
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "getUser-rate-limit",
+      "operation": "getUser"
+    },
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "getUser-server-error",
+      "operation": "getUser"
+    },
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "getUser-transport",
+      "operation": "getUser"
+    },
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "getUser-provider-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "getUser-oversized",
+      "operation": "getUser"
+    },
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "bad key"
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "body": "{\"users\":[{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":false,\"isMailboxSetup\":true}],\"nextPageToken\":\"next-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "domain": [
+              "example.com"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "orderBy": [
+              "givenName"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "query": [
+              "orgUnitPath='/Engineering'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "next-page",
+          "users": [
+            {
+              "changePasswordAtNextLogin": false,
+              "id": "1001",
+              "isAdmin": false,
+              "isArchived": false,
+              "isDelegatedAdmin": false,
+              "isEnforcedIn2Sv": false,
+              "isEnrolledIn2Sv": false,
+              "isMailboxSetup": true,
+              "isSuspended": false,
+              "name": {
+                "familyName": "Lovelace",
+                "fullName": "Ada Lovelace",
+                "givenName": "Ada"
+              },
+              "orgUnitPath": "/Engineering",
+              "primaryEmail": "ada@example.com"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-success",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "domain": [
+              "example.com"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "orderBy": [
+              "givenName"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "query": [
+              "orgUnitPath='/Engineering'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-rate-limit",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "domain": [
+              "example.com"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "orderBy": [
+              "givenName"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "query": [
+              "orgUnitPath='/Engineering'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-server-error",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "domain": [
+              "example.com"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "orderBy": [
+              "givenName"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "query": [
+              "orgUnitPath='/Engineering'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-transport",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "domain": [
+              "example.com"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "orderBy": [
+              "givenName"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "query": [
+              "orgUnitPath='/Engineering'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-provider-rejected",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "domain": [
+              "example.com"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "orderBy": [
+              "givenName"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "query": [
+              "orgUnitPath='/Engineering'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-oversized",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "bad domain",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-defect",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":false,\"isMailboxSetup\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "user": {
+            "changePasswordAtNextLogin": false,
+            "id": "1001",
+            "isAdmin": false,
+            "isArchived": false,
+            "isDelegatedAdmin": false,
+            "isEnforcedIn2Sv": false,
+            "isEnrolledIn2Sv": false,
+            "isMailboxSetup": true,
+            "isSuspended": false,
+            "name": {
+              "familyName": "Lovelace",
+              "fullName": "Ada Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "primaryEmail": "ada@example.com"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-success",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-rate-limit",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-server-error",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-transport",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "user": {
+            "changePasswordAtNextLogin": false,
+            "id": "",
+            "isAdmin": false,
+            "isArchived": false,
+            "isDelegatedAdmin": false,
+            "isEnforcedIn2Sv": false,
+            "isEnrolledIn2Sv": false,
+            "isMailboxSetup": false,
+            "isSuspended": false,
+            "name": {
+              "familyName": "",
+              "givenName": ""
+            },
+            "orgUnitPath": "",
+            "primaryEmail": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-provider-rejected",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-oversized",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "user": {
+            "changePasswordAtNextLogin": false,
+            "id": "",
+            "isAdmin": false,
+            "isArchived": false,
+            "isDelegatedAdmin": false,
+            "isEnforcedIn2Sv": false,
+            "isEnrolledIn2Sv": false,
+            "isMailboxSetup": false,
+            "isSuspended": false,
+            "name": {
+              "familyName": "",
+              "givenName": ""
+            },
+            "orgUnitPath": "",
+            "primaryEmail": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "bad address",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-defect",
+      "operation": "createUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":true,\"isMailboxSetup\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "suspended",
+        "failureKind": "",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "1001",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": true,
+          "isSuspended": true,
+          "name": {
+            "familyName": "Lovelace",
+            "fullName": "Ada Lovelace",
+            "givenName": "Ada"
+          },
+          "orgUnitPath": "/Engineering",
+          "primaryEmail": "ada@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-success",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-rate-limit",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-server-error",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-transport",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-provider-rejected",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-oversized",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "bad key"
+      },
+      "name": "suspendUser-defect",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":false,\"isMailboxSetup\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsuspended",
+        "failureKind": "",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "1001",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": true,
+          "isSuspended": false,
+          "name": {
+            "familyName": "Lovelace",
+            "fullName": "Ada Lovelace",
+            "givenName": "Ada"
+          },
+          "orgUnitPath": "/Engineering",
+          "primaryEmail": "ada@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-success",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-rate-limit",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-server-error",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-transport",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-provider-rejected",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-oversized",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "bad key"
+      },
+      "name": "unsuspendUser-defect",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1001\",\"email\":\"ada@example.com\",\"role\":\"MANAGER\",\"type\":\"USER\",\"status\":\"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "membership": {
+            "email": "ada@example.com",
+            "groupKey": "team@example.com",
+            "memberId": "1001",
+            "role": "MANAGER",
+            "status": "ACTIVE",
+            "type": "USER"
+          },
+          "wasAlreadyMember": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-success",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-rate-limit",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-server-error",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-transport",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "membership": {
+            "groupKey": "",
+            "memberId": "",
+            "role": ""
+          },
+          "wasAlreadyMember": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-provider-rejected",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-oversized",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "membership": {
+            "groupKey": "",
+            "memberId": "",
+            "role": ""
+          },
+          "wasAlreadyMember": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "bad address",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-defect",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "groupKey": "team@example.com",
+          "memberKey": "ada@example.com",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-success",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-rate-limit",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-server-error",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-transport",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"insufficientPermissions\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "groupKey": "",
+          "memberKey": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-provider-rejected",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-oversized",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "groupKey": "",
+          "memberKey": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "bad key"
+      },
+      "name": "removeUserFromGroup-defect",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "8db66250-2db8-5b24-8cb4-085339f284c1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "getUser-not-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "body": "{\"users\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "customer": [
+              "C123"
+            ],
+            "maxResults": [
+              "100"
+            ],
+            "orderBy": [
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customer": "C123"
+      },
+      "name": "listUsers-customer",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "70115eef-c258-5813-90bd-01771aee2156",
+      "exchanges": [
+        {
+          "body": "{\"users\":[{\"id\":\"bad\",\"primaryEmail\":\"bad\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "domain": [
+              "example.com"
+            ],
+            "maxResults": [
+              "2"
+            ],
+            "orderBy": [
+              "givenName"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "query": [
+              "orgUnitPath='/Engineering'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.com",
+        "orderBy": "givenName",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "query": "orgUnitPath='/Engineering'"
+      },
+      "name": "listUsers-invalid-page",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":false,\"isMailboxSetup\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "CONFLICT",
+        "output": {
+          "user": {
+            "changePasswordAtNextLogin": false,
+            "id": "1001",
+            "isAdmin": false,
+            "isArchived": false,
+            "isDelegatedAdmin": false,
+            "isEnforcedIn2Sv": false,
+            "isEnrolledIn2Sv": false,
+            "isMailboxSetup": true,
+            "isSuspended": false,
+            "name": {
+              "familyName": "Lovelace",
+              "fullName": "Ada Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "primaryEmail": "ada@example.com"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-already-exists",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":false,\"isMailboxSetup\":true,\"externalIds\":[{\"type\":\"custom\",\"customType\":\"dexIdempotencyKey\",\"value\":\"hire-1001\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "user": {
+            "changePasswordAtNextLogin": false,
+            "id": "1001",
+            "isAdmin": false,
+            "isArchived": false,
+            "isDelegatedAdmin": false,
+            "isEnforcedIn2Sv": false,
+            "isEnrolledIn2Sv": false,
+            "isMailboxSetup": true,
+            "isSuspended": false,
+            "name": {
+              "familyName": "Lovelace",
+              "fullName": "Ada Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "primaryEmail": "ada@example.com"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-converged",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"bad\",\"primaryEmail\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "user": {
+            "changePasswordAtNextLogin": false,
+            "id": "",
+            "isAdmin": false,
+            "isArchived": false,
+            "isDelegatedAdmin": false,
+            "isEnforcedIn2Sv": false,
+            "isEnrolledIn2Sv": false,
+            "isMailboxSetup": false,
+            "isSuspended": false,
+            "name": {
+              "familyName": "",
+              "givenName": ""
+            },
+            "orgUnitPath": "",
+            "primaryEmail": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-readback-invalid",
+      "operation": "createUser"
+    },
+    {
+      "callId": "80cd9779-23e0-5be5-999e-7209f5f23cec",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "changePasswordAtNextLogin": true,
+            "externalIds": [
+              {
+                "customType": "dexIdempotencyKey",
+                "type": "custom",
+                "value": "hire-1001"
+              }
+            ],
+            "name": {
+              "familyName": "Lovelace",
+              "givenName": "Ada"
+            },
+            "orgUnitPath": "/Engineering",
+            "password": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI",
+            "primaryEmail": "ada@example.com",
+            "recoveryEmail": "recovery@example.com",
+            "recoveryPhone": "+16506661212"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-1001",
+      "input": {
+        "familyName": "Lovelace",
+        "givenName": "Ada",
+        "orgUnitPath": "/Engineering",
+        "primaryEmail": "ada@example.com",
+        "provisioningKey": "hire-1001",
+        "recoveryEmail": "recovery@example.com",
+        "recoveryPhone": "+16506661212"
+      },
+      "name": "createUser-unusable-insert",
+      "operation": "createUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-not-found",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":false,\"isMailboxSetup\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "1001",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": true,
+          "isSuspended": false,
+          "name": {
+            "familyName": "Lovelace",
+            "fullName": "Ada Lovelace",
+            "givenName": "Ada"
+          },
+          "orgUnitPath": "/Engineering",
+          "primaryEmail": "ada@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9c72781d-4992-53ce-a067-73d38a8ff229",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "suspendUser-wrong-state",
+      "operation": "suspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": false,
+          "isSuspended": false,
+          "name": {
+            "familyName": "",
+            "givenName": ""
+          },
+          "orgUnitPath": "",
+          "primaryEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-not-found",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1001\",\"primaryEmail\":\"ada@example.com\",\"name\":{\"givenName\":\"Ada\",\"familyName\":\"Lovelace\",\"fullName\":\"Ada Lovelace\"},\"orgUnitPath\":\"/Engineering\",\"suspended\":true,\"isMailboxSetup\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/users/ada@example.com",
+          "requestBody": {
+            "suspended": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "changePasswordAtNextLogin": false,
+          "id": "1001",
+          "isAdmin": false,
+          "isArchived": false,
+          "isDelegatedAdmin": false,
+          "isEnforcedIn2Sv": false,
+          "isEnrolledIn2Sv": false,
+          "isMailboxSetup": true,
+          "isSuspended": true,
+          "name": {
+            "familyName": "Lovelace",
+            "fullName": "Ada Lovelace",
+            "givenName": "Ada"
+          },
+          "orgUnitPath": "/Engineering",
+          "primaryEmail": "ada@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "833199ca-15ac-57ef-8c54-4e97f854ea5e",
+      "input": {
+        "userKey": "ada@example.com"
+      },
+      "name": "unsuspendUser-wrong-state",
+      "operation": "unsuspendUser"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "membership": {
+            "groupKey": "",
+            "memberId": "",
+            "role": ""
+          },
+          "wasAlreadyMember": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-not-found",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"1001\",\"email\":\"ada@example.com\",\"role\":\"MANAGER\",\"type\":\"USER\",\"status\":\"ACTIVE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "membership": {
+            "email": "ada@example.com",
+            "groupKey": "team@example.com",
+            "memberId": "1001",
+            "role": "MANAGER",
+            "status": "ACTIVE",
+            "type": "USER"
+          },
+          "wasAlreadyMember": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-converged",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/team@example.com/members",
+          "requestBody": {
+            "email": "ada@example.com",
+            "role": "MANAGER"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"1001\",\"role\":\"BAD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "membership": {
+            "groupKey": "",
+            "memberId": "",
+            "role": ""
+          },
+          "wasAlreadyMember": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "319dac42-1a28-5e49-a6e6-21b5fd97ccb9",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberEmail": "ada@example.com",
+        "role": "MANAGER"
+      },
+      "name": "addUserToGroup-readback-invalid",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/team@example.com/members",
+          "query": {
+            "maxResults": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "groupKey": "",
+          "memberKey": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-not-found",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/team@example.com/members",
+          "query": {
+            "maxResults": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "groupKey": "team@example.com",
+          "memberKey": "ada@example.com",
+          "wasAlreadyRemoved": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-already-removed",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/team@example.com/members/ada@example.com",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/team@example.com/members",
+          "query": {
+            "maxResults": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer directory-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "groupKey": "",
+          "memberKey": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e4436fd9-1f71-5ee8-bdb6-6b39ab68e667",
+      "input": {
+        "groupKey": "team@example.com",
+        "memberKey": "ada@example.com"
+      },
+      "name": "removeUserFromGroup-readback-oversized",
+      "operation": "removeUserFromGroup"
+    }
+  ],
+  "schemaVersion": 1
+}
