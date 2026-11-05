@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
-import { Fence } from '@superdurable/connectors-sdk/singledispatch';
+import { Fence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
 import type { ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { AddCommentDefinition, CreateCardDefinition, GetCardDefinition, ListCardsDefinition, UpdateCardDefinition } from './generated/definitions.js';
@@ -218,9 +218,29 @@ export class GetCardOperation implements Query<GetCardInput, Card> {
   }
 }
 
+function trelloFence(call: Call): Fence {
+  const context = new Proxy(call.context, {
+    get(target, property) {
+      if (property === 'getLastHeartbeatValue') return () => {
+        const checkpoint = target.getLastHeartbeatValue() as { trelloDispatchedCallId: string; trelloAttempt: number; trelloCanRetry?: boolean } | undefined;
+        if (!checkpoint) return checkpoint;
+        return { callId: checkpoint.trelloDispatchedCallId, attempt: checkpoint.trelloAttempt, state: checkpoint.trelloCanRetry ? 'canResend' : 'claimed' };
+      };
+      if (property === 'recordHeartbeat') return async (value: unknown) => {
+        const marker = value as Marker;
+        await target.recordHeartbeat({ trelloDispatchedCallId: marker.callId, trelloAttempt: marker.attempt,
+          ...(['canResend', 'notSent'].includes(marker.state) ? { trelloCanRetry: true } : {}) });
+      };
+      const value: unknown = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  return new Fence({ ...call, context }, 30_000);
+}
+
 async function singleDispatch<Output>(client: TrelloClient, call: Call, operation: string, subject: string, path: string, payload: unknown, requested: Output, successBranch: string, hasNotFound: boolean, decode: (response: ProviderResponse) => { output: Output; objectId: string }): Promise<MutationAttempt<Output>> {
   let fence: Fence;
-  try { fence = new Fence(call, 30_000); }
+  try { fence = trelloFence(call); }
   catch { return newMutationRetry(trelloFailure(operation, 'AVAILABILITY', 'Dex attempt cannot checkpoint the Trello write')); }
   const decision = fence.decide();
   if (decision.kind !== 'sendAllowed') return newMutationUncertain(requested, trelloFailure(operation, 'TRANSPORT', 'an earlier attempt of this Step may have sent the request, so it is not sent again'), client.receipt(call));
