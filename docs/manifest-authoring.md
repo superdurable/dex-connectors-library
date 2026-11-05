@@ -807,6 +807,17 @@ other forms below belong to `clientCredentials` and `jwtBearer`. Each is one of:
   credential field or setting. The host inserts each value path-escaped, and
   the scheme and host are fixed.
 
+A template may declare `templateValueRules` keyed by placeholder. Each rule
+applies `trimSpace` using Go Unicode whitespace, checks `maxBytes` against the
+UTF-8 value, rejects any case-insensitive `reject` entry, and requires a full
+match against at least one anchored `patterns` expression when listed. The
+accepted value is then `lowercase`d when requested and path-escaped. Invalid
+values require reauthorization before a token request. Use explicit rules for
+provider tenant identifiers instead of relying on URL escaping to make them
+valid. Patterns must use syntax shared by Go, JavaScript, and Python.
+Set `refresh.trimClientID` or `clientCredentials.trimClientID` only when the Go
+driver trims the client ID in its token request; it leaves the stored value intact.
+
 `values` translates the value of `fromCredential`, `fromSetting`, or `fromKey`,
 such as a login environment into its server; the key `""` translates a blank
 value, and an untranslated value cannot be resolved:

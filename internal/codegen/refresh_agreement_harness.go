@@ -49,6 +49,7 @@ type manifestVariation struct {
 	expectedError string
 	expectedExpiry time.Duration
 	checkExpiry bool
+	beforeRequest bool
 }
 
 // manifestAssertion holds the JWT bearer claims that connector.yaml declares.
@@ -180,6 +181,11 @@ func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privat
 		t.Run(variation.name, func(t *testing.T) {
 			startedAt := time.Now().UTC()
 			result, endpoint, err := grant.refreshWithOverrides(t, privateKeyPEM, http.StatusOK, variation.response, variation.credentials)
+			if variation.beforeRequest {
+				require.Empty(t, endpoint.requests, "an invalid template value never reaches the provider")
+				require.True(t, sdkgo.IsReauthorizationRequired(err), "invalid template values require reauthorization: %v", err)
+				return
+			}
 			require.Len(t, endpoint.requests, 1, "a response variation reaches the provider")
 			switch variation.expectedError {
 			case "":

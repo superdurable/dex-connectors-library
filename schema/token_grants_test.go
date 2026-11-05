@@ -264,6 +264,12 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		"a template placeholder that names nothing": {edits: []manifestEdit{
 			{"{tenant_id}/token", "{tenant}/token"},
 		}, problem: "template placeholder tenant must name a credential field or setting of the method"},
+		"a template rule for another field": {edits: []manifestEdit{
+			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {other: {trimSpace: true}}}`},
+		}, problem: "templateValueRules other must name a template placeholder"},
+		"an unanchored template rule": {edits: []manifestEdit{
+			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {tenant_id: {patterns: [example]}}}`},
+		}, problem: "patterns must be anchored"},
 		"a template that fills the host": {edits: []manifestEdit{
 			{"https://login.example.com/{tenant_id}/token", "https://{tenant_id}.example.com/token"},
 		}, problem: "template must start with a fixed HTTPS origin"},

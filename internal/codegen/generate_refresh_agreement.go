@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/format"
 	"net/url"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -166,6 +167,9 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 					parameters["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 				}
 				clientID, clientSecret := credentials[grant.clientID], credentials[grant.clientSecret]
+				if grant.trimClientID {
+					clientID = strings.TrimSpace(clientID)
+				}
 				switch clientAuth {
 				case "client_secret_post":
 					parameters["client_id"], parameters["client_secret"] = clientID, clientSecret
@@ -293,6 +297,25 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		return variation
 	}
 	var variations []RefreshAgreementCase
+	for _, source := range agreement.sources(grant) {
+		for placeholder, rule := range source.TemplateValueRules {
+			if _, isCredential := base.Credentials[placeholder]; !isCredential {
+				continue
+			}
+			for _, rejected := range rule.Reject {
+				invalid := clone(" with rejected "+placeholder+" "+rejected, "reauthorization")
+				invalid.Credentials[placeholder] = rejected
+				invalid.MayRefuseWithoutCall = true
+				variations = append(variations, invalid)
+			}
+			if len(rule.Patterns) > 0 {
+				invalid := clone(" with invalid "+placeholder, "reauthorization")
+				invalid.Credentials[placeholder] = "invalid/tenant"
+				invalid.MayRefuseWithoutCall = true
+				variations = append(variations, invalid)
+			}
+		}
+	}
 	wrongType := clone(" with unaccepted token type", "retryable")
 	wrongType.Response["token_type"] = "manifest-unaccepted-token-type"
 	variations = append(variations, wrongType)
@@ -515,6 +538,7 @@ type declaredGrant struct {
 	authMethod                         schema.ValueSource
 	encoding                           string
 	clientID                           string
+	trimClientID                       bool
 	clientSecret                       string
 	refreshToken                       string
 	mappings                           []schema.OAuthCredentialMapping
@@ -668,7 +692,8 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					name: name, methodLabel: label, method: method, kind: "refresh", endpoint: oauth.TokenEndpoint,
 					authMethod: clientAuthentication(oauth.TokenEndpointAuthMethod), encoding: defaultString(oauth.TokenRequestEncoding, schema.FormTokenRequestEncoding),
 					clientID: oauth.ClientIDCredential, clientSecret: oauth.ClientSecretCredential, refreshToken: refreshGrant.RefreshTokenCredential,
-					mappings: refreshGrant.CredentialMappings, responseScopes: withoutString(responseScopes, offlineAccessScope),
+					trimClientID: refresh.TrimClientID,
+					mappings:     refreshGrant.CredentialMappings, responseScopes: withoutString(responseScopes, offlineAccessScope),
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
 					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
 					acceptedScopeSets:                  refresh.AcceptedScopeSets,
@@ -692,6 +717,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				name: label + " clientCredentials", methodLabel: label, method: method, kind: "clientCredentials", endpoint: clientCredentials.TokenEndpoint,
 				authMethod: clientAuthentication(clientCredentials.TokenEndpointAuthMethod), encoding: defaultString(clientCredentials.TokenRequestEncoding, schema.FormTokenRequestEncoding),
 				clientID: clientCredentials.ClientIDCredential, clientSecret: clientCredentials.ClientSecretCredential, mappings: clientCredentials.CredentialMappings,
+				trimClientID:  clientCredentials.TrimClientID,
 				requestScopes: clientCredentials.Scopes, responseScopes: clientCredentials.Scopes,
 				terminalCodes: defaultStrings(clientCredentials.TerminalErrorCodes, "invalid_client"), missingExpiry: clientCredentials.MissingExpiry, additional: clientCredentials.AdditionalParameters,
 				acceptedTokenTypes: defaultStrings(clientCredentials.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: clientCredentials.AcceptsMissingTokenType,
@@ -753,6 +779,19 @@ func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []gran
 	}
 	if field == "" {
 		variants := []grantVariant{{}}
+		if grant.trimClientID {
+			variants = append(variants, grantVariant{field: grant.clientID, value: "  " + sampleClientID + "  "})
+		}
+		for _, source := range agreement.sources(grant) {
+			for name, rule := range source.TemplateValueRules {
+				if rule.TrimSpace {
+					variants = append(variants, grantVariant{field: name, value: "  " + sampleTemplateValue + "  "})
+				}
+				if rule.Lowercase {
+					variants = append(variants, grantVariant{field: name, value: "Manifest.Example.com"})
+				}
+			}
+		}
 		if grant.jwtBearer != nil {
 			for _, field := range grant.jwtBearer.TrimSpaceSources {
 				value := "  manifest-" + field + "  "
@@ -874,7 +913,11 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 	}
 	generation.mustWrite("\t\t\tendpoint: %q,\n\t\t\tencoding: %q,\n\t\t\tclientAuth: %q,\n", endpoint, grant.encoding, clientAuth)
 	if grant.clientID != "" {
-		generation.mustWrite("\t\t\tclientID: %q,\n\t\t\tsecret: %q,\n", credentials[grant.clientID], credentials[grant.clientSecret])
+		clientID := credentials[grant.clientID]
+		if grant.trimClientID {
+			clientID = strings.TrimSpace(clientID)
+		}
+		generation.mustWrite("\t\t\tclientID: %q,\n\t\t\tsecret: %q,\n", clientID, credentials[grant.clientSecret])
 	}
 	generation.mustWrite("\t\t\tparameters: %s,\n", goStringMap(parameters))
 	if grant.jwtBearer != nil {
@@ -896,8 +939,12 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 					credentialsOverride[name] = value
 				}
 			}
-			generation.mustWrite("\t\t\t\t{name: %q, response: %s, credentials: %s, updates: %s, expectedError: %q, expectedExpiry: time.Duration(%d), checkExpiry: %t},\n",
-				variation.Name, goAnyMap(variation.Response), goStringMap(credentialsOverride), goStringMap(variation.Updates), variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)), variation.ExpectedExpiryMilliseconds != nil)
+			beforeRequest := ""
+			if variation.MayRefuseWithoutCall {
+				beforeRequest = ", beforeRequest: true"
+			}
+			generation.mustWrite("\t\t\t\t{name: %q, response: %s, credentials: %s, updates: %s, expectedError: %q, expectedExpiry: time.Duration(%d), checkExpiry: %t%s},\n",
+				variation.Name, goAnyMap(variation.Response), goStringMap(credentialsOverride), goStringMap(variation.Updates), variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)), variation.ExpectedExpiryMilliseconds != nil, beforeRequest)
 		}
 		generation.mustWrite("\t\t\t},\n")
 	}
@@ -1283,6 +1330,13 @@ func resolveSampleSource(source schema.ValueSource, credentials, settings, keyMe
 			if !isCredential {
 				placeholderValue = settings[placeholder]
 			}
+			if rule, declared := source.TemplateValueRules[placeholder]; declared {
+				var err error
+				placeholderValue, err = applyTemplateValueRule(placeholderValue, rule)
+				if err != nil {
+					return "", fmt.Errorf("template placeholder %s: %w", placeholder, err)
+				}
+			}
 			resolved = strings.ReplaceAll(resolved, "{"+placeholder+"}", url.PathEscape(placeholderValue))
 		}
 		return resolved, nil
@@ -1297,6 +1351,36 @@ func resolveSampleSource(source schema.ValueSource, credentials, settings, keyMe
 		return "", fmt.Errorf("values do not translate %q", value)
 	}
 	return translated, nil
+}
+
+func applyTemplateValueRule(value string, rule schema.TemplateValueRule) (string, error) {
+	if rule.TrimSpace {
+		value = strings.TrimSpace(value)
+	}
+	if rule.MaxBytes > 0 && len(value) > rule.MaxBytes {
+		return "", fmt.Errorf("value exceeds %d bytes", rule.MaxBytes)
+	}
+	for _, rejected := range rule.Reject {
+		if strings.EqualFold(value, rejected) {
+			return "", fmt.Errorf("value is rejected")
+		}
+	}
+	if len(rule.Patterns) > 0 {
+		matched := false
+		for _, pattern := range rule.Patterns {
+			if regexp.MustCompile(pattern).MatchString(value) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return "", fmt.Errorf("value does not match an accepted pattern")
+		}
+	}
+	if rule.Lowercase {
+		value = strings.ToLower(value)
+	}
+	return value, nil
 }
 
 func templatePlaceholders(template string) []string {

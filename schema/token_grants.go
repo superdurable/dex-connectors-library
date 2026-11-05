@@ -58,6 +58,8 @@ const (
 // method's tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, client credentials and credentialMappings
 // apply to the refresh request and response too.
 type OAuthRefresh struct {
+	// TrimClientID removes surrounding Go Unicode whitespace from the client ID before a refresh request.
+	TrimClientID bool `yaml:"trimClientID,omitempty" json:"trimClientID,omitempty"`
 	// ResponseURLValidation validates a mapped provider URL before it is stored.
 	ResponseURLValidation *ResponseURLValidation `yaml:"responseURLValidation,omitempty" json:"responseURLValidation,omitempty"`
 	// ResponseScopeField selects the provider's granted-scope response member; scopesArray is a JSON string array.
@@ -136,6 +138,8 @@ type MissingExpiry struct {
 // ClientCredentialsGrant declares how a host mints an apiKey method's access token with the OAuth client
 // credentials grant (RFC 6749 section 4.4) from the stored client ID and secret.
 type ClientCredentialsGrant struct {
+	// TrimClientID removes surrounding Go Unicode whitespace from the client ID before a mint request.
+	TrimClientID bool `yaml:"trimClientID,omitempty" json:"trimClientID,omitempty"`
 	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes.
 	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
@@ -276,9 +280,25 @@ type ValueSource struct {
 	// Template is a literal whose {name} placeholders each name a credential field or setting of the method. A host
 	// inserts each value path-escaped, so a template can only fill a URL path segment.
 	Template string `yaml:"template,omitempty" json:"template,omitempty"`
+	// TemplateValueRules validate and canonicalize named template placeholders before path escaping.
+	TemplateValueRules map[string]TemplateValueRule `yaml:"templateValueRules,omitempty" json:"templateValueRules,omitempty"`
 	// Values translates the value of FromCredential, FromSetting or FromKey, such as an environment name into a
 	// URL. The key "" translates a blank value. A value missing from the map cannot be resolved.
 	Values map[string]string `yaml:"values,omitempty" json:"values,omitempty"`
+}
+
+// TemplateValueRule applies provider-specific tenant or path-segment rules to one template placeholder.
+type TemplateValueRule struct {
+	// TrimSpace removes surrounding Go Unicode whitespace before validation.
+	TrimSpace bool `yaml:"trimSpace,omitempty" json:"trimSpace,omitempty"`
+	// Lowercase writes the accepted value in lowercase in the resolved endpoint.
+	Lowercase bool `yaml:"lowercase,omitempty" json:"lowercase,omitempty"`
+	// MaxBytes limits the UTF-8 byte length of the trimmed value.
+	MaxBytes int `yaml:"maxBytes,omitempty" json:"maxBytes,omitempty"`
+	// Patterns accept a value when any anchored regular expression matches the entire trimmed value.
+	Patterns []string `yaml:"patterns,omitempty" json:"patterns,omitempty"`
+	// Reject lists disallowed values compared without ASCII case after trimming.
+	Reject []string `yaml:"reject,omitempty" json:"reject,omitempty"`
 }
 
 // UnmarshalYAML reads reject, keep, or {lifetime: <duration>}.
@@ -350,7 +370,7 @@ func (source *ValueSource) UnmarshalYAML(node *yaml.Node) error {
 	}
 	type valueSourceMapping ValueSource
 	var mapping valueSourceMapping
-	if err := decodeKnownYAMLMapping(node, &mapping, "fromCredential", "fromSetting", "fromKey", "template", "values"); err != nil {
+	if err := decodeKnownYAMLMapping(node, &mapping, "fromCredential", "fromSetting", "fromKey", "template", "templateValueRules", "values"); err != nil {
 		return fmt.Errorf("line %d: value source: %w", node.Line, err)
 	}
 	*source = ValueSource(mapping)
@@ -843,14 +863,34 @@ func (grantContext tokenGrantContext) validateValueSource(label string, source V
 		problems = append(problems, label+" fromKey requires keyCredential")
 	case source.Template != "":
 		placeholders := templatePlaceholderPattern.FindAllStringSubmatch(source.Template, -1)
+		placeholderNames := map[string]bool{}
 		if len(placeholders) == 0 || strings.Count(source.Template, "{") != len(placeholders) || strings.Count(source.Template, "}") != len(placeholders) {
 			problems = append(problems, label+" template requires {name} placeholders")
 		}
 		for _, placeholder := range placeholders {
+			placeholderNames[placeholder[1]] = true
 			if !grantContext.isCredential(placeholder[1]) && grantContext.settings[placeholder[1]].Name == "" {
 				problems = append(problems, label+" template placeholder "+placeholder[1]+" must name a credential field or setting of the method")
 			}
 		}
+		for name, rule := range source.TemplateValueRules {
+			if !placeholderNames[name] {
+				problems = append(problems, label+" templateValueRules "+name+" must name a template placeholder")
+			}
+			if rule.MaxBytes < 0 {
+				problems = append(problems, label+" templateValueRules "+name+" maxBytes must be positive")
+			}
+			for _, pattern := range rule.Patterns {
+				if !strings.HasPrefix(pattern, "^") || !strings.HasSuffix(pattern, "$") {
+					problems = append(problems, label+" templateValueRules "+name+" patterns must be anchored")
+				} else if _, err := regexp.Compile(pattern); err != nil {
+					problems = append(problems, label+" templateValueRules "+name+" pattern is invalid")
+				}
+			}
+		}
+	}
+	if source.Template == "" && len(source.TemplateValueRules) > 0 {
+		problems = append(problems, label+" templateValueRules require a template")
 	}
 	if len(source.Values) > 0 && source.FromCredential == "" && source.FromSetting == "" && source.FromKey == "" {
 		problems = append(problems, label+" values translate only fromCredential, fromSetting, or fromKey")
