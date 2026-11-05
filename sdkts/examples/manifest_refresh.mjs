@@ -28,3 +28,24 @@ const credentials = {
 const result = await driver.refresh({ credentials, now: new Date() }, new AbortController().signal);
 if (result.credentials.accessToken.reveal() !== 'INERT_NEW_ACCESS') throw new Error('access token was not refreshed');
 if (result.credentials.refreshToken.reveal() !== 'INERT_NEW_REFRESH') throw new Error('refresh token was not rotated');
+
+const blockedAuth = structuredClone(auth);
+blockedAuth.oauth2.tokenEndpoint = { fromSetting: 'tokenEndpoint' };
+blockedAuth.oauth2.tokenEndpointNetworkPolicy = 'privateNetworkHTTP';
+const blocked = new ManifestCredentialRefreshDriver({
+  providerName: 'Example', auth: blockedAuth,
+  credentialFields: { client_id: 'clientId', client_secret: 'clientSecret', access_token: 'accessToken', refresh_token: 'refreshToken' },
+  settings: { tokenEndpoint: 'http://169.254.169.254/token' },
+});
+const originalFetch = globalThis.fetch;
+let fetchCalls = 0;
+globalThis.fetch = async () => { fetchCalls++; throw new Error('unsafe transport was called'); };
+try {
+  await blocked.refresh({ credentials, now: new Date() }, new AbortController().signal);
+  throw new Error('forbidden endpoint was accepted');
+} catch (error) {
+  if (error?.name !== 'RetryError') throw error;
+} finally {
+  globalThis.fetch = originalFetch;
+}
+if (fetchCalls !== 0) throw new Error('forbidden endpoint reached fetch');

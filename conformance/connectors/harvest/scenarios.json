@@ -1,0 +1,663 @@
+{
+  "connector": "harvest",
+  "scenarios": [
+    {
+      "callId": "90b2127d-39e5-527d-8c32-27eff3620c56",
+      "exchanges": [
+        {
+          "body": "{\"projects\":[{\"id\":3001,\"name\":\"Meridian Website\",\"is_active\":true}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "id": 3001,
+              "isActive": true,
+              "name": "Meridian Website"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-success",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "01e26541-1d03-566f-8287-b2871bcefd71",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-rejected",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "a346a36c-61a5-5a67-9462-03a5c641c7c0",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-invalid",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "ab55ee57-ee2b-5d4f-a99d-96f14acece1a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-rate-limit",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "7f7df9af-9f26-5d8e-ae02-859d0f2d4ccc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-server-error",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "527bf6da-b470-5251-8f6b-6ade7c1837d1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/projects",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-transport",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "259d8c9c-c209-5ad9-a132-99ea5de8d0f9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "perPage": -1
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "727517b5-15c6-57e5-9419-d6880837c7ca",
+      "exchanges": [
+        {
+          "body": "{\"time_entries\":[{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\"}],\"links\":{\"next\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "timeEntries": [
+            {
+              "hours": 2.5,
+              "id": 4001,
+              "project": {
+                "id": 3001
+              },
+              "spentDate": "2026-10-28"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-success",
+      "operation": "listTimeEntries"
+    },
+    {
+      "callId": "377c4e05-9fbb-57ef-89e6-89cb9bba3b55",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "timeEntries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-rejected",
+      "operation": "listTimeEntries"
+    },
+    {
+      "callId": "b0c60e63-ca28-58b2-93a6-2cf189ce0917",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "timeEntries": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-invalid",
+      "operation": "listTimeEntries"
+    },
+    {
+      "callId": "7bc28ea7-0568-508c-95d3-dab58c582596",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-rate-limit",
+      "operation": "listTimeEntries"
+    },
+    {
+      "callId": "cc6ea921-cd1c-57e6-8cf9-2067e37ad347",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-server-error",
+      "operation": "listTimeEntries"
+    },
+    {
+      "callId": "1daa9790-5505-51ee-8313-0f13dc530347",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/time_entries",
+          "query": {
+            "cursor": [
+              "next-token"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-key"
+            ],
+            "Harvest-Account-Id": [
+              "123"
+            ],
+            "User-Agent": [
+              "superdurable-harvest-connector"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-transport",
+      "operation": "listTimeEntries"
+    },
+    {
+      "callId": "715f2207-6b2e-5fd2-9c5e-6cb23506fafe",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "timeEntries": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "perPage": -1
+      },
+      "name": "listTimeEntries-defect",
+      "operation": "listTimeEntries"
+    }
+  ],
+  "schemaVersion": 1
+}

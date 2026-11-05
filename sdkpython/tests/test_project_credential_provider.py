@@ -49,6 +49,7 @@ from dex_connectors.sdk.projectconfig.provider import (
     RejectedCredentialNotRefreshedError,
 )
 from dex_connectors.sdk.projectconfig.storage import ObjectConflictError
+from dex_connectors.sdk.providerhttp import AddressRefusal
 
 KEY = ConnectionKey("sample", "main")
 CALL = Call(
@@ -224,6 +225,14 @@ async def test_refresh_failure_restores_prior_and_terminal_reauth_fences() -> No
     with pytest.raises(RefreshFailedError) as failed:
         await resolve_credential(provider, CALL, retryable)
     assert "inert provider detail" not in str(failed.value)
+    assert (await store.read_connection(KEY)).status == "READY"
+    refusal = AddressRefusal("resolved address violates policy")
+    refused = RefreshDriver()
+    refused.error = refusal
+    refused.release.set()
+    with pytest.raises(AddressRefusal) as received:
+        await resolve_credential(provider, CALL, refused)
+    assert received.value is refusal
     assert (await store.read_connection(KEY)).status == "READY"
     terminal = RefreshDriver()
     terminal.error = ReauthorizationRequiredError()

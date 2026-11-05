@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: mysql
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-mysql
+      operations: [query, execute]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-mysql"

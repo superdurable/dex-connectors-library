@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -34,6 +35,22 @@ export interface Credentials {
   serviceAccountSecret: SecretString;
   /** Secret Mixpanel service-account username from https://mixpanel.com/settings/org/ under Organization Settings > Service Accounts > Create Service Account; copy the generated username. Blank prevents requests. */
   serviceAccountUsername: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["service_account_secret", "service_account_username"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["service_account_secret"] != null && !(typeof fields["service_account_secret"] === 'string')) throw new TypeError("credential service_account_secret has an invalid type");
+  if (fields["service_account_username"] != null && !(typeof fields["service_account_username"] === 'string')) throw new TypeError("credential service_account_username has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["service_account_username"]) throw new TypeError("credential service_account_username is required");
+  credentials.serviceAccountUsername = new SecretString((fields["service_account_username"] ?? '') as string);
+  if (!fields["service_account_secret"]) throw new TypeError("credential service_account_secret is required");
+  credentials.serviceAccountSecret = new SecretString((fields["service_account_secret"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

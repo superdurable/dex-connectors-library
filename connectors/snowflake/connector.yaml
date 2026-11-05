@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: snowflake
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-snowflake
+      operations: [submitStatement, getStatementResult, cancelStatement]
+      triggers: []
     typescript:
       package: '@superdurable/connector-snowflake'
       version: v0.1.0

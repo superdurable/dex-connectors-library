@@ -34,7 +34,27 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", manifestPath, err)
 	}
-	return map[string][]byte{filepath.Join(directory, codegen.RefreshAgreementTestOutputFile): test}, nil
+	files := map[string][]byte{filepath.Join(directory, codegen.RefreshAgreementTestOutputFile): test}
+	cases, err := codegen.GenerateRefreshAgreementCases(manifest, samples)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", manifestPath, err)
+	}
+	connectorDirectory := filepath.Dir(manifestPath)
+	if manifest.Spec.Languages != nil && manifest.Spec.Languages.Python != nil {
+		pythonTests := filepath.Join(connectorDirectory, "python", "tests")
+		files[filepath.Join(pythonTests, "refresh_agreement_cases.json")] = cases
+		relativeDirectory, err := connectorDirectoryInCatalog(manifestPath)
+		if err != nil {
+			return nil, err
+		}
+		files[filepath.Join(pythonTests, "test_refresh_agreement.py")] = codegen.GeneratePythonRefreshAgreementTest(pythonImportPackageName(relativeDirectory))
+	}
+	if manifest.Spec.Languages != nil && manifest.Spec.Languages.TypeScript != nil {
+		typeScriptTests := filepath.Join(connectorDirectory, "typescript", "test")
+		files[filepath.Join(typeScriptTests, "fixtures", "refresh-agreement-cases.json")] = cases
+		files[filepath.Join(typeScriptTests, "refresh_agreement.test.ts")] = codegen.GenerateTypeScriptRefreshAgreementTest()
+	}
+	return files, nil
 }
 
 // staleRefreshAgreementFiles lists the agreement test that a manifest without token grants must not keep.

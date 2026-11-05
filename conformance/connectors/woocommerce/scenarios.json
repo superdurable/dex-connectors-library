@@ -1,0 +1,628 @@
+{
+  "connector": "woocommerce",
+  "scenarios": [
+    {
+      "callId": "2a567e12-061d-50bc-8522-b744a66b3b1e",
+      "exchanges": [
+        {
+          "body": "[{\"id\":101,\"status\":\"processing\",\"total\":\"29.00\",\"currency\":\"USD\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "orders": [
+            {
+              "currency": "USD",
+              "id": 101,
+              "status": "processing",
+              "total": "29.00"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listOrders-success",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "5fa4bff0-1fc1-5283-a61a-7d135505e53c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listOrders-rejected",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "35a1f0a8-8dc3-5f7f-be0e-a4ed6b47a07d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listOrders-invalid",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "01dae0ec-3e05-5dd1-916d-e62df1961f85",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "orders": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listOrders-not-found",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "20791f52-3494-5190-ad7e-8c7f42121b9c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listOrders-rate-limit",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "680e6c7a-47ac-54fd-a88f-42919f6cbd8a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listOrders-server-error",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "99aa1f0e-c036-54ba-a443-d0ba24061fcb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 5
+      },
+      "name": "listOrders-transport",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "03c6b2bd-7197-57b8-9d33-293aef8344aa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "orders": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "perPage": 0
+      },
+      "name": "listOrders-defect",
+      "operation": "listOrders"
+    },
+    {
+      "callId": "d22bffed-100c-5ae4-9881-8604c7d71a66",
+      "exchanges": [
+        {
+          "body": "{\"id\":101,\"status\":\"processing\",\"total\":\"29.00\",\"currency\":\"USD\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "currency": "USD",
+          "id": 101,
+          "status": "processing",
+          "total": "29.00"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 101
+      },
+      "name": "getOrder-success",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "59829aba-5ad9-5959-b7c4-c6e086f854e1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 101
+      },
+      "name": "getOrder-rejected",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "285e2f52-f469-5057-af6d-88e3f5c451b3",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 101
+      },
+      "name": "getOrder-invalid",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "b5df2981-ea48-562f-979d-aed0a974e022",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 101
+      },
+      "name": "getOrder-not-found",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "cf93aed1-80d9-5329-b291-92b30038fa98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 101
+      },
+      "name": "getOrder-rate-limit",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "9c93baaa-2d52-5033-8df6-8f4fc778f57a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 101
+      },
+      "name": "getOrder-server-error",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "b968d35e-9d35-5cd0-9f35-f2875ba3865f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wc/v3/orders/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic Y2tfdGVzdDpjc190ZXN0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 101
+      },
+      "name": "getOrder-transport",
+      "operation": "getOrder"
+    },
+    {
+      "callId": "c8e3670d-6d2e-544c-9474-a75d7040bcf6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currency": "",
+          "id": 0,
+          "status": "",
+          "total": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "orderId": 0
+      },
+      "name": "getOrder-defect",
+      "operation": "getOrder"
+    }
+  ],
+  "schemaVersion": 1
+}

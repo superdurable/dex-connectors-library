@@ -79,8 +79,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Klaviyo stored credential does not match the connector credential fields")
+        if set(material) - set(('private_api_key',)):
+            raise ValueError("Klaviyo stored credential does not match the connector credential fields")
         private_api_key = material.get("private_api_key")
-        if not isinstance(private_api_key, str) or not private_api_key:
+        if private_api_key is not None and not (isinstance(private_api_key, str)):
+            raise ValueError("Klaviyo credential private_api_key has an invalid type")
+        if not private_api_key:
             raise ValueError("Klaviyo credential private_api_key is required")
         return Credentials(SecretString(private_api_key))
 
