@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from ..credentials import ReauthorizationRequiredError, SecretString
-from ..providerhttp import read_bounded_body
+from ..providerhttp import AddressRefusal, read_bounded_body
 
 MAX_TOKEN_RESPONSE_BYTES = 1 << 20
 REFRESH_SKEW = timedelta(minutes=5)
@@ -191,6 +191,10 @@ class TokenEndpoint:
     ) -> TokenResponse:
         parsed = urlsplit(self.url)
         if (
+            not (self.url[:8].lower() == "https://" or (
+                self.allows_plain_http and self.url[:7].lower() == "http://"
+            ))
+            or
             parsed.scheme not in ({"http", "https"} if self.allows_plain_http else {"https"})
             or not parsed.hostname or parsed.username is not None or parsed.password is not None
         ):
@@ -218,6 +222,8 @@ class TokenEndpoint:
         try:
             response = await self.http_client.send(request, follow_redirects=False, stream=True)
             contents = await read_bounded_body(response, MAX_TOKEN_RESPONSE_BYTES)
+        except AddressRefusal:
+            raise
         except (httpx.HTTPError, OSError, ValueError):
             raise OSError(f"{self.provider_name} token endpoint is unavailable") from None
         if not 200 <= response.status_code < 300 and not contents:

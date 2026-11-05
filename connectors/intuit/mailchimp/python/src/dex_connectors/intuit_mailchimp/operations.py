@@ -9,6 +9,7 @@ import math
 import re
 import unicodedata
 from collections.abc import Iterable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -23,7 +24,6 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
-from dex_connectors.sdk.singledispatch import Marker, State
 
 from ._generated.definitions import (
     GET_MEMBER_DEFINITION,
@@ -46,6 +46,11 @@ from .models import (
     UpsertMemberInput,
     UpsertMemberOutput,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _SendDispatchMarker:
+    dispatched_call_id: CallID = field(metadata={"dex_json_name": "mailchimpDispatchedCallId"})
 
 _RESOURCE_ID = re.compile(r"[A-Za-z0-9]{1,64}\Z")
 _SUBSCRIBER_HASH = re.compile(r"[0-9a-f]{32}\Z")
@@ -618,12 +623,8 @@ class SendCampaignOperation:
         if context is not None:
             try:
                 if context.has_last_heartbeat_value():
-                    marker = context.get_last_heartbeat_value(Marker)
-                    earlier_dispatch = not (
-                        isinstance(marker, Marker)
-                        and marker.call_id == call.id
-                        and marker.state in (State.NOT_SENT, State.CAN_RESEND)
-                    )
+                    context.get_last_heartbeat_value(_SendDispatchMarker)
+                    earlier_dispatch = True
             except Exception:
                 earlier_dispatch = True
         exchange = await self._client.exchange(
@@ -699,7 +700,7 @@ class SendCampaignOperation:
                 )
             )
         try:
-            await context.heartbeat(Marker(call.id, context.attempt, State.CLAIMED))
+            await context.heartbeat(_SendDispatchMarker(call.id))
         except Exception:
             return MutationAttempt.retry(
                 failure(
@@ -716,7 +717,7 @@ class SendCampaignOperation:
             return MutationAttempt.branch_result("sent", output, send_receipt)
         if sent.outcome in ("rateLimited", "notSent"):
             try:
-                await context.heartbeat(Marker(call.id, context.attempt, State.CAN_RESEND))
+                await context.heartbeat()
             except Exception:
                 pass  # A retained claim fails closed on the next attempt.
             assert sent.failure is not None

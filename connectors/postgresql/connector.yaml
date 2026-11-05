@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: postgresql
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-postgresql'
+      operations: [query, execute]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-postgresql

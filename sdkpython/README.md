@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.3.0` supplies the models, provider operation contracts, credential
+Version `0.7.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
 checkpoint values below, plus opt-in provider address policies. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
@@ -153,17 +153,22 @@ clock for expiry and JWT claims. A credential dataclass for an authorization
 declaration with several `methods` carries `auth_method_id`; an empty value
 selects the declaration's `defaultMethod`.
 
-The manifest's `missingExpiry` declaration controls the decision when stored
-expiry is absent: `keep` (the default) leaves a present access token in place,
-and a declared lifetime refreshes it. The driver accepts
+The manifest's `storedMissingExpiry: refresh` declaration refreshes a stored
+access token without recorded expiry; `keep` is the default and leaves a
+present token in place. The separate `missingExpiry` declaration controls
+token responses without `expires_in`.
+The driver accepts
 `acceptsMissingTokenType: true` in a refresh declaration for a provider that
 omits `token_type`. A provider such as Slack that returns `bot` or `user` must
 declare grant `acceptedTokenTypes`. Refresh validation uses `requiredScopes`
 when declared, and a grant can override `exactScopes` or
-`acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace`
+`acceptsMissingTokenType`. `acceptedScopeSets` applies to every grant under
+`refresh.grants` and excludes `offline_access` from response checks.
+`refresh.scopeSeparators` selects `whitespace`
 (the default) or `whitespaceAndComma` for both exact and all-scope checks.
-A response lacking `expires_in` is retryable unless
-the manifest declares `missingExpiry`. The default requires `Bearer`.
+A response lacking `expires_in` is retryable by default or with
+`missingExpiry: reject`; `keep` returns an expired result, while a positive
+declared lifetime supplies its expiry. The default requires `Bearer`.
 Only `refresh.allowsPublicClient: true` permits a public-client refresh request
 with a blank client secret; other blank secrets require reauthorization before
 any provider request.
@@ -254,6 +259,42 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.7.0`: Manifest token endpoint templates apply declared
+  `templateValueRules` before path escaping. Rules trim Go Unicode whitespace,
+  reject names, bound UTF-8 length, accept full-match patterns, and lowercase
+  accepted values. Invalid values require reauthorization before a token request.
+  Template patterns use a portable Go and Python subset; lookaround,
+  backreferences, Unicode property escapes, quoted literals, POSIX classes,
+  and inline flags are rejected when the manifest is loaded.
+  `trimClientID` on refresh or client-credentials declarations trims the client
+  ID sent to the token endpoint when the Go driver does so.
+  JWT-bearer grants accept a PEM private key directly from a credential field,
+  as Salesforce declares, without requiring a JSON key credential.
+  Private-network HTTP token endpoints reject fragments and non-printable or
+  non-ASCII URL text before transport.
+  Migration: `TokenEndpoint` now accepts uppercase ASCII `HTTP://` and `HTTPS://`
+  schemes, while leading whitespace remains invalid. Address-policy refusals
+  retain their `AddressRefusal` type so callers can treat them as terminal validation defects.
+  A returned null response URL is invalid and retried; declared host matches
+  preserve case, including Zoho `api_domain` hosts.
+- `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
+  The string mode preserves every supplied fractional digit; the default
+  `datetime` mode names a Go-valid value that cannot be represented exactly.
+  Manifest grants follow Go scope and credential URL policies for HubSpot,
+  Microsoft Graph, Zoho, Salesforce, and monday.com. `responseScopes: ignore`
+  skips reported scopes; the default checks them. Absent or null HubSpot scope
+  arrays skip the array check; each present element is one complete scope name.
+  Null response URLs reuse the validated stored
+  origin. Private-network token endpoints reject forbidden addresses before
+  connecting. Retryable token failures raise `RetryError`.
+- `0.5.0`: Manifest refresh accepts alternative scope sets and validates
+  declared delegated JWT subjects using Go `mail.ParseAddress` address equality
+  before token requests. `missingExpiry: reject` requires a positive
+  `expires_in`; a malformed successful response remains retryable.
+- `0.4.0`: Added `storedMissingExpiry` for refresh-token, client-credentials,
+  and JWT-bearer grants. A stored token without expiry can now trigger refresh
+  even when a replacement response must include `expires_in`. `missingExpiry`
+  no longer implicitly triggers refresh of a stored token without expiry.
 - `0.3.0`: Added opt-in provider address policies and text generation policy
   forwarding. The unrestricted default keeps the `0.2.0` network behavior.
 - `0.2.0`: Added portable text generation and single-dispatch checkpoints.
