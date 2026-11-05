@@ -1,0 +1,39 @@
+{
+  "connectorId": "webhook",
+  "releaseTag": "connectors/superdurable/webhook/go/v0.24.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-superdurable-webhook",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_send_event_step",
+      "kind": "mutation",
+      "operationId": "sendEvent",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "delivered",
+          "field": "delivered",
+          "optional": false
+        },
+        {
+          "id": "rejected",
+          "field": "rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

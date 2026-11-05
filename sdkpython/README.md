@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.3.0` supplies the models, provider operation contracts, credential
+Version `0.6.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
 checkpoint values below, plus opt-in provider address policies. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
@@ -162,10 +162,13 @@ The driver accepts
 omits `token_type`. A provider such as Slack that returns `bot` or `user` must
 declare grant `acceptedTokenTypes`. Refresh validation uses `requiredScopes`
 when declared, and a grant can override `exactScopes` or
-`acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace`
+`acceptsMissingTokenType`. `acceptedScopeSets` applies to every grant under
+`refresh.grants` and excludes `offline_access` from response checks.
+`refresh.scopeSeparators` selects `whitespace`
 (the default) or `whitespaceAndComma` for both exact and all-scope checks.
-A response lacking `expires_in` is retryable unless
-the manifest declares `missingExpiry`. The default requires `Bearer`.
+A response lacking `expires_in` is retryable by default or with
+`missingExpiry: reject`; `keep` returns an expired result, while a positive
+declared lifetime supplies its expiry. The default requires `Bearer`.
 Only `refresh.allowsPublicClient: true` permits a public-client refresh request
 with a blank client secret; other blank secrets require reauthorization before
 any provider request.
@@ -256,6 +259,20 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
+  The string mode preserves every supplied fractional digit; the default
+  `datetime` mode names a Go-valid value that cannot be represented exactly.
+  Manifest grants follow Go scope and credential URL policies for HubSpot,
+  Microsoft Graph, Zoho, Salesforce, and monday.com. `responseScopes: ignore`
+  skips reported scopes; the default checks them. Absent or null HubSpot scope
+  arrays skip the array check; each present element is one complete scope name.
+  Null response URLs reuse the validated stored
+  origin. Private-network token endpoints reject forbidden addresses before
+  connecting. Retryable token failures raise `RetryError`.
+- `0.5.0`: Manifest refresh accepts alternative scope sets and validates
+  declared delegated JWT subjects using Go `mail.ParseAddress` address equality
+  before token requests. `missingExpiry: reject` requires a positive
+  `expires_in`; a malformed successful response remains retryable.
 - `0.4.0`: Added `storedMissingExpiry` for refresh-token, client-credentials,
   and JWT-bearer grants. A stored token without expiry can now trigger refresh
   even when a replacement response must include `expires_in`. `missingExpiry`

@@ -37,7 +37,7 @@ async function invokeSnowflake(scenario: Scenario, recorder: ExchangeRecorder) {
     }
     return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
-  const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics', warehouse: 'REPORTING_WH', role: 'DEX_REPORTING', database: 'ANALYTICS', schema: 'BILLING' }, {
+  const client = new SnowflakeClient({ accountIdentifier: 'myorg-analytics', warehouse: 'REPORTING_WH', role: 'DEX_REPORTING', database: 'ANALYTICS', schema: 'BILLING', maxRows: 1 }, {
     resolve: async () => privateKey
       ? { authMethodId: 'key-pair', user: 'dex_service', privateKey: new SecretString(privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()) }
       : { authMethodId: 'programmatic-access-token', programmaticAccessToken: new SecretString('pat-secret-value-0123456789') },

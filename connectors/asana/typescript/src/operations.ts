@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { newFence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { Client, dataObject, failure, rejection, type Exchange } from './client.js';
 import { AddCommentDefinition, CreateTaskDefinition, GetTaskDefinition, ListTasksDefinition, UpdateTaskDefinition } from './generated/definitions.js';
 import type { AddCommentInput, AddCommentOutput, CreateTaskInput, CreateTaskOutput, GetTaskInput, ListTasksInput, ListTasksOutput, Task, UpdateTaskInput, UpdateTaskOutput } from './generated/models.js';
@@ -22,6 +22,33 @@ const parseTime = (value: unknown): string | undefined => {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString().replace(/\.000Z$/, 'Z');
 };
 const queryForFields = (fields: string): URLSearchParams => new URLSearchParams({ opt_fields: fields });
+
+function asanaFence(call: Call, operation: string) {
+  const context = new Proxy(call.context, {
+    get(target, property) {
+      if (property === 'getLastHeartbeatValue') return () => {
+        const checkpoint = target.getLastHeartbeatValue() as { callId: string; operation: string; attempt: number; objectId?: string; canResend?: boolean } | undefined;
+        if (!checkpoint) return checkpoint;
+        if (checkpoint.operation !== operation) throw new TypeError('Asana checkpoint belongs to another operation');
+        return { callId: checkpoint.callId, attempt: checkpoint.attempt, state: checkpoint.canResend ? 'canResend' : 'claimed', ...(checkpoint.objectId ? { providerId: checkpoint.objectId } : {}) };
+      };
+      if (property === 'recordHeartbeat') return async (value: unknown) => {
+        const marker = value as Marker;
+        await target.recordHeartbeat({ callId: marker.callId, operation, attempt: marker.attempt,
+          ...(marker.providerId ? { objectId: marker.providerId } : {}),
+          ...(['canResend', 'notSent'].includes(marker.state) ? { canResend: true } : {}) });
+      };
+      const value: unknown = Reflect.get(target, property, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+  return newFence({ ...call, context }, 30_000);
+}
+
+async function recordAsanaReadback(call: Call, operation: string, objectId: string): Promise<void> {
+  try { await call.context.recordHeartbeat({ callId: call.id, operation, attempt: call.context.attempt, objectId }); }
+  catch { /* A lost read-back checkpoint never authorizes another POST. */ }
+}
 
 function readOutcome(client: Client, operation: string, subject: string, exchange: Exchange): { kind: 'success' | 'retry' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect'; error?: Failure; delay: number } {
   const delay = client.retryAfter(exchange);
@@ -121,14 +148,17 @@ export class CreateTaskOperation implements Mutation<CreateTaskInput, CreateTask
     let fields: Record<string, unknown>;
     try { fields = createFields(input); }
     catch (error) { return newMutationBranch('defect', requested, zeroReceipt(), failure('createTask', 'VALIDATION', String(error))); }
-    const fence = newFence(call, 30_000);
+    const fence = asanaFence(call, 'createTask');
     const decision = fence.decide();
     if (decision.kind === 'failClosed') return newMutationUncertain(requested, failure('createTask', 'LOCAL_DEFECT', 'Asana task dispatch checkpoint is unavailable'), this.client.receipt(call));
     const taskId = decision.marker?.providerId;
     if (decision.kind === 'readBackRequired' && !taskId) return newMutationUncertain(requested, failure('createTask', 'TRANSPORT', 'Asana task dispatch checkpoint does not permit another create'), this.client.receipt(call));
     const token = await this.client.token(call);
     if (!token) return taskId ? newMutationRetry(failure('createTask', 'AUTHENTICATION', 'Asana connection credentials are unavailable')) : newMutationBranch('defect', requested, zeroReceipt(), failure('createTask', 'AUTHENTICATION', 'Asana connection credentials are unavailable'));
-    if (taskId) return this.readBack(call, token, requested, taskId);
+    if (taskId) {
+      await recordAsanaReadback(call, 'createTask', taskId);
+      return this.readBack(call, token, requested, taskId);
+    }
     let exchange: Exchange;
     try { exchange = await fence.dispatch(signal => this.client.exchange(call, token, 'POST', '/tasks', queryForFields(createdTaskFields), { data: fields }, signal)); }
     catch { return newMutationRetry(failure('createTask', 'AVAILABILITY', 'Asana task dispatch checkpoint could not be recorded')); }
@@ -219,14 +249,17 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
     let taskId: string;
     try { taskId = gid(input.taskId, 'taskId'); plainText(input.text, 'text', true); }
     catch (error) { return newMutationBranch('defect', requested, zeroReceipt(), failure('addComment', 'VALIDATION', String(error))); }
-    const fence = newFence(call, 30_000);
+    const fence = asanaFence(call, 'addComment');
     const decision = fence.decide();
     if (decision.kind === 'failClosed') return newMutationUncertain(requested, failure('addComment', 'LOCAL_DEFECT', 'Asana comment dispatch checkpoint is unavailable'), this.client.receipt(call));
     const storyId = decision.marker?.providerId;
     if (decision.kind === 'readBackRequired' && !storyId) return newMutationUncertain(requested, failure('addComment', 'TRANSPORT', 'Asana comment dispatch checkpoint does not permit another comment'), this.client.receipt(call));
     const token = await this.client.token(call);
     if (!token) return storyId ? newMutationRetry(failure('addComment', 'AUTHENTICATION', 'Asana connection credentials are unavailable')) : newMutationBranch('defect', requested, zeroReceipt(), failure('addComment', 'AUTHENTICATION', 'Asana connection credentials are unavailable'));
-    if (storyId) return this.readBack(call, token, requested, storyId);
+    if (storyId) {
+      await recordAsanaReadback(call, 'addComment', storyId);
+      return this.readBack(call, token, requested, storyId);
+    }
     let exchange: Exchange;
     try { exchange = await fence.dispatch(signal => this.client.exchange(call, token, 'POST', `/tasks/${taskId}/stories`, queryForFields(createdStoryFields), { data: { text: input.text } }, signal)); }
     catch { return newMutationRetry(failure('addComment', 'AVAILABILITY', 'Asana comment dispatch checkpoint could not be recorded')); }
