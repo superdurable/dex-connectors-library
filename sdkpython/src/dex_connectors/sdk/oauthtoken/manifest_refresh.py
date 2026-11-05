@@ -124,6 +124,11 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             separators = r"[ ,]+" if grant["scope_separators"] == "whitespaceAndComma" else r"\s+"
             granted_scopes = set(re.split(separators, token.scope)) - {""}
             accepted_scope_sets = grant.get("accepted_scope_sets") or [required_scopes]
+            if grant["kind"] == "refresh":
+                accepted_scope_sets = [
+                    [scope for scope in scope_set if scope != "offline_access"]
+                    for scope_set in accepted_scope_sets
+                ]
             has_wrong_scopes = (
                 (bool(token.scope.strip()) or grant["exact_scopes"])
                 and not any(
@@ -211,6 +216,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     if grant.get("grantedScopes") == "userScopes"
                     else refresh.get("requiredScopes", oauth.get("scopes", []))),
                     "accepted_scope_sets": refresh.get("acceptedScopeSets"),
+                    "declares_accepted_scope_sets": "acceptedScopeSets" in refresh,
                     "terminal_codes": refresh.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": grant.get("acceptedTokenTypes")
                     or refresh.get("acceptedTokenTypes") or ["Bearer"],
@@ -224,6 +230,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                         and refresh.get("missingExpiry") != "reject"
                     ),
                     "missing_expiry_policy": refresh.get("missingExpiry"),
+                    "declares_missing_expiry": "missingExpiry" in refresh,
                     "stored_missing_expiry": refresh.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (refresh.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(refresh.get("missingExpiry"), dict)
@@ -245,6 +252,8 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "mappings": client["credentialMappings"],
                     "scopes": client.get("scopes", []),
                     "request_scopes": client.get("scopes", []),
+                    "accepted_scope_sets": client.get("acceptedScopeSets"),
+                    "declares_accepted_scope_sets": "acceptedScopeSets" in client,
                     "terminal_codes": client.get("terminalErrorCodes") or ["invalid_client"],
                     "accepted_token_types": client.get("acceptedTokenTypes") or ["Bearer"],
                     "exact_scopes": False,
@@ -255,6 +264,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                         and client.get("missingExpiry") != "reject"
                     ),
                     "missing_expiry_policy": client.get("missingExpiry"),
+                    "declares_missing_expiry": "missingExpiry" in client,
                     "stored_missing_expiry": client.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (client.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(client.get("missingExpiry"), dict)
@@ -275,6 +285,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "copies": bearer.get("credentialCopies", []),
                     "scopes": bearer.get("scopes", []),
                     "accepted_scope_sets": bearer.get("acceptedScopeSets"),
+                    "declares_accepted_scope_sets": "acceptedScopeSets" in bearer,
                     "terminal_codes": bearer.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": bearer.get("acceptedTokenTypes") or ["Bearer"],
                     "exact_scopes": False,
@@ -285,6 +296,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                         and bearer.get("missingExpiry") != "reject"
                     ),
                     "missing_expiry_policy": bearer.get("missingExpiry"),
+                    "declares_missing_expiry": "missingExpiry" in bearer,
                     "stored_missing_expiry": bearer.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (bearer.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(bearer.get("missingExpiry"), dict)
@@ -405,7 +417,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
 
     def _validate_new_declarations(self, grant: Mapping[str, Any]) -> None:
         policy = grant.get("missing_expiry_policy")
-        if policy is not None and policy not in ("reject", "keep") and not (
+        if grant["declares_missing_expiry"] and policy not in ("reject", "keep") and not (
             isinstance(policy, dict) and set(policy) == {"lifetime"}
             and isinstance(policy["lifetime"], str)
             and _parse_duration(policy["lifetime"]) > timedelta(0)
@@ -414,16 +426,21 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         if grant["scope_separators"] not in ("whitespace", "whitespaceAndComma"):
             raise ValueError("manifest scopeSeparators is invalid")
         scope_sets = grant.get("accepted_scope_sets")
-        if scope_sets is not None and (not isinstance(scope_sets, list) or not scope_sets or any(
+        if grant["kind"] == "client_credentials" and grant["declares_accepted_scope_sets"]:
+            raise ValueError("manifest clientCredentials does not support acceptedScopeSets")
+        if grant["declares_accepted_scope_sets"] and (
+            not isinstance(scope_sets, list) or not scope_sets or any(
             not isinstance(scope_set, list) or not scope_set or any(
                 not isinstance(scope, str) or not scope for scope in scope_set
             ) for scope_set in scope_sets
         )):
             raise ValueError("manifest acceptedScopeSets is invalid")
-        if grant["kind"] == "jwt_bearer" and grant["assertion"].get("subjectValidation") not in (
-            None, "goMailAddress"
-        ):
-            raise ValueError("manifest subjectValidation is invalid")
+        if grant["kind"] == "jwt_bearer":
+            assertion = grant["assertion"]
+            if "subjectValidation" in assertion and assertion["subjectValidation"] != "goMailAddress":
+                raise ValueError("manifest subjectValidation is invalid")
+            if "subjectValidation" in assertion and not assertion.get("subject"):
+                raise ValueError("manifest subjectValidation requires a subject")
 
     def _scopes(self, source: Any) -> list[str]:
         if isinstance(source, list):
@@ -513,7 +530,7 @@ def _trim_go_space(value: str) -> str:
 
 
 def _is_go_mail_address(value: str) -> bool:
-    """Match addr-spec cases whose Go mail.ParseAddress address equals its input."""
+    """Match Go 1.24 net/mail addr-spec cases whose parsed address equals its input."""
     if value.count("@") != 1:
         return False
     local, domain = value.split("@")

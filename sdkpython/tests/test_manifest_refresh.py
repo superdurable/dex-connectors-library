@@ -923,7 +923,7 @@ async def test_manifest_alternative_scope_sets() -> None:
     """A returned scope can satisfy either declared set, including a broader one."""
     auth: dict[str, Any] = deepcopy(AUTH)
     refresh = auth["methods"][0]["oauth2"]["refresh"]
-    refresh["acceptedScopeSets"] = [["files.read"], ["files.manage"]]
+    refresh["acceptedScopeSets"] = [["files.read", "offline_access"], ["files.manage"]]
     returned_scope = ""
 
     def respond(_: httpx.Request) -> httpx.Response:
@@ -1031,6 +1031,8 @@ async def test_client_credentials_rejects_missing_positive_expiry_without_reauth
 @pytest.mark.parametrize("declaration", [
     {"missingExpiry": "unknown"}, {"acceptedScopeSets": []},
     {"acceptedScopeSets": [["read"], []]}, {"scopeSeparators": "comma"},
+    {"missingExpiry": None}, {"acceptedScopeSets": None}, {"scopeSeparators": None},
+    {"missingExpiry": {"lifetime": "0s"}}, {"missingExpiry": {"lifetime": "nonsense"}},
 ])
 @pytest.mark.asyncio
 async def test_manifest_rejects_unknown_refresh_declarations(declaration: dict[str, Any]) -> None:
@@ -1040,6 +1042,30 @@ async def test_manifest_rejects_unknown_refresh_declarations(declaration: dict[s
     async with httpx.AsyncClient() as client:
         with pytest.raises(ValueError):
             ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+
+@pytest.mark.asyncio
+async def test_manifest_rejects_ignored_client_sets_and_invalid_jwt_declarations() -> None:
+    """Declared validation must have a subject and supported response rules."""
+    client_auth = {"clientCredentials": {"acceptedScopeSets": [["read"]],
+        "tokenEndpoint": "https://oauth.example.test/token",
+        "clientIDCredential": "client_id", "clientSecretCredential": "client_secret",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}]}}
+    jwt_auth: dict[str, Any] = {"serviceAccount": {"jwtBearer": {"lifetime": "1h",
+        "keyCredential": "service_account_key", "tokenEndpoint": "https://oauth.example.test/token",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}]}}}
+    assertion = jwt_auth["serviceAccount"]["jwtBearer"]
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError):
+            ManifestCredentialRefreshDriver[Credentials]("Example", client_auth, FIELDS, client)
+        for declaration in ({"subjectValidation": "other"}, {"subjectValidation": None},
+                            {"subjectValidation": "goMailAddress"}, {"scopeSeparators": None},
+                            {"scopeSeparators": "other"}, {"acceptedScopeSets": None}):
+            assertion.update(declaration)
+            with pytest.raises(ValueError):
+                ManifestCredentialRefreshDriver[Credentials]("Example", jwt_auth, FIELDS, client)
+            for key in declaration:
+                del assertion[key]
 
 
 @pytest.mark.asyncio
