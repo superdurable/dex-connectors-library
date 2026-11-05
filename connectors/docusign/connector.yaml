@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: docusign
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-docusign
+      operations: [createEnvelopeFromTemplate, getEnvelope, listEnvelopeRecipients, voidEnvelope, downloadCombinedDocument]
+      triggers: []
   codegen:
     go:
       package: docusign
