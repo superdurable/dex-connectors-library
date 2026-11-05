@@ -576,7 +576,7 @@ oauth2:
 ```
 
 Without `refresh`, a method that maps `refresh_token` refreshes with
-`terminalErrorCodes: [invalid_grant]`, `missingExpiry: keep`, and no
+`terminalErrorCodes: [invalid_grant]`, `missingExpiry: reject`, and no
 additional parameters.
 
 The scopes of a refresh response follow RFC 6749 section 5.1:
@@ -595,6 +595,13 @@ example, YouTube read-only refresh accepts either `youtube.readonly` or the
 broader `youtube` scope. An omitted response scope remains accepted unless
 `exactScopes` is true. A JWT bearer grant may use `acceptedScopeSets` for its
 response without changing the scopes signed into its assertion.
+Do not combine `requiredScopes` with `acceptedScopeSets`. Scope sets are unique
+regardless of their order.
+Returned scopes are checked by default for refresh, client-credentials, and
+JWT-bearer grants. Declare `responseScopes: ignore` on a refresh block or
+minting grant only when its Go credential driver ignores reported scopes.
+The generated agreement always sends a different reported scope to verify this
+decision.
 Use `scopeSeparators: whitespaceAndComma` on that grant when its Go driver
 accepts comma-separated scope responses.
 `refresh.exactScopes: true` requires set equality, including a reported scope
@@ -780,7 +787,7 @@ setting it names, is `client_secret_post` or `client_secret_basic`. A literal
 or translated token endpoint is an absolute HTTPS URL. A host checks
 an endpoint that it reads from a credential, setting, or key before it sends a
 secret there. Release metadata writes a literal as a JSON string, every other
-source as an object, and `missingExpiry` as `"keep"` or `{"lifetime": "2h"}`.
+source as an object, and `missingExpiry` as `"reject"`, `"keep"`, or `{"lifetime": "2h"}`.
 
 ### Credential refresh agreement
 
@@ -828,11 +835,12 @@ gets it from `newCredentialRefreshDriverWithSettings(httpClient, settings)`,
 which the connector writes in a test file of its external test package.
 
 `connectorctl generate` also writes Python `_generated/refresh.py`, TypeScript
-`src/generated/refresh.ts`, and language-neutral agreement cases beside
-existing language tests. When a language package has an agreement test file,
-generation replaces it with a replay test that checks complete token requests,
+`src/generated/refresh.ts`, language-neutral agreement cases, and agreement
+tests for every declared language package with token grants. Generation checks
+for missing tests and cases. The replay checks complete token requests,
 client authentication, JWT claims and signature, credential updates, token types,
-scope rejection, and declared terminal errors. The declarations and credential
+scope rejection, response expiry policy, stored missing expiry, retained refresh
+tokens, and declared and undeclared token errors. The declarations and credential
 field maps feed `ManifestCredentialRefreshDriver` in each SDK. Generated private and shared credential decoders
 must both be passed to a project credential provider so a shared connection
 can omit only fields its host keeps.
@@ -842,8 +850,10 @@ can omit only fields its host keeps.
 1. Confirm the Go driver and manifest agree on token types, missing token type,
    scope policy, response mapping, and terminal error codes. Add declarations
    before changing the language driver.
-2. Generate the language package with Python Connector SDK 0.4.0 or later or
-   TypeScript Connector SDK 0.4.0 or later when `storedMissingExpiry` is used.
+2. Generate the language package with Python Connector SDK 0.6.0 or later or
+   TypeScript Connector SDK 0.6.0 or later when `responseScopes` is used.
+   `storedMissingExpiry` requires SDK 0.4.0 or later, and `acceptedScopeSets`
+   requires SDK 0.5.0 or later.
    Python `_generated/connection.py` binds
    private and shared decoders, credential encoding, durable project refresh,
    and `ManifestCredentialRefreshDriver` to `new_project_connection`. A Python

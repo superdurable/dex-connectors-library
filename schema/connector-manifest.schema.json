@@ -130,7 +130,7 @@
               "additionalProperties": false,
               "required": ["entrypoint", "hostApiRange", "backendCapabilities", "mockScenarios", "icon"],
               "properties": {
-                "entrypoint": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.html$" },
+                "entrypoint": { "type": "string", "pattern": "^[^/].+\\.html$", "not": { "pattern": "(^|/)\\.\\.(/|$)" } },
                 "hostApiRange": { "type": "string", "minLength": 1 },
                 "backendCapabilities": {
                   "type": "array",
@@ -144,7 +144,7 @@
                   "uniqueItems": true,
                   "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
                 },
-                "icon": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.(?:png|svg)$" }
+                "icon": { "type": "string", "pattern": "^[^/].+\\.(?:png|svg)$", "not": { "pattern": "(^|/)\\.\\.(/|$)" } }
               }
             },
             "units": {
@@ -500,7 +500,7 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "type": "string", "pattern": "\\S" }
+      "items": { "type": "string", "pattern": "^\\S(?:[\\s\\S]*\\S)?$" }
     },
     "missingExpiry": {
       "description": "The expiry of a token whose response has no positive expires_in: reject makes a malformed successful response retryable (also the default); keep stores it without expiry; lifetime sets one.",
@@ -564,9 +564,11 @@
         "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
         "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
         "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
-        "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported refresh scope; replaces requiredScopes or authorization scopes." },
+        "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported refresh scope; cannot be combined with requiredScopes." },
+        "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
-        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." },
+        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
+        "storedMissingExpiry": { "enum": ["keep", "refresh"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" },
         "grants": {
           "description": "The refresh tokens of a method that stores several. When absent, the credential mapped from refresh_token with the method's credentialMappings.",
@@ -604,7 +606,9 @@
         "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
         "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_client when absent." },
-        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." },
+        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
+        "storedMissingExpiry": { "enum": ["keep", "refresh"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
+        "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" }
       }
     },
@@ -630,6 +634,7 @@
             "tokenEndpoint": { "$ref": "#/$defs/valueSource" },
             "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
             "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported JWT mint scope; independent of assertion request scopes." },
+            "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
             "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
             "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^\\+?(0|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$" },
             "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
@@ -646,7 +651,8 @@
               }
             },
             "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
-            "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." }
+            "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
+            "storedMissingExpiry": { "enum": ["keep", "refresh"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." }
           }
         }
       }

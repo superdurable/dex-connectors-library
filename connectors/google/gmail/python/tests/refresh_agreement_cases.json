@@ -35,7 +35,8 @@
       "invalid_grant",
       "invalid_client",
       "unauthorized_client"
-    ]
+    ],
+    "storedMissingExpiry": "refresh"
   },
   {
     "name": "google-oauth refresh with unaccepted token type",
@@ -70,7 +71,8 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh"
   },
   {
     "name": "google-oauth refresh without token type",
@@ -104,10 +106,11 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh"
   },
   {
-    "name": "google-oauth refresh with partial scopes",
+    "name": "google-oauth refresh with different reported scope",
     "expectedError": "reauthorization",
     "methodId": "google-oauth",
     "credentials": {
@@ -139,7 +142,8 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh"
   },
   {
     "name": "google-oauth refresh without expires_in",
@@ -173,7 +177,41 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh"
+  },
+  {
+    "name": "google-oauth refresh without refresh_token",
+    "methodId": "google-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "primary_email": "manifest-primary_email",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://oauth2.googleapis.com/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh"
   },
   {
     "name": "workspace-domain-delegation jwtBearer",
@@ -205,6 +243,7 @@
       "invalid_client",
       "unauthorized_client"
     ],
+    "storedMissingExpiry": "refresh",
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -246,6 +285,7 @@
       "primary_email": "manifest-user@example.com"
     },
     "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -286,6 +326,7 @@
       "primary_email": "manifest-user@example.com"
     },
     "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -301,7 +342,7 @@
     }
   },
   {
-    "name": "workspace-domain-delegation jwtBearer with partial scopes",
+    "name": "workspace-domain-delegation jwtBearer with different reported scope",
     "expectedError": "reauthorization",
     "methodId": "workspace-domain-delegation",
     "credentials": {
@@ -327,6 +368,7 @@
       "primary_email": "manifest-user@example.com"
     },
     "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -367,6 +409,7 @@
       "primary_email": "manifest-user@example.com"
     },
     "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {

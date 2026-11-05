@@ -383,7 +383,9 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://manifest.pipedrive.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "base deals:full contacts:full", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://manifest.pipedrive.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "base deals:full contacts:full"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://manifest.pipedrive.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://manifest.pipedrive.com", "refresh_token": "manifest-refresh-token-2", "scope": "base deals:full contacts:full", "token_type": "Bearer"}, expectedError: "retryable"},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://manifest.pipedrive.com", "expires_in": 3600, "scope": "base deals:full contacts:full", "token_type": "Bearer"}, expectedError: ""},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://manifest.pipedrive.com", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",

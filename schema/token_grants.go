@@ -33,6 +33,8 @@ const (
 	ScopeSeparatorsWhitespace = "whitespace"
 	// ScopeSeparatorsWhitespaceAndComma splits reported scopes on ASCII spaces and commas.
 	ScopeSeparatorsWhitespaceAndComma = "whitespaceAndComma"
+	// ResponseScopesIgnore accepts reported token scopes without validation.
+	ResponseScopesIgnore = "ignore"
 )
 
 const (
@@ -67,10 +69,12 @@ type OAuthRefresh struct {
 	RequiredScopes []string `yaml:"requiredScopes,omitempty" json:"requiredScopes,omitempty"`
 	// AcceptedScopeSets replaces the required scopes with any one of these complete accepted sets.
 	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
+	// ResponseScopes ignores reported scopes only when set to ignore; empty checks them.
+	ResponseScopes string `yaml:"responseScopes,omitempty" json:"responseScopes,omitempty"`
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the refresh token can
 	// never succeed again, so the connection needs reauthorization. Empty means invalid_grant.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
-	// MissingExpiry decides the expiry of a refreshed token whose response has no expires_in. Nil keeps it.
+	// MissingExpiry decides the expiry of a refreshed token whose response has no expires_in. Nil rejects it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
 	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
 	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
@@ -136,8 +140,10 @@ type ClientCredentialsGrant struct {
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the client can never
 	// mint again, so the connection needs new client credentials. Empty means invalid_client.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
-	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
+	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil rejects it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// ResponseScopes ignores reported scopes only when set to ignore; empty checks them.
+	ResponseScopes string `yaml:"responseScopes,omitempty" json:"responseScopes,omitempty"`
 	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
 	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 	// AdditionalParameters are fixed, non-secret parameters added to every request.
@@ -176,6 +182,8 @@ type JWTBearerGrant struct {
 	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
 	// AcceptedScopeSets replaces Scopes when checking a returned token's scope set.
 	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
+	// ResponseScopes ignores reported scopes only when set to ignore; empty checks them.
+	ResponseScopes string `yaml:"responseScopes,omitempty" json:"responseScopes,omitempty"`
 	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes; empty means whitespace.
 	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// Lifetime sets the exp claim after iat, such as 1h.
@@ -187,7 +195,7 @@ type JWTBearerGrant struct {
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the key can never
 	// mint again, so the connection needs new key material. Empty means invalid_grant.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
-	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
+	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil rejects it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
 	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
 	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
@@ -458,6 +466,10 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
 	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
 	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", refresh.AcceptedScopeSets)...)
+	if len(refresh.RequiredScopes) > 0 && len(refresh.AcceptedScopeSets) > 0 {
+		problems = append(problems, label+" cannot combine requiredScopes and acceptedScopeSets")
+	}
+	problems = append(problems, validateResponseScopes(label, refresh.ResponseScopes)...)
 	if refresh.ScopeSeparators != "" && refresh.ScopeSeparators != ScopeSeparatorsWhitespace && refresh.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
 		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
 	}
@@ -498,6 +510,7 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, grant.AdditionalParameters)...)
 	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
+	problems = append(problems, validateResponseScopes(label, grant.ResponseScopes)...)
 	return problems
 }
 
@@ -526,6 +539,7 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	problems = append(problems, grantContext.validateEndpointSource(label+" tokenEndpoint", grant.TokenEndpoint, hasKey)...)
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", grant.AcceptedScopeSets)...)
+	problems = append(problems, validateResponseScopes(label, grant.ResponseScopes)...)
 	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
 		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
 	}
@@ -715,11 +729,20 @@ func validateAcceptedScopeSets(label string, scopeSets [][]string) []string {
 		if len(scopeSet) == 0 || len(validateScopeList(label, scopeSet)) > 0 {
 			return []string{label + " must contain non-empty sets of unique scopes"}
 		}
-		canonical := strings.Join(scopeSet, "\x00")
+		canonicalSet := slices.Clone(scopeSet)
+		sort.Strings(canonicalSet)
+		canonical := strings.Join(canonicalSet, "\x00")
 		if seen[canonical] {
 			return []string{label + " must not repeat a scope set"}
 		}
 		seen[canonical] = true
+	}
+	return nil
+}
+
+func validateResponseScopes(label, policy string) []string {
+	if policy != "" && policy != ResponseScopesIgnore {
+		return []string{label + " responseScopes must be ignore"}
 	}
 	return nil
 }
