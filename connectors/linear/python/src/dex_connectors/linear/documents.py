@@ -1,0 +1,14 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+# ruff: noqa: E501
+"""Exact Linear GraphQL documents used by the Go connector."""
+
+SEARCHISSUESDOCUMENT = "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}"
+GETISSUEDOCUMENT = "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}"
+READISSUESUMMARYDOCUMENT = "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}"
+CREATEISSUEDOCUMENT = "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}"
+UPDATEISSUEDOCUMENT = "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}"
+ADDCOMMENTDOCUMENT = "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}"
+READCOMMENTDOCUMENT = "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}"
+FINDUSERBYEMAILDOCUMENT = "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}"
+LISTWORKFLOWSTATESDOCUMENT = "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}"
