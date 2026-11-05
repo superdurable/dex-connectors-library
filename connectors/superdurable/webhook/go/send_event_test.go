@@ -196,6 +196,15 @@ func TestSendEventSignsWithTheBytesOfASecretWithoutThePrefix(t *testing.T) {
 	require.True(t, receiver.receivedDeliveries()[0].isSignatureValid)
 }
 
+func TestSendEventDeliversJSONNullPayload(t *testing.T) {
+	receiver := newFakeReceiver(t, standardKey(t), http.StatusAccepted)
+	result, err := sendEvent(t, newSendingClient(t, receiver.URL, standardSecret, receiver.Client()), "forward-null", "null")
+	require.NoError(t, err)
+	require.Equal(t, webhook.SendEventBranchDelivered, result.Branch)
+	require.Equal(t, "null", receiver.receivedDeliveries()[0].body)
+	require.True(t, receiver.receivedDeliveries()[0].isSignatureValid)
+}
+
 func TestSendEventMapsReceiverStatusesToBranches(t *testing.T) {
 	for _, test := range []struct {
 		statusCode     int
