@@ -378,6 +378,7 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/drive.file", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/drive.file"}, expectedError: "retryable"},
+				{name: " with partial scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "https://www.googleapis.com/auth/drive.file", "token_type": "Bearer"}, expectedError: "retryable"},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},

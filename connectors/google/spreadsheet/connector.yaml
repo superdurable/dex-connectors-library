@@ -8,6 +8,12 @@ metadata:
   version: v0.25.0
 spec:
   provider: google
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-google-sheets'
+      operations: [getValues, findRow, upsertRow]
+      triggers: []
   codegen:
     go:
       package: spreadsheet
@@ -77,6 +83,7 @@ spec:
       refresh:
         missingExpiry: reject
         storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   studio:
     setup:
