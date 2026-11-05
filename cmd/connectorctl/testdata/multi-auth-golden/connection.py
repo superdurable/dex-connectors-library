@@ -13,7 +13,7 @@ from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvid
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GET_THING_DEFINITION
+from .definitions import CONNECTOR_ID, PROVIDER, GET_THING_DEFINITION
 from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS
 from ..models import GetThingInput, GetThingOutput
 
@@ -36,7 +36,7 @@ class Connection:
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or get_thing is None:
+        if reference.provider != PROVIDER or get_thing is None:
             raise ValueError("Multi Auth Fixture connection provider and operations are required")
         if get_thing.definition().operation != GET_THING_DEFINITION.operation:
             raise ValueError("Multi Auth Fixture connection operation identity differs")
@@ -236,17 +236,17 @@ def encode_credentials(credentials: Credentials) -> dict[str, Any]:
     if method == "google-oauth":
         if credentials.oauth_client_id:
             material["oauth_client_id"] = credentials.oauth_client_id
-        if credentials.oauth_client_secret.reveal():
-            material["oauth_client_secret"] = credentials.oauth_client_secret.reveal()
-        if credentials.access_token.reveal():
-            material["access_token"] = credentials.access_token.reveal()
-        if credentials.refresh_token.reveal():
-            material["refresh_token"] = credentials.refresh_token.reveal()
-        if credentials.webhook_signing_key.reveal():
-            material["webhook_signing_key"] = credentials.webhook_signing_key.reveal()
+        if (credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None else ''):
+            material["oauth_client_secret"] = (credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None else '')
+        if (credentials.access_token.reveal() if credentials.access_token is not None else ''):
+            material["access_token"] = (credentials.access_token.reveal() if credentials.access_token is not None else '')
+        if (credentials.refresh_token.reveal() if credentials.refresh_token is not None else ''):
+            material["refresh_token"] = (credentials.refresh_token.reveal() if credentials.refresh_token is not None else '')
+        if (credentials.webhook_signing_key.reveal() if credentials.webhook_signing_key is not None else ''):
+            material["webhook_signing_key"] = (credentials.webhook_signing_key.reveal() if credentials.webhook_signing_key is not None else '')
     elif method == "workspace-service-account":
-        if credentials.service_account_key.reveal():
-            material["service_account_key"] = credentials.service_account_key.reveal()
+        if (credentials.service_account_key.reveal() if credentials.service_account_key is not None else ''):
+            material["service_account_key"] = (credentials.service_account_key.reveal() if credentials.service_account_key is not None else '')
         if credentials.delegated_user:
             material["delegated_user"] = credentials.delegated_user
         if credentials.session_note:
@@ -274,10 +274,10 @@ def encode_credentials(credentials: Credentials) -> dict[str, Any]:
             material["tenant_id"] = credentials.tenant_id
         if credentials.client_id:
             material["client_id"] = credentials.client_id
-        if credentials.client_secret.reveal():
-            material["client_secret"] = credentials.client_secret.reveal()
-        if credentials.access_token.reveal():
-            material["access_token"] = credentials.access_token.reveal()
+        if (credentials.client_secret.reveal() if credentials.client_secret is not None else ''):
+            material["client_secret"] = (credentials.client_secret.reveal() if credentials.client_secret is not None else '')
+        if (credentials.access_token.reveal() if credentials.access_token is not None else ''):
+            material["access_token"] = (credentials.access_token.reveal() if credentials.access_token is not None else '')
     else:
         raise ValueError("Multi Auth Fixture credential auth_method is invalid")
     decode_credentials(material)
@@ -306,7 +306,7 @@ def new_project_connection(
 ) -> Connection:
     if project is None:
         raise ValueError("Multi Auth Fixture connection requires loaded project configuration")
-    reference = ConnectionRef(CONNECTOR_ID, connection_name)
+    reference = ConnectionRef(PROVIDER, connection_name)
     reference.validate()
     key = ConnectionKey(CONNECTOR_ID, connection_name)
     matching = [
@@ -316,7 +316,7 @@ def new_project_connection(
     ]
     if len(matching) != 1:
         raise ValueError("Multi Auth Fixture project connection is missing or duplicated")
-    if matching[0].provider != CONNECTOR_ID:
+    if matching[0].provider != PROVIDER:
         raise ValueError("Multi Auth Fixture project connection provider differs")
     config = _decode_config(matching[0].configuration)
     http_client = http_client or httpx.AsyncClient()

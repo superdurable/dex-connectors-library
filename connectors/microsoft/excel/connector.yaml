@@ -77,6 +77,8 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required, invalid_scope, invalid_request, unsupported_grant_type, invalid_resource]
             additionalParameters: {scope: offline_access Files.ReadWrite.All}
   studio:

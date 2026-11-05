@@ -79,6 +79,8 @@ spec:
       pkce: false
       tokenRequestEncoding: json
       refresh:
+        missingExpiry: reject
+        storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma
         acceptsMissingTokenType: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]

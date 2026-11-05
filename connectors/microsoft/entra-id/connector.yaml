@@ -72,6 +72,8 @@ spec:
             - Open Certificates & secrets > Client secrets > New client secret, choose an expiry, and copy the Value shown once into client_secret. Renew it before it expires; to revoke access, delete the secret or the app registration.
             - To disable, enable, or revoke sessions for accounts that hold administrator roles, also assign the app the Privileged Authentication Administrator role under Entra ID > Roles & admins; without it Microsoft Graph answers 403 for those accounts.
         clientCredentials:
+          missingExpiry: reject
+          storedMissingExpiry: refresh
           tokenEndpoint: {template: "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"}
           clientIDCredential: client_id
           clientSecretCredential: client_secret
@@ -124,6 +126,8 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_request, invalid_grant, unauthorized_client, invalid_client, unsupported_grant_type, invalid_resource, interaction_required, consent_required, invalid_scope]
             additionalParameters: {scope: offline_access User.Read.All User.Create User.EnableDisableAccount.All User.RevokeSessions.All GroupMember.ReadWrite.All}
   operations:
