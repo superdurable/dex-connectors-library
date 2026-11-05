@@ -374,3 +374,16 @@ unverified:
 - whether the token response always omits `expires_in` and the access token
   is always a JWT with `exp`;
 - the Developer Center and Developer mode paths in the setup guidance.
+
+## TypeScript package
+
+`@superdurable/connector-monday` v0.1.0 implements all five Go operations:
+`listItems`, `getItem`, `createItem`, `updateItemColumnValues`, and `addUpdate`.
+Its generated factories, definitions, models, mock cases, and OAuth credential
+refresh declarations come from `connector.yaml`. The hand-written provider
+client keeps credentials outside Flow state and sends the same GraphQL documents,
+API version, and idempotency keys as Go. See the runnable
+[TypeScript list-items example](typescript/examples/list-items/README.md) for
+Worker setup, the static `monday-board` connection, and a real Dex integration
+check. Provider requests can be replayed against the Go-recorded scenarios in
+`conformance/connectors/monday/scenarios.json`.
