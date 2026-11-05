@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Zoho Desk connector for Dex Python Flows."""
 
-from .client import Client, Config, Credentials
-from .connection import Connection, new_connection, new_project_connection
+from .client import Client as Client
+from .client import Config as Config
+from .client import Credentials as Credentials
+from .connection import Connection as Connection
+from .connection import new_connection as new_connection
+from .connection import new_project_connection as new_project_connection
 from .models import *  # noqa: F403
 from .steps import *  # noqa: F403

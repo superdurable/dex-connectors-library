@@ -450,3 +450,7 @@ answer 204; whether the comments list returns `plainText`; whether an
 unchanged `PATCH` triggers workflows; whether every 429 is returned before a
 write is applied; the credit headers; and the **Setup > Developer Space > API**
 path to the organization ID.
+
+## Python
+
+The Python package under `python/` implements all five ticket operations with the generated OAuth refresh wiring. Its [runnable search Flow](python/examples/search_tickets/README.md) uses the static `zoho-desk-helpdesk` connection and is verified through a local Dex Worker and Client with a generated mock. The Go-recorded conformance fixture covers provider requests, branches, retry, uncertainty, and heartbeat behavior. Live Zoho authorization and provider calls have not been verified for this language port.

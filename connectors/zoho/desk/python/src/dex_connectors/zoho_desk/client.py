@@ -18,6 +18,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -26,10 +27,14 @@ from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 
 _DATA_CENTERS = {
-    "zoho-us-oauth": "desk.zoho.com", "zoho-eu-oauth": "desk.zoho.eu",
-    "zoho-in-oauth": "desk.zoho.in", "zoho-au-oauth": "desk.zoho.com.au",
-    "zoho-jp-oauth": "desk.zoho.jp", "zoho-ca-oauth": "desk.zohocloud.ca",
-    "zoho-sa-oauth": "desk.zoho.sa", "zoho-sg-oauth": "desk.zoho.sg",
+    "zoho-us-oauth": "desk.zoho.com",
+    "zoho-eu-oauth": "desk.zoho.eu",
+    "zoho-in-oauth": "desk.zoho.in",
+    "zoho-au-oauth": "desk.zoho.com.au",
+    "zoho-jp-oauth": "desk.zoho.jp",
+    "zoho-ca-oauth": "desk.zohocloud.ca",
+    "zoho-sa-oauth": "desk.zoho.sa",
+    "zoho-sg-oauth": "desk.zoho.sg",
     "zoho-ae-oauth": "desk.zoho.ae",
 }
 _ID = re.compile(r"[0-9]{1,20}\Z")
@@ -102,12 +107,7 @@ def _with_summary(message: str, body: bytes) -> str:
 
 
 def _retry_after(headers: httpx.Headers) -> float:
-    value = headers.get("Retry-After", "").strip()
-    if re.fullmatch(r"[0-9]+", value):
-        seconds = int(value)
-        if 0 < seconds <= (2**63 - 1) // 1_000_000_000:
-            return float(seconds)
-    return 0
+    return parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC))
 
 
 class Client:
@@ -117,8 +117,13 @@ class Client:
     owned by this connector and closed by ``aclose``.
     """
 
-    def __init__(self, config: Config, credentials: CredentialProvider[Credentials],
-                 http_client: httpx.AsyncClient | None = None, api_base_url: str = "") -> None:
+    def __init__(
+        self,
+        config: Config,
+        credentials: CredentialProvider[Credentials],
+        http_client: httpx.AsyncClient | None = None,
+        api_base_url: str = "",
+    ) -> None:
         if config is None or credentials is None:
             raise ValueError("Zoho Desk configuration and credentials are required")
         if not _ID.fullmatch(config.org_id.strip()):
@@ -127,9 +132,15 @@ class Client:
             raise ValueError("Zoho Desk response limit must be positive")
         if api_base_url:
             parsed = urlsplit(api_base_url)
-            if (parsed.scheme not in ("http", "https") or not parsed.hostname or
-                (parsed.scheme != "https" and not _loopback(parsed.hostname)) or
-                parsed.username or parsed.password or parsed.query or parsed.fragment):
+            if (
+                parsed.scheme not in ("http", "https")
+                or not parsed.hostname
+                or (parsed.scheme != "https" and not _loopback(parsed.hostname))
+                or parsed.username
+                or parsed.password
+                or parsed.query
+                or parsed.fragment
+            ):
                 raise ValueError("Zoho Desk API base URL is invalid")
         self.config = config
         self.credentials = credentials
@@ -140,26 +151,31 @@ class Client:
     def search_tickets(self) -> Any:
         """Return the searchTickets Query bound to this client."""
         from .operations import SearchTicketsOperation
+
         return SearchTicketsOperation(self)
 
     def get_ticket(self) -> Any:
         """Return the getTicket Query bound to this client."""
         from .operations import GetTicketOperation
+
         return GetTicketOperation(self)
 
     def create_ticket(self) -> Any:
         """Return the createTicket Mutation bound to this client."""
         from .operations import CreateTicketOperation
+
         return CreateTicketOperation(self)
 
     def update_ticket(self) -> Any:
         """Return the updateTicket Mutation bound to this client."""
         from .operations import UpdateTicketOperation
+
         return UpdateTicketOperation(self)
 
     def add_comment(self) -> Any:
         """Return the addComment Mutation bound to this client."""
         from .operations import AddCommentOperation
+
         return AddCommentOperation(self)
 
     async def aclose(self) -> None:
@@ -173,6 +189,7 @@ class Client:
             credentials = await self.credentials.resolve(call)
         except Exception as error:
             from dex_connectors.sdk import ReauthorizationRequiredError
+
             return None, None, "rejected" if isinstance(error, ReauthorizationRequiredError) else "retry"
         if not isinstance(credentials, Credentials):
             return None, None, "defect"
@@ -182,10 +199,17 @@ class Client:
             return None, None, "defect"
         return credentials, self.api_base_url or f"https://{host}/api/v1", ""
 
-    async def exchange(self, call: Call, operation: str, credentials: Credentials,
-                       base_url: str, method: str, path: str,
-                       query: dict[str, str] | None = None,
-                       payload: dict[str, Any] | None = None) -> Exchange:
+    async def exchange(
+        self,
+        call: Call,
+        operation: str,
+        credentials: Credentials,
+        base_url: str,
+        method: str,
+        path: str,
+        query: dict[str, str] | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> Exchange:
         """Send once, or refresh and resend once after HTTP 401."""
         target = base_url + path
         if query:
@@ -198,94 +222,188 @@ class Client:
                 return result
             try:
                 replacement = await self.credentials.resolve_after_rejection(call)
-                if (not isinstance(replacement, Credentials) or
-                    replacement.auth_method_id != credentials.auth_method_id or
-                    not replacement.access_token or not _safe_token(replacement.access_token.reveal())):
+                if (
+                    not isinstance(replacement, Credentials)
+                    or replacement.auth_method_id != credentials.auth_method_id
+                    or not replacement.access_token
+                    or not _safe_token(replacement.access_token.reveal())
+                ):
                     return result
                 credentials = replacement
             except Exception:
                 return result
         return result
 
-    async def _exchange_once(self, operation: str, credentials: Credentials, method: str,
-                             target: str, payload: dict[str, Any] | None) -> Exchange:
+    async def _exchange_once(
+        self,
+        operation: str,
+        credentials: Credentials,
+        method: str,
+        target: str,
+        payload: dict[str, Any] | None,
+    ) -> Exchange:
         token = credentials.access_token.reveal() if credentials.access_token else ""
-        headers = {"Authorization": "Zoho-oauthtoken " + token,
-                   "orgId": self.config.org_id.strip(), "Accept": "application/json"}
+        headers = {
+            "Authorization": "Zoho-oauthtoken " + token,
+            "orgId": self.config.org_id.strip(),
+            "Accept": "application/json",
+        }
         if payload is not None:
             headers["Content-Type"] = "application/json"
         try:
-            request = self.http_client.build_request(method, target, headers=headers,
-                content=json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode() if payload is not None else None,
-                timeout=10)
+            request = self.http_client.build_request(
+                method,
+                target,
+                headers=headers,
+                content=json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
+                if payload is not None
+                else None,
+                timeout=10,
+            )
             response, _ = await send_traced(self.http_client, request)
             status = response.status_code
             response_headers = response.headers
             try:
-                body = await read_bounded_body(response, self.config.max_response_bytes if 200 <= status < 300 else 65536)
+                body = await read_bounded_body(
+                    response, self.config.max_response_bytes if 200 <= status < 300 else 65536
+                )
             except BodyTooLargeError:
                 if 200 <= status < 300:
-                    return Exchange("invalid", status, headers=response_headers,
-                        failure=failure(operation, FailureKind.RESPONSE_TOO_LARGE,
-                            "Zoho Desk response exceeds the configured maxResponseBytes limit"))
+                    return Exchange(
+                        "invalid",
+                        status,
+                        headers=response_headers,
+                        failure=failure(
+                            operation,
+                            FailureKind.RESPONSE_TOO_LARGE,
+                            "Zoho Desk response exceeds the configured maxResponseBytes limit",
+                        ),
+                    )
                 body = b""
+            except (httpx.HTTPError, ProviderTransportError):
+                return Exchange(
+                    "unavailable",
+                    status,
+                    headers=response_headers,
+                    failure=failure(operation, FailureKind.TRANSPORT, "Zoho Desk response could not be read"),
+                )
         except ProviderTransportError as error:
             outcome = "not_sent" if error.provably_not_sent else "unavailable"
-            message = ("Zoho Desk could not be reached; no request was sent" if outcome == "not_sent"
-                       else "Zoho Desk request failed before a response arrived")
+            message = (
+                "Zoho Desk could not be reached; no request was sent"
+                if outcome == "not_sent"
+                else "Zoho Desk request failed before a response arrived"
+            )
             return Exchange(outcome, failure=failure(operation, FailureKind.TRANSPORT, message))
         except httpx.HTTPError:
-            return Exchange("unavailable", failure=failure(operation, FailureKind.TRANSPORT,
-                "Zoho Desk request failed before a response arrived"))
+            return Exchange(
+                "unavailable",
+                failure=failure(
+                    operation, FailureKind.TRANSPORT, "Zoho Desk request failed before a response arrived"
+                ),
+            )
         if token.encode() in body:
             if 200 <= status < 300:
-                return Exchange("invalid", status, headers=response_headers,
-                    failure=failure(operation, FailureKind.PROTOCOL,
-                        "Zoho Desk response reflected the connection credential"))
+                return Exchange(
+                    "invalid",
+                    status,
+                    headers=response_headers,
+                    failure=failure(
+                        operation,
+                        FailureKind.PROTOCOL,
+                        "Zoho Desk response reflected the connection credential",
+                    ),
+                )
             body = b""
         if 200 <= status < 300:
             return Exchange("success", status, body, response_headers)
         code, _ = _summary(body)
         delay = _retry_after(response_headers)
         if status == 429:
-            return Exchange("rate_limited", status, headers=response_headers, retry_after_seconds=delay,
-                failure=failure(operation, FailureKind.RATE_LIMIT,
-                    _with_summary("Zoho Desk rate limited the request (HTTP 429)", body)))
+            return Exchange(
+                "rate_limited",
+                status,
+                headers=response_headers,
+                retry_after_seconds=delay,
+                failure=failure(
+                    operation,
+                    FailureKind.RATE_LIMIT,
+                    _with_summary("Zoho Desk rate limited the request (HTTP 429)", body),
+                ),
+            )
         if status == 408 or status >= 500:
-            return Exchange("unavailable", status, headers=response_headers, retry_after_seconds=delay,
-                failure=failure(operation, FailureKind.AVAILABILITY,
-                    _with_summary(f"Zoho Desk could not complete the request (HTTP {status})", body)))
+            return Exchange(
+                "unavailable",
+                status,
+                headers=response_headers,
+                retry_after_seconds=delay,
+                failure=failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    _with_summary(f"Zoho Desk could not complete the request (HTTP {status})", body),
+                ),
+            )
         if status == 404:
-            return Exchange("not_found", status, headers=response_headers,
-                failure=failure(operation, FailureKind.NOT_FOUND,
-                    _with_summary("Zoho Desk found no such resource (HTTP 404)", body)))
+            return Exchange(
+                "not_found",
+                status,
+                headers=response_headers,
+                failure=failure(
+                    operation,
+                    FailureKind.NOT_FOUND,
+                    _with_summary("Zoho Desk found no such resource (HTTP 404)", body),
+                ),
+            )
         if 300 <= status < 400:
-            kind, message = FailureKind.PROTOCOL, f"Zoho Desk redirected the request (HTTP {status}); check that the connection uses the account's data center"
+            kind, message = (
+                FailureKind.PROTOCOL,
+                f"Zoho Desk redirected the request (HTTP {status}); "
+                "check that the connection uses the account's data center",
+            )
         elif status == 401:
-            kind, message = FailureKind.AUTHENTICATION, "Zoho Desk rejected the access token (HTTP 401); reconnect the connection"
+            kind, message = (
+                FailureKind.AUTHENTICATION,
+                "Zoho Desk rejected the access token (HTTP 401); reconnect the connection",
+            )
         elif status == 403:
             kind = FailureKind.AUTHORIZATION
-            message = {"OAUTH_ORG_MISMATCH": "Zoho Desk refused the request (HTTP 403): the token is bound to another organization; set orgId to the organization chosen at Connect, or reconnect",
-                       "SCOPE_MISMATCH": "Zoho Desk refused the request (HTTP 403): the token lacks a required scope; reconnect and accept every requested scope"}.get(code, "Zoho Desk refused the request (HTTP 403)")
+            message = {
+                "OAUTH_ORG_MISMATCH": (
+                    "Zoho Desk refused the request (HTTP 403): the token is bound to another "
+                    "organization; set orgId to the organization chosen at Connect, or reconnect"
+                ),
+                "SCOPE_MISMATCH": (
+                    "Zoho Desk refused the request (HTTP 403): the token lacks a required scope; "
+                    "reconnect and accept every requested scope"
+                ),
+            }.get(code, "Zoho Desk refused the request (HTTP 403)")
         else:
-            kind = {400: FailureKind.VALIDATION, 422: FailureKind.VALIDATION,
-                    409: FailureKind.CONFLICT}.get(status, FailureKind.PROVIDER_REJECTION)
+            kind = {400: FailureKind.VALIDATION, 422: FailureKind.VALIDATION, 409: FailureKind.CONFLICT}.get(
+                status, FailureKind.PROVIDER_REJECTION
+            )
             message = f"Zoho Desk rejected the request (HTTP {status})"
-        return Exchange("rejected", status, headers=response_headers,
-            failure=failure(operation, kind, _with_summary(message, body)))
+        return Exchange(
+            "rejected",
+            status,
+            headers=response_headers,
+            failure=failure(operation, kind, _with_summary(message, body)),
+        )
 
     def receipt(self, call: Call, exchange: Exchange, object_id: str = "") -> Receipt:
         """Correlate a provider exchange with the Call ID and safe credit counts."""
         headers = exchange.headers or httpx.Headers()
         metadata = {}
-        for source, target in (("X-Rate-Limit-Request-Weight-v3", "requestCredits"),
-                               ("X-Rate-Limit-Remaining-v3", "remainingCredits")):
+        for source, target in (
+            ("X-Rate-Limit-Request-Weight-v3", "requestCredits"),
+            ("X-Rate-Limit-Remaining-v3", "remainingCredits"),
+        ):
             value = headers.get(source, "")
             if _CREDITS.fullmatch(value):
                 metadata[target] = value
-        return Receipt(call.id, "zoho-desk", datetime.now(UTC), call.idempotency_key,
-                       object_id, metadata)
+        return Receipt(
+            call.id, "zoho-desk", datetime.now(UTC), call.idempotency_key, object_id, metadata=metadata
+        )
 
 
 def _query_escape(value: str) -> str:
-    return quote_plus(value, safe="").replace("~", "%7E")
+    return quote_plus(value, safe="")
