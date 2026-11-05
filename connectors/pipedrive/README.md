@@ -281,6 +281,13 @@ func (flow *Flow) MapToUpsertLeadPersonInput(intake DealIntake) pipedrive.Upsert
 
 ## Example
 
+The [Python package](python/README.md) implements all six operations with
+generated Personal API token and OAuth project connection wiring. Its runnable
+[deal lookup Flow](python/examples/deal_lookup/flow.py) reads one deal through
+the static `pipedrive-crm` connection; its integration test uses a real Dex
+Worker and Client with a local provider stand-in. Python provider conformance
+replays the Go recordings in `conformance/connectors/pipedrive/scenarios.json`.
+
 [`examples/deal-intake`](go/examples/deal-intake) finds the lead's organization
 by exact name, upserts the lead person by email, lists the person's open deal
 in the configured pipeline, moves it to the configured stage and owner or
