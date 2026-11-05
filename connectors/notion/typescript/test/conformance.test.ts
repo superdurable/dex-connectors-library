@@ -17,12 +17,11 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
   return invokeProductionMutation(operation, key, recording => runMutation(recording as Mutation<Input, Output>, call, input), error => error instanceof RetryError);
 }
 
-async function invokeNotion(scenario: Scenario, recorder: ExchangeRecorder) {
+async function invokeNotion(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const sender = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   const client = new NotionClient({ endpoint: 'http://127.0.0.1' }, {
     resolve: async () => ({ apiToken: new SecretString('ntn_test_token_value') }),
   }, { send: sender });
-  const context = new HeartbeatContext(scenario.priorHeartbeat);
   const call = scenarioCall(scenario, connection, 'notion', context, {
     reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false,
   }) as Call;

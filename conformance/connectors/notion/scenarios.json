@@ -84,6 +84,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "db2c42a3-e919-5af8-a22c-7f2431b6a0f3",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -129,6 +134,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "441be5bb-62c1-5b2c-b3c8-735d568ed7c4",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -227,6 +237,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "275ccb9c-00ee-5081-9574-60cb0d55279c",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -335,6 +350,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4dece8a8-3964-511b-b91d-4d979749be5e",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "confirmedAfterTimeout": true,
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
@@ -478,6 +499,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dc19c287-f1af-53e4-b519-a6304bd0dd43",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "confirmedAfterTimeout": true,
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
@@ -643,6 +670,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a92d0a36-7521-5014-8618-4921afe78922",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {
@@ -776,6 +809,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "401979ce-bda9-5689-a2c9-4ef7180d0a85",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {
@@ -909,6 +948,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dfe70c67-6334-508c-b84f-ad6716c17282",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {
@@ -1042,6 +1087,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "fde5844f-9704-5da6-ac09-6be7632c961a",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {
@@ -1225,6 +1276,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a2deb0a-0526-53c2-b788-29a1789b5ab0",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -1368,6 +1424,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a5cfbd2-5224-58dc-b7f5-65c7af8fdce8",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -1531,7 +1592,7 @@
       "operation": "createPage"
     },
     {
-      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "callId": "418d46b8-b2e8-5b70-93bc-a8beb076aade",
       "exchanges": [
         {
           "body": "{\"object\":\"error\",\"status\":429,\"code\":\"rate_limited\",\"message\":\"secret provider text\"}",
@@ -1610,12 +1671,17 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "418d46b8-b2e8-5b70-93bc-a8beb076aade",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "idempotencyKey": "418d46b8-b2e8-5b70-93bc-a8beb076aade",
       "input": {
         "bodyText": "First paragraph\n\nSecond paragraph",
         "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
@@ -1798,6 +1864,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6a34d0c-b57e-5fcc-90e3-d50908478223",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -1944,6 +2015,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "52ad17ed-9b57-59c0-99d6-7c69b5e2d82c",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -1964,6 +2040,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "52ad17ed-9b57-59c0-99d6-7c69b5e2d82c",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -1971,7 +2052,7 @@
       "operation": "createPage"
     },
     {
-      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "callId": "bf4fad54-8d93-5212-b203-adfb2f4f7920",
       "exchanges": [
         {
           "body": "{\"object\":\"error\",\"status\":503,\"code\":\"service_unavailable\",\"message\":\"secret provider text\"}",
@@ -1996,12 +2077,17 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bf4fad54-8d93-5212-b203-adfb2f4f7920",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "idempotencyKey": "bf4fad54-8d93-5212-b203-adfb2f4f7920",
       "input": {
         "bodyText": "First paragraph\n\nSecond paragraph",
         "databaseId": "3b5e7091-2c4d-4e6f-9081-223344556677",
@@ -2099,6 +2185,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "416ac2ff-2d93-501e-9f00-91a4401be191",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {
@@ -2213,6 +2305,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f9081f28-c96b-5951-9b79-4a4208bcbed8",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2233,7 +2330,7 @@
       "operation": "createPage"
     },
     {
-      "callId": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "callId": "bee902c8-1a06-5a5e-8501-a712d01944fc",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -2310,12 +2407,17 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bee902c8-1a06-5a5e-8501-a712d01944fc",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "64b6abdd-fb4b-5576-b67c-e695ee42f5fc",
+      "idempotencyKey": "bee902c8-1a06-5a5e-8501-a712d01944fc",
       "input": {
         "bodyText": "First paragraph\n\nSecond paragraph",
         "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
@@ -2413,6 +2515,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bd0d87be-cae8-5cd7-a624-fbdf90ab370f",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -2560,6 +2667,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "41a799f9-5649-5adb-95d5-189f4d07ad5a",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {
@@ -2684,6 +2797,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ad0e2f6d-9e39-5278-8995-6ca0b37f578f",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {

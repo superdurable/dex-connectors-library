@@ -111,11 +111,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Gorgias stored credential does not match the connector credential fields")
+        if set(material) - set(('email', 'api_key')):
+            raise ValueError("Gorgias stored credential does not match the connector credential fields")
         email = material.get("email")
-        if not isinstance(email, str) or not email:
-            raise ValueError("Gorgias credential email is required")
+        if email is not None and not (isinstance(email, str)):
+            raise ValueError("Gorgias credential email has an invalid type")
         api_key = material.get("api_key")
-        if not isinstance(api_key, str) or not api_key:
+        if api_key is not None and not (isinstance(api_key, str)):
+            raise ValueError("Gorgias credential api_key has an invalid type")
+        if not email:
+            raise ValueError("Gorgias credential email is required")
+        if not api_key:
             raise ValueError("Gorgias credential api_key is required")
         return Credentials(email, SecretString(api_key))
 

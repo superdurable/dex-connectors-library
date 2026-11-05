@@ -2,6 +2,11 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/snowflake/go@v0.23.0`.
 
+The [TypeScript package](typescript/README.md), `@superdurable/connector-snowflake`,
+provides the same three operations for Dex TypeScript Flows. Its runnable
+[account-usage example](typescript/examples/account-usage-summary/) exercises
+submission, a result read, and cancellation against a real local Dex Worker.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/snowflake`.
 
 > **Verification status: Dex-integrated.** The operations and the runnable example ran on a real
@@ -250,6 +255,16 @@ twice across Flows needs its own guard, such as a `MERGE` keyed by a business ID
 [`examples/account-usage-summary`](go/examples/account-usage-summary/README.md) submits a long
 aggregate over a usage table, waits on a durable Timer between status reads, and cancels the
 statement when its wait budget runs out. A rejected statement fails the Flow.
+
+### Python package
+
+Install `dex-connector-snowflake==0.1.0` for typed Python factories for all three operations.
+[`python/examples/account_usage_summary`](python/examples/account_usage_summary/README.md)
+contains two runnable Flows with the static `snowflake-warehouse` connection: one submits a
+statement and reads a result that is ready immediately, and the other cancels a known handle.
+The Python Worker resolves the manifest-selected key-pair or programmatic access token credential
+for every call. Its Dex integration test runs both Flows through a real Worker and Client against
+an inert SQL API stand-in. Long-running status polling remains demonstrated by the Go Flow above.
 
 ## Verification
 

@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -50,6 +51,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret shared with the sender and stored only in this credential field. For hmacSha256, the exact key the sender signs with, such as the secret typed into GitHub or Typeform; for standardWebhooks, the whole whsec_ value; for sharedToken, the token the sender puts in tokenHeader. sendEvent signs outgoing requests with the same value. Required. */
   signingSecret: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["signing_secret"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["signing_secret"] != null && !(typeof fields["signing_secret"] === 'string')) throw new TypeError("credential signing_secret has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["signing_secret"]) throw new TypeError("credential signing_secret is required");
+  credentials.signingSecret = new SecretString((fields["signing_secret"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
