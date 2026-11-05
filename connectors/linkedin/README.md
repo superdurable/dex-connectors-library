@@ -98,3 +98,7 @@ An opt-in live test is available with a dedicated test member:
 ```bash
 GOWORK=off LINKEDIN_CONNECTOR_TEST_TOKEN=... go test -tags=live ./...
 ```
+
+## Python package
+
+Install `dex-connector-linkedin==0.1.0` and use the [authenticated profile Python example](python/examples/authenticated_profile/README.md). Its project connection uses generated OAuth credential resolution and refresh. The Query returns only bounded UserInfo claims and a verified email. The Go-recorded provider conformance scenarios and Dex example use inert credentials; live LinkedIn authorization and UserInfo behavior remain unverified.

@@ -1,0 +1,492 @@
+{
+  "connector": "linkedin",
+  "scenarios": [
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"sub\":\"linkedin-subject\",\"name\":\"Ada Lovelace\",\"given_name\":\"Ada\",\"family_name\":\"Lovelace\",\"picture\":\"https://media.licdn.com/profile.jpg\",\"locale\":{\"language\":\"en\",\"country\":\"US\"},\"email\":\"Ada@Example.COM\",\"email_verified\":true}",
+          "headers": {
+            "X-LI-UUID": "linkedin-request-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "profileLoaded",
+        "failureKind": "",
+        "output": {
+          "familyName": "Lovelace",
+          "givenName": "Ada",
+          "locale": "en-US",
+          "name": "Ada Lovelace",
+          "pictureUrl": "https://media.licdn.com/profile.jpg",
+          "subject": "linkedin-subject",
+          "verifiedEmail": "ada@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "loaded",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"sub\":\"member\",\"email\":\"member@example.com\",\"email_verified\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "verifiedEmailRequired",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "unverified-email",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"insufficient_scope\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "insufficient-scope",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"invalid_token\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "authorization-revoked",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "not-found",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"bad_request\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "provider-rejected",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"sub\":\"\",\"email\":\"member@example.com\",\"email_verified\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "invalid-response",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "rate-limit",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "server-unavailable",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "transport-failure",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "missing-credential",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"sub\":123,\"email\":\"member@example.com\",\"email_verified\":true}",
+          "headers": {
+            "X-Request-Id": "request-invalid"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "wrong-typed-claim",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{broken",
+          "headers": {
+            "X-Request-Id": "request-invalid"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-linkedin-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "malformed-json",
+      "operation": "getAuthenticatedProfile"
+    }
+  ],
+  "schemaVersion": 1
+}
