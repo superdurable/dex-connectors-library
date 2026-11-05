@@ -1,0 +1,3113 @@
+{
+  "connector": "monday",
+  "scenarios": [
+    {
+      "callId": "1c2dc6da-e0e0-5146-aeef-965fd10d4dab",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"boards\":[{\"id\":\"1234567890\",\"items_page\":{\"cursor\":\"cursor-2\",\"items\":[{\"id\":\"9876543210\",\"name\":\"Work request\",\"state\":\"active\",\"board\":{\"id\":\"1234567890\"},\"group\":{\"id\":\"topics\",\"title\":\"New\"},\"creator_id\":\"12345\",\"url\":\"https://example.monday.com/boards/1234567890/pulses/9876543210\",\"created_at\":\"2026-10-30T12:00:00Z\",\"updated_at\":\"2026-10-30T13:00:00Z\",\"column_values\":[{\"id\":\"status\",\"type\":\"status\",\"text\":\"Done\",\"value\":\"{\\\"index\\\":1}\"}]}]}}]},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } } }\n}",
+            "variables": {
+              "boardIds": [
+                "1234567890"
+              ],
+              "columnIds": [
+                "status"
+              ],
+              "limit": 10,
+              "queryParams": {
+                "operator": "and",
+                "order_by": [
+                  {
+                    "column_id": "__creation_log__",
+                    "direction": "desc"
+                  }
+                ],
+                "rules": [
+                  {
+                    "column_id": "status",
+                    "compare_attribute": "index",
+                    "compare_value": [
+                      1
+                    ],
+                    "operator": "any_of"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "boardId": "1234567890",
+          "items": [
+            {
+              "boardId": "1234567890",
+              "columnValues": [
+                {
+                  "id": "status",
+                  "text": "Done",
+                  "type": "status",
+                  "value": {
+                    "index": 1
+                  }
+                }
+              ],
+              "createdAt": "2026-10-30T12:00:00Z",
+              "creatorId": "12345",
+              "group": {
+                "id": "topics",
+                "title": "New"
+              },
+              "id": "9876543210",
+              "name": "Work request",
+              "state": "active",
+              "updatedAt": "2026-10-30T13:00:00Z",
+              "url": "https://example.monday.com/boards/1234567890/pulses/9876543210"
+            }
+          ],
+          "nextCursor": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_success",
+      "operation": "listItems"
+    },
+    {
+      "callId": "aaf4e4e9-00a3-5f70-b8bb-9948dd73dae1",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"RATE_LIMIT_EXCEEDED\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } } }\n}",
+            "variables": {
+              "boardIds": [
+                "1234567890"
+              ],
+              "columnIds": [
+                "status"
+              ],
+              "limit": 10,
+              "queryParams": {
+                "operator": "and",
+                "order_by": [
+                  {
+                    "column_id": "__creation_log__",
+                    "direction": "desc"
+                  }
+                ],
+                "rules": [
+                  {
+                    "column_id": "status",
+                    "compare_attribute": "index",
+                    "compare_value": [
+                      1
+                    ],
+                    "operator": "any_of"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_rate_limit",
+      "operation": "listItems"
+    },
+    {
+      "callId": "d1dc3749-3823-5bb8-bec1-039675edc34e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"API_TEMPORARILY_BLOCKED\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } } }\n}",
+            "variables": {
+              "boardIds": [
+                "1234567890"
+              ],
+              "columnIds": [
+                "status"
+              ],
+              "limit": 10,
+              "queryParams": {
+                "operator": "and",
+                "order_by": [
+                  {
+                    "column_id": "__creation_log__",
+                    "direction": "desc"
+                  }
+                ],
+                "rules": [
+                  {
+                    "column_id": "status",
+                    "compare_attribute": "index",
+                    "compare_value": [
+                      1
+                    ],
+                    "operator": "any_of"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_server_error",
+      "operation": "listItems"
+    },
+    {
+      "callId": "1842ef5d-c9ae-5366-b03f-0276f8b8f708",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } } }\n}",
+            "variables": {
+              "boardIds": [
+                "1234567890"
+              ],
+              "columnIds": [
+                "status"
+              ],
+              "limit": 10,
+              "queryParams": {
+                "operator": "and",
+                "order_by": [
+                  {
+                    "column_id": "__creation_log__",
+                    "direction": "desc"
+                  }
+                ],
+                "rules": [
+                  {
+                    "column_id": "status",
+                    "compare_attribute": "index",
+                    "compare_value": [
+                      1
+                    ],
+                    "operator": "any_of"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_transport_before_send",
+      "operation": "listItems"
+    },
+    {
+      "callId": "e82b26bd-d1a0-5963-a175-f262711e5dc0",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ResourceNotFoundException\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } } }\n}",
+            "variables": {
+              "boardIds": [
+                "1234567890"
+              ],
+              "columnIds": [
+                "status"
+              ],
+              "limit": 10,
+              "queryParams": {
+                "operator": "and",
+                "order_by": [
+                  {
+                    "column_id": "__creation_log__",
+                    "direction": "desc"
+                  }
+                ],
+                "rules": [
+                  {
+                    "column_id": "status",
+                    "compare_attribute": "index",
+                    "compare_value": [
+                      1
+                    ],
+                    "operator": "any_of"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "boardId": "1234567890",
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_not_found",
+      "operation": "listItems"
+    },
+    {
+      "callId": "ca43e87d-f40f-56b0-8813-c03b45c16c16",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ColumnValueException\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } } }\n}",
+            "variables": {
+              "boardIds": [
+                "1234567890"
+              ],
+              "columnIds": [
+                "status"
+              ],
+              "limit": 10,
+              "queryParams": {
+                "operator": "and",
+                "order_by": [
+                  {
+                    "column_id": "__creation_log__",
+                    "direction": "desc"
+                  }
+                ],
+                "rules": [
+                  {
+                    "column_id": "status",
+                    "compare_attribute": "index",
+                    "compare_value": [
+                      1
+                    ],
+                    "operator": "any_of"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boardId": "1234567890",
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_provider_rejected",
+      "operation": "listItems"
+    },
+    {
+      "callId": "f0f3923e-8971-5aa2-969c-39de5f840bc7",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"boards\":[{\"id\":\"1234567890\",\"items_page\":{\"cursor\":null,\"items\":[{\"id\":\"bad\",\"name\":\"Broken\"}]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListBoardItems($boardIds: [ID!], $limit: Int!, $queryParams: ItemsQuery, $columnIds: [String!]) {\n  boards(ids: $boardIds) { id items_page(limit: $limit, query_params: $queryParams) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } } }\n}",
+            "variables": {
+              "boardIds": [
+                "1234567890"
+              ],
+              "columnIds": [
+                "status"
+              ],
+              "limit": 10,
+              "queryParams": {
+                "operator": "and",
+                "order_by": [
+                  {
+                    "column_id": "__creation_log__",
+                    "direction": "desc"
+                  }
+                ],
+                "rules": [
+                  {
+                    "column_id": "status",
+                    "compare_attribute": "index",
+                    "compare_value": [
+                      1
+                    ],
+                    "operator": "any_of"
+                  }
+                ]
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "boardId": "1234567890",
+          "items": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_invalid_response",
+      "operation": "listItems"
+    },
+    {
+      "callId": "374f8d38-d8b6-5181-b3b9-8a8069bdcf6f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boardId": "bad",
+          "items": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "bad",
+        "columnIds": [
+          "status"
+        ],
+        "filter": {
+          "combination": "and",
+          "rules": [
+            {
+              "columnId": "status",
+              "compareAttribute": "index",
+              "numbers": [
+                1
+              ],
+              "operator": "any_of"
+            }
+          ]
+        },
+        "limit": 10,
+        "order": {
+          "columnId": "__creation_log__",
+          "descending": true
+        }
+      },
+      "name": "listItems_defect",
+      "operation": "listItems"
+    },
+    {
+      "callId": "c28e416b-cc2a-5cb1-944a-30f619dc0548",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"items\":[{\"id\":\"9876543210\",\"name\":\"Work request\",\"state\":\"active\",\"board\":{\"id\":\"1234567890\"},\"group\":{\"id\":\"topics\",\"title\":\"New\"},\"creator_id\":\"12345\",\"url\":\"https://example.monday.com/boards/1234567890/pulses/9876543210\",\"created_at\":\"2026-10-30T12:00:00Z\",\"updated_at\":\"2026-10-30T13:00:00Z\",\"column_values\":[{\"id\":\"status\",\"type\":\"status\",\"text\":\"Done\",\"value\":\"{\\\"index\\\":1}\"}]}]},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "excludeNonactive": false,
+              "itemIds": [
+                "9876543210"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "boardId": "1234567890",
+          "columnValues": [
+            {
+              "id": "status",
+              "text": "Done",
+              "type": "status",
+              "value": {
+                "index": 1
+              }
+            }
+          ],
+          "createdAt": "2026-10-30T12:00:00Z",
+          "creatorId": "12345",
+          "group": {
+            "id": "topics",
+            "title": "New"
+          },
+          "id": "9876543210",
+          "name": "Work request",
+          "state": "active",
+          "updatedAt": "2026-10-30T13:00:00Z",
+          "url": "https://example.monday.com/boards/1234567890/pulses/9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "9876543210"
+      },
+      "name": "getItem_success",
+      "operation": "getItem"
+    },
+    {
+      "callId": "12220405-9d01-5f68-94f0-c0913628952c",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"RATE_LIMIT_EXCEEDED\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "excludeNonactive": false,
+              "itemIds": [
+                "9876543210"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "9876543210"
+      },
+      "name": "getItem_rate_limit",
+      "operation": "getItem"
+    },
+    {
+      "callId": "cc4c8619-3d2f-54de-817a-884ac00e9b40",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"API_TEMPORARILY_BLOCKED\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "excludeNonactive": false,
+              "itemIds": [
+                "9876543210"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "9876543210"
+      },
+      "name": "getItem_server_error",
+      "operation": "getItem"
+    },
+    {
+      "callId": "d92db4d0-de01-582f-abf9-9b0668d85af9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "excludeNonactive": false,
+              "itemIds": [
+                "9876543210"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "9876543210"
+      },
+      "name": "getItem_transport_before_send",
+      "operation": "getItem"
+    },
+    {
+      "callId": "afe17188-d8b9-5284-b81b-b49fbd530e2e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ResourceNotFoundException\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "excludeNonactive": false,
+              "itemIds": [
+                "9876543210"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "9876543210"
+      },
+      "name": "getItem_not_found",
+      "operation": "getItem"
+    },
+    {
+      "callId": "fc8b2199-35fb-5a1a-8565-0923b2ce7153",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ColumnValueException\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "excludeNonactive": false,
+              "itemIds": [
+                "9876543210"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "9876543210"
+      },
+      "name": "getItem_provider_rejected",
+      "operation": "getItem"
+    },
+    {
+      "callId": "c9ecd45f-4cff-5830-b2d7-5a0c0a1ac7fb",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"items\":[{\"id\":\"bad\",\"name\":\"Broken\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query GetItem($itemIds: [ID!], $excludeNonactive: Boolean, $columnIds: [String!]) {\n  items(ids: $itemIds, exclude_nonactive: $excludeNonactive) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "excludeNonactive": false,
+              "itemIds": [
+                "9876543210"
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "9876543210"
+      },
+      "name": "getItem_invalid_response",
+      "operation": "getItem"
+    },
+    {
+      "callId": "b2a7c6d3-5a0f-5ccc-a78d-540c032d7267",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columnIds": [
+          "status"
+        ],
+        "includesInactive": true,
+        "itemId": "bad"
+      },
+      "name": "getItem_defect",
+      "operation": "getItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"create_item\":{\"id\":\"9876543210\",\"name\":\"Work request\",\"state\":\"active\",\"board\":{\"id\":\"1234567890\"},\"group\":{\"id\":\"topics\",\"title\":\"New\"},\"creator_id\":\"12345\",\"url\":\"https://example.monday.com/boards/1234567890/pulses/9876543210\",\"created_at\":\"2026-10-30T12:00:00Z\",\"updated_at\":\"2026-10-30T13:00:00Z\"}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "item": {
+            "boardId": "1234567890",
+            "createdAt": "2026-10-30T12:00:00Z",
+            "creatorId": "12345",
+            "group": {
+              "id": "topics",
+              "title": "New"
+            },
+            "id": "9876543210",
+            "name": "Work request",
+            "state": "active",
+            "updatedAt": "2026-10-30T13:00:00Z",
+            "url": "https://example.monday.com/boards/1234567890/pulses/9876543210"
+          },
+          "itemId": "9876543210",
+          "itemName": "Work request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_success",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"RATE_LIMIT_EXCEEDED\"}}]}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "canResend": true
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_rate_limit",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"API_TEMPORARILY_BLOCKED\"}}]}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "canResend": true
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_server_error",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "itemName": "Work request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_transport_failure",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ResourceNotFoundException\"}}]}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "itemName": "Work request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_not_found",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ColumnValueException\"}}]}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "itemName": "Work request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_provider_rejected",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"create_item\":{\"id\":\"bad\"}}}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "itemName": "Work request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_uncertain_response",
+      "operation": "createItem"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boardId": "bad",
+          "groupId": "topics",
+          "itemName": "Work request"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "bad",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_defect",
+      "operation": "createItem"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"change_multiple_column_values\":{\"id\":\"9876543210\",\"name\":\"Work request\",\"state\":\"active\",\"board\":{\"id\":\"1234567890\"},\"group\":{\"id\":\"topics\",\"title\":\"New\"},\"creator_id\":\"12345\",\"url\":\"https://example.monday.com/boards/1234567890/pulses/9876543210\",\"created_at\":\"2026-10-30T12:00:00Z\",\"updated_at\":\"2026-10-30T13:00:00Z\",\"column_values\":[{\"id\":\"status\",\"type\":\"status\",\"text\":\"Done\",\"value\":\"{\\\"index\\\":1}\"}]}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "boardId": "1234567890",
+          "item": {
+            "boardId": "1234567890",
+            "columnValues": [
+              {
+                "id": "status",
+                "text": "Done",
+                "type": "status",
+                "value": {
+                  "index": 1
+                }
+              }
+            ],
+            "createdAt": "2026-10-30T12:00:00Z",
+            "creatorId": "12345",
+            "group": {
+              "id": "topics",
+              "title": "New"
+            },
+            "id": "9876543210",
+            "name": "Work request",
+            "state": "active",
+            "updatedAt": "2026-10-30T13:00:00Z",
+            "url": "https://example.monday.com/boards/1234567890/pulses/9876543210"
+          },
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_success",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"RATE_LIMIT_EXCEEDED\"}}]}",
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_rate_limit",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"API_TEMPORARILY_BLOCKED\"}}]}",
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_server_error",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_transport_before_send",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ResourceNotFoundException\"}}]}",
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "boardId": "1234567890",
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_not_found",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ColumnValueException\"}}]}",
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boardId": "1234567890",
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_provider_rejected",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"change_multiple_column_values\":{\"id\":\"bad\",\"name\":\"Broken\"}}}",
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "boardId": "1234567890",
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_invalid_response",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "boardId": "1234567890",
+          "itemId": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "bad"
+      },
+      "name": "updateItemColumnValues_defect",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"create_update\":{\"id\":\"7654321\",\"item_id\":\"9876543210\",\"creator_id\":\"12345\",\"created_at\":\"2026-10-30T14:00:00Z\"}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+        },
+        "output": {
+          "createdAt": "2026-10-30T14:00:00Z",
+          "creatorId": "12345",
+          "itemId": "9876543210",
+          "updateId": "7654321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_success",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"RATE_LIMIT_EXCEEDED\"}}]}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "canResend": true
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_rate_limit",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"API_TEMPORARILY_BLOCKED\"}}]}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "canResend": true
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_server_error",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+        },
+        "output": {
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_transport_failure",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ResourceNotFoundException\"}}]}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+        },
+        "output": {
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_not_found",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"ColumnValueException\"}}]}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+        },
+        "output": {
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_provider_rejected",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"create_update\":{\"id\":\"bad\"}}}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+        },
+        "output": {
+          "itemId": "9876543210"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_uncertain_response",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "itemId": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "bad"
+      },
+      "name": "addUpdate_defect",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "50a160fd-7a6e-5c78-9bbf-8a423fcc877d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"next_items_page\":{\"cursor\":null,\"items\":[{\"id\":\"9876543210\",\"name\":\"Work request\",\"state\":\"active\",\"board\":{\"id\":\"1234567890\"},\"group\":{\"id\":\"topics\",\"title\":\"New\"},\"creator_id\":\"12345\",\"url\":\"https://example.monday.com/boards/1234567890/pulses/9876543210\",\"created_at\":\"2026-10-30T12:00:00Z\",\"updated_at\":\"2026-10-30T13:00:00Z\",\"column_values\":[{\"id\":\"status\",\"type\":\"status\",\"text\":\"Done\",\"value\":\"{\\\"index\\\":1}\"}]}]}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "query ListNextBoardItems($cursor: String!, $limit: Int!, $columnIds: [String!]) {\n  next_items_page(cursor: $cursor, limit: $limit) { cursor items { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } } }\n}",
+            "variables": {
+              "columnIds": [
+                "status"
+              ],
+              "cursor": "cursor-2",
+              "limit": 25
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "boardId": "1234567890",
+          "items": [
+            {
+              "boardId": "1234567890",
+              "columnValues": [
+                {
+                  "id": "status",
+                  "text": "Done",
+                  "type": "status",
+                  "value": {
+                    "index": 1
+                  }
+                }
+              ],
+              "createdAt": "2026-10-30T12:00:00Z",
+              "creatorId": "12345",
+              "group": {
+                "id": "topics",
+                "title": "New"
+              },
+              "id": "9876543210",
+              "name": "Work request",
+              "state": "active",
+              "updatedAt": "2026-10-30T13:00:00Z",
+              "url": "https://example.monday.com/boards/1234567890/pulses/9876543210"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "boardId": "1234567890",
+        "columnIds": [
+          "status"
+        ],
+        "cursor": "cursor-2",
+        "limit": 25
+      },
+      "name": "listItems_cursor",
+      "operation": "listItems"
+    },
+    {
+      "callId": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "exchanges": [
+        {
+          "derivedKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation UpdateItemColumnValues($boardId: ID!, $itemId: ID, $columnValues: JSON!, $createLabelsIfMissing: Boolean, $columnIds: [String!]) {\n  change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } column_values(ids: $columnIds) { id type text value } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnIds": [
+                "status"
+              ],
+              "columnValues": "{\"status\":{\"index\":1}}",
+              "createLabelsIfMissing": true,
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a5af27a2-2180-59ba-9672-4e66413a1d42",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusIndex": 1,
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "itemId": "9876543210"
+      },
+      "name": "updateItemColumnValues_transport_after_send",
+      "operation": "updateItemColumnValues"
+    },
+    {
+      "attempts": 2,
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"API_TEMPORARILY_BLOCKED\"}}]}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"data\":{\"create_item\":{\"id\":\"9876543210\",\"name\":\"Work request\",\"state\":\"active\",\"board\":{\"id\":\"1234567890\"},\"group\":{\"id\":\"topics\",\"title\":\"New\"},\"creator_id\":\"12345\",\"url\":\"https://example.monday.com/boards/1234567890/pulses/9876543210\",\"created_at\":\"2026-10-30T12:00:00Z\",\"updated_at\":\"2026-10-30T13:00:00Z\"}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+          "headers": {
+            "Idempotency-Replayed": "true"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation CreateItem($boardId: ID!, $groupId: String, $itemName: String!, $columnValues: JSON, $createLabelsIfMissing: Boolean) {\n  create_item(board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: $createLabelsIfMissing) { id name state created_at updated_at url creator_id board { id } group { id title } }\n}",
+            "variables": {
+              "boardId": "1234567890",
+              "columnValues": "{\"status\":{\"label\":\"Done\"}}",
+              "createLabelsIfMissing": true,
+              "groupId": "topics",
+              "itemName": "Work request"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+        },
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "item": {
+            "boardId": "1234567890",
+            "createdAt": "2026-10-30T12:00:00Z",
+            "creatorId": "12345",
+            "group": {
+              "id": "topics",
+              "title": "New"
+            },
+            "id": "9876543210",
+            "name": "Work request",
+            "state": "active",
+            "updatedAt": "2026-10-30T13:00:00Z",
+            "url": "https://example.monday.com/boards/1234567890/pulses/9876543210"
+          },
+          "itemId": "9876543210",
+          "itemName": "Work request",
+          "replayed": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+            "canResend": true
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createItem_retry_then_replayed",
+      "operation": "createItem"
+    },
+    {
+      "attempts": 2,
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"API_TEMPORARILY_BLOCKED\"}}]}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"data\":{\"create_update\":{\"id\":\"7654321\",\"item_id\":\"9876543210\",\"creator_id\":\"12345\",\"created_at\":\"2026-10-30T14:00:00Z\"}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {
+            "Idempotency-Replayed": "true"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "Ready \u0026lt;review\u0026gt;\u003cbr\u003eApproved",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+        },
+        "output": {
+          "createdAt": "2026-10-30T14:00:00Z",
+          "creatorId": "12345",
+          "itemId": "9876543210",
+          "replayed": true,
+          "updateId": "7654321"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "Ready \u003creview\u003e\nApproved",
+        "itemId": "9876543210"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+            "canResend": true
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addUpdate_retry_then_replayed",
+      "operation": "addUpdate"
+    },
+    {
+      "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "boardId": "1234567890",
+          "groupId": "topics",
+          "itemName": "Work request"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e",
+      "input": {
+        "boardId": "1234567890",
+        "columnValues": {
+          "status": {
+            "statusLabel": "Done",
+            "type": "status"
+          }
+        },
+        "createsLabelsIfMissing": true,
+        "groupId": "topics",
+        "itemName": "Work request"
+      },
+      "name": "createItem_prior_inflight_uncertain",
+      "operation": "createItem",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "attempt": 1,
+          "callId": "d2f0e0a4-68c7-541e-aa07-d5ec3d088f1e"
+        }
+      }
+    },
+    {
+      "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"create_update\":{\"id\":\"7654321\",\"item_id\":\"9876543210\",\"creator_id\":\"12345\",\"created_at\":\"2026-10-30T14:00:00Z\"}},\"extensions\":{\"request_id\":\"request-0001\"}}",
+          "derivedKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/v2",
+          "requestBody": {
+            "query": "mutation AddUpdate($itemId: ID, $body: String!) {\n  create_update(item_id: $itemId, body: $body) { id item_id created_at creator_id }\n}",
+            "variables": {
+              "body": "It\u0026#39;s \u0026#34;done\u0026#34; \u0026amp; ready \u0026lt;review\u0026gt;",
+              "itemId": "9876543210"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Api-Version": [
+              "2026-10"
+            ],
+            "Authorization": [
+              "mondayTestToken0123456789abcdefSENTINELKEY"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "25156d89-4688-5fe2-938c-e2f5ec12c0cd"
+        },
+        "output": {
+          "createdAt": "2026-10-30T14:00:00Z",
+          "creatorId": "12345",
+          "itemId": "9876543210",
+          "updateId": "7654321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "25156d89-4688-5fe2-938c-e2f5ec12c0cd",
+      "input": {
+        "body": "It's \"done\" \u0026 ready \u003creview\u003e",
+        "itemId": "9876543210"
+      },
+      "name": "addUpdate_html_entities",
+      "operation": "addUpdate"
+    }
+  ],
+  "schemaVersion": 1
+}
