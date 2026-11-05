@@ -8,6 +8,12 @@ metadata:
   version: v0.3.0
 spec:
   provider: google
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-google-youtube
+      operations: [searchVideos, getVideo, getChannel, listPlaylistItems, addPlaylistItem]
+      triggers: []
   codegen:
     go:
       package: youtube
