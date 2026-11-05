@@ -81,6 +81,7 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: client_secret_basic
       refresh:
+        missingExpiry: reject
         scopeSeparators: whitespaceAndComma
         allowsPublicClient: true
         exactScopes: true

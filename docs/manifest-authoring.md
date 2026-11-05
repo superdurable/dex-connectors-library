@@ -334,7 +334,9 @@ Use `auth.methods` when one named connection can use more than one provider
 authentication model. Every method has a stable lowercase kebab-case ID, such
 as `google-oauth`, its own fields, guide, and optional OAuth metadata.
 `defaultMethod` must identify the method the setup UI selects first; mark at
-most one method `recommended`.
+most one method `recommended`. The same declaration selects the method when
+an older stored credential has a blank or absent `auth_method`; generated Go,
+Python, and TypeScript decoders use it before validating method fields.
 
 ```yaml
 auth:
@@ -497,9 +499,14 @@ Every grant shares these rules:
 - `credentialMappings` map the response into credential fields by dotted JSON
   path. A mapped value that the response omits keeps the stored one, so a
   provider that does not rotate its refresh token keeps it.
-- `missingExpiry` decides the expiry of a token whose response has no
-  `expires_in`: `keep`, the default, stores it without an expiry, so the host
-  replaces it only after the provider rejects it; `{lifetime: 2h}` sets one.
+- `missingExpiry` decides what a successful token response without a positive
+  `expires_in` means. `reject` (also the default) treats it as a retryable
+  malformed response; `keep` stores it without an expiry; `{lifetime: 2h}`
+  assigns one. Declare `reject` when matching a Go driver that requires expiry.
+- `storedMissingExpiry` independently decides whether an existing access token
+  without recorded expiry is refreshed: `keep` is the default, and `refresh`
+  exchanges it before a provider request. Declare it on each refresh,
+  client-credentials, or JWT-bearer grant to match the Go driver.
 - `additionalParameters` are fixed, non-secret parameters added to every
   request. They cannot replace `grant_type`, `refresh_token`, `client_id`,
   `client_secret`, `assertion`, `client_assertion`, or
@@ -566,6 +573,14 @@ The scopes of a refresh response follow RFC 6749 section 5.1:
 
 `refresh.requiredScopes` replaces the authorization scope set checked on a
 refresh response when a provider reports only API scopes, as Gmail does.
+`refresh.acceptedScopeSets` replaces that single required set with alternatives:
+the returned scopes must contain every member of at least one listed set. For
+example, YouTube read-only refresh accepts either `youtube.readonly` or the
+broader `youtube` scope. An omitted response scope remains accepted unless
+`exactScopes` is true. A JWT bearer grant may use `acceptedScopeSets` for its
+response without changing the scopes signed into its assertion.
+Use `scopeSeparators: whitespaceAndComma` on that grant when its Go driver
+accepts comma-separated scope responses.
 `refresh.exactScopes: true` requires set equality, including a reported scope
 value. An individual grant may override this with `exactScopes: true` or `false`. Choose these
 rules from the provider's actual response and the Go refresh driver; grant
@@ -637,6 +652,10 @@ space-separated `scope` claim (when `scopes` is declared), and posts it as
 without client authentication. `credentialCopies` set credential fields from
 other credential fields after each mint. `terminalErrorCodes` defaults to
 `[invalid_grant]`.
+`subjectValidation: goMailAddress` trims Go Unicode whitespace and requires
+the delegated `sub` to equal the bare address returned by Go
+`mail.ParseAddress`. A bad subject requires reauthorization before any token
+request. Declare it only when the Go refresh driver applies that rule.
 
 ```yaml
 serviceAccount:
@@ -807,9 +826,14 @@ can omit only fields its host keeps.
 1. Confirm the Go driver and manifest agree on token types, missing token type,
    scope policy, response mapping, and terminal error codes. Add declarations
    before changing the language driver.
-2. Generate the language package, then bind its generated authorization and
-   credential field map to `ManifestCredentialRefreshDriver`. Use the generated
-   private and shared decoders at the project connection boundary.
+2. Generate the language package with Python Connector SDK 0.4.0 or later or
+   TypeScript Connector SDK 0.4.0 or later when `storedMissingExpiry` is used.
+   Python `_generated/connection.py` binds
+   private and shared decoders, credential encoding, durable project refresh,
+   and `ManifestCredentialRefreshDriver` to `new_project_connection`. A Python
+   client calls the source's `resolve` before provider dispatch and
+   `resolve_after_rejection` once after an HTTP 401. TypeScript ports bind the
+   generated decoders and authorization declaration at their project adapter.
 3. Run the generated agreement cases, provider conformance, package suite, and
    runnable Dex example. Keep a small connector adapter for provider-specific
    validation that the manifest cannot express. Monday's Go driver derives

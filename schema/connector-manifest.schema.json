@@ -502,8 +502,9 @@
       "items": { "type": "string", "pattern": "\\S" }
     },
     "missingExpiry": {
-      "description": "The expiry of a token whose response has no expires_in: keep stores it without an expiry; lifetime sets one.",
+      "description": "The expiry of a token whose response has no positive expires_in: reject makes a malformed successful response retryable (also the default); keep stores it without expiry; lifetime sets one.",
       "oneOf": [
+        { "const": "reject" },
         { "const": "keep" },
         {
           "type": "object",
@@ -562,6 +563,7 @@
         "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
         "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
         "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
+        "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported refresh scope; replaces requiredScopes or authorization scopes." },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
         "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" },
@@ -622,9 +624,12 @@
             "privateKey": { "$ref": "#/$defs/valueSource", "description": "The PEM RSA private key." },
             "issuer": { "$ref": "#/$defs/valueSource" },
             "subject": { "$ref": "#/$defs/valueSource" },
+            "subjectValidation": { "enum": ["goMailAddress"], "description": "Trim Go Unicode whitespace, then require Go mail.ParseAddress to return the identical bare address before signing." },
             "audience": { "$ref": "#/$defs/valueSource" },
             "tokenEndpoint": { "$ref": "#/$defs/valueSource" },
             "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+            "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported JWT mint scope; independent of assertion request scopes." },
+            "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
             "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^\\+?(0|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$" },
             "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
             "credentialCopies": {
