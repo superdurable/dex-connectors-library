@@ -964,5 +964,45 @@
     "expectedMismatches": [
       "multipart body"
     ]
+  },
+  {
+    "name": "synthetic-random-exact-digest",
+    "requestPath": "/matcher",
+    "requestHeaders": {},
+    "requestBody": "{\"password\":\"synthetic-value\",\"name\":\"Ada\"}",
+    "randomRequestFields": ["/password"],
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestBody": {
+        "password": {"$syntheticSha256": "7ad2f62f8a196437950f87f28d16e8f8da3d6b7fcd9736a0bc49b31e28930684"},
+        "name": "Ada"
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "synthetic-random-digest-mutation",
+    "requestPath": "/matcher",
+    "requestHeaders": {},
+    "requestBody": "{\"password\":\"synthetic-value\",\"name\":\"Ada\"}",
+    "randomRequestFields": ["/password"],
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestBody": {
+        "password": {"$syntheticSha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+        "name": "Ada"
+      }
+    },
+    "expectedMismatches": ["body"]
   }
 ]

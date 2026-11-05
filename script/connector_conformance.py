@@ -312,6 +312,9 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                                   for exchange in item["exchanges"])), None)
         keyed_scenario = next((item for item in original["scenarios"]
                                if item.get("idempotencyKey")), None)
+        synthetic_random_scenario = next((item for item in original["scenarios"]
+                                          if item.get("randomRequestFields") and any(
+                                              exchange.get("requestBody") for exchange in item["exchanges"])), None)
         mutation_sources.extend((name, source) for name, source in (
             ("dropped-query", query_scenario), ("renamed-query", query_scenario),
             ("renamed-optional-query", optional_query_scenario),
@@ -322,6 +325,7 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("multipart-missing-part", multipart_scenario), ("multipart-part-order", multipart_scenario),
             ("multipart-part-content-type", multipart_related_scenario),
             ("wrong-nonempty-list", list_output_scenario),
+            ("synthetic-random-digest", synthetic_random_scenario),
         ) if source is not None)
         for mutation, source in mutation_sources:
             changed = json.loads(json.dumps(source))
@@ -396,6 +400,13 @@ def mutation_self_test(connectors: list[Path]) -> None:
                     parts[0], parts[1] = parts[1], parts[0]
             elif mutation == "random-idempotency-key":
                 changed["idempotencyKey"] = "random-00000000-0000-4000-8000-000000000000"
+            elif mutation == "synthetic-random-digest":
+                pointer = changed["randomRequestFields"][0].split("/")[1:]
+                exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("requestBody"))
+                field = exchange["requestBody"]
+                for component in pointer:
+                    field = field[component]
+                field["$syntheticSha256"] = "0" * 64
             elif mutation == "pending-passing-go":
                 changed["pending"] = True
             else:
