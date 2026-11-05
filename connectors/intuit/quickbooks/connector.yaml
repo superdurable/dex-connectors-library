@@ -11,6 +11,12 @@ spec:
   codegen:
     go:
       package: quickbooks
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-intuit-quickbooks"
+      operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
+      triggers: []
   configuration:
     fields:
       - name: environment
@@ -86,6 +92,7 @@ spec:
       refresh:
         missingExpiry: reject
         storedMissingExpiry: refresh
+        requiredScopes: [com.intuit.quickbooks.accounting]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, unsupported_grant_type]
         grants:
           - refreshTokenCredential: refresh_token
