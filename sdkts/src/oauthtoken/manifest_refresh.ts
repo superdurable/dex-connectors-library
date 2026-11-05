@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ReauthorizationRequiredError } from '../errors.js';
+import { isIP } from 'node:net';
 import { SecretString, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '../credentials.js';
 import {
   isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
@@ -24,6 +25,7 @@ interface Grant {
   mappings: ManifestObject[];
   copies: ManifestObject[];
   scopes: unknown;
+  acceptedScopeSets: unknown;
   requestScopes: unknown;
   terminalCodes: string[];
   acceptedTokenTypes: string[];
@@ -32,6 +34,8 @@ interface Grant {
   allowsPublicClient: boolean;
   acceptsMissingTokenType: boolean;
   acceptsMissingExpiresIn: boolean;
+  missingExpiryPolicy: unknown;
+  storedMissingExpiry: unknown;
   missingExpiry: string;
   additionalParameters: Record<string, string>;
 }
@@ -48,7 +52,7 @@ export interface ManifestCredentialRefreshOptions {
 
 /** Exchange manifest-declared grants while a credential provider owns admission and storage.
  *
- * Missing expiry keeps an existing access token. Refresh sends each active grant
+ * Stored missing expiry follows storedMissingExpiry, defaulting to keep. Refresh sends each active grant
  * and reports the earliest expiry. Declared sub-500 terminal errors require
  * reauthorization; other token endpoint failures remain retryable. A credential
  * with multiple methods uses the declared default when authMethodId is empty.
@@ -70,6 +74,13 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     this.#settings = options.settings ?? {};
     this.#fetch = options.fetch ?? fetch;
     this.#now = options.now ?? (() => new Date());
+    const methods = manifestList(this.#auth.methods);
+    for (const method of methods.length ? methods : [this.#auth]) {
+      for (const grant of this.#grants(manifestObject(method))) {
+        this.#validateStoredMissingExpiry(grant);
+        this.#validateNewDeclarations(grant);
+      }
+    }
   }
 
   /** Check declared access fields against the host's single credential expiry. */
@@ -78,7 +89,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     if (!grants.length) return false;
     const accessFields = grants.flatMap(grant => grant.mappings.filter(mapping => mapping.source === 'access_token').map(mapping => manifestText(mapping.credential)));
     const hasAccessToken = accessFields.length > 0 && accessFields.every(name => Boolean(this.#credentialValue(state.credentials, name)));
-    return isRefreshRequired(hasAccessToken, state.expiresAt, state.now, 'keep');
+    return isRefreshRequired(hasAccessToken, state.expiresAt, state.now,
+      grants.some(grant => grant.storedMissingExpiry === 'refresh') ? 'refresh' : 'keep');
   }
 
   /** Send each active grant and return one complete credential with the earliest expiry. */
@@ -93,8 +105,12 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       if (grant.refreshField && !this.#credentialValue(credentials, grant.refreshField)) continue;
       const token = await this.#exchange(grant, credentials, method, signal);
       const requiredScopes = this.#scopes(grant.scopes).filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access');
-      if (grant.exactScopes ? !hasDeclaredScopes(token.scope, requiredScopes, grant.scopeSeparators, true)
-        : token.scope.trim() !== '' && !hasDeclaredScopes(token.scope, requiredScopes, grant.scopeSeparators, false)) throw new ReauthorizationRequiredError();
+      const acceptedScopeSets = manifestList(grant.acceptedScopeSets).map(manifestList)
+        .map(set => set.filter((scope): scope is string => typeof scope === 'string')
+          .filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access'));
+      const scopeSets = acceptedScopeSets.length ? acceptedScopeSets : [requiredScopes];
+      if (grant.exactScopes ? !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, true))
+        : token.scope.trim() !== '' && !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, false))) throw new ReauthorizationRequiredError();
       const updates: Record<string, unknown> = {};
       for (const mapping of grant.mappings) {
         const destination = manifestText(mapping.credential);
@@ -144,14 +160,17 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         clientSecret: manifestText(oauth.clientSecretCredential), refreshField: manifestText(declaration.refreshTokenCredential),
         keyCredential: '', assertion: {}, mappings: manifestList(declaration.credentialMappings).map(manifestObject), copies: [],
         scopes: declaration.grantedScopes === 'userScopes' ? oauth.userScopes : (refresh?.requiredScopes ?? oauth.scopes), requestScopes: [],
+        acceptedScopeSets: refresh?.acceptedScopeSets,
         terminalCodes: strings(refresh?.terminalErrorCodes, ['invalid_grant']),
         acceptedTokenTypes: strings(declaration.acceptedTokenTypes ?? refresh?.acceptedTokenTypes, ['Bearer']),
         exactScopes: declaration.exactScopes === true || (declaration.exactScopes === undefined && refresh?.exactScopes === true),
-        scopeSeparators: refresh?.scopeSeparators === 'whitespaceAndComma' ? 'whitespaceAndComma' : 'whitespace',
+        scopeSeparators: (refresh?.scopeSeparators === undefined ? 'whitespace' : refresh.scopeSeparators) as Grant['scopeSeparators'],
         allowsPublicClient: refresh?.allowsPublicClient === true,
         acceptsMissingTokenType: declaration.acceptsMissingTokenType === undefined
           ? refresh?.acceptsMissingTokenType === true : declaration.acceptsMissingTokenType === true,
-        acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined,
+        acceptsMissingExpiresIn: refresh?.missingExpiry !== undefined && refresh.missingExpiry !== 'reject',
+        missingExpiryPolicy: refresh?.missingExpiry,
+        storedMissingExpiry: refresh?.storedMissingExpiry === undefined ? 'keep' : refresh.storedMissingExpiry,
         missingExpiry: missingExpiryLifetime(refresh?.missingExpiry), additionalParameters: stringRecord(refresh?.additionalParameters),
       }));
     }
@@ -163,12 +182,14 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         encoding: manifestText(client.tokenRequestEncoding) || 'form', clientID: manifestText(client.clientIDCredential),
         clientSecret: manifestText(client.clientSecretCredential), refreshField: '', keyCredential: '', assertion: {},
         mappings: manifestList(client.credentialMappings).map(manifestObject), copies: [], scopes: client.scopes,
-        requestScopes: client.scopes, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
+        requestScopes: client.scopes, acceptedScopeSets: client.acceptedScopeSets, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
         exactScopes: false,
         scopeSeparators: 'whitespace', allowsPublicClient: false,
         acceptsMissingTokenType: client.acceptsMissingTokenType === true,
-        acceptsMissingExpiresIn: client.missingExpiry !== undefined,
+        acceptsMissingExpiresIn: client.missingExpiry !== undefined && client.missingExpiry !== 'reject',
+        missingExpiryPolicy: client.missingExpiry,
+        storedMissingExpiry: client.storedMissingExpiry === undefined ? 'keep' : client.storedMissingExpiry,
         missingExpiry: missingExpiryLifetime(client.missingExpiry), additionalParameters: stringRecord(client.additionalParameters),
       }];
     }
@@ -179,13 +200,15 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       kind: 'jwt_bearer', endpoint: bearer.tokenEndpoint, authentication: '', encoding: 'form',
       clientID: '', clientSecret: '', refreshField: '', keyCredential: manifestText(bearer.keyCredential),
       assertion: bearer, mappings: manifestList(bearer.credentialMappings).map(manifestObject),
-      copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [],
+      copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [], acceptedScopeSets: bearer.acceptedScopeSets,
       terminalCodes: strings(bearer.terminalErrorCodes, ['invalid_grant']),
       acceptedTokenTypes: strings(bearer.acceptedTokenTypes, ['Bearer']),
       exactScopes: false,
-      scopeSeparators: 'whitespace', allowsPublicClient: false,
+      scopeSeparators: (bearer.scopeSeparators === undefined ? 'whitespace' : bearer.scopeSeparators) as Grant['scopeSeparators'], allowsPublicClient: false,
       acceptsMissingTokenType: bearer.acceptsMissingTokenType === true,
-      acceptsMissingExpiresIn: bearer.missingExpiry !== undefined,
+      acceptsMissingExpiresIn: bearer.missingExpiry !== undefined && bearer.missingExpiry !== 'reject',
+      missingExpiryPolicy: bearer.missingExpiry,
+      storedMissingExpiry: bearer.storedMissingExpiry === undefined ? 'keep' : bearer.storedMissingExpiry,
       missingExpiry: missingExpiryLifetime(bearer.missingExpiry), additionalParameters: {},
     }];
   }
@@ -209,10 +232,14 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       const lifetimeMs = parseDurationMs(manifestText(assertion.lifetime));
       let signed: SecretString;
       try {
+        const subject = assertion.subject ? this.#resolveSource(assertion.subject, credentials, key) : '';
+        const validatedSubject = assertion.subjectValidation === 'goMailAddress' ? trimGoSpace(subject) : subject;
+        if (assertion.subjectValidation === 'goMailAddress' && !isGoMailAddress(validatedSubject))
+          throw new ReauthorizationRequiredError();
         signed = signJWTBearerAssertion({
           issuer: this.#resolveSource(assertion.issuer, credentials, key),
           audience: this.#resolveSource(assertion.audience, credentials, key),
-          ...(assertion.subject ? { subject: this.#resolveSource(assertion.subject, credentials, key) } : {}),
+          ...(assertion.subject ? { subject: validatedSubject } : {}),
           scope: this.#scopes(assertion.scopes).join(' '), issuedAt: this.#now(),
           lifetimeMs,
         }, parseRSAPrivateKeyPEM(this.#resolveSource(assertion.privateKey, credentials, key)));
@@ -250,6 +277,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 
   #validateGrant(grant: Grant): void {
+    this.#validateStoredMissingExpiry(grant);
     for (const mapping of grant.mappings) {
       if (!manifestText(mapping.source) || !this.#credentialFields[manifestText(mapping.credential)])
         throw new TypeError('manifest credential field is not mapped');
@@ -262,6 +290,34 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       throw new TypeError('manifest grant duration must be positive');
     if (grant.kind === 'jwt_bearer' && parseDurationMs(manifestText(grant.assertion.lifetime)) < 1)
       throw new TypeError('manifest JWT assertion lifetime must be at least one millisecond');
+  }
+
+  #validateNewDeclarations(grant: Grant): void {
+    const policy = grant.missingExpiryPolicy;
+    if (policy !== undefined && policy !== 'reject' && policy !== 'keep' &&
+      !(Object.keys(manifestObject(policy)).length === 1 && typeof manifestObject(policy).lifetime === 'string'
+        && manifestText(manifestObject(policy).lifetime) !== ''))
+      throw new TypeError('manifest missingExpiry must be reject, keep, or a positive lifetime');
+    if (typeof manifestObject(policy).lifetime === 'string' && parseDurationMs(manifestText(manifestObject(policy).lifetime)) <= 0)
+      throw new TypeError('manifest missingExpiry lifetime must be positive');
+    if (grant.kind === 'jwt_bearer' && grant.assertion.subjectValidation !== undefined && !grant.assertion.subject)
+      throw new TypeError('manifest subjectValidation requires a subject');
+    if (grant.scopeSeparators !== 'whitespace' && grant.scopeSeparators !== 'whitespaceAndComma')
+      throw new TypeError('manifest scopeSeparators is invalid');
+    if (grant.kind === 'client_credentials' && grant.acceptedScopeSets !== undefined)
+      throw new TypeError('manifest clientCredentials does not support acceptedScopeSets');
+    if (grant.acceptedScopeSets !== undefined && (!Array.isArray(grant.acceptedScopeSets)
+      || grant.acceptedScopeSets.length === 0 || grant.acceptedScopeSets.some((set: unknown) =>
+        !Array.isArray(set) || set.length === 0 || set.some(scope => typeof scope !== 'string' || !scope))))
+      throw new TypeError('manifest acceptedScopeSets is invalid');
+    if (grant.kind === 'jwt_bearer' && grant.assertion.subjectValidation !== undefined
+      && grant.assertion.subjectValidation !== 'goMailAddress')
+      throw new TypeError('manifest subjectValidation is invalid');
+  }
+
+  #validateStoredMissingExpiry(grant: Grant): void {
+    if (grant.storedMissingExpiry !== 'refresh' && grant.storedMissingExpiry !== 'keep')
+      throw new TypeError('manifest storedMissingExpiry must be refresh or keep');
   }
 
   #scopes(source: unknown): string[] {
@@ -308,6 +364,40 @@ function hasDeclaredScopes(returnedScopes: string, requiredScopes: readonly stri
   const granted = new Set(returnedScopes.split(separators === 'whitespaceAndComma' ? /[ ,]+/ : /\s+/).filter(Boolean));
   const required = new Set(requiredScopes);
   return (!exact || granted.size === required.size) && [...required].every(scope => granted.has(scope));
+}
+
+function trimGoSpace(value: string): string {
+  const isSpace = (code: number): boolean => code === 0x20 || (code >= 0x09 && code <= 0x0d)
+    || code === 0x85 || code === 0xa0 || code === 0x1680 || (code >= 0x2000 && code <= 0x200a)
+    || code === 0x2028 || code === 0x2029 || code === 0x202f || code === 0x205f || code === 0x3000;
+  const characters = Array.from(value);
+  while (characters.length && isSpace(characters[0]!.codePointAt(0)!)) characters.shift();
+  while (characters.length && isSpace(characters.at(-1)!.codePointAt(0)!)) characters.pop();
+  return characters.join('');
+}
+
+// Go 1.24 net/mail address equality leaves only its addr-spec grammar.
+function isGoMailAddress(value: string): boolean {
+  const at = value.indexOf('@');
+  if (at <= 0 || at !== value.lastIndexOf('@') || at === value.length - 1) return false;
+  const local = value.slice(0, at);
+  const domain = value.slice(at + 1);
+  const isAtom = (text: string): boolean => {
+    if (!text || text.startsWith('.') || text.endsWith('.') || text.includes('..')) return false;
+    for (const character of text) {
+      const code = character.codePointAt(0)!;
+      if (code >= 0xd800 && code <= 0xdfff) return false;
+      if (code >= 0x80) continue;
+      if (code < 0x21 || code > 0x7e || '()<>[]:;@\\,"'.includes(character)) return false;
+    }
+    return true;
+  };
+  if (!isAtom(local)) return false;
+  if (domain.startsWith('[') && domain.endsWith(']')) {
+    const address = domain.slice(1, -1);
+    return !address.includes('%') && isIP(address) !== 0;
+  }
+  return isAtom(domain);
 }
 function pathEscape(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)

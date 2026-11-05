@@ -147,7 +147,7 @@ async def test_declared_scope_separators_apply_to_all_and_exact_checks() -> None
 
 
 @pytest.mark.asyncio
-async def test_schema_decoded_jira_and_slack_auth_refresh_with_planned_fields() -> None:
+async def test_schema_decoded_provider_auth_refresh_with_declared_fields() -> None:
     """Real decoded declarations accept Jira's omitted type and Slack's bot/user types."""
     # schema.Decode(connector.yaml) JSON-encodes Spec.Auth; add planned token-type fields.
     fixture_dir = Path(__file__).parent / "fixtures"
@@ -406,7 +406,81 @@ async def test_manifest_missing_expiry_follows_declaration_not_grant_count() -> 
 
         auth["methods"][0]["oauth2"]["refresh"]["missingExpiry"] = {"lifetime": "2h"}
         lifetime_driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
-        assert lifetime_driver.refresh_required(state)
+        assert not lifetime_driver.refresh_required(state)
+        auth["methods"][0]["oauth2"]["refresh"]["storedMissingExpiry"] = "refresh"
+        stored_expiry_driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        assert stored_expiry_driver.refresh_required(state)
+
+
+@pytest.mark.asyncio
+async def test_stored_missing_expiry_refreshes_but_response_requires_expires_in() -> None:
+    """An undated stored token refreshes while its replacement still requires expiry."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["storedMissingExpiry"] = "refresh"
+    refresh["acceptsMissingTokenType"] = True
+    response: dict[str, Any] = {"access_token": "next", "expires_in": 3600, "scope": "files.read"}
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        assert driver.refresh_required(state)
+        result = await driver.refresh(state)
+        assert result.credentials.access_token.reveal() == "next"
+        response.pop("expires_in")
+        with pytest.raises(ValueError, match="omitted required fields"):
+            await driver.refresh(state)
+        assert len(requests) == 2
+
+
+@pytest.mark.parametrize("grant_kind", ["refresh", "client_credentials", "jwt_bearer"])
+@pytest.mark.asyncio
+async def test_stored_missing_expiry_is_independent_and_validated_for_every_grant(
+    grant_kind: str,
+) -> None:
+    """A response lifetime does not refresh an undated credential for any grant."""
+    if grant_kind == "refresh":
+        auth: dict[str, Any] = deepcopy(AUTH)
+        grant = auth["methods"][0]["oauth2"]["refresh"]
+    elif grant_kind == "client_credentials":
+        grant = {
+            "tokenEndpoint": "https://oauth.example.test/token",
+            "clientIDCredential": "client_id",
+            "clientSecretCredential": "client_secret",
+            "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        }
+        auth = {"clientCredentials": grant}
+    else:
+        grant = {
+            "tokenEndpoint": "https://oauth.example.test/token",
+            "keyCredential": "client_secret",
+            "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        }
+        auth = {"serviceAccount": {"jwtBearer": grant}}
+
+    state = CredentialRefreshState(
+        Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+    )
+    grant["missingExpiry"] = {"lifetime": "1h"}
+    async with httpx.AsyncClient() as client:
+        def driver() -> ManifestCredentialRefreshDriver[Credentials]:
+            return ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+        assert not driver().refresh_required(state)
+        grant["storedMissingExpiry"] = "refresh"
+        assert driver().refresh_required(state)
+        grant["storedMissingExpiry"] = "keep"
+        assert not driver().refresh_required(state)
+        grant["storedMissingExpiry"] = "invalid"
+        with pytest.raises(ValueError, match="storedMissingExpiry must be refresh or keep"):
+            driver()
 
 
 @pytest.mark.asyncio
@@ -701,6 +775,7 @@ async def test_manifest_multi_grant_rotation_and_missing_expiry() -> None:
                 ).refresh(CredentialRefreshState(credentials, now, now))
         auth["methods"][0]["oauth2"]["refresh"]["exactScopes"] = False
         auth["methods"][0]["oauth2"]["refresh"]["missingExpiry"] = {"lifetime": "2h"}
+        auth["methods"][0]["oauth2"]["refresh"]["storedMissingExpiry"] = "refresh"
         lifetime_driver = ManifestCredentialRefreshDriver[MultiGrantCredentials](
             "Example", auth, fields, client
         )
@@ -738,9 +813,12 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
                 "privateKey": {"fromKey": "private_key"},
                 "issuer": {"fromKey": "client_email"},
                 "subject": {"fromCredential": "delegated_user"},
+                "subjectValidation": "goMailAddress",
                 "audience": {"fromKey": "token_uri"},
                 "tokenEndpoint": {"fromKey": "token_uri"},
                 "scopes": ["mail.read", "offline_access"],
+                "acceptedScopeSets": [["mail.read"], ["mail.manage"]],
+                "scopeSeparators": "whitespaceAndComma",
                 "lifetime": "1h",
                 "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
                 "credentialCopies": [{"credential": "primary_email", "fromCredential": "delegated_user"}],
@@ -748,6 +826,7 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
         },
     }
     requests: list[httpx.Request] = []
+    returned_scope = "mail.read offline_access"
 
     def respond(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -757,7 +836,7 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
                 "access_token": "delegated-access",
                 "expires_in": 3600,
                 "token_type": "Bearer",
-                "scope": "mail.read offline_access",
+                "scope": returned_scope,
             },
         )
 
@@ -806,6 +885,14 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
     assert decoded_claims["scope"] == "mail.read offline_access"
     assert decoded_claims["exp"] - decoded_claims["iat"] == 3600
 
+    returned_scope = "mail.manage,extra"
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[DelegatedCredentials]("Example", auth, fields, client)
+        await driver.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+        returned_scope = "mail.other"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+
     invalid_auth: dict[str, Any] = deepcopy(auth)
     invalid_auth["serviceAccount"]["jwtBearer"]["lifetime"] = "invalid"
     invalid_requests: list[httpx.Request] = []
@@ -829,3 +916,191 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
         )
         with pytest.raises(OSError, match="unavailable"):
             await retryable.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
+
+
+@pytest.mark.asyncio
+async def test_manifest_alternative_scope_sets() -> None:
+    """A returned scope can satisfy either declared set, including a broader one."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["acceptedScopeSets"] = [["files.read", "offline_access"], ["files.manage"]]
+    returned_scope = ""
+
+    def respond(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "access_token": "next", "expires_in": 3600, "token_type": "Bearer", "scope": returned_scope,
+        })
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        for scope in ("", "files.read", "files.manage", "files.manage extra"):
+            returned_scope = scope
+            await driver.refresh(state)
+        returned_scope = "files.other"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        refresh["exactScopes"] = True
+        returned_scope = "files.manage extra"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+
+
+@pytest.mark.asyncio
+async def test_manifest_delegated_subject_matches_go_mail_parse_address() -> None:
+    """Go-derived address cases are rejected before token I/O when invalid."""
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = private_key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    ).decode()
+    key = SecretString(json.dumps({
+        "private_key": pem, "client_email": "service@example.test",
+        "token_uri": "https://oauth.example.test/token",
+    }))
+    auth: dict[str, Any] = {"type": "serviceAccount", "serviceAccount": {"jwtBearer": {
+        "keyCredential": "service_account_key", "privateKey": {"fromKey": "private_key"},
+        "issuer": {"fromKey": "client_email"}, "subject": {"fromCredential": "delegated_user"},
+        "subjectValidation": "goMailAddress", "audience": {"fromKey": "token_uri"},
+        "tokenEndpoint": {"fromKey": "token_uri"}, "scopes": ["mail.read"], "lifetime": "1h",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+    }}}
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"access_token": "next", "expires_in": 3600, "token_type": "Bearer"})
+
+    cases = [json.loads(line) for line in (
+        Path(__file__).parent / "fixtures" / "go-mail-addresses.jsonl"
+    ).read_text().splitlines()]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[DelegatedCredentials]("Google", auth, {
+            "access_token": "access_token", "service_account_key": "service_account_key",
+            "delegated_user": "delegated_user",
+        }, client)
+        for case in cases:
+            before = len(requests)
+            state = CredentialRefreshState(
+                DelegatedCredentials(SecretString(""), key, case["input"]), None, datetime.now(UTC)
+            )
+            if case["accepted"]:
+                await driver.refresh(state)
+                assert len(requests) == before + 1, case["input"]
+            else:
+                with pytest.raises(ReauthorizationRequiredError):
+                    await driver.refresh(state)
+                assert len(requests) == before, case["input"]
+
+
+@pytest.mark.asyncio
+async def test_client_credentials_rejects_missing_positive_expiry_without_reauthorization() -> None:
+    """Help Scout's strict expires_in failure retries a malformed success response."""
+    auth: dict[str, Any] = {"fields": [{"name": "access_token", "type": "secretString"}],
+        "clientCredentials": {
+        "tokenEndpoint": "https://oauth.example.test/token", "clientIDCredential": "client_id",
+        "clientSecretCredential": "client_secret", "missingExpiry": "reject",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        "terminalErrorCodes": ["invalid_client"],
+    }}
+    response: dict[str, Any] = {"access_token": "next", "token_type": "Bearer"}
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Help Scout", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        for expiry in (None, 0, -1):
+            if expiry is None:
+                response.pop("expires_in", None)
+            else:
+                response["expires_in"] = expiry
+            with pytest.raises(ValueError, match="omitted required fields"):
+                await driver.refresh(state)
+        response["expires_in"] = 3600
+        assert (await driver.refresh(state)).credentials.access_token.reveal() == "next"
+        assert len(requests) == 4
+
+
+@pytest.mark.parametrize("declaration", [
+    {"missingExpiry": "unknown"}, {"acceptedScopeSets": []},
+    {"acceptedScopeSets": [["read"], []]}, {"scopeSeparators": "comma"},
+    {"missingExpiry": None}, {"acceptedScopeSets": None}, {"scopeSeparators": None},
+    {"missingExpiry": {"lifetime": "0s"}}, {"missingExpiry": {"lifetime": "nonsense"}},
+])
+@pytest.mark.asyncio
+async def test_manifest_rejects_unknown_refresh_declarations(declaration: dict[str, Any]) -> None:
+    """SDK callers cannot silently weaken schema-validated response rules."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["refresh"].update(declaration)
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError):
+            ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+
+@pytest.mark.asyncio
+async def test_manifest_rejects_ignored_client_sets_and_invalid_jwt_declarations() -> None:
+    """Declared validation must have a subject and supported response rules."""
+    client_auth = {"clientCredentials": {"acceptedScopeSets": [["read"]],
+        "tokenEndpoint": "https://oauth.example.test/token",
+        "clientIDCredential": "client_id", "clientSecretCredential": "client_secret",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}]}}
+    jwt_auth: dict[str, Any] = {"serviceAccount": {"jwtBearer": {"lifetime": "1h",
+        "keyCredential": "service_account_key", "tokenEndpoint": "https://oauth.example.test/token",
+        "credentialMappings": [{"credential": "access_token", "source": "access_token"}]}}}
+    assertion = jwt_auth["serviceAccount"]["jwtBearer"]
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError):
+            ManifestCredentialRefreshDriver[Credentials]("Example", client_auth, FIELDS, client)
+        for declaration in ({"subjectValidation": "other"}, {"subjectValidation": None},
+                            {"subjectValidation": "goMailAddress"}, {"scopeSeparators": None},
+                            {"scopeSeparators": "other"}, {"acceptedScopeSets": None}):
+            assertion.update(declaration)
+            with pytest.raises(ValueError):
+                ManifestCredentialRefreshDriver[Credentials]("Example", jwt_auth, FIELDS, client)
+            for key in declaration:
+                del assertion[key]
+
+
+@pytest.mark.asyncio
+async def test_go_agreement_scope_expiry_and_client_secret_decisions() -> None:
+    """Replay the three LinkedIn Go agreement failure classes through one grant."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["refresh"].update({
+        "requiredScopes": ["files.read"], "exactScopes": True, "missingExpiry": "reject",
+    })
+    response: dict[str, Any] = {
+        "access_token": "next", "token_type": "Bearer", "expires_in": 3600, "scope": "files.read",
+    }
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("LinkedIn", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        response["scope"] = "files.read extra"
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        response["scope"] = "files.read"
+        response.pop("expires_in")
+        with pytest.raises(ValueError, match="omitted required fields"):
+            await driver.refresh(state)
+        assert len(requests) == 2
+        no_secret = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior"), client_secret=SecretString("")),
+            None, datetime.now(UTC),
+        )
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(no_secret)
+        assert len(requests) == 2
