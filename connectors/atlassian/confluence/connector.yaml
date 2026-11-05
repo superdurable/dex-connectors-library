@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: atlassian
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-atlassian-confluence'
+      operations: [searchPages, getPage, createPage, updatePage, addComment]
+      triggers: []
   codegen:
     go:
       package: confluence
@@ -83,6 +89,7 @@ spec:
         scopeSeparators: whitespaceAndComma
         acceptedScopeSets: [[search:confluence, read:page:confluence, write:page:confluence, read:space:confluence, read:comment:confluence, write:comment:confluence]]
         acceptsMissingTokenType: true
+        requiredScopes: [search:confluence, read:page:confluence, write:page:confluence, read:space:confluence, read:comment:confluence, write:comment:confluence]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   studio:
     setup:
