@@ -80,6 +80,10 @@ spec:
         userInfoEndpoint: https://api.linkedin.com/v2/userinfo
         nonceRequired: true
       refresh:
+        missingExpiry: reject
+        scopeSeparators: whitespaceAndComma
+        acceptsMissingTokenType: true
+        exactScopes: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, access_denied]
   operations:
     - name: getAuthenticatedProfile

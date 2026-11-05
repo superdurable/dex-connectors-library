@@ -7,6 +7,73 @@ import { once } from 'node:events';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { createHash } from 'node:crypto';
+
+export class SyntheticRandomSource {
+  private readonly seed: Buffer;
+  private counter = 0n;
+  private block = Buffer.alloc(0);
+  private offset = 0;
+
+  constructor(seed: string) {
+    if (!seed.startsWith('SYNTHETIC_CONFORMANCE_') || seed.length > 128) {
+      throw new Error('random seed must be an obvious synthetic conformance marker');
+    }
+    this.seed = Buffer.from(seed, 'utf8');
+  }
+
+  read(count: number): Buffer {
+    if (!Number.isSafeInteger(count) || count < 0) throw new Error('random byte count must be nonnegative');
+    const result = Buffer.alloc(count);
+    for (let index = 0; index < count; index++) {
+      if (this.offset === this.block.length) {
+        const counterBytes = Buffer.alloc(8);
+        counterBytes.writeBigUInt64BE(this.counter++);
+        this.block = createHash('sha256').update(this.seed).update(counterBytes).digest();
+        this.offset = 0;
+      }
+      result[index] = this.block[this.offset++]!;
+    }
+    return result;
+  }
+
+  goRandomInt(maximum: number): number {
+    if (!Number.isSafeInteger(maximum) || maximum < 1) throw new Error('random maximum must be positive');
+    const bitCount = Math.ceil(Math.log2(maximum));
+    const byteCount = Math.ceil(bitCount / 8);
+    while (true) {
+      const candidate = this.read(byteCount);
+      if (bitCount % 8) candidate[0] = candidate[0]! & ((1 << (bitCount % 8)) - 1);
+      let number = 0;
+      for (const byte of candidate) number = number * 256 + byte;
+      if (number < maximum) return number;
+    }
+  }
+}
+
+function redactSyntheticRandom(actual: unknown, expected: unknown): unknown {
+  if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) &&
+      isDeepStrictEqual(Object.keys(expected), ['$syntheticSha256'])) {
+    return { $syntheticSha256: typeof actual === 'string'
+      ? createHash('sha256').update(actual).digest('hex') : 'invalid' };
+  }
+  if (typeof actual === 'object' && actual !== null && !Array.isArray(actual) &&
+      typeof expected === 'object' && expected !== null && !Array.isArray(expected)) {
+    return Object.fromEntries(Object.entries(actual).map(([key, value]) =>
+      [key, redactSyntheticRandom(value, (expected as RecordValue)[key])]));
+  }
+  if (Array.isArray(actual) && Array.isArray(expected)) {
+    return actual.map((value, index) => redactSyntheticRandom(value, expected[index]));
+  }
+  return actual;
+}
+
+function containsSyntheticDigest(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  if (Array.isArray(value)) return value.some(containsSyntheticDigest);
+  if (isDeepStrictEqual(Object.keys(value), ['$syntheticSha256'])) return true;
+  return Object.values(value).some(containsSyntheticDigest);
+}
 
 type RecordValue = Record<string, unknown>;
 type RequestValues = Record<string, string | string[]>;
@@ -22,7 +89,7 @@ export interface Expected {
 }
 export interface Scenario {
   name: string; operation: string; callId: string; idempotencyKey?: string; input: RecordValue;
-  exchanges: Exchange[]; expected: Expected; attempts?: number;
+  exchanges: Exchange[]; expected: Expected; attempts?: number; randomSeed?: string; randomRequestFields?: string[];
   intermediate?: Array<{ failureKind: string; retryAfterMs: number; exchangeCount: number; heartbeat?: unknown }>;
   priorHeartbeat?: unknown;
   fixedClock?: string;
@@ -70,10 +137,13 @@ export function loadScenarios(url: URL): Scenario[] {
   if (document.schemaVersion !== 1 || typeof document.connector !== 'string' || !document.connector ||
       !Array.isArray(document.scenarios) || document.scenarios.length === 0) throw new Error('invalid scenario document');
   for (const item of document.scenarios) {
-    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat', 'fixedClock'], url.pathname);
+    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat', 'fixedClock', 'randomSeed', 'randomRequestFields'], url.pathname);
     if (typeof scenario.name !== 'string' || !scenario.name || typeof scenario.operation !== 'string' || !scenario.operation ||
         typeof scenario.callId !== 'string' || !scenario.callId || !Array.isArray(scenario.exchanges)) throw new Error('invalid scenario identity or exchanges');
     if ('idempotencyKey' in scenario && typeof scenario.idempotencyKey !== 'string') throw new Error('invalid optional scenario identity');
+    if ('randomSeed' in scenario && (typeof scenario.randomSeed !== 'string' || !scenario.randomSeed.startsWith('SYNTHETIC_CONFORMANCE_') || scenario.randomSeed.length > 128)) throw new Error('invalid synthetic random seed');
+    if ('randomRequestFields' in scenario && (!('randomSeed' in scenario) || !Array.isArray(scenario.randomRequestFields) || !scenario.randomRequestFields.length ||
+      scenario.randomRequestFields.some(field => typeof field !== 'string' || !field.startsWith('/') || field.includes('~')))) throw new Error('invalid random request fields');
     if (typeof scenario.input !== 'object' || scenario.input === null || Array.isArray(scenario.input)) {
       throw new Error(`${scenario.name}: input must be an object`);
     }
@@ -218,7 +288,7 @@ function multipartMediaType(contentType: string): { mediaType: string; parameter
 }
 
 function isMultipart(contentType: string): boolean {
-  return ['multipart/form-data', 'multipart/mixed'].includes(multipartContentType(contentType).mediaType);
+  return ['multipart/form-data', 'multipart/mixed', 'multipart/related'].includes(multipartContentType(contentType).mediaType);
 }
 
 function multipartBody(contentType: string, body: Buffer): RecordValue {
@@ -317,9 +387,12 @@ export class ExchangeRecorder {
       } else {
         let body: unknown = bodyText;
         if (typeof expected === 'object' && expected !== null) {
-          try { body = JSON.parse(bodyText); } catch { /* Keep the raw body for mismatch reporting. */ }
+          try { body = JSON.parse(bodyText); } catch { if (containsSyntheticDigest(expected)) body = 'invalid JSON'; }
         }
-        this.equal(index, 'body', body, expected);
+        const redactedBody = redactSyntheticRandom(body, expected);
+        if (containsSyntheticDigest(expected)) {
+          if (!isDeepStrictEqual(redactedBody, expected)) this.mismatches.push(`request ${index}: body mismatch`);
+        } else this.equal(index, 'body', redactedBody, expected);
       }
     } else if (!exchange.form && bodyText) {
       this.mismatches.push(`request ${index}: unasserted body`);

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -109,6 +111,16 @@ class MessageSummary:
     size_bytes: int = _dataclass_field(default=0, metadata={'dex_json_name': 'sizeBytes'})
     # HasAttachments reports a part with an attachment disposition or a file name.
     has_attachments: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'hasAttachments'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.sent_at, str):
+            object.__setattr__(self, 'sent_at', parse_go_datetime(self.sent_at, 'sent_at'))
+        elif self.sent_at is not None:
+            validate_go_datetime(self.sent_at, 'sent_at')
+        if isinstance(self.received_at, str):
+            object.__setattr__(self, 'received_at', parse_go_datetime(self.received_at, 'received_at'))
+        elif self.received_at is not None:
+            validate_go_datetime(self.received_at, 'received_at')
 
 
 setattr(MessageSummary, '__module__', 'dex_connectors.superdurable_email.models')
@@ -214,6 +226,16 @@ class Message:
     # HasMoreAttachments reports attachments beyond MaxAttachments.
     has_more_attachments: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'hasMoreAttachments', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.sent_at, str):
+            object.__setattr__(self, 'sent_at', parse_go_datetime(self.sent_at, 'sent_at'))
+        elif self.sent_at is not None:
+            validate_go_datetime(self.sent_at, 'sent_at')
+        if isinstance(self.received_at, str):
+            object.__setattr__(self, 'received_at', parse_go_datetime(self.received_at, 'received_at'))
+        elif self.received_at is not None:
+            validate_go_datetime(self.received_at, 'received_at')
+
 
 setattr(Message, '__module__', 'dex_connectors.superdurable_email.models')
 
@@ -264,6 +286,10 @@ class SentMessage:
     sent_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'sentAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.sent_at, str):
+            object.__setattr__(self, 'sent_at', parse_go_datetime(self.sent_at, 'sent_at'))
+        elif self.sent_at is not None:
+            validate_go_datetime(self.sent_at, 'sent_at')
         object.__setattr__(self, 'recipients', _replace_nil_slices(self.recipients, 1))
 
 

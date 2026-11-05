@@ -1,0 +1,1962 @@
+[
+  {
+    "input": "2026-11-05T12:34:56Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+00:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56-00:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56+01:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+01:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-01:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-01:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+23:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+24:00",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "2026-11-05T12:34:56+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+00:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+01:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56UTC",
+    "accepted": false
+  },
+  {
+    "input": "2024-02-29T23:59:59Z",
+    "accepted": true,
+    "output": "2024-02-29T23:59:59Z"
+  },
+  {
+    "input": "2024-02-29T23:59:59z",
+    "accepted": false
+  },
+  {
+    "input": "2024-02-29T23:59:59+00:00",
+    "accepted": true,
+    "output": "2024-02-29T23:59:59Z"
+  },
+  {
+    "input": "2024-02-29T23:59:59-00:00",
+    "accepted": true,
+    "output": "2024-02-29T23:59:59Z"
+  },
+  {
+    "input": "2024-02-29T23:59:59+01:00",
+    "accepted": true,
+    "output": "2024-02-29T23:59:59+01:00"
+  },
+  {
+    "input": "2024-02-29T23:59:59-01:00",
+    "accepted": true,
+    "output": "2024-02-29T23:59:59-01:00"
+  },
+  {
+    "input": "2024-02-29T23:59:59+23:59",
+    "accepted": true,
+    "output": "2024-02-29T23:59:59+23:59"
+  },
+  {
+    "input": "2024-02-29T23:59:59+24:00",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "2024-02-29T23:59:59+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2024-02-29T23:59:59+00:60",
+    "accepted": true,
+    "output": "2024-02-29T23:59:59+01:00"
+  },
+  {
+    "input": "2024-02-29T23:59:59+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2024-02-29T23:59:59+0100",
+    "accepted": false
+  },
+  {
+    "input": "2024-02-29T23:59:59",
+    "accepted": false
+  },
+  {
+    "input": "2024-02-29T23:59:59UTC",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56Z",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56z",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56+0100",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56",
+    "accepted": false
+  },
+  {
+    "input": "2023-02-29T12:34:56UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T24:00:00UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:60UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05t12:34:56UTC",
+    "accepted": false
+  },
+  {
+    "input": "0000-01-01T00:00:00Z",
+    "accepted": true,
+    "output": "0000-01-01T00:00:00Z"
+  },
+  {
+    "input": "0000-01-01T00:00:00z",
+    "accepted": false
+  },
+  {
+    "input": "0000-01-01T00:00:00+00:00",
+    "accepted": true,
+    "output": "0000-01-01T00:00:00Z"
+  },
+  {
+    "input": "0000-01-01T00:00:00-00:00",
+    "accepted": true,
+    "output": "0000-01-01T00:00:00Z"
+  },
+  {
+    "input": "0000-01-01T00:00:00+01:00",
+    "accepted": true,
+    "output": "0000-01-01T00:00:00+01:00"
+  },
+  {
+    "input": "0000-01-01T00:00:00-01:00",
+    "accepted": true,
+    "output": "0000-01-01T00:00:00-01:00"
+  },
+  {
+    "input": "0000-01-01T00:00:00+23:59",
+    "accepted": true,
+    "output": "0000-01-01T00:00:00+23:59"
+  },
+  {
+    "input": "0000-01-01T00:00:00+24:00",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "0000-01-01T00:00:00+99:59",
+    "accepted": false
+  },
+  {
+    "input": "0000-01-01T00:00:00+00:60",
+    "accepted": true,
+    "output": "0000-01-01T00:00:00+01:00"
+  },
+  {
+    "input": "0000-01-01T00:00:00+1:00",
+    "accepted": false
+  },
+  {
+    "input": "0000-01-01T00:00:00+0100",
+    "accepted": false
+  },
+  {
+    "input": "0000-01-01T00:00:00",
+    "accepted": false
+  },
+  {
+    "input": "0000-01-01T00:00:00UTC",
+    "accepted": false
+  },
+  {
+    "input": "9999-12-31T23:59:59Z",
+    "accepted": true,
+    "output": "9999-12-31T23:59:59Z"
+  },
+  {
+    "input": "9999-12-31T23:59:59z",
+    "accepted": false
+  },
+  {
+    "input": "9999-12-31T23:59:59+00:00",
+    "accepted": true,
+    "output": "9999-12-31T23:59:59Z"
+  },
+  {
+    "input": "9999-12-31T23:59:59-00:00",
+    "accepted": true,
+    "output": "9999-12-31T23:59:59Z"
+  },
+  {
+    "input": "9999-12-31T23:59:59+01:00",
+    "accepted": true,
+    "output": "9999-12-31T23:59:59+01:00"
+  },
+  {
+    "input": "9999-12-31T23:59:59-01:00",
+    "accepted": true,
+    "output": "9999-12-31T23:59:59-01:00"
+  },
+  {
+    "input": "9999-12-31T23:59:59+23:59",
+    "accepted": true,
+    "output": "9999-12-31T23:59:59+23:59"
+  },
+  {
+    "input": "9999-12-31T23:59:59+24:00",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "9999-12-31T23:59:59+99:59",
+    "accepted": false
+  },
+  {
+    "input": "9999-12-31T23:59:59+00:60",
+    "accepted": true,
+    "output": "9999-12-31T23:59:59+01:00"
+  },
+  {
+    "input": "9999-12-31T23:59:59+1:00",
+    "accepted": false
+  },
+  {
+    "input": "9999-12-31T23:59:59+0100",
+    "accepted": false
+  },
+  {
+    "input": "9999-12-31T23:59:59",
+    "accepted": false
+  },
+  {
+    "input": "9999-12-31T23:59:59UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.123456789Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+00:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.123456789Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890-00:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.123456789Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+01:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.123456789+01:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890-01:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.123456789-01:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+23:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.123456789+23:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+24:00",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+00:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.123456789+01:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56.1234567890UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T1:04:05Z",
+    "accepted": true,
+    "output": "2026-11-05T01:04:05Z"
+  },
+  {
+    "input": "2026-11-05T1:04:05z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T1:04:05+00:00",
+    "accepted": true,
+    "output": "2026-11-05T01:04:05Z"
+  },
+  {
+    "input": "2026-11-05T1:04:05-00:00",
+    "accepted": true,
+    "output": "2026-11-05T01:04:05Z"
+  },
+  {
+    "input": "2026-11-05T1:04:05+01:00",
+    "accepted": true,
+    "output": "2026-11-05T01:04:05+01:00"
+  },
+  {
+    "input": "2026-11-05T1:04:05-01:00",
+    "accepted": true,
+    "output": "2026-11-05T01:04:05-01:00"
+  },
+  {
+    "input": "2026-11-05T1:04:05+23:59",
+    "accepted": true,
+    "output": "2026-11-05T01:04:05+23:59"
+  },
+  {
+    "input": "2026-11-05T1:04:05+24:00",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "2026-11-05T1:04:05+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T1:04:05+00:60",
+    "accepted": true,
+    "output": "2026-11-05T01:04:05+01:00"
+  },
+  {
+    "input": "2026-11-05T1:04:05+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T1:04:05+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T1:04:05",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T1:04:05UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:4:05UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T01:04:5UTC",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56Z",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56z",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+00:00",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56-00:00",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+01:00",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56-01:00",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+23:59",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+24:00",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+99:59",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+00:60",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+1:00",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56+0100",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56",
+    "accepted": false
+  },
+  {
+    "input": "２０２６-11-05T12:34:56UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56Z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56z",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56-00:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56-01:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+23:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+24:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+99:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+00:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+1:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56+0100",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T１２:34:56UTC",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+01:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+01:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56-01:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-01:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+02:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+03:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-02:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-03:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+03:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-03:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+04:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+04:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-04:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-04:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+05:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+05:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56-05:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-05:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+06:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+07:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-06:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-07:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+07:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-07:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+08:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+08:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-08:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-08:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+09:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+09:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56-09:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-09:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+10:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+11:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-10:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-11:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+11:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-11:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+12:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+12:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-12:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-12:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+13:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+13:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56-13:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-13:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+14:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+15:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-14:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-15:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+15:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-15:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+16:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+16:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-16:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-16:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+17:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+17:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56-17:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-17:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+18:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+19:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-18:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-19:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+19:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-19:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+20:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+20:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-20:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-20:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+21:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+21:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56-21:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-21:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+22:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+23:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-22:60",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-23:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-24:00",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "2026-11-05T12:34:56+25:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-25:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+26:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-26:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+27:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-27:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+28:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-28:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+29:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-29:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+30:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-30:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+31:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-31:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+32:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-32:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+33:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-33:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+34:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-34:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+35:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-35:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+36:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-36:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+37:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-37:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+38:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-38:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+39:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-39:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+40:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-40:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+41:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-41:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+42:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-42:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+43:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-43:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+44:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-44:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+45:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-45:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+46:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-46:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+47:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-47:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+48:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-48:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+49:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-49:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+50:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-50:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+51:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-51:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+52:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-52:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+53:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-53:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+54:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-54:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+55:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-55:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+56:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-56:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+57:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-57:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+58:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-58:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+59:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-59:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+60:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-60:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+61:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-61:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+62:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-62:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+63:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-63:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+64:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-64:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+65:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-65:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+66:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-66:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+67:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-67:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+68:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-68:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+69:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-69:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+70:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-70:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+71:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-71:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+72:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-72:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+73:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-73:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+74:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-74:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+75:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-75:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+76:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-76:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+77:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-77:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+78:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-78:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+79:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-79:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+80:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-80:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+81:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-81:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+82:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-82:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+83:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-83:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+84:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-84:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+85:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-85:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+86:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-86:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+87:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-87:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+88:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-88:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+89:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-89:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+90:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-90:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+91:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-91:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+92:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-92:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+93:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-93:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+94:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-94:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+95:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-95:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+96:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-96:00",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+97:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-97:59",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+98:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-98:60",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+99:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-99:99",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+23:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:00",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-23:00"
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:01",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+23:01"
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:01",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-23:01"
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:29",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+23:29"
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:29",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-23:29"
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:30",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+23:30"
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:30",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-23:30"
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:58",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56+23:58"
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:58",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-23:58"
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:59",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56-23:59"
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:60",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:60",
+    "accepted": true,
+    "marshalError": true
+  },
+  {
+    "input": "2026-11-05T12:34:56+23:61",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56-23:61",
+    "accepted": false
+  },
+  {
+    "input": "2026-11-05T12:34:56.1Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.1Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.11Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.11Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.1111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.11111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.11111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.1111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.11111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.11111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.1111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.11111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56.111111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,1Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.1Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,11Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.11Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,1111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.1111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,11111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.11111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,1111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.1111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,11111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.11111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,1111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,11111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  },
+  {
+    "input": "2026-11-05T12:34:56,111111111111Z",
+    "accepted": true,
+    "output": "2026-11-05T12:34:56.111111111Z"
+  }
+]
