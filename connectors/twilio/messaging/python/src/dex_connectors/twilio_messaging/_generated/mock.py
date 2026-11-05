@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import GetMessageInput, Message, SendMessageInput
-from .definitions import CONNECTOR_ID, ACCEPTED, DEFECT, FOUND, GET_MESSAGE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEND_MESSAGE_DEFINITION, UNCERTAIN
+from .definitions import CONNECTOR_ID, PROVIDER, ACCEPTED, DEFECT, FOUND, GET_MESSAGE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, SEND_MESSAGE_DEFINITION, UNCERTAIN
 
 def send_message_accepted(value: Message, failure: Failure | None = None) -> Case[Message]:
     return Case.branch_result(ACCEPTED, value, failure)
@@ -107,7 +107,7 @@ class Mock:
         self._connection = new_connection_with_operations(
             send_message=self.send_message_script,
             get_message=self.get_message_script,
-            reference=ConnectionRef(CONNECTOR_ID, connection_name),
+            reference=ConnectionRef(PROVIDER, connection_name),
         )
 
     def connection(self) -> Connection:

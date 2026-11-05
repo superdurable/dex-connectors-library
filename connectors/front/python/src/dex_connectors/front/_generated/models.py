@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -37,6 +39,12 @@ class SearchConversationsInput:
     page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
     # PageToken is a previous Result's NextPageToken; send it with the same filters.
     page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.activity_after, str):
+            object.__setattr__(self, 'activity_after', parse_go_datetime(self.activity_after, 'activity_after'))
+        elif self.activity_after is not None:
+            validate_go_datetime(self.activity_after, 'activity_after')
 
 
 setattr(SearchConversationsInput, '__module__', 'dex_connectors.front.models')
@@ -123,6 +131,24 @@ class Conversation:
     # DueAt is a task conversation's due time, or nil.
     due_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'dueAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
+        if isinstance(self.waiting_since, str):
+            object.__setattr__(self, 'waiting_since', parse_go_datetime(self.waiting_since, 'waiting_since'))
+        elif self.waiting_since is not None:
+            validate_go_datetime(self.waiting_since, 'waiting_since')
+        if isinstance(self.due_at, str):
+            object.__setattr__(self, 'due_at', parse_go_datetime(self.due_at, 'due_at'))
+        elif self.due_at is not None:
+            validate_go_datetime(self.due_at, 'due_at')
+
 
 setattr(Conversation, '__module__', 'dex_connectors.front.models')
 
@@ -188,6 +214,12 @@ class Message:
     # CreatedAt is when the message was sent or received.
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+
 
 setattr(Message, '__module__', 'dex_connectors.front.models')
 
@@ -207,6 +239,12 @@ class Comment:
     is_pinned: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isPinned', 'dex_json_omit_default': True})
     # PostedAt is when the comment was posted.
     posted_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'postedAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.posted_at, str):
+            object.__setattr__(self, 'posted_at', parse_go_datetime(self.posted_at, 'posted_at'))
+        elif self.posted_at is not None:
+            validate_go_datetime(self.posted_at, 'posted_at')
 
 
 setattr(Comment, '__module__', 'dex_connectors.front.models')
@@ -358,6 +396,12 @@ class Contact:
     is_private: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isPrivate', 'dex_json_omit_default': True})
     # UpdatedAt is when the contact last changed, or nil when Front omits it.
     updated_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(Contact, '__module__', 'dex_connectors.front.models')

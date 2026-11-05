@@ -79,6 +79,11 @@ spec:
       pkce: false
       tokenRequestEncoding: json
       refresh:
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
+        acceptedScopeSets: [[read:servicedesk-request, write:servicedesk-request, manage:servicedesk-customer, read:jira-work, write:jira-work]]
+        acceptsMissingTokenType: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   studio:
     setup:

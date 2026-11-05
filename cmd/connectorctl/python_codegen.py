@@ -11,6 +11,9 @@ payload = json.load(sys.stdin)
 manifest = payload["manifest"]
 metadata = manifest["metadata"]
 spec = manifest["spec"]
+nanosecond_timestamps = (
+    spec["languages"]["python"].get("timestampFormat") == "rfc3339Nano"
+)
 auth_methods = spec["auth"].get("methods", [])
 
 
@@ -37,6 +40,8 @@ operations = [
     operations_by_name[name] for name in spec["languages"]["python"]["operations"]
 ]
 connector_id = metadata["name"]
+connection_provider = "PROVIDER" if spec["provider"] != connector_id else "CONNECTOR_ID"
+connection_definitions = "CONNECTOR_ID, PROVIDER" if connection_provider == "PROVIDER" else "CONNECTOR_ID"
 package_name = payload["packageName"]
 mock_package_name = payload["mockPackageName"]
 model_aliases = payload.get("modelAliases") or {}
@@ -145,8 +150,9 @@ def python_type(
             "int64": ("int", "0"),
             "float": ("float", "0.0"),
             "time": (
-                "datetime",
-                "_dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))",
+                ("str", "'0001-01-01T00:00:00Z'")
+                if nanosecond_timestamps else
+                ("datetime", "_dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))")
             ),
             "bytes": ("str", "''"),
             "unknown": ("Any", "None"),
@@ -243,12 +249,13 @@ def render_models():
     for model in dependency_order.ordered:
         description = model.get("description", "").strip()
         if description:
-            lines.extend("# " + line for line in description.splitlines())
+            lines.extend("# " + line if line else "#" for line in description.splitlines())
         lines += ["@dataclass(frozen=True, slots=True)", f"class {model['name']}:"]
         if not model["fields"]:
             lines.append("    pass")
         has_default_field = False
         nullable_list_fields = []
+        timestamp_fields = []
         for field_info in model["fields"]:
             python_name = python_field_name(field_info["jsonName"])
             field_type, default = python_type(
@@ -264,11 +271,13 @@ def render_models():
                 metadata["dex_json_name"] = wire_name
             if field_info["omitEmpty"]:
                 metadata["dex_json_omit_default"] = True
-            if field_info["irType"]["Kind"] == "time":
+            if field_info["irType"]["Kind"] == "time" and not nanosecond_timestamps:
                 metadata["dex_json_format"] = "rfc3339"
+            if field_info["irType"]["Kind"] == "time":
+                timestamp_fields.append(python_name)
             if field_info.get("description"):
                 for comment_line in field_info["description"].strip().splitlines():
-                    lines.append("    # " + comment_line)
+                    lines.append("    # " + comment_line if comment_line else "    #")
             if default is None and has_default_field:
                 arguments = "kw_only=True"
                 if metadata:
@@ -300,8 +309,23 @@ def render_models():
                 and not field_info["hasPresence"]
             ):
                 nullable_list_fields.append((python_name, field_info["irType"]))
-        if nullable_list_fields:
+        if nullable_list_fields or timestamp_fields:
             lines.extend(["", "    def __post_init__(self) -> None:"])
+            for python_name in timestamp_fields:
+                if nanosecond_timestamps:
+                    lines.extend([
+                        f"        if self.{python_name} is not None:",
+                        f"            timestamp = self.{python_name}",
+                        f"            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, {python_name!r}))",
+                        f"            object.__setattr__(self, {python_name!r}, canonical)",
+                    ])
+                else:
+                    lines.extend([
+                        f"        if isinstance(self.{python_name}, str):",
+                        f"            object.__setattr__(self, {python_name!r}, parse_go_datetime(self.{python_name}, {python_name!r}))",
+                        f"        elif self.{python_name} is not None:",
+                        f"            validate_go_datetime(self.{python_name}, {python_name!r})",
+                    ])
             for python_name, type_info in nullable_list_fields:
                 lines.append(
                     f"        object.__setattr__(self, {python_name!r}, "
@@ -338,6 +362,12 @@ def render_models():
         header.append("from typing import " + ", ".join(typing_imports))
     if "SecretString" in body:
         header += ["", "from dex_connectors.sdk import SecretString"]
+    if nanosecond_timestamps and "format_rfc3339_nano(" in body:
+        header += ["", "from dex_connectors.sdk import format_rfc3339_nano"]
+    if "canonical_go_timestamp(" in body:
+        header += ["", "from .timestamps import canonical_go_timestamp"]
+    if "parse_go_datetime(" in body:
+        header += ["", "from .timestamps import parse_go_datetime, validate_go_datetime"]
     return "\n".join(header) + "\n\n" + body
 
 
@@ -496,11 +526,14 @@ def render_config():
         if auth_methods:
             lines.append(f"    auth_method_id: str = {quoted(spec['auth']['defaultMethod'])}")
         for field_info in credential_fields:
-            field_type = (
-                "SecretString" if field_info["type"] == "secretString" else "str"
-            )
+            field_type = {"secretString": "SecretString", "integer": "int", "duration": "int", "boolean": "bool", "stringList": "list[str]", "stringMap": "dict[str, str]"}.get(field_info["type"], "str")
             if auth_methods:
-                lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
+                if not field_info["required"] and field_info["type"] == "secretString":
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} = SecretString('')")
+                elif not field_info["required"] and field_info["type"] in ("string", "enum", "url"):
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} = ''")
+                else:
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
             else:
                 lines.append(f"    {snake(field_info['name'])}: {field_type}")
         lines += [
@@ -658,27 +691,44 @@ def render_connection():
         {constant(operation["name"]) + "_DEFINITION" for operation in operations}
     )
     connection_label = metadata["displayName"]
+    has_refresh = payload["hasDeclaredTokenGrants"]
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
         "",
         "from typing import Any",
+        *(["from re import search", "from urllib.parse import urlsplit"] if any(field_info["type"] == "url" for field_info in auth_fields()) else []),
         "",
         "import httpx",
         "from dex_connectors.sdk import "
-        + ", ".join(imports + (["Call", "SecretString"] if auth_fields() else [])),
+        + ", ".join(imports + (["Call", "SecretString"] if auth_fields() else [])
+                    + (["CredentialRefreshDriver"] if has_refresh else [])),
         "from dex_connectors.sdk.projectconfig import "
         + (
             "ConnectionKey, LoadedProject"
             if auth_fields()
             else "LoadedProject"
         ),
+        *(["from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvider",
+            "from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver"] if has_refresh else []),
         "",
         "from ..client import Client, Config"
         + (", Credentials" if auth_fields() else ""),
-        "from .definitions import CONNECTOR_ID, " + ", ".join(definition_names),
+        "from .definitions import " + connection_definitions + ", " + ", ".join(definition_names),
+        *(["from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS"] if has_refresh else []),
         "from ..models import " + ", ".join(model_names),
         "",
+        *([
+            "def _is_absolute_credential_url(value: str) -> bool:",
+            "    if value != value.strip() or any(ord(character) < 32 or ord(character) == 127 for character in value) or search(r'%(?![0-9a-fA-F]{2})', value):",
+            "        return False",
+            "    try:",
+            "        parsed = urlsplit(value)",
+            "        return bool(parsed.scheme and parsed.hostname and not any(character.isspace() for character in parsed.netloc))",
+            "    except ValueError:",
+            "        return False",
+            "",
+        ] if any(field_info["type"] == "url" for field_info in auth_fields()) else []),
         "class Connection:",
         "",
         "    __slots__ = ("
@@ -700,7 +750,7 @@ def render_connection():
         "    ) -> None:",
         "        reference.validate()",
     ]
-    checks = ["reference.provider != CONNECTOR_ID"] + [
+    checks = [f"reference.provider != {connection_provider}"] + [
         name + " is None" for name in order
     ]
     lines.append("        if " + " or ".join(checks) + ":")
@@ -771,6 +821,7 @@ def render_connection():
     ]
     credential_fields = auth_fields()
     if credential_fields:
+        decoder_start = len(lines)
         lines += [
             "",
             "class _ProjectCredentialSource:",
@@ -779,11 +830,42 @@ def render_connection():
             "        self.project = project",
             "        self.key = key",
         ]
+        decoder_body_start = len(lines) + 3
         lines += [
             "",
             "    async def resolve(self, call: Call) -> Credentials:",
             "        material = await self.project.resolve_credential(self.key, str(call.id))",
+            "        if not isinstance(material, dict):",
+            f"            raise ValueError({quoted(connection_label + ' stored credential does not match the connector credential fields')})",
         ]
+        allowed = [field_info["name"] for field_info in credential_fields]
+        if auth_methods:
+            allowed.append("auth_method")
+        needs_shared_validation = any(
+            (field_info["name"] in payload["sharedRequiredFields"][method["id"]]) != field_info["required"]
+            for method in (auth_methods or [{"id": "", "fields": credential_fields}])
+            for field_info in method["fields"]
+        )
+        lines += [
+            f"        if set(material) - set({tuple(allowed)!r}):",
+            f"            raise ValueError({quoted(connection_label + ' stored credential does not match the connector credential fields')})",
+        ]
+        if needs_shared_validation:
+            lines.append("        is_shared = bool(self.project.shared_connections and self.key in self.project.shared_connections)")
+        for field_info in credential_fields:
+            name = snake(field_info["name"])
+            field_type = field_info["type"]
+            check = f"isinstance({name}, str)" if field_type in ("string", "secretString", "enum", "url") else (
+                f"type({name}) is int" if field_type in ("integer", "duration") else
+                f"type({name}) is bool" if field_type == "boolean" else
+                f"isinstance({name}, list) and all(item is None or isinstance(item, str) for item in {name})" if field_type == "stringList" else
+                f"isinstance({name}, dict) and all(isinstance(key, str) and (item is None or isinstance(item, str)) for key, item in {name}.items())"
+            )
+            lines += [
+                f"        {name} = material.get({quoted(field_info['name'])})",
+                f"        if {name} is not None and not ({check}):",
+                f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
+            ]
         if auth_methods:
             lines += [
                 "        selected_method = material.get('auth_method')",
@@ -799,17 +881,32 @@ def render_connection():
                 lines.append(("        if" if index == 0 else "        elif") + f" method == {quoted(method['id'])}:")
                 for field_info in method["fields"]:
                     name = snake(field_info["name"])
-                    lines += [
-                        f"            {name} = material.get({quoted(field_info['name'])})",
-                        f"            if {name} is not None and not isinstance({name}, str):",
-                        f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
-                    ]
-                    if field_info["required"]:
+                    is_shared_required = field_info["name"] in payload["sharedRequiredFields"][method["id"]]
+                    if field_info["required"] or is_shared_required:
+                        requirement = f"({name} is None or {name} <= 0)" if field_info["type"] in ("integer", "duration") else f"not {name}"
+                        if field_info["required"] != is_shared_required:
+                            requirement += " and " + ("is_shared" if is_shared_required else "not is_shared")
                         lines += [
-                            f"            if not {name}:",
-                            f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
+                            f"            if {requirement}:",
+                            f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + (' must be positive' if field_info['type'] in ('integer', 'duration') else ' is required'))})",
                         ]
-                    expression = f"SecretString({name})" if field_info["type"] == "secretString" else name
+                    if field_info["type"] in ("integer", "duration"):
+                        lines += [f"            if {name} is not None and {name} < 0:", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' cannot be negative')})"]
+                    if field_info["type"] == "enum":
+                        lines += [f"            if {name} and {name} not in {tuple(field_info['enum'])!r}:", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is invalid')})"]
+                    if field_info["type"] == "url":
+                        lines += [f"            if {name} and not _is_absolute_credential_url({name}):", f"                raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
+                    expression = f"SecretString({name})" if field_info["type"] == "secretString" else (
+                        f"[item or '' for item in {name}]" if field_info["type"] == "stringList" else
+                        f"{{key: item or '' for key, item in {name}.items()}}" if field_info["type"] == "stringMap" else name
+                    )
+                    if not field_info["required"] and field_info["type"] == "secretString":
+                        expression = f"SecretString({name} or '')"
+                        lines.append(f"            values[{quoted(name)}] = {expression}")
+                        continue
+                    if not field_info["required"] and field_info["type"] in ("string", "enum", "url"):
+                        lines.append(f"            values[{quoted(name)}] = {name} or ''")
+                        continue
                     lines.append(f"            if {name}:")
                     lines.append(f"                values[{quoted(name)}] = {expression}")
             lines += [
@@ -820,26 +917,99 @@ def render_connection():
         else:
             for field_info in credential_fields:
                 name = snake(field_info["name"])
-                lines += [
-                    f"        {name} = material.get({quoted(field_info['name'])})",
-                ]
-                if field_info["required"]:
-                    lines += [
-                        f"        if not isinstance({name}, str) or not {name}:",
-                        f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is required')})",
-                    ]
+                is_shared_required = field_info["name"] in payload["sharedRequiredFields"][""]
+                if field_info["required"] or is_shared_required:
+                    requirement = f"({name} is None or {name} <= 0)" if field_info["type"] in ("integer", "duration") else f"not {name}"
+                    if field_info["required"] != is_shared_required:
+                        requirement += " and " + ("is_shared" if is_shared_required else "not is_shared")
+                    lines += [f"        if {requirement}:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + (' must be positive' if field_info['type'] in ('integer', 'duration') else ' is required'))})"]
+                if field_info["type"] in ("integer", "duration"):
+                    lines += [f"        if {name} is not None and {name} < 0:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' cannot be negative')})"]
+                if field_info["type"] == "enum":
+                    lines += [f"        if {name} and {name} not in {tuple(field_info['enum'])!r}:", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' is invalid')})"]
+                if field_info["type"] == "url":
+                    lines += [f"        if {name} and not _is_absolute_credential_url({name}):", f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' must be an absolute URL')})"]
+            values = []
+            for field_info in credential_fields:
+                name = snake(field_info["name"])
+                can_be_absent = not field_info["required"] or field_info["name"] not in payload["sharedRequiredFields"][""]
+                if field_info["type"] == "secretString":
+                    values.append(f"SecretString({name} or '')" if can_be_absent else f"SecretString({name})")
+                elif field_info["type"] in ("string", "enum", "url"):
+                    values.append(f"({name} or '')" if can_be_absent else name)
+                elif field_info["type"] in ("integer", "duration"):
+                    values.append(f"({name} or 0)" if can_be_absent else name)
+                elif field_info["type"] == "boolean":
+                    values.append(f"({name} or False)" if can_be_absent else name)
+                elif field_info["type"] == "stringList":
+                    values.append(f"[item or '' for item in ({name} or [])]")
                 else:
-                    lines += [
-                        f"        if {name} is None:",
-                        f"            {name} = ''",
-                        f"        if not isinstance({name}, str):",
-                        f"            raise ValueError({quoted(connection_label + ' credential ' + field_info['name'] + ' has an invalid type')})",
-                    ]
-            values = [
-                f"SecretString({snake(field_info['name'])})" if field_info["type"] == "secretString" else snake(field_info["name"])
-                for field_info in credential_fields
-            ]
+                    values.append(f"{{key: item or '' for key, item in ({name} or {{}}).items()}}")
             lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
+        if has_refresh:
+            decoder = lines[decoder_body_start:]
+            decoder = [line[4:] if line.startswith("    ") else line for line in decoder]
+            decoder = [
+                "    is_shared = shared" if "is_shared = bool(self.project.shared_connections" in line else line
+                for line in decoder
+            ]
+            lines[decoder_start:] = [
+                "",
+                "def decode_credentials(material: dict[str, Any], *, shared: bool = False) -> Credentials:",
+                *decoder,
+                "",
+                "def decode_shared_credentials(material: dict[str, Any]) -> Credentials:",
+                "    return decode_credentials(material, shared=True)",
+                "",
+                "",
+                "def encode_credentials(credentials: Credentials) -> dict[str, Any]:",
+                "    material: dict[str, Any] = {}",
+            ]
+            if auth_methods:
+                lines += [
+                    "    method = credentials.auth_method_id or " + quoted(spec["auth"]["defaultMethod"]),
+                    "    material['auth_method'] = method",
+                ]
+                for index, method in enumerate(auth_methods):
+                    lines.append(("    if" if index == 0 else "    elif") + f" method == {quoted(method['id'])}:")
+                    for field_info in method["fields"]:
+                        name = snake(field_info["name"])
+                        expression = (
+                            f"(credentials.{name}.reveal() if credentials.{name} is not None else '')"
+                            if field_info["type"] == "secretString" else f"credentials.{name}"
+                        )
+                        lines += [f"        if {expression}:", f"            material[{quoted(field_info['name'])}] = {expression}"]
+                lines += [
+                    "    else:",
+                    f"        raise ValueError({quoted(connection_label + ' credential auth_method is invalid')})",
+                ]
+            else:
+                for field_info in credential_fields:
+                    name = snake(field_info["name"])
+                    expression = f"credentials.{name}.reveal()" if field_info["type"] == "secretString" else f"credentials.{name}"
+                    lines += [f"    if {expression}:", f"        material[{quoted(field_info['name'])}] = {expression}"]
+            lines += [
+                "    decode_credentials(material)",
+                "    return material",
+                "",
+                "",
+                "class _ProjectCredentialSource:",
+                "    def __init__(self, project: LoadedProject, key: ConnectionKey, http_client: httpx.AsyncClient, settings: dict[str, Any]) -> None:",
+                "        self.provider = RefreshingCredentialProvider(",
+                "            project.connections, key, decode_credentials, encode_credentials, decode_shared_credentials",
+                "        )",
+                f"        self.driver = ManifestCredentialRefreshDriver[Credentials]({quoted(connection_label)}, AUTHORIZATION, CREDENTIAL_FIELDS, http_client, settings=settings)",
+                "",
+                "    async def resolve(self, call: Call) -> Credentials:",
+                "        return await self.provider.resolve_with_refresh(call, self.driver)",
+                "",
+                "    async def resolve_with_refresh(self, call: Call, driver: CredentialRefreshDriver[Credentials] | None = None) -> Credentials:",
+                "        return await self.provider.resolve_with_refresh(call, driver or self.driver)",
+                "",
+                "    async def resolve_after_rejection(self, call: Call, driver: CredentialRefreshDriver[Credentials] | None = None) -> Credentials:",
+                "        return await self.provider.resolve_after_rejection(call, driver or self.driver)",
+                "",
+            ]
     lines += [
         "",
         "def new_project_connection(",
@@ -847,7 +1017,7 @@ def render_connection():
         ") -> Connection:",
         "    if project is None:",
         f"        raise ValueError({quoted(connection_label + ' connection requires loaded project configuration')})",
-        "    reference = ConnectionRef(CONNECTOR_ID, connection_name)",
+        f"    reference = ConnectionRef({connection_provider}, connection_name)",
         "    reference.validate()",
     ]
     if credential_fields:
@@ -860,15 +1030,18 @@ def render_connection():
         "    ]",
         "    if len(matching) != 1:",
         f"        raise ValueError({quoted(connection_label + ' project connection is missing or duplicated')})",
-        "    if matching[0].provider != CONNECTOR_ID:",
+        f"    if matching[0].provider != {connection_provider}:",
         f"        raise ValueError({quoted(connection_label + ' project connection provider differs')})",
         "    config = _decode_config(matching[0].configuration)",
     ]
     client_args = (
-        "config, _ProjectCredentialSource(project, key), http_client"
+        ("config, _ProjectCredentialSource(project, key, http_client, matching[0].configuration), http_client"
+         if has_refresh else "config, _ProjectCredentialSource(project, key), http_client")
         if credential_fields
         else "config, http_client"
     )
+    if has_refresh:
+        lines.append("    http_client = http_client or httpx.AsyncClient()")
     lines += [
         f"    client = Client({client_args})",
         "    return new_connection(client, reference)",
@@ -983,6 +1156,8 @@ class MockOutputExpression:
                 + "}"
             )
         if kind == "time":
+            if nanosecond_timestamps:
+                return repr(value)
             return f"datetime.fromisoformat({quoted(value)}.replace('Z', '+00:00'))"
         if kind != "ref":
             return repr(value)
@@ -1090,7 +1265,7 @@ def render_mock():
         "",
         "from ..connection import Connection, new_connection_with_operations",
         "from ..models import " + ", ".join(model_names),
-        "from .definitions import CONNECTOR_ID, "
+        "from .definitions import " + connection_definitions + ", "
         + ", ".join(
             sorted(
                 {
@@ -1245,7 +1420,7 @@ def render_mock():
         operation_name = snake(operation["name"])
         lines.append(f"            {operation_name}=self.{operation_name}_script,")
     lines += [
-        "            reference=ConnectionRef(CONNECTOR_ID, connection_name),",
+        f"            reference=ConnectionRef({connection_provider}, connection_name),",
         "        )",
         "",
         "    def connection(self) -> Connection:",
@@ -1270,6 +1445,38 @@ result = {
     "definitions.py": render_definitions(),
     "steps.py": render_steps(),
 }
+if any(field_info["irType"]["Kind"] == "time" for model in models for field_info in model["fields"]):
+    result["timestamps.py"] = payload["timestampSource"]
+if payload["hasDeclaredTokenGrants"]:
+    authorization = json.loads(json.dumps(spec["auth"]))
+    omitted = {
+        "description", "displayName", "goName", "guide", "connectionKind",
+        "recommended", "methodLabel", "configuration", "authorizationEndpoint",
+        "authorizationParameters", "credentialDerivations", "pkce", "oidc", "protocol",
+    }
+    def trim_refresh_metadata(value):
+        if isinstance(value, dict):
+            structural = {
+                "methods", "fields", "oauth2", "clientCredentials", "serviceAccount",
+                "refresh", "grants", "jwtBearer",
+            }
+            return {
+                name: trim_refresh_metadata(item) if name in structural else item
+                for name, item in value.items() if name not in omitted
+            }
+        if isinstance(value, list):
+            return [trim_refresh_metadata(item) for item in value]
+        return value
+    authorization = trim_refresh_metadata(authorization)
+    if auth_methods:
+        authorization.pop("fields", None)
+    result["refresh.py"] = (
+        "# Copyright (c) 2026 Super Durable\n# SPDX-License-Identifier: MIT\n\n"
+        "# Validated manifest token grant declaration.\n"
+        f"AUTHORIZATION = {authorization!r}\n\n"
+        "# Stored credential names mapped to runtime dataclass fields.\n"
+        f"CREDENTIAL_FIELDS = { {field_info['name']: snake(field_info['name']) for field_info in auth_fields()}!r}\n"
+    )
 connection_source = render_connection()
 if connection_source is not None:
     result["connection.py"] = connection_source

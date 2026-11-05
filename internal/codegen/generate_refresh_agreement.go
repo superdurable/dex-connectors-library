@@ -4,9 +4,12 @@
 package codegen
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"go/format"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +17,22 @@ import (
 
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+//go:embed templates/python_refresh_agreement.py
+var pythonRefreshAgreementTest string
+
+//go:embed templates/typescript_refresh_agreement.ts
+var typeScriptRefreshAgreementTest string
+
+// GeneratePythonRefreshAgreementTest emits a replay of generated cases through the manifest driver.
+func GeneratePythonRefreshAgreementTest(packageName string) []byte {
+	return []byte(strings.ReplaceAll(pythonRefreshAgreementTest, "{{PACKAGE}}", packageName))
+}
+
+// GenerateTypeScriptRefreshAgreementTest emits a replay of generated cases through the manifest driver.
+func GenerateTypeScriptRefreshAgreementTest() []byte {
+	return []byte(typeScriptRefreshAgreementTest)
+}
 
 const (
 	// RefreshAgreementTestOutputFile is the generated test that runs a connector's hand-written credential refresh
@@ -45,27 +64,476 @@ type RefreshAgreementSample struct {
 	Response map[string]string `json:"response,omitempty"`
 }
 
+// RefreshAgreementCase is one language-neutral token exchange derived from the Go agreement generator's samples.
+type RefreshAgreementCase struct {
+	Name                       string                     `json:"name"`
+	ExpectedError              string                     `json:"expectedError,omitempty"`
+	MethodID                   string                     `json:"methodId,omitempty"`
+	Credentials                map[string]string          `json:"credentials"`
+	Settings                   map[string]string          `json:"settings,omitempty"`
+	Endpoint                   string                     `json:"endpoint"`
+	Encoding                   string                     `json:"encoding"`
+	ClientAuth                 string                     `json:"clientAuth"`
+	ClientID                   string                     `json:"clientId,omitempty"`
+	ClientSecret               string                     `json:"clientSecret,omitempty"`
+	Parameters                 map[string]string          `json:"parameters"`
+	Response                   map[string]any             `json:"response"`
+	Updates                    map[string]string          `json:"updates"`
+	TerminalErrorCodes         []string                   `json:"terminalErrorCodes"`
+	StoredMissingExpiry        string                     `json:"storedMissingExpiry"`
+	RefreshRequiredCases       []RefreshRequiredCase      `json:"refreshRequiredCases"`
+	ExpectedExpiryMilliseconds *float64                   `json:"expectedExpiryMilliseconds,omitempty"`
+	KeyCredential              string                     `json:"keyCredential,omitempty"`
+	PrivateKeyCredential       string                     `json:"privateKeyCredential,omitempty"`
+	PrivateKeyMember           string                     `json:"privateKeyMember,omitempty"`
+	KeyMembers                 map[string]string          `json:"keyMembers,omitempty"`
+	Assertion                  *RefreshAgreementAssertion `json:"assertion,omitempty"`
+	MayRefuseWithoutCall       bool                       `json:"mayRefuseWithoutCall,omitempty"`
+}
+
+// RefreshRequiredCase checks a stored credential state without calling the provider.
+type RefreshRequiredCase struct {
+	Name                     string            `json:"name"`
+	Credentials              map[string]string `json:"credentials,omitempty"`
+	ExpiresAt                string            `json:"expiresAt"`
+	Expected                 bool              `json:"expected"`
+	JWTAccessTokenCredential string            `json:"jwtAccessTokenCredential,omitempty"`
+	JWTExpiry                string            `json:"jwtExpiry,omitempty"`
+}
+
+// RefreshAgreementAssertion records the JWT claims and lifetime checked by the Go agreement harness.
+type RefreshAgreementAssertion struct {
+	Issuer          string `json:"issuer"`
+	Subject         string `json:"subject,omitempty"`
+	Audience        string `json:"audience"`
+	Scope           string `json:"scope,omitempty"`
+	LifetimeSeconds int64  `json:"lifetimeSeconds"`
+}
+
+// GenerateRefreshAgreementCases returns the Go agreement's sample cases for Python and TypeScript replay.
+func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]RefreshAgreementSample) ([]byte, error) {
+	agreement := &refreshAgreementGenerator{manifest: manifest, samples: samples}
+	var cases []RefreshAgreementCase
+	for _, grant := range declaredGrants(manifest) {
+		for _, variant := range agreement.variants(grant) {
+			isPublicClients := []bool{false}
+			if grant.kind == "refresh" && !agreement.isRequiredCredential(grant.method, grant.clientSecret) {
+				isPublicClients = append(isPublicClients, true)
+			}
+			for _, isPublicClient := range isPublicClients {
+				name := grant.name
+				if variant.field != "" {
+					name += fmt.Sprintf(" with %s %q", variant.field, variant.value)
+				}
+				if isPublicClient {
+					name += " without a client secret"
+				}
+				sample := agreement.sample(grant)
+				credentials := agreement.sampleCredentials(grant, variant, sample)
+				settings := agreement.sampleSettings(grant, variant, sample)
+				if isPublicClient {
+					credentials[grant.clientSecret] = ""
+				}
+				keyMembers := agreement.sampleKeyMembers(grant, variant)
+				endpoint, err := resolveSampleSource(grant.endpoint, credentials, settings, keyMembers)
+				if err != nil {
+					return nil, fmt.Errorf("%s tokenEndpoint: %w", name, err)
+				}
+				clientAuth := "none"
+				if grant.kind != "jwtBearer" {
+					clientAuth, err = resolveSampleSource(grant.authMethod, credentials, settings, keyMembers)
+					if err != nil {
+						return nil, fmt.Errorf("%s tokenEndpointAuthMethod: %w", name, err)
+					}
+				}
+				parameters := map[string]string{}
+				for key, value := range grant.additional {
+					parameters[key] = value
+				}
+				switch grant.kind {
+				case "refresh":
+					parameters["grant_type"] = "refresh_token"
+					parameters["refresh_token"] = credentials[grant.refreshToken]
+					if isPublicClient {
+						clientAuth = "public"
+					}
+				case "clientCredentials":
+					parameters["grant_type"] = "client_credentials"
+					if len(grant.requestScopes) > 0 {
+						parameters["scope"] = strings.Join(grant.requestScopes, " ")
+					}
+				case "jwtBearer":
+					parameters["grant_type"] = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+				}
+				clientID, clientSecret := credentials[grant.clientID], credentials[grant.clientSecret]
+				switch clientAuth {
+				case "client_secret_post":
+					parameters["client_id"], parameters["client_secret"] = clientID, clientSecret
+				case "public":
+					parameters["client_id"] = clientID
+				}
+				response, updates := agreement.sampleResponse(grant, credentials, sample)
+				result := RefreshAgreementCase{Name: name, MethodID: grant.method.ID, Credentials: credentials,
+					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
+					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: append([]string{}, grant.terminalCodes...),
+					StoredMissingExpiry:  defaultString(grant.storedMissingExpiry, schema.StoredMissingExpiryKeep),
+					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
+				result.RefreshRequiredCases = agreement.refreshRequiredCases(grant)
+				if result.MayRefuseWithoutCall {
+					result.ExpectedError = "reauthorization"
+					result.TerminalErrorCodes = []string{}
+				}
+				if grant.jwtBearer != nil {
+					result.KeyCredential = grant.jwtBearer.KeyCredential
+					result.PrivateKeyCredential = grant.jwtBearer.PrivateKey.FromCredential
+					result.PrivateKeyMember = grant.jwtBearer.PrivateKey.FromKey
+					result.KeyMembers = keyMembers
+					assertion, err := agreement.sampleAssertion(grant, credentials, settings, keyMembers)
+					if err != nil {
+						return nil, fmt.Errorf("%s assertion: %w", name, err)
+					}
+					result.Assertion = assertion
+				}
+				cases = append(cases, result)
+				if !result.MayRefuseWithoutCall {
+					cases = append(cases, agreement.responseVariations(result, grant)...)
+				}
+			}
+		}
+	}
+	encoded, err := json.MarshalIndent(cases, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh agreement cases: %w", err)
+	}
+	return append(encoded, '\n'), nil
+}
+
+func (agreement *refreshAgreementGenerator) sampleAssertion(grant declaredGrant, credentials, settings, keyMembers map[string]string) (*RefreshAgreementAssertion, error) {
+	jwt := grant.jwtBearer
+	resolve := func(source schema.ValueSource) (string, error) {
+		value, err := resolveSampleSource(source, credentials, settings, keyMembers)
+		if slices.Contains(jwt.TrimSpaceSources, source.FromCredential) && source.FromCredential != "" {
+			value = strings.TrimSpace(value)
+		}
+		return value, err
+	}
+	issuer, err := resolve(jwt.Issuer)
+	if err != nil {
+		return nil, err
+	}
+	audience, err := resolve(jwt.Audience)
+	if err != nil {
+		return nil, err
+	}
+	subject := ""
+	if jwt.Subject != nil {
+		subject, err = resolve(*jwt.Subject)
+		if err != nil {
+			return nil, err
+		}
+	}
+	lifetime, err := time.ParseDuration(jwt.Lifetime)
+	if err != nil {
+		return nil, err
+	}
+	return &RefreshAgreementAssertion{Issuer: issuer, Subject: subject, Audience: audience,
+		Scope: strings.Join(jwt.Scopes, " "), LifetimeSeconds: int64(lifetime / time.Second)}, nil
+}
+
+func (agreement *refreshAgreementGenerator) refreshRequiredCases(grant declaredGrant) []RefreshRequiredCase {
+	refreshCases := []RefreshRequiredCase{
+		{Name: "fresh token", ExpiresAt: "fresh", Expected: false},
+		{Name: "expired token", ExpiresAt: "expired", Expected: true},
+	}
+	undatedRefresh := grant.storedMissingExpiry == schema.StoredMissingExpiryRefresh ||
+		grant.storedMissingExpiry == schema.StoredMissingExpiryRefreshIfPossible || grant.accessTokenJWTExpiryFallback != ""
+	refreshCases = append(refreshCases, RefreshRequiredCase{Name: "undated token", ExpiresAt: "missing", Expected: undatedRefresh})
+	for _, mapping := range grant.mappings {
+		if mapping.Source == "access_token" {
+			refreshCases = append(refreshCases, RefreshRequiredCase{Name: "blank access token", Credentials: map[string]string{mapping.Credential: ""}, ExpiresAt: "fresh", Expected: true})
+			if grant.accessTokenJWTExpiryFallback != "" {
+				refreshCases = append(refreshCases,
+					RefreshRequiredCase{Name: "undated JWT with future exp", ExpiresAt: "missing", JWTAccessTokenCredential: mapping.Credential, JWTExpiry: "fresh", Expected: false},
+					RefreshRequiredCase{Name: "undated JWT with past exp", ExpiresAt: "missing", JWTAccessTokenCredential: mapping.Credential, JWTExpiry: "expired", Expected: true},
+				)
+			}
+			break
+		}
+	}
+	if grant.storedMissingExpiry == schema.StoredMissingExpiryRefreshIfPossible && grant.refreshToken != "" {
+		refreshCases = append(refreshCases, RefreshRequiredCase{Name: "undated token without refresh token", Credentials: map[string]string{grant.refreshToken: ""}, ExpiresAt: "missing", Expected: false})
+	}
+	if grant.refreshWhenCredentialBlank != "" {
+		refreshCases = append(refreshCases, RefreshRequiredCase{Name: "blank mapped credential", Credentials: map[string]string{grant.refreshWhenCredentialBlank: ""}, ExpiresAt: "fresh", Expected: true})
+	}
+	if rule := grant.responseURLValidation; rule != nil && rule.RefreshWhenInvalid {
+		refreshCases = append(refreshCases, RefreshRequiredCase{Name: "invalid stored provider URL", Credentials: map[string]string{rule.Credential: "https://foreign.example.invalid"}, ExpiresAt: "fresh", Expected: true})
+	}
+	return refreshCases
+}
+
+func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgreementCase, grant declaredGrant) []RefreshAgreementCase {
+	clone := func(suffix, expectedError string) RefreshAgreementCase {
+		variation := base
+		variation.Name += suffix
+		variation.ExpectedError = expectedError
+		variation.Response = make(map[string]any, len(base.Response))
+		for name, value := range base.Response {
+			variation.Response[name] = value
+		}
+		variation.TerminalErrorCodes = []string{}
+		variation.Credentials = make(map[string]string, len(base.Credentials))
+		for name, value := range base.Credentials {
+			variation.Credentials[name] = value
+		}
+		variation.Updates = make(map[string]string, len(base.Updates))
+		for name, value := range base.Updates {
+			variation.Updates[name] = value
+		}
+		return variation
+	}
+	var variations []RefreshAgreementCase
+	wrongType := clone(" with unaccepted token type", "retryable")
+	wrongType.Response["token_type"] = "manifest-unaccepted-token-type"
+	variations = append(variations, wrongType)
+	missingType := clone(" without token type", "retryable")
+	delete(missingType.Response, "token_type")
+	if grant.acceptsMissingTokenType {
+		missingType.ExpectedError = ""
+	}
+	variations = append(variations, missingType)
+	if grant.responseScopesPolicy != schema.ResponseScopesIgnore && len(grant.responseScopes) > 0 {
+		if grant.responseScopeField == "scopesArray" {
+			emptyArray := clone(" with empty array scope", "reauthorization")
+			emptyArray.Response["scopes"] = []string{}
+			variations = append(variations, emptyArray)
+			wrongArray := clone(" with missing array scope", "reauthorization")
+			wrongArray.Response["scopes"] = []string{"manifest-ungranted-scope"}
+			variations = append(variations, wrongArray)
+			malformedArray := clone(" with malformed array scope", "reauthorization")
+			malformedArray.Response["scopes"] = "not-an-array"
+			variations = append(variations, malformedArray)
+			commaInElement := clone(" with comma inside one array scope", "reauthorization")
+			commaInElement.Response["scopes"] = []string{strings.Join(grant.responseScopes, ",")}
+			variations = append(variations, commaInElement)
+		}
+		if grant.scopeResourcePrefix != "" {
+			prefixed := clone(" with resource-prefixed scopes", "")
+			values := make([]string, len(grant.responseScopes))
+			for index, scope := range grant.responseScopes {
+				values[index] = grant.scopeResourcePrefix + scope
+				if grant.scopeResourcePrefixCaseInsensitive {
+					values[index] = strings.ToUpper(values[index])
+				}
+			}
+			prefixed.Response["scope"] = strings.Join(values, " ")
+			variations = append(variations, prefixed)
+			if !grant.scopeResourcePrefixCaseInsensitive {
+				wrongPrefixCase := clone(" with uppercase resource prefix", "reauthorization")
+				for index, scope := range grant.responseScopes {
+					values[index] = strings.ToUpper(grant.scopeResourcePrefix) + scope
+				}
+				wrongPrefixCase.Response["scope"] = strings.Join(values, " ")
+				variations = append(variations, wrongPrefixCase)
+			}
+		}
+		upperNames := clone(" with uppercase scope names", "reauthorization")
+		if grant.caseInsensitiveScopes {
+			upperNames.ExpectedError = ""
+		}
+		if grant.responseScopeField == "scopesArray" {
+			values := make([]string, len(grant.responseScopes))
+			for index, scope := range grant.responseScopes {
+				values[index] = strings.ToUpper(scope)
+			}
+			upperNames.Response["scopes"] = values
+		} else {
+			upperNames.Response["scope"] = strings.ToUpper(strings.Join(grant.responseScopes, " "))
+		}
+		variations = append(variations, upperNames)
+		if grant.responseScopeField != "scopesArray" {
+			comma := clone(" with comma-separated scopes", "reauthorization")
+			comma.Response["scope"] = strings.Join(append(append([]string{}, grant.responseScopes...), grant.responseScopes[0]), ",")
+			if grant.scopeSeparators == schema.ScopeSeparatorsWhitespaceAndComma {
+				comma.ExpectedError = ""
+			}
+			variations = append(variations, comma)
+		}
+		for index := range grant.responseScopes {
+			withoutRequiredScope := clone(fmt.Sprintf(" without required scope %d", index+1), "reauthorization")
+			remaining := append(append([]string{}, grant.responseScopes[:index]...), grant.responseScopes[index+1:]...)
+			if len(remaining) == 0 {
+				remaining = []string{"manifest-ungranted-scope"}
+			}
+			if grant.responseScopeField == "scopesArray" {
+				withoutRequiredScope.Response["scopes"] = remaining
+			} else {
+				withoutRequiredScope.Response["scope"] = strings.Join(remaining, " ")
+			}
+			variations = append(variations, withoutRequiredScope)
+		}
+		for index, scopeSet := range grant.acceptedScopeSets {
+			if index == 0 {
+				continue
+			}
+			alternative := clone(fmt.Sprintf(" with accepted scope set %d", index+1), "")
+			alternative.Response["scope"] = strings.Join(scopeSet, " ")
+			variations = append(variations, alternative)
+		}
+		if grant.exactScopes {
+			extra := clone(" with extra scopes", "reauthorization")
+			extra.Response["scope"] = strings.Join(grant.responseScopes, " ") + " manifest-extra-scope"
+			variations = append(variations, extra)
+		}
+	}
+	differentScope := clone(" with different reported scope", "")
+	if grant.responseScopeField == "scopesArray" {
+		differentScope.Response["scopes"] = []string{"manifest-ungranted-scope"}
+	} else {
+		differentScope.Response["scope"] = "manifest-ungranted-scope"
+	}
+	if grant.responseScopesPolicy != schema.ResponseScopesIgnore && len(grant.responseScopes) > 0 {
+		differentScope.ExpectedError = "reauthorization"
+	}
+	variations = append(variations, differentScope)
+	if rule := grant.responseURLValidation; rule != nil {
+		for _, mapping := range grant.mappings {
+			if mapping.Credential != rule.Credential {
+				continue
+			}
+			missingURL := clone(" without provider URL", "")
+			delete(missingURL.Response, mapping.Source)
+			if rule.RequireResponse {
+				missingURL.ExpectedError = "retryable"
+			} else if prior := base.Credentials[rule.Credential]; prior != "" {
+				missingURL.Updates[rule.Credential] = prior
+			} else {
+				missingURL.Updates[rule.Credential] = rule.DefaultURL
+			}
+			variations = append(variations, missingURL)
+			if rule.DefaultURL != "" && !rule.RequireResponse {
+				defaultURL := clone(" without provider or stored URL", "")
+				delete(defaultURL.Response, mapping.Source)
+				defaultURL.Credentials[rule.Credential] = ""
+				defaultURL.Updates[rule.Credential] = rule.DefaultURL
+				variations = append(variations, defaultURL)
+			}
+			nonStringURL := clone(" with non-string provider URL", "retryable")
+			nonStringURL.Response[mapping.Source] = 7
+			variations = append(variations, nonStringURL)
+			foreignURL := clone(" with foreign provider URL", "retryable")
+			foreignURL.Response[mapping.Source] = "https://foreign.example.invalid"
+			if rule.AllowAnyHTTPS {
+				foreignURL.Response[mapping.Source] = "https://foreign.example.invalid/path"
+			}
+			variations = append(variations, foreignURL)
+			for _, host := range rule.AllowedHosts {
+				allowedURL := clone(" with allowed host "+host, "")
+				allowedURL.Response[mapping.Source] = "https://" + host
+				allowedURL.Updates[rule.Credential] = "https://" + host
+				variations = append(variations, allowedURL)
+			}
+			if rule.ForbidPort {
+				host := rule.AllowedHostSuffix
+				if len(rule.AllowedHosts) > 0 {
+					host = rule.AllowedHosts[0]
+				}
+				withPort := clone(" with explicit provider URL port", "retryable")
+				withPort.Response[mapping.Source] = "https://" + host + ":443"
+				variations = append(variations, withPort)
+			}
+			if rule.AllowLoopback {
+				loopback := clone(" with loopback provider URL", "")
+				loopback.Response[mapping.Source] = "http://127.0.0.1:8080"
+				loopback.Updates[rule.Credential] = "http://127.0.0.1:8080"
+				variations = append(variations, loopback)
+			}
+			if responseURL, ok := base.Response[mapping.Source].(string); ok {
+				trailingSlash := clone(" with trailing provider URL slash", "")
+				trailingSlash.Response[mapping.Source] = strings.TrimRight(responseURL, "/") + "/"
+				trailingSlash.Updates[rule.Credential] = strings.TrimRight(responseURL, "/")
+				variations = append(variations, trailingSlash)
+			}
+			break
+		}
+	}
+	missingExpiry := clone(" without expires_in", "")
+	delete(missingExpiry.Response, "expires_in")
+	if grant.missingExpiry == nil || grant.missingExpiry.Reject {
+		missingExpiry.ExpectedError = "retryable"
+	} else {
+		milliseconds := float64(0)
+		if grant.missingExpiry.Lifetime != "" {
+			lifetime, err := time.ParseDuration(grant.missingExpiry.Lifetime)
+			if err != nil {
+				missingExpiry.ExpectedError = "retryable"
+			} else {
+				milliseconds = float64(lifetime) / float64(time.Millisecond)
+			}
+		}
+		missingExpiry.ExpectedExpiryMilliseconds = &milliseconds
+	}
+	variations = append(variations, missingExpiry)
+	if grant.accessTokenJWTExpiryFallback != "" && missingExpiry.ExpectedError == "" {
+		fallback, _ := time.ParseDuration(grant.accessTokenJWTExpiryFallback)
+		milliseconds := float64(fallback) / float64(time.Millisecond)
+		missingExpiry.ExpectedExpiryMilliseconds = &milliseconds
+		variations[len(variations)-1] = missingExpiry
+	}
+	if grant.expiryCap != "" {
+		capped := clone(" with expiry above cap", "")
+		capped.Response["expires_in"] = 7200
+		capDuration, _ := time.ParseDuration(grant.expiryCap)
+		milliseconds := float64(capDuration) / float64(time.Millisecond)
+		capped.ExpectedExpiryMilliseconds = &milliseconds
+		variations = append(variations, capped)
+	}
+	if grant.refreshToken != "" {
+		keptRefreshToken := clone(" without refresh_token", "")
+		delete(keptRefreshToken.Response, "refresh_token")
+		delete(keptRefreshToken.Updates, grant.refreshToken)
+		variations = append(variations, keptRefreshToken)
+	}
+	return variations
+}
+
 // declaredGrant is one token request that a method declares.
 type declaredGrant struct {
-	name         string
-	methodLabel  string
-	method       schema.AuthMethod
-	kind         string
-	endpoint     schema.ValueSource
-	authMethod   schema.ValueSource
-	encoding     string
-	clientID     string
-	clientSecret string
-	refreshToken string
-	mappings     []schema.OAuthCredentialMapping
-	copies       []schema.CredentialCopy
+	responseScopeField                 string
+	scopeResourcePrefix                string
+	caseInsensitiveScopes              bool
+	scopeResourcePrefixCaseInsensitive bool
+	expiryCap                          string
+	accessTokenJWTExpiryFallback       string
+	responseURLValidation              *schema.ResponseURLValidation
+	refreshWhenCredentialBlank         string
+	name                               string
+	methodLabel                        string
+	method                             schema.AuthMethod
+	kind                               string
+	endpoint                           schema.ValueSource
+	authMethod                         schema.ValueSource
+	encoding                           string
+	clientID                           string
+	clientSecret                       string
+	refreshToken                       string
+	mappings                           []schema.OAuthCredentialMapping
+	copies                             []schema.CredentialCopy
 	// requestScopes are sent as the scope parameter or claim; responseScopes are what a successful response reports.
-	requestScopes  []string
-	responseScopes []string
-	terminalCodes  []string
-	missingExpiry  *schema.MissingExpiry
-	additional     map[string]string
-	jwtBearer      *schema.JWTBearerGrant
+	requestScopes           []string
+	responseScopes          []string
+	acceptedScopeSets       [][]string
+	scopeSeparators         string
+	terminalCodes           []string
+	acceptedTokenTypes      []string
+	acceptsMissingTokenType bool
+	exactScopes             bool
+	allowsPublicClient      bool
+	responseScopesPolicy    string
+	storedMissingExpiry     string
+	missingExpiry           *schema.MissingExpiry
+	additional              map[string]string
+	jwtBearer               *schema.JWTBearerGrant
 }
 
 // HasDeclaredTokenGrants reports whether any method of manifest refreshes or mints a token.
@@ -174,8 +642,27 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					name += " " + refreshGrant.RefreshTokenCredential
 				}
 				responseScopes := oauth.Scopes.List
+				if len(refresh.RequiredScopes) > 0 {
+					responseScopes = refresh.RequiredScopes
+				}
 				if refreshGrant.GrantedScopes == schema.UserScopes {
 					responseScopes = oauth.UserScopes
+				}
+				if len(refresh.AcceptedScopeSets) > 0 {
+					responseScopes = refresh.AcceptedScopeSets[0]
+				}
+				acceptedTokenTypes := refreshGrant.AcceptedTokenTypes
+				if len(acceptedTokenTypes) == 0 {
+					acceptedTokenTypes = refresh.AcceptedTokenTypes
+				}
+				acceptedTokenTypes = defaultStrings(acceptedTokenTypes, "Bearer")
+				acceptsMissingTokenType := refresh.AcceptsMissingTokenType
+				if refreshGrant.AcceptsMissingTokenType != nil {
+					acceptsMissingTokenType = *refreshGrant.AcceptsMissingTokenType
+				}
+				exactScopes := refresh.ExactScopes
+				if refreshGrant.ExactScopes != nil {
+					exactScopes = *refreshGrant.ExactScopes
 				}
 				grants = append(grants, declaredGrant{
 					name: name, methodLabel: label, method: method, kind: "refresh", endpoint: oauth.TokenEndpoint,
@@ -183,6 +670,20 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					clientID: oauth.ClientIDCredential, clientSecret: oauth.ClientSecretCredential, refreshToken: refreshGrant.RefreshTokenCredential,
 					mappings: refreshGrant.CredentialMappings, responseScopes: withoutString(responseScopes, offlineAccessScope),
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
+					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
+					acceptedScopeSets:                  refresh.AcceptedScopeSets,
+					responseScopesPolicy:               refresh.ResponseScopes,
+					responseScopeField:                 refresh.ResponseScopeField,
+					scopeResourcePrefix:                refresh.ScopeResourcePrefix,
+					caseInsensitiveScopes:              refresh.CaseInsensitiveScopes,
+					scopeResourcePrefixCaseInsensitive: refresh.ScopeResourcePrefixCaseInsensitive,
+					expiryCap:                          refresh.ExpiryCap,
+					accessTokenJWTExpiryFallback:       refresh.AccessTokenJWTExpiryFallback,
+					responseURLValidation:              refresh.ResponseURLValidation,
+					refreshWhenCredentialBlank:         refresh.RefreshWhenCredentialBlank,
+					storedMissingExpiry:                refresh.StoredMissingExpiry,
+					scopeSeparators:                    refresh.ScopeSeparators,
+					allowsPublicClient:                 refresh.AllowsPublicClient,
 				})
 			}
 		}
@@ -193,15 +694,25 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				clientID: clientCredentials.ClientIDCredential, clientSecret: clientCredentials.ClientSecretCredential, mappings: clientCredentials.CredentialMappings,
 				requestScopes: clientCredentials.Scopes, responseScopes: clientCredentials.Scopes,
 				terminalCodes: defaultStrings(clientCredentials.TerminalErrorCodes, "invalid_client"), missingExpiry: clientCredentials.MissingExpiry, additional: clientCredentials.AdditionalParameters,
+				acceptedTokenTypes: defaultStrings(clientCredentials.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: clientCredentials.AcceptsMissingTokenType,
+				responseScopesPolicy: clientCredentials.ResponseScopes, storedMissingExpiry: clientCredentials.StoredMissingExpiry, scopeSeparators: clientCredentials.ScopeSeparators,
 			})
 		}
 		if method.ServiceAccount != nil && method.ServiceAccount.JWTBearer != nil {
 			jwtBearer := method.ServiceAccount.JWTBearer
+			responseScopes := jwtBearer.Scopes
+			if len(jwtBearer.AcceptedScopeSets) > 0 {
+				responseScopes = jwtBearer.AcceptedScopeSets[0]
+			}
 			grants = append(grants, declaredGrant{
 				name: label + " jwtBearer", methodLabel: label, method: method, kind: "jwtBearer", endpoint: jwtBearer.TokenEndpoint,
 				encoding: schema.FormTokenRequestEncoding, mappings: jwtBearer.CredentialMappings, copies: jwtBearer.CredentialCopies,
-				requestScopes: jwtBearer.Scopes, responseScopes: jwtBearer.Scopes, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
+				requestScopes: jwtBearer.Scopes, responseScopes: responseScopes, acceptedScopeSets: jwtBearer.AcceptedScopeSets, scopeSeparators: jwtBearer.ScopeSeparators, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
 				missingExpiry: jwtBearer.MissingExpiry, jwtBearer: jwtBearer,
+				acceptedTokenTypes: defaultStrings(jwtBearer.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: jwtBearer.AcceptsMissingTokenType,
+				responseScopesPolicy: jwtBearer.ResponseScopes, storedMissingExpiry: jwtBearer.StoredMissingExpiry,
+				responseURLValidation:      jwtBearer.ResponseURLValidation,
+				refreshWhenCredentialBlank: jwtBearer.RefreshWhenCredentialBlank,
 			})
 		}
 	}
@@ -210,6 +721,9 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 
 // variants returns one variant for each value that a values map translates, or one variant without a fixed value.
 func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []grantVariant {
+	if grant.method.OAuth2 != nil && grant.method.OAuth2.TokenEndpointNetworkPolicy == "privateNetworkHTTP" && grant.endpoint.FromSetting != "" {
+		return []grantVariant{{}, {field: grant.endpoint.FromSetting, value: "http://127.0.0.1/token"}}
+	}
 	var translated []schema.ValueSource
 	translated = append(translated, grant.endpoint, grant.authMethod)
 	if grant.jwtBearer != nil {
@@ -238,13 +752,32 @@ func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []gran
 		}
 	}
 	if field == "" {
-		return []grantVariant{{}}
+		variants := []grantVariant{{}}
+		if grant.jwtBearer != nil {
+			for _, field := range grant.jwtBearer.TrimSpaceSources {
+				value := "  manifest-" + field + "  "
+				if grant.jwtBearer.Subject != nil && grant.jwtBearer.Subject.FromCredential == field {
+					value = "  " + sampleSubject + "  "
+				}
+				variants = append(variants, grantVariant{field: field, value: value})
+			}
+		}
+		return variants
 	}
 	variants := make([]grantVariant, 0, len(keys))
 	for key := range keys {
 		variants = append(variants, grantVariant{field: field, value: key})
 	}
 	sort.Slice(variants, func(left, right int) bool { return variants[left].value < variants[right].value })
+	if grant.jwtBearer != nil {
+		for _, field := range grant.jwtBearer.TrimSpaceSources {
+			value := "  manifest-" + field + "  "
+			if grant.jwtBearer.Subject != nil && grant.jwtBearer.Subject.FromCredential == field {
+				value = "  " + sampleSubject + "  "
+			}
+			variants = append(variants, grantVariant{field: field, value: value})
+		}
+	}
 	return variants
 }
 
@@ -263,7 +796,11 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		credentials[grant.clientSecret] = ""
 	}
 	resolve := func(source schema.ValueSource) (string, error) {
-		return resolveSampleSource(source, credentials, settings, agreement.sampleKeyMembers(grant, variant))
+		value, err := resolveSampleSource(source, credentials, settings, agreement.sampleKeyMembers(grant, variant))
+		if grant.jwtBearer != nil && source.FromCredential != "" && slices.Contains(grant.jwtBearer.TrimSpaceSources, source.FromCredential) {
+			value = strings.TrimSpace(value)
+		}
+		return value, err
 	}
 	endpoint, err := resolve(grant.endpoint)
 	if err != nil {
@@ -300,7 +837,7 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 	if len(agreement.manifest.Spec.Auth.Methods) > 0 {
 		generation.mustWrite("\t\t\tmethodID: %q,\n", grant.method.ID)
 	}
-	generation.mustWrite("\t\t\tcredentials: func(privateKeyPEM string) %s.Credentials {\n\t\t\t\treturn %s.Credentials{\n", agreement.connector, agreement.connector)
+	generation.mustWrite("\t\t\tcredentials: func(privateKeyPEM string, overrides map[string]string) %s.Credentials {\n\t\t\t\tcredentials := %s.Credentials{\n", agreement.connector, agreement.connector)
 	if len(agreement.manifest.Spec.Auth.Methods) > 0 {
 		generation.mustWrite("\t\t\t\t\tAuthMethodID: %q,\n", grant.method.ID)
 	}
@@ -317,7 +854,21 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		}
 		generation.mustWrite("\t\t\t\t\t%s: %s,\n", field.GoName, typedFieldExpression(agreement.connector, field, expression))
 	}
-	generation.mustWrite("\t\t\t\t}\n\t\t\t},\n")
+	generation.mustWrite("\t\t\t\t}\n")
+	for _, field := range agreement.manifest.Spec.Auth.Fields {
+		if !isStringLikeField(field) {
+			continue
+		}
+		generation.mustWrite("\t\t\t\tif value, ok := overrides[%q]; ok { credentials.%s = %s }\n", field.Name, field.GoName,
+			typedFieldExpression(agreement.connector, field, "value"))
+	}
+	generation.mustWrite("\t\t\t\treturn credentials\n\t\t\t},\n")
+	generation.mustWrite("\t\t\trefreshRequiredCases: []manifestRefreshRequiredCase{\n")
+	for _, refreshCase := range agreement.refreshRequiredCases(grant) {
+		generation.mustWrite("\t\t\t\t{name: %q, credentials: %s, expiresAt: %q, expected: %t, jwtAccessTokenCredential: %q, jwtExpiry: %q},\n",
+			refreshCase.Name, goStringMap(refreshCase.Credentials), refreshCase.ExpiresAt, refreshCase.Expected, refreshCase.JWTAccessTokenCredential, refreshCase.JWTExpiry)
+	}
+	generation.mustWrite("\t\t\t},\n")
 	if len(settings) > 0 {
 		generation.mustWrite("\t\t\tsettings: %s,\n", goStringMap(settings))
 	}
@@ -332,6 +883,24 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		}
 	}
 	generation.mustWrite("\t\t\tresponse: %s,\n", goAnyMap(response))
+	if !isPublicClient || grant.allowsPublicClient {
+		generation.mustWrite("\t\t\tvariations: []manifestVariation{\n")
+		for _, variation := range agreement.responseVariations(RefreshAgreementCase{Response: response, Credentials: credentials, Updates: updates}, grant) {
+			expectedExpiry := float64(0)
+			if variation.ExpectedExpiryMilliseconds != nil {
+				expectedExpiry = *variation.ExpectedExpiryMilliseconds
+			}
+			credentialsOverride := map[string]string{}
+			for name, value := range variation.Credentials {
+				if credentials[name] != value {
+					credentialsOverride[name] = value
+				}
+			}
+			generation.mustWrite("\t\t\t\t{name: %q, response: %s, credentials: %s, updates: %s, expectedError: %q, expectedExpiry: time.Duration(%d), checkExpiry: %t},\n",
+				variation.Name, goAnyMap(variation.Response), goStringMap(credentialsOverride), goStringMap(variation.Updates), variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)), variation.ExpectedExpiryMilliseconds != nil)
+		}
+		generation.mustWrite("\t\t\t},\n")
+	}
 	generation.mustWrite("\t\t\tupdates: %s,\n", goStringMap(updates))
 	if grant.refreshToken != "" {
 		generation.mustWrite("\t\t\trefreshToken: %q,\n", grant.refreshToken)
@@ -344,7 +913,7 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		}
 		generation.mustWrite("\t\t\tmissingExpiry: time.Duration(%d),\n", lifetime)
 	}
-	if isPublicClient {
+	if isPublicClient && !grant.allowsPublicClient {
 		generation.mustWrite("\t\t\tmayRefuseWithoutRequest: true,\n")
 	}
 	generation.mustWrite("\t\t},\n")
@@ -416,6 +985,19 @@ func (agreement *refreshAgreementGenerator) sampleCredentials(grant declaredGran
 			credentials[mapping.Credential] = sampleAccessToken
 		case "refresh_token":
 			credentials[mapping.Credential] = sampleRefreshToken
+		}
+	}
+	if rule := grant.responseURLValidation; rule != nil {
+		for _, mapping := range grant.mappings {
+			if mapping.Credential == rule.Credential {
+				if responseValue := sample.Response[mapping.Source]; responseValue != "" {
+					credentials[rule.Credential] = responseValue
+				} else if rule.DefaultURL != "" {
+					credentials[rule.Credential] = rule.DefaultURL
+				} else {
+					credentials[rule.Credential] = "https://manifest.example.com"
+				}
+			}
 		}
 	}
 	for _, placeholder := range agreement.templatePlaceholders(grant) {
@@ -520,9 +1102,13 @@ func (agreement *refreshAgreementGenerator) sampleKeyMembers(grant declaredGrant
 
 // sampleResponse returns a successful token response and the credential values it must leave behind.
 func (agreement *refreshAgreementGenerator) sampleResponse(grant declaredGrant, credentials map[string]string, sample RefreshAgreementSample) (map[string]any, map[string]string) {
-	response := map[string]any{"token_type": "Bearer", "expires_in": sampleExpiresInSecond}
+	response := map[string]any{"token_type": grant.acceptedTokenTypes[0], "expires_in": sampleExpiresInSecond}
 	if len(grant.responseScopes) > 0 {
-		response["scope"] = strings.Join(grant.responseScopes, " ")
+		if grant.responseScopeField == "scopesArray" {
+			response["scopes"] = grant.responseScopes
+		} else {
+			response["scope"] = strings.Join(grant.responseScopes, " ")
+		}
 	}
 	updates := map[string]string{}
 	for _, mapping := range grant.mappings {
@@ -852,6 +1438,12 @@ func goAnyMap(values map[string]any) string {
 			expression = strconv.Itoa(value)
 		case map[string]any:
 			expression = goAnyMap(value)
+		case []string:
+			quoted := make([]string, len(value))
+			for index, item := range value {
+				quoted[index] = strconv.Quote(item)
+			}
+			expression = "[]string{" + strings.Join(quoted, ", ") + "}"
 		default:
 			panic(fmt.Sprintf("unsupported token response value %T", value))
 		}

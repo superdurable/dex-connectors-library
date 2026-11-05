@@ -95,8 +95,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Discord stored credential does not match the connector credential fields")
+        if set(material) - set(('bot_token',)):
+            raise ValueError("Discord stored credential does not match the connector credential fields")
         bot_token = material.get("bot_token")
-        if not isinstance(bot_token, str) or not bot_token:
+        if bot_token is not None and not (isinstance(bot_token, str)):
+            raise ValueError("Discord credential bot_token has an invalid type")
+        if not bot_token:
             raise ValueError("Discord credential bot_token is required")
         return Credentials(SecretString(bot_token))
 

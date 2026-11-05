@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Non-secret Account SID from https://console.twilio.com > Account Dashboard > Account Info; it is AC followed by 32 hexadecimal characters and names the account or subaccount that owns the sender and every sent message. Required: both authentication methods send it in the Messages API path. */
@@ -42,19 +76,21 @@ export interface Credentials {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["auth_method", "api_key_sid", "api_key_secret", "auth_token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_key_sid"] != null && !(typeof fields["api_key_sid"] === 'string')) throw new TypeError("credential api_key_sid has an invalid type");
+  if (fields["api_key_secret"] != null && !(typeof fields["api_key_secret"] === 'string')) throw new TypeError("credential api_key_secret has an invalid type");
+  if (fields["auth_token"] != null && !(typeof fields["auth_token"] === 'string')) throw new TypeError("credential auth_token has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
   const method = selectedMethod || "auth-token";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "auth-token") {
-    if (fields["auth_token"] != null && typeof fields["auth_token"] !== 'string') throw new TypeError("credential auth_token has an invalid type");
     if (!fields["auth_token"]) throw new TypeError("credential auth_token is required");
     if (fields["auth_token"]) credentials.authToken = new SecretString(fields["auth_token"] as string);
   } else if (method === "api-key") {
-    if (fields["api_key_sid"] != null && typeof fields["api_key_sid"] !== 'string') throw new TypeError("credential api_key_sid has an invalid type");
     if (!fields["api_key_sid"]) throw new TypeError("credential api_key_sid is required");
     if (fields["api_key_sid"]) credentials.apiKeySid = fields["api_key_sid"] as string;
-    if (fields["api_key_secret"] != null && typeof fields["api_key_secret"] !== 'string') throw new TypeError("credential api_key_secret has an invalid type");
     if (!fields["api_key_secret"]) throw new TypeError("credential api_key_secret is required");
     if (fields["api_key_secret"]) credentials.apiKeySecret = new SecretString(fields["api_key_secret"] as string);
   } else {
@@ -145,9 +181,9 @@ export const MessageSchema = z.strictObject({
   "mediaCount": z.number().int().optional(),
   "price": z.string().optional(),
   "priceUnit": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "sentAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeJSONSchema,
+  "sentAt": GoTimeJSONSchema,
+  "updatedAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<Message>;
 
 /** Runtime validator for GetMessageInput. */

@@ -79,11 +79,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Mixpanel stored credential does not match the connector credential fields")
+        if set(material) - set(('service_account_username', 'service_account_secret')):
+            raise ValueError("Mixpanel stored credential does not match the connector credential fields")
         service_account_username = material.get("service_account_username")
-        if not isinstance(service_account_username, str) or not service_account_username:
-            raise ValueError("Mixpanel credential service_account_username is required")
+        if service_account_username is not None and not (isinstance(service_account_username, str)):
+            raise ValueError("Mixpanel credential service_account_username has an invalid type")
         service_account_secret = material.get("service_account_secret")
-        if not isinstance(service_account_secret, str) or not service_account_secret:
+        if service_account_secret is not None and not (isinstance(service_account_secret, str)):
+            raise ValueError("Mixpanel credential service_account_secret has an invalid type")
+        if not service_account_username:
+            raise ValueError("Mixpanel credential service_account_username is required")
+        if not service_account_secret:
             raise ValueError("Mixpanel credential service_account_secret is required")
         return Credentials(SecretString(service_account_username), SecretString(service_account_secret))
 

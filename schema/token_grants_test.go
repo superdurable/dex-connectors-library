@@ -5,12 +5,154 @@ package schema_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+func TestDecodedProviderTokenResponseRules(t *testing.T) {
+	for _, test := range []struct {
+		path            string
+		missingType     bool
+		exactScopes     bool
+		scopeSeparators string
+		grantTokenTypes []string
+	}{
+		{path: "slack", scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma, grantTokenTypes: []string{"bot", "user"}},
+		{path: "linkedin", missingType: true, exactScopes: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
+		{path: "atlassian/jira", missingType: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
+		{path: "atlassian/confluence", missingType: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
+		{path: "atlassian/jira-service-management", missingType: true, scopeSeparators: schema.ScopeSeparatorsWhitespaceAndComma},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			file, err := os.Open(filepath.Join("..", "connectors", test.path, "connector.yaml"))
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			method := manifest.Spec.Auth.AuthMethods()[0]
+			refresh := method.OAuth2.Refresh
+			require.Equal(t, test.missingType, refresh.AcceptsMissingTokenType)
+			require.Equal(t, test.exactScopes, refresh.ExactScopes)
+			require.Equal(t, test.scopeSeparators, refresh.ScopeSeparators)
+			if len(test.grantTokenTypes) > 0 {
+				require.Len(t, refresh.Grants, len(test.grantTokenTypes))
+				for index, tokenType := range test.grantTokenTypes {
+					require.Equal(t, []string{tokenType}, refresh.Grants[index].AcceptedTokenTypes)
+					require.NotNil(t, refresh.Grants[index].ExactScopes)
+					require.True(t, *refresh.Grants[index].ExactScopes)
+				}
+			}
+		})
+	}
+}
+
+func TestOAuthAlternativeScopesAndDelegatedSubjectDeclarations(t *testing.T) {
+	decodeConnector := func(directory string) schema.Manifest {
+		manifestFile, err := os.Open(filepath.Join("..", "connectors", directory, "connector.yaml"))
+		require.NoError(t, err)
+		defer manifestFile.Close()
+		manifest, err := schema.Decode(manifestFile)
+		require.NoError(t, err)
+		return manifest
+	}
+	youtube := decodeConnector("google/youtube")
+	readOnly := youtube.Spec.Auth.Methods[0].OAuth2.Refresh
+	require.Equal(t, [][]string{{"https://www.googleapis.com/auth/youtube.readonly"}, {"https://www.googleapis.com/auth/youtube"}}, readOnly.AcceptedScopeSets)
+	salesforce := decodeConnector("salesforce")
+	require.Equal(t, [][]string{{"api"}, {"full"}}, salesforce.Spec.Auth.Methods[0].OAuth2.Refresh.AcceptedScopeSets)
+	require.Equal(t, [][]string{{"api"}, {"full"}}, salesforce.Spec.Auth.Methods[2].ServiceAccount.JWTBearer.AcceptedScopeSets)
+	for _, connector := range []string{"calendar", "docs", "drive", "forms"} {
+		manifest := decodeConnector("google/" + connector)
+		for _, method := range manifest.Spec.Auth.Methods {
+			if method.ServiceAccount != nil {
+				require.Equal(t, "goMailAddress", method.ServiceAccount.JWTBearer.SubjectValidation)
+			}
+		}
+	}
+}
+
+func TestMissingExpiryRejectRoundTrips(t *testing.T) {
+	var policy schema.MissingExpiry
+	require.NoError(t, json.Unmarshal([]byte(`"reject"`), &policy))
+	require.True(t, policy.Reject)
+	encoded, err := json.Marshal(policy)
+	require.NoError(t, err)
+	require.JSONEq(t, `"reject"`, string(encoded))
+	require.ErrorContains(t, json.Unmarshal([]byte(`"unknown"`), &policy), "missingExpiry")
+	manifestFile, err := os.Open(filepath.Join("..", "connectors", "helpscout", "connector.yaml"))
+	require.NoError(t, err)
+	defer manifestFile.Close()
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	require.True(t, manifest.Spec.Auth.ClientCredentials.MissingExpiry.Reject)
+}
+
+func TestGrantExactScopesFalseSurvivesJSONEncoding(t *testing.T) {
+	falseValue := false
+	encoded, err := json.Marshal(schema.OAuthRefreshGrant{ExactScopes: &falseValue})
+	require.NoError(t, err)
+	require.Contains(t, string(encoded), `"exactScopes":false`)
+}
+
+func TestResponseScopePolicyAndScopeSetValidation(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "connectors", "salesforce", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	refresh := manifest.Spec.Auth.Methods[0].OAuth2.Refresh
+	refresh.ResponseScopes = schema.ResponseScopesIgnore
+	require.ErrorContains(t, manifest.Validate(), "responseScopes ignore cannot declare requiredScopes, exactScopes, or scopeSeparators")
+	refresh.ResponseScopes = "unknown"
+	require.ErrorContains(t, manifest.Validate(), "responseScopes must be ignore")
+	refresh.ResponseScopes = ""
+	refresh.AcceptedScopeSets = [][]string{{"api", "full"}, {"full", "api"}}
+	require.ErrorContains(t, manifest.Validate(), "must not repeat a scope set")
+	refresh.AcceptedScopeSets = [][]string{{"api"}}
+	refresh.RequiredScopes = []string{"api"}
+	require.ErrorContains(t, manifest.Validate(), "cannot combine requiredScopes and acceptedScopeSets")
+}
+
+func TestInvalidRefreshScopeSeparatorsAreRejected(t *testing.T) {
+	contents, err := os.ReadFile("../connectors/atlassian/jira/connector.yaml")
+	require.NoError(t, err)
+	invalid := strings.Replace(string(contents), "scopeSeparators: whitespaceAndComma", "scopeSeparators: comma", 1)
+	_, err = schema.Decode(strings.NewReader(invalid))
+	require.ErrorContains(t, err, "scopeSeparators")
+}
+
+func TestNewRefreshDeclarationsRejectInvalidValues(t *testing.T) {
+	manifestFile, err := os.Open("../connectors/hubspot/connector.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	refresh := manifest.Spec.Auth.Methods[1].OAuth2.Refresh
+	refresh.ResponseScopeField = "unknown"
+	require.ErrorContains(t, manifest.Validate(), "responseScopeField must be scope or scopesArray")
+	refresh.ResponseScopeField = "scopesArray"
+	refresh.ExpiryCap = "-1h"
+	require.ErrorContains(t, manifest.Validate(), "expiryCap must be a positive duration")
+	refresh.ExpiryCap = ""
+	refresh.ScopeResourcePrefixCaseInsensitive = true
+	require.ErrorContains(t, manifest.Validate(), "scopeResourcePrefixCaseInsensitive requires scopeResourcePrefix")
+	refresh.ScopeResourcePrefixCaseInsensitive = false
+	refresh.ResponseURLValidation = &schema.ResponseURLValidation{Credential: "access_token", AllowedHosts: []string{"example.com"}}
+	require.ErrorContains(t, manifest.Validate(), "responseURLValidation credential must name a URL or string credential")
+	refresh.ResponseURLValidation = &schema.ResponseURLValidation{Credential: "instance_url", AllowedHosts: []string{"example.com"}, AllowAnyHTTPS: true}
+	require.ErrorContains(t, manifest.Validate(), "cannot combine allowAnyHTTPS and allowedHosts")
+	refresh.ResponseURLValidation = nil
+	refresh.RefreshWhenCredentialBlank = "oauth_client_id"
+	require.ErrorContains(t, manifest.Validate(), "refreshWhenCredentialBlank must name a mapped credential field")
+	refresh.RefreshWhenCredentialBlank = ""
+	refresh.ExpiryCap = "30m"
+	require.NoError(t, manifest.Validate())
+}
 
 func TestDecodeTokenGrantDeclarations(t *testing.T) {
 	manifest := decodeFixture(t, "token-grants.yaml")
@@ -25,6 +167,7 @@ func TestDecodeTokenGrantDeclarations(t *testing.T) {
 	require.Equal(t, &schema.OAuthRefresh{
 		TerminalErrorCodes:   []string{"invalid_grant", "invalid_client"},
 		MissingExpiry:        &schema.MissingExpiry{Lifetime: "2h"},
+		StoredMissingExpiry:  schema.StoredMissingExpiryRefresh,
 		AdditionalParameters: map[string]string{"scope": "offline_access files.read"},
 	}, userOAuth.Refresh)
 
@@ -63,10 +206,13 @@ func TestTokenGrantDeclarationsMarshalForReleaseConsumers(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(encoded, &methods))
 	require.Equal(t, map[string]any{"lifetime": "2h"}, methods[0].OAuth2.Refresh["missingExpiry"])
+	require.Equal(t, "refresh", methods[0].OAuth2.Refresh["storedMissingExpiry"])
 	require.Equal(t, "keep", methods[1].OAuth2.Refresh["missingExpiry"])
 	require.Equal(t, map[string]any{"template": "https://login.example.com/{tenant_id}/token"}, methods[2].ClientCredentials["tokenEndpoint"])
+	require.Equal(t, "refresh", methods[2].ClientCredentials["storedMissingExpiry"])
 	require.Equal(t, map[string]any{"fromKey": "client_email"}, methods[3].ServiceAccount.JWTBearer["issuer"])
 	require.Equal(t, "1h", methods[3].ServiceAccount.JWTBearer["lifetime"])
+	require.Equal(t, "refresh", methods[3].ServiceAccount.JWTBearer["storedMissingExpiry"])
 
 	literal, err := json.Marshal(schema.ValueSource{Value: "https://login.example.com/token"})
 	require.NoError(t, err)
@@ -96,7 +242,10 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		}, problem: "tokenRequestEncoding must be form or json"},
 		"a missing expiry that is neither keep nor a lifetime": {edits: []manifestEdit{
 			{"missingExpiry: keep", "missingExpiry: refresh"},
-		}, problem: "missingExpiry must be keep or {lifetime: <duration>}"},
+		}, problem: "missingExpiry must be reject, keep, or {lifetime: <duration>}"},
+		"an unknown stored missing expiry policy": {edits: []manifestEdit{
+			{"storedMissingExpiry: refresh", "storedMissingExpiry: never"},
+		}, problem: "storedMissingExpiry must be keep, refresh, or refreshIfRefreshTokenPresent"},
 		"a negative missing expiry lifetime": {edits: []manifestEdit{
 			{"missingExpiry: {lifetime: 2h}\n            additionalParameters", "missingExpiry: {lifetime: -2h}\n            additionalParameters"},
 		}, problem: "missingExpiry lifetime must be a positive duration"},
