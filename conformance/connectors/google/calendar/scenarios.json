@@ -1,0 +1,3936 @@
+{
+  "connector": "google/calendar",
+  "scenarios": [
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "20"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Meridian"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-24T12:00:00-08:00"
+            ],
+            "timeMin": [
+              "2026-02-24T08:00:00-08:00"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 20,
+        "pageToken": "next-page",
+        "query": "Meridian",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents retry 429",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "20"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Meridian"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-24T12:00:00-08:00"
+            ],
+            "timeMin": [
+              "2026-02-24T08:00:00-08:00"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 20,
+        "pageToken": "next-page",
+        "query": "Meridian",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents retry 503",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "20"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Meridian"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-24T12:00:00-08:00"
+            ],
+            "timeMin": [
+              "2026-02-24T08:00:00-08:00"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 20,
+        "pageToken": "next-page",
+        "query": "Meridian",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents transport",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent retry 429",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent retry 503",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent transport",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent retry 429",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent retry 503",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent transport",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent retry 429",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent retry 503",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent transport",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              },
+              {
+                "id": "alice@example.com"
+              }
+            ],
+            "timeMax": "2026-02-24T12:00:00-08:00",
+            "timeMin": "2026-02-24T08:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary",
+          "alice@example.com"
+        ],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy retry 429",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              },
+              {
+                "id": "alice@example.com"
+              }
+            ],
+            "timeMax": "2026-02-24T12:00:00-08:00",
+            "timeMin": "2026-02-24T08:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary",
+          "alice@example.com"
+        ],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy retry 503",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              },
+              {
+                "id": "alice@example.com"
+              }
+            ],
+            "timeMax": "2026-02-24T12:00:00-08:00",
+            "timeMin": "2026-02-24T08:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary",
+          "alice@example.com"
+        ],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy transport",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [
+        {
+          "body": "{\"timeZone\":\"America/Los_Angeles\",\"items\":[{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}],\"nextPageToken\":\"next-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "20"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Meridian"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-24T12:00:00-08:00"
+            ],
+            "timeMin": [
+              "2026-02-24T08:00:00-08:00"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "calendarId": "primary",
+          "events": [
+            {
+              "calendarId": "primary",
+              "end": {
+                "dateTime": "2026-02-24T10:00:00-08:00",
+                "timeZone": "America/Los_Angeles"
+              },
+              "etag": "\"etag-1\"",
+              "id": "event12345",
+              "isAllDay": false,
+              "start": {
+                "dateTime": "2026-02-24T09:00:00-08:00",
+                "timeZone": "America/Los_Angeles"
+              },
+              "status": "confirmed",
+              "summary": "Meridian kickoff",
+              "transparency": "opaque"
+            }
+          ],
+          "nextPageToken": "next-2",
+          "timeMax": "2026-02-24T12:00:00-08:00",
+          "timeMin": "2026-02-24T08:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 20,
+        "pageToken": "next-page",
+        "query": "Meridian",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents listed",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "20"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Meridian"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-24T12:00:00-08:00"
+            ],
+            "timeMin": [
+              "2026-02-24T08:00:00-08:00"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 20,
+        "pageToken": "next-page",
+        "query": "Meridian",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents not found",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"requiredAccessLevel\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "20"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Meridian"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-24T12:00:00-08:00"
+            ],
+            "timeMin": [
+              "2026-02-24T08:00:00-08:00"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 20,
+        "pageToken": "next-page",
+        "query": "Meridian",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents rejected",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"bad\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "20"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Meridian"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-24T12:00:00-08:00"
+            ],
+            "timeMin": [
+              "2026-02-24T08:00:00-08:00"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 20,
+        "pageToken": "next-page",
+        "query": "Meridian",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents invalid",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "9da0908d-8a7d-52ed-8e2e-32c440da8057",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "",
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00"
+      },
+      "name": "listEvents defect",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "calendarId": "primary",
+          "end": {
+            "dateTime": "2026-02-24T10:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "etag": "\"etag-1\"",
+          "id": "event12345",
+          "isAllDay": false,
+          "start": {
+            "dateTime": "2026-02-24T09:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "status": "confirmed",
+          "summary": "Meridian kickoff",
+          "transparency": "opaque"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent found",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent not found",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent rejected",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent invalid",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ae342b0a-ff4f-5f0d-9e21-dadb1e927f5a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "",
+        "eventId": "event12345"
+      },
+      "name": "getEvent defect",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "\"etag-1\"",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Meridian kickoff",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent inserted",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "\"etag-1\"",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Meridian kickoff",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent already exists",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"cancelled\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "end": {},
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {},
+            "status": "cancelled",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent conflict deleted",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent rejected",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"id\":\"other12345\",\"status\":\"confirmed\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent invalid",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bad",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "bad",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent defect",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Updated meeting\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\",\"description\":\"New agenda\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "description": "New agenda",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "\"etag-1\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "description": "New agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "\"etag-1\"",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Updated meeting",
+            "transparency": "opaque"
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent patched",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Updated meeting\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\",\"description\":\"New agenda\",\"attendees\":[{\"email\":\"alice@example.com\",\"optional\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "isOptional": true,
+                "isOrganizer": false,
+                "isResource": false,
+                "isSelf": false
+              }
+            ],
+            "calendarId": "primary",
+            "description": "New agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "\"etag-1\"",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Updated meeting",
+            "transparency": "opaque"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent already applied",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent not found",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent rejected",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent invalid",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345"
+      },
+      "name": "updateEvent defect",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [
+        {
+          "body": "{\"calendars\":{\"primary\":{\"busy\":[{\"start\":\"2026-02-24T09:00:00-08:00\",\"end\":\"2026-02-24T10:00:00-08:00\"}]},\"alice@example.com\":{\"busy\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              },
+              {
+                "id": "alice@example.com"
+              }
+            ],
+            "timeMax": "2026-02-24T12:00:00-08:00",
+            "timeMin": "2026-02-24T08:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "calendars": [
+            {
+              "busy": [
+                {
+                  "end": "2026-02-24T10:00:00-08:00",
+                  "start": "2026-02-24T09:00:00-08:00"
+                }
+              ],
+              "calendarId": "primary"
+            },
+            {
+              "busy": [],
+              "calendarId": "alice@example.com"
+            }
+          ],
+          "timeMax": "2026-02-24T12:00:00-08:00",
+          "timeMin": "2026-02-24T08:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary",
+          "alice@example.com"
+        ],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy queried",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [
+        {
+          "body": "{\"calendars\":{\"primary\":{\"busy\":[],\"errors\":[{\"domain\":\"global\",\"reason\":\"notFound\"}]},\"alice@example.com\":{\"busy\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              },
+              {
+                "id": "alice@example.com"
+              }
+            ],
+            "timeMax": "2026-02-24T12:00:00-08:00",
+            "timeMin": "2026-02-24T08:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "incomplete",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "calendars": [
+            {
+              "busy": [],
+              "calendarId": "primary",
+              "errors": [
+                {
+                  "domain": "global",
+                  "reason": "notFound"
+                }
+              ]
+            },
+            {
+              "busy": [],
+              "calendarId": "alice@example.com"
+            }
+          ],
+          "timeMax": "2026-02-24T12:00:00-08:00",
+          "timeMin": "2026-02-24T08:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary",
+          "alice@example.com"
+        ],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy incomplete",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              },
+              {
+                "id": "alice@example.com"
+              }
+            ],
+            "timeMax": "2026-02-24T12:00:00-08:00",
+            "timeMin": "2026-02-24T08:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "calendars": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary",
+          "alice@example.com"
+        ],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy rejected",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [
+        {
+          "body": "{\"calendars\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              },
+              {
+                "id": "alice@example.com"
+              }
+            ],
+            "timeMax": "2026-02-24T12:00:00-08:00",
+            "timeMin": "2026-02-24T08:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "calendars": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary",
+          "alice@example.com"
+        ],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy invalid",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "33019b5e-c348-5c45-8323-f2373559b367",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "calendars": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [],
+        "timeMax": "2026-02-24T12:00:00-08:00",
+        "timeMin": "2026-02-24T08:00:00-08:00"
+      },
+      "name": "queryFreeBusy defect",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent insert retry 429",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "description": "New agenda",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "\"etag-1\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent patch retry 429",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent insert retry 503",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "description": "New agenda",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "\"etag-1\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent patch retry 503",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent insert transport after send",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "description": "New agenda",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "\"etag-1\""
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent patch transport after send",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent conflict readback missing",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent conflict readback retry 429",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent conflict readback retry 503",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Meridian kickoff"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "\"etag-1\"",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Meridian kickoff",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Meridian kickoff"
+      },
+      "name": "createEvent conflict readback found",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Meridian kickoff\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"\\\"etag-1\\\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "alice@example.com",
+                "optional": true
+              }
+            ],
+            "description": "New agenda",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated meeting"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "\"etag-1\""
+            ]
+          },
+          "status": 412
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "alice@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated meeting"
+      },
+      "name": "updateEvent precondition changed",
+      "operation": "updateEvent"
+    }
+  ],
+  "schemaVersion": 1
+}
