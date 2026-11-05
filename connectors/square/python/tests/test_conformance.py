@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Replay Go-recorded Square provider scenarios through the Python package."""
+"""Replay Go-recorded square provider exchanges."""
 
 import sys
 from pathlib import Path
@@ -8,7 +8,7 @@ from pathlib import Path
 import dex_connectors.sdk as sdk
 import pytest
 
-import dex_connectors.square as square
+import dex_connectors.square as connector
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
@@ -19,21 +19,23 @@ CONNECTION = sdk.ConnectionRef("square", "square")
 ADAPTER = conformance.PythonOperationAdapter(
     "square",
     CONNECTION,
-    square,
-    lambda client, recorder: square.Client(
-        square.Config(base_url="http://127.0.0.1:28711/v2"),
+    connector,
+    lambda http_client, recorder: connector.Client(
+        connector.Config(base_url="http://127.0.0.1:12345"),
         conformance.static_credentials(
             CONNECTION,
-            square.Credentials(
-                sdk.SecretString("" if recorder.scenario["name"] == "listPayments-defect" else "test-token")
+            connector.Credentials(
+                access_token=sdk.SecretString(
+                    "" if recorder.scenario["name"] == "listPayments-defect" else "test-token"
+                )
             ),
         ),
-        client,
+        http_client,
     ),
 )
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
-    """Check provider requests and operation outcomes against Go."""
+    """Compare provider requests and SDK outcomes with Go."""
     await conformance.replay(scenario, ADAPTER.invoke)

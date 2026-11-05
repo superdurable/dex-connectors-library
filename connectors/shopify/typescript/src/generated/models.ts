@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -26,6 +27,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret Admin API access token of an existing admin-created custom app at https://admin.shopify.com > Settings > Apps and sales channels > Develop apps > the app > API credentials. It is an opaque token sent only in X-Shopify-Access-Token. Blank prevents calls. New admin-created custom apps are unavailable. */
   accessToken: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["access_token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+  credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

@@ -111,6 +111,25 @@ names to apply the same guard.
 (including named byte elements) are base64 strings. `json.RawMessage` or `any` is unknown. A named
 type with both `MarshalJSON` and `UnmarshalJSON` is an opaque JSON value;
 unsupported tag options and other custom marshalers stop generation.
+Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`: they accept
+comma fractions, fractional precision beyond nine digits (which Go truncates),
+and offsets with minute `60` or hour `24`. For values Go can marshal, generated
+string models emit the exact `time.Time.MarshalJSON` spelling. Go itself cannot
+marshal offsets of 24 hours or more; string models retain those accepted inputs.
+
+Python packages that need all nine fractional timestamp digits set
+`spec.languages.python.timestampFormat: rfc3339Nano`. Generated `time.Time`
+fields then use RFC 3339 strings. The generated constructor accepts aware
+`datetime` values at runtime and formats them as Go does; strings retain all
+nanoseconds and are validated and canonicalized. Default `datetime` models
+also parse Go-accepted strings at construction, but raise a field-named error
+for year zero, offsets of 24 hours or more, or nonzero precision beyond six
+fractional digits because Python `datetime` cannot preserve those values.
+Result decoding retains the
+canonical string. A defaulted zero time is `0001-01-01T00:00:00Z`. This is an
+opt-in public model type change; existing packages keep their `datetime` fields
+until their own release chooses it. TypeScript already uses ISO datetime strings
+and keeps all fractional digits.
 Go `int64` values use TypeScript `number`; applications must keep them within
 JavaScript's exact integer range (±(2^53−1)). Generated definitions, branch IDs, operation-specific object
 factories, connection helpers, and mock cases come from `connector.yaml`.
@@ -135,6 +154,13 @@ credential decoding. Re-export generated contracts where they match and keep
 the adapter's exported names stable. The checked-in runnable examples remain
 the consuming application for each package; changing generated Step or mock
 behavior requires running that package's TypeScript checks and example tests.
+
+Generated Python project connections for manifests with a
+`privateNetworkHTTP` token endpoint create a DNS-pinned policy client and reject
+an injected `http_client`. The policy client is also used by the generated
+operation adapter. Generated TypeScript project connections do not inject a
+refresh `fetch`; application refresh drivers must leave `fetch` unset for this
+policy so the SDK uses its pinned transport.
 
 The Python build backend must include the JSON as package data: in the source
 and sdist under `src/dex_connectors/<slug_with_underscores>/`, and in the wheel
@@ -334,7 +360,9 @@ Use `auth.methods` when one named connection can use more than one provider
 authentication model. Every method has a stable lowercase kebab-case ID, such
 as `google-oauth`, its own fields, guide, and optional OAuth metadata.
 `defaultMethod` must identify the method the setup UI selects first; mark at
-most one method `recommended`.
+most one method `recommended`. The same declaration selects the method when
+an older stored credential has a blank or absent `auth_method`; generated Go,
+Python, and TypeScript decoders use it before validating method fields.
 
 ```yaml
 auth:
@@ -503,13 +531,23 @@ Every grant shares these rules:
 - `credentialMappings` map the response into credential fields by dotted JSON
   path. A mapped value that the response omits keeps the stored one, so a
   provider that does not rotate its refresh token keeps it.
-- `missingExpiry` decides the expiry of a token whose response has no
-  `expires_in`: `keep`, the default, stores it without an expiry, so the host
-  replaces it only after the provider rejects it; `{lifetime: 2h}` sets one.
+- `missingExpiry` decides what a successful token response without a positive
+  `expires_in` means. `reject` (also the default) treats it as a retryable
+  malformed response; `keep` stores it without an expiry; `{lifetime: 2h}`
+  assigns one. Declare `reject` when matching a Go driver that requires expiry.
+- `storedMissingExpiry` independently decides whether an existing access token
+  without recorded expiry is refreshed: `keep` is the default, and `refresh`
+  exchanges it before a provider request. Declare it on each refresh,
+  client-credentials, or JWT-bearer grant to match the Go driver.
 - `additionalParameters` are fixed, non-secret parameters added to every
   request. They cannot replace `grant_type`, `refresh_token`, `client_id`,
   `client_secret`, `assertion`, `client_assertion`, or
   `client_assertion_type`.
+- `acceptedTokenTypes` lists successful `token_type` values, compared without
+  case; it defaults to `Bearer`. `acceptsMissingTokenType: true` permits a
+  successful response without that member. Declare these at the refresh level
+  or on an individual refresh grant; client-credentials and JWT bearer grants
+  declare their own token response rules.
 
 [schema/testdata/token-grants.yaml](../schema/testdata/token-grants.yaml)
 declares each grant.
@@ -554,7 +592,7 @@ oauth2:
 ```
 
 Without `refresh`, a method that maps `refresh_token` refreshes with
-`terminalErrorCodes: [invalid_grant]`, `missingExpiry: keep`, and no
+`terminalErrorCodes: [invalid_grant]`, `missingExpiry: reject`, and no
 additional parameters.
 
 The scopes of a refresh response follow RFC 6749 section 5.1:
@@ -564,6 +602,63 @@ The scopes of a refresh response follow RFC 6749 section 5.1:
 - a response that reports scopes that no longer cover the declared `scopes`
   needs reauthorization, as a terminal error code does. Providers that never
   report `offline_access` need not report it.
+
+`refresh.requiredScopes` replaces the authorization scope set checked on a
+refresh response when a provider reports only API scopes, as Gmail does.
+Match this list to the Go driver's required set; authorization can request
+optional picker scopes that a refreshed token need not retain.
+`refresh.acceptedScopeSets` replaces that single required set with alternatives:
+the returned scopes must contain every member of at least one listed set. For
+example, YouTube read-only refresh accepts either `youtube.readonly` or the
+broader `youtube` scope. An omitted response scope remains accepted unless
+`exactScopes` is true. A JWT bearer grant may use `acceptedScopeSets` for its
+response without changing the scopes signed into its assertion.
+Do not combine `requiredScopes` with `acceptedScopeSets`. Scope sets are unique
+regardless of their order.
+Returned scopes are checked by default for refresh, client-credentials, and
+JWT-bearer grants. Declare `responseScopes: ignore` on a refresh block or
+minting grant only when its Go credential driver ignores reported scopes.
+The generated agreement always sends a different reported scope to verify this
+decision.
+Use `scopeSeparators: whitespaceAndComma` on that grant when its Go driver
+accepts comma-separated scope responses.
+`refresh.responseScopeField: scopesArray` checks a provider's `scopes` JSON
+array, as HubSpot does. Each array element is one scope name; a comma inside
+an element is not a separator. `scopeResourcePrefix` removes a declared resource URI
+from each returned scope, and `caseInsensitiveScopes` compares names without
+case for Microsoft Graph. `scopeResourcePrefixCaseInsensitive` also removes
+an uppercase prefix when the Go driver accepts it. `clientCredentials.scopeSeparators` applies the same
+comma-aware parsing to client-credentials grants.
+`refresh.expiryCap` limits a reported lifetime. A grant with
+`accessTokenJWTExpiryFallback` reads the access token JWT `exp` for an undated
+stored token and a response without `expires_in`; an unreadable or past claim
+uses the declared fallback lifetime after refresh.
+`refresh.refreshWhenCredentialBlank` checks a mapped credential along with the
+access token. `responseURLValidation` declares the mapped URL credential,
+accepted hosts or suffix, loopback policy, optional production default, and
+whether a response is required. It validates returned and reused values before
+storage; `refreshWhenInvalid` also renews an otherwise fresh credential.
+`storedMissingExpiry: refreshIfRefreshTokenPresent` keeps an undated access
+token when no stored refresh token can renew it.
+For a configurable OAuth token endpoint, `oauth2.tokenEndpointNetworkPolicy:
+privateNetworkHTTP` uses DNS-pinned SDK address checks and permits HTTP only
+to loopback or private addresses; link-local addresses are refused.
+`refresh.exactScopes: true` requires set equality, including a reported scope
+value. An individual grant may override this with `exactScopes: true` or `false`. Choose these
+rules from the provider's actual response and the Go refresh driver; grant
+count never selects scope policy implicitly.
+`refresh.scopeSeparators` controls both exact and all-scope checks. The default
+`whitespace` splits on Unicode whitespace like Go `strings.Fields`; use
+`whitespaceAndComma` when the Go driver accepts ASCII spaces and commas like
+`oauthtoken.HasAllScopes`. `refresh.allowsPublicClient: true` permits a blank
+client secret for a provider that supports public-client refresh; otherwise a
+blank secret requires reauthorization before any token request.
+The generated Go agreement tests replay changed scope responses when a refresh
+explicitly declares `requiredScopes`, `exactScopes`, or `scopeSeparators`.
+Every checked grant also replays a comma-separated response and a response
+missing each required scope, including the default whitespace policy.
+Authorization scopes alone do not establish that a provider reports scopes on
+refresh or that an existing Go driver checks them.
 
 A method that stores several refresh tokens, such as a bot token and a user
 token, lists one grant for each, and the grants refresh independently:
@@ -621,6 +716,12 @@ space-separated `scope` claim (when `scopes` is declared), and posts it as
 without client authentication. `credentialCopies` set credential fields from
 other credential fields after each mint. `terminalErrorCodes` defaults to
 `[invalid_grant]`.
+`subjectValidation: goMailAddress` trims Go Unicode whitespace and requires
+the delegated `sub` to equal the bare address returned by Go
+`mail.ParseAddress`. A bad subject requires reauthorization before any token
+request. Declare it only when the Go refresh driver applies that rule.
+`trimSpaceSources` names JWT assertion credential fields that the Go driver
+trims before signing; a blank result requires reauthorization.
 
 ```yaml
 serviceAccount:
@@ -713,6 +814,22 @@ other forms below belong to `clientCredentials` and `jwtBearer`. Each is one of:
   credential field or setting. The host inserts each value path-escaped, and
   the scheme and host are fixed.
 
+A template may declare `templateValueRules` keyed by placeholder. Each rule
+applies `trimSpace` using Go Unicode whitespace, checks `maxBytes` against the
+UTF-8 value, rejects any case-insensitive `reject` entry, and requires a full
+match against at least one anchored `patterns` expression when listed. The
+accepted value is then `lowercase`d when requested and path-escaped. Invalid
+values require reauthorization before a token request. Use explicit rules for
+provider tenant identifiers instead of relying on URL escaping to make them
+valid. Patterns must have one outer `^(?:...)$` group, with every alternation
+inside it, and use syntax shared by Go RE2,
+JavaScript, and Python. Inline flags such as `(?i)`, named groups, Unicode
+properties, Go-specific escapes, and POSIX character classes are invalid.
+Character classes `\d`, `\w`, and `\s` have ASCII semantics; Python consumers
+must compile patterns with ASCII mode.
+Set `refresh.trimClientID` or `clientCredentials.trimClientID` only when the Go
+driver trims the client ID in its token request; it leaves the stored value intact.
+
 `values` translates the value of `fromCredential`, `fromSetting`, or `fromKey`,
 such as a login environment into its server; the key `""` translates a blank
 value, and an untranslated value cannot be resolved:
@@ -729,7 +846,7 @@ setting it names, is `client_secret_post` or `client_secret_basic`. A literal
 or translated token endpoint is an absolute HTTPS URL. A host checks
 an endpoint that it reads from a credential, setting, or key before it sends a
 secret there. Release metadata writes a literal as a JSON string, every other
-source as an object, and `missingExpiry` as `"keep"` or `{"lifetime": "2h"}`.
+source as an object, and `missingExpiry` as `"reject"`, `"keep"`, or `{"lifetime": "2h"}`.
 
 ### Credential refresh agreement
 
@@ -775,6 +892,38 @@ case name, such as `"spec.auth refresh bot_refresh_token"`):
 A driver whose constructor takes a connection setting that a declaration reads
 gets it from `newCredentialRefreshDriverWithSettings(httpClient, settings)`,
 which the connector writes in a test file of its external test package.
+
+`connectorctl generate` also writes Python `_generated/refresh.py`, TypeScript
+`src/generated/refresh.ts`, language-neutral agreement cases, and agreement
+tests for every declared language package with token grants. Generation checks
+for missing tests and cases. The replay checks complete token requests,
+client authentication, JWT claims and signature, credential updates, token types,
+scope rejection, response expiry policy, stored missing expiry, retained refresh
+tokens, and declared and undeclared token errors. The declarations and credential
+field maps feed `ManifestCredentialRefreshDriver` in each SDK. Generated private and shared credential decoders
+must both be passed to a project credential provider so a shared connection
+can omit only fields its host keeps.
+
+### Porting an OAuth connector to Python or TypeScript
+
+1. Confirm the Go driver and manifest agree on token types, missing token type,
+   scope policy, response mapping, and terminal error codes. Add declarations
+   before changing the language driver.
+2. Generate the language package with Python Connector SDK 0.6.0 or later or
+   TypeScript Connector SDK 0.6.0 or later when `responseScopes` is used.
+   `storedMissingExpiry` requires SDK 0.4.0 or later, and `acceptedScopeSets`
+   requires SDK 0.5.0 or later.
+   Python `_generated/connection.py` binds
+   private and shared decoders, credential encoding, durable project refresh,
+   and `ManifestCredentialRefreshDriver` to `new_project_connection`. A Python
+   client calls the source's `resolve` before provider dispatch and
+   `resolve_after_rejection` once after an HTTP 401. TypeScript ports bind the
+   generated decoders and authorization declaration at their project adapter.
+3. Run the generated agreement cases, provider conformance, package suite, and
+   runnable Dex example. Keep a small connector adapter for provider-specific
+   validation that the manifest cannot express. Monday's Go driver derives
+   expiry from JWT `exp`; leave it on its existing path until both language
+   drivers support that rule.
 
 ## Studio setup bundle
 
@@ -1119,6 +1268,18 @@ uncertainty need an uncertainty scenario. Python and TypeScript compare the
 complete recorded requests and exact outputs through their production Dex SDK
 codecs, and derive mutation idempotency keys through their production SDK paths.
 Other recovery paths remain a review requirement.
+For HTTP multipart/form-data, multipart/mixed, and multipart/related, recordings
+keep ordered part headers and bytes while ignoring the random outer boundary.
+When a connector generates a random request value, keep production entropy from
+`crypto/rand` and inject the shared synthetic SHA-256 counter stream only in its
+Go conformance adapter. Declare `randomSeed` and `randomRequestFields` in each
+affected scenario. The seed must start `SYNTHETIC_CONFORMANCE_`; the fields are
+simple JSON pointers. Go record mode replaces those strings with SHA-256 digest
+descriptors, and all runners hash the actual value before exact body comparison.
+Python and TypeScript adapters can use `SyntheticRandomSource` and its Go-compatible
+bounded integer method to reproduce the Go byte stream and `crypto/rand.Int` draws.
+See the [conformance contract](../conformance/connectors/README.md) for the stream
+format and secret-safe recording rules.
 
 Keep the language runners in `conformance/runners/`, outside published packages.
 Connector Python and TypeScript tests import them by repository path and only

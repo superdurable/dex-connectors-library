@@ -11,20 +11,20 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-const conformanceEndpointPath = "/v2"
+const conformanceEndpointPath = ""
 const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
-	token := "test-token"
+	t.Helper()
+	connection := sdkgo.ConnectionRef{Provider: "square", Name: "square"}
+	credentials := Credentials{AccessToken: sdkgo.NewSecretString("test-token")}
 	if scenario.Name == "listPayments-defect" {
-		token = ""
+		credentials = Credentials{}
 	}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
-		testConnection: {AccessToken: sdkgo.NewSecretString(token)},
-	}, WithHTTPClient(transport))
+	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{connection: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listPayments": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPayments(), testConnection),
-		"getPayment":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPayment(), testConnection),
+		"listPayments": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListPayments(), connection),
+		"getPayment":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetPayment(), connection),
 	}}
 }

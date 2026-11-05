@@ -15,7 +15,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeSquare(scenario: Scenario, recorder: ExchangeRecorder) {
   const send = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
-  const client = new Client({ baseUrl: 'http://127.0.0.1:12345/v2' }, {
+  const client = new Client({ baseUrl: 'http://127.0.0.1:12345' }, {
     resolve: async () => ({ accessToken: new SecretString(scenario.name === 'listPayments-defect' ? '' : 'test-token') }),
   }, { send });
   const call = scenarioCall(scenario, connection, 'square', {
