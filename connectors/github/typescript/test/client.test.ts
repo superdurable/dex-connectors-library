@@ -13,7 +13,7 @@ const call = { id: 'test-call', connection, context: { cancellationSignal: new A
 describe('GitHub transport contract', () => {
   it('uses Go path and query escaping', () => {
     expect(pathEscape("a!$&'()*+,;/:@~")).toBe('a%21$&%27%28%29%2A+%2C%3B%2F:@~');
-    expect(queryEscape("a b!*~'()")).toBe('a+b%21%2A%7E%27%28%29');
+    expect(queryEscape("a b!*~'()")).toBe('a+b%21%2A~%27%28%29');
   });
 
   it('honors the configured timeout and accepts a loopback alias', async () => {
@@ -25,6 +25,28 @@ describe('GitHub transport contract', () => {
     expect(observed?.timeoutMs).toBe(2_500);
     expect(observed?.addressPolicy).toBe('unrestricted');
     expect('branch' in result && result.branch).toBe('notFound');
+  });
+
+  it.each(['1e3', '5.0', '0x10'])('rejects non-integer Retry-After %s', async retryAfter => {
+    const client = new GitHubClient({}, credentials, {
+      send: async () => ({ status: 429, headers: { 'retry-after': retryAfter }, body: new Uint8Array() }),
+    });
+    const result = await client.get(call, 'listReleases', '/repos/octocat/hello-world/releases');
+    expect('retryAfterMs' in result && result.retryAfterMs).toBe(60_000);
+  });
+  it('reads the next page across every Link header value', async () => {
+    const client = new GitHubClient({}, credentials, { send: async () => ({ status: 200,
+      headers: { 'x-oauth-scopes': 'read:user, user:email', Link: ['<https://api.github.com/repos/a/b/releases?page=1>; rel="prev"', '<https://api.github.com/repos/a/b/releases?page=3>; rel="next"'] },
+      body: Buffer.from('[]') }) });
+    const result = await client.listReleases().invoke(call, { owner: 'octocat', repository: 'hello-world' });
+    expect(result).toMatchObject({ kind: 'branch', branch: 'listed', value: { nextPage: 3 } });
+  });
+
+  it.each(['5.0', '1e3', '0x10'])('rejects non-integer next page %s', async page => {
+    const client = new GitHubClient({}, credentials, { send: async () => ({ status: 200,
+      headers: { 'x-oauth-scopes': 'read:user, user:email', Link: `<https://api.github.com/repos/a/b/releases?page=${page}>; rel="next"` }, body: Buffer.from('[]') }) });
+    const result = await client.listReleases().invoke(call, { owner: 'octocat', repository: 'hello-world' });
+    expect(result).toMatchObject({ kind: 'branch', branch: 'invalidResponse' });
   });
 
   it('falls back to the second valid request ID', () => {

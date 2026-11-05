@@ -98,7 +98,7 @@ export class ConfluenceClient {
     if (response.status < 200 || response.status >= 300) return { error: { failure: confluenceFailure(operation, statusFailureKind(response.status), `Atlassian rejected the accessible resources lookup with HTTP ${response.status}; reconnect the connection or set cloudId`), isRetryable: false, retryAfterMs: 0 } };
     let sites: string[];
     try {
-      const resources: unknown = JSON.parse(new TextDecoder().decode(response.body));
+      const resources: unknown = JSON.parse(new TextDecoder().decode(response.body), (key, value: unknown, context?: { source?: string }) => { if (typeof value === 'number' && ['number', 'size', 'total', 'start', 'limit'].includes(key) && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid Confluence integer'); return value; });
       if (!Array.isArray(resources)) throw new TypeError();
       sites = [...new Set(resources.filter((resource): resource is { id: string; scopes: string[] } =>
         resource && typeof resource === 'object' && typeof resource.id === 'string' && Array.isArray(resource.scopes) && resource.scopes.some((scope: unknown) => typeof scope === 'string' && confluenceScopes.test(scope)))
@@ -116,7 +116,7 @@ export class ConfluenceClient {
   /** Exchange one request and refresh a rejected credential once. */
   async exchange(session: ConfluenceSession, method: string, api: 'content' | 'search' | 'gateway', path: string, query?: Record<string, string>, payload?: unknown): Promise<ConfluenceExchange> {
     const prefix = api === 'gateway' ? '' : `/ex/confluence/${session.cloudId}/wiki/${api === 'content' ? 'api/v2' : 'rest/api'}`;
-    const search = query ? '?' + Object.entries(query).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, value]) => `${queryEscape(key)}=${queryEscape(value)}`).join('&') : '';
+    const search = query ? '?' + encodeGoQuery(query) : '';
     const url = this.endpoint + prefix + path + search;
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = encoder.encode(JSON.stringify(payload)); }
@@ -196,12 +196,18 @@ function classified(outcome: ConfluenceClassification['outcome'], failure?: Fail
 /** Build a connector failure without reflecting provider payloads or credentials. */
 export function confluenceFailure(operation: string, kind: FailureKind, message: string): Failure { return { provider: 'confluence', operation, kind, message }; }
 function statusFailureKind(status: number): FailureKind { return status === 400 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 404 ? 'NOT_FOUND' : status === 409 ? 'CONFLICT' : status === 429 ? 'RATE_LIMIT' : 'PROVIDER_REJECTION'; }
-function queryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*~]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase()); }
+function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 /** Decode a bounded JSON object, rejecting array or primitive responses. */
 export function decodeObject(response: ConfluenceExchange): Record<string, unknown> {
-  const decoded: unknown = JSON.parse(new TextDecoder().decode(response.body));
+  const decoded: unknown = JSON.parse(new TextDecoder().decode(response.body), (key, value: unknown, context?: { source?: string }) => { if (typeof value === 'number' && ['number', 'size', 'total', 'start', 'limit'].includes(key) && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid Confluence integer'); return value; });
   if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded)) throw new TypeError('invalid response object');
   return decoded as Record<string, unknown>;
 }
 /** Escape one URL path segment like Go url.PathEscape. */
 export function pathEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase()).replace(/%24/g, '$').replace(/%26/g, '&').replace(/%2B/g, '+').replace(/%3D/g, '=').replace(/%3A/g, ':').replace(/%40/g, '@'); }
+
+/** Encode keys and ordered values like Go url.Values.Encode. */
+export function encodeGoQuery(values: Record<string, string | string[]>): string {
+  return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
+    .flatMap(key => (Array.isArray(values[key]) ? values[key] : [values[key]!])!.map(value => `${queryEscape(key)}=${queryEscape(value)}`)).join('&');
+}

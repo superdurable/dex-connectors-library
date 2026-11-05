@@ -30,7 +30,7 @@ function mutationClassified<T>(classification: Classification, output: T, notFou
   return newMutationBranch(classification.kind === 'notFound' ? notFound : classification.kind === 'rejected' ? 'providerRejected' : classification.kind, output, classification.receipt, classification.failure);
 }
 function parsedObject(result: JiraResult): Record<string, unknown> {
-  const parsed: unknown = JSON.parse(Buffer.from(result.response?.body ?? []).toString('utf8'));
+  const parsed: unknown = JSON.parse(Buffer.from(result.response?.body ?? []).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (typeof value === 'number' && ['start', 'size', 'epochMillis', 'millis'].includes(key) && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid Jira Service Management integer'); return value; });
   if (!isRecord(parsed)) throw new TypeError('provider object is invalid');
   return parsed;
 }
@@ -316,12 +316,8 @@ async function claimSingleDispatch(call: Call): Promise<'granted' | 'alreadySent
   try {
     if (call.context.hasLastHeartbeatValue()) {
       const previous: unknown = call.context.getLastHeartbeatValue();
-      if (isRecord(previous) && typeof previous.callId === 'string' && typeof previous.attempt === 'number' && typeof previous.state === 'string') marker = {
-        jiraServiceManagementDispatchedCallId: previous.callId,
-        attempt: previous.attempt,
-        canResend: previous.state === 'canResend' || previous.state === 'notSent',
-      };
-      else marker = previous as DispatchMarker;
+      if (isRecord(previous) && typeof previous.jiraServiceManagementDispatchedCallId === 'string' && Number.isInteger(previous.attempt) && Number(previous.attempt) >= -2147483648 && Number(previous.attempt) <= 2147483647 && (previous.canResend === undefined || typeof previous.canResend === 'boolean')) marker = previous as DispatchMarker;
+      else return 'alreadySent';
     }
   } catch { return 'alreadySent'; }
   const attempt = call.context.attempt;

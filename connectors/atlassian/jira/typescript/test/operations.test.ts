@@ -16,7 +16,7 @@ const client = (response: ProviderResponse, observe?: (request: ProviderRequest)
 
 it('escapes paths and queries exactly as Go net/url', () => {
   expect(pathEscape("A!$&+()*,;?/@:~=é")).toBe('A%21$&+%28%29%2A%2C%3B%3F%2F@:~=%C3%A9');
-  expect(encodeQuery({ z: 'a b~*', a: 'x+y' })).toBe('a=x%2By&z=a+b%7E%2A');
+  expect(encodeQuery({ z: 'a b~*', a: 'x+y' })).toBe('a=x%2By&z=a+b~%2A');
 });
 
 it('keeps rate-limit status before the successful-body size limit', async () => {

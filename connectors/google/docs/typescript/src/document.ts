@@ -171,7 +171,7 @@ function escapeMarkdownLineStarts(value: string): string {
 
 /** Parse a provider JSON object without string coercion. */
 export function parseObject(body: Uint8Array): ObjectValue {
-  return objectValue(JSON.parse(Buffer.from(body).toString('utf8')) as unknown);
+  return objectValue(JSON.parse(Buffer.from(body).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (typeof value === 'number' && ['startIndex', 'endIndex', 'nestingLevel', 'occurrencesChanged'].includes(key) && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid Docs integer'); return value; }) as unknown);
 }
 
 /** Require an object-shaped provider value. */

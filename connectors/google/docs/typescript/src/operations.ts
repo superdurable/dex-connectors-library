@@ -51,9 +51,9 @@ export class GetDocumentTextOperation implements Query<GetDocumentTextInput, Get
 
 interface ReadFailure<Output> { attempt: QueryAttempt<Output> }
 
-async function sendRead<Output>(client: DocsClient, call: Call, credentials: Credentials, operation: string, url: string, tooLargeBranch: string, notFoundBranch: string, zero: Output): Promise<{ response: ProviderResponse } | ReadFailure<Output>> {
+async function sendRead<Output>(client: DocsClient, call: Call, credentials: Credentials, operation: string, url: string, tooLargeBranch: string, notFoundBranch: string, zero: Output, signal?: AbortSignal): Promise<{ response: ProviderResponse } | ReadFailure<Output>> {
   let response: ProviderResponse;
-  try { response = await client.request(call, credentials, 'GET', url); }
+  try { response = await client.request(call, credentials, 'GET', url, undefined, undefined, false, signal); }
   catch (error) {
     if (error instanceof DocsRequestError && error.tooLarge) return { attempt: newQueryBranch(tooLargeBranch, zero, client.receipt(call, { status: error.status, headers: error.headers, body: new Uint8Array() }), docsFailure(operation, 'RESPONSE_TOO_LARGE', 'provider response exceeds the configured limit')) };
     return { attempt: newQueryRetry(docsFailure(operation, 'TRANSPORT', 'provider is unavailable')) };
@@ -275,7 +275,7 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
   const lookupQuery = { q: `appProperties has { key='dexIdempotencyKey' and value='${key.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}' }`, fields: `incompleteSearch,files(${fileFields})`, pageSize: '10', spaces: 'drive' };
   if (decision.kind === 'readBackRequired' && decision.marker?.providerId && isDriveID(decision.marker.providerId)) {
     const url = `${client.driveBaseURL}/files/${goPathEscape(decision.marker.providerId)}?${goQuery({ fields: fileFields, supportsAllDrives: 'true' })}`;
-    const found = await sendRead(client, call, credentials, 'createDocument', url, 'invalidResponse', 'providerRejected', zeroCreate);
+    const found = await sendRead(client, call, credentials, 'createDocument', url, 'invalidResponse', 'providerRejected', zeroCreate, createLookupSignal(call));
     if ('response' in found) {
       try {
         const document = convertCreatedDocument(parseObject(found.response.body));
@@ -285,7 +285,7 @@ async function createDocument(client: DocsClient, call: Call, input: CreateDocum
   }
   const lookupURL = filesListURL(client, lookupQuery);
   const lookup = async (): Promise<{ document?: CreatedDocument; incomplete: boolean; response: ProviderResponse } | { attempt: QueryAttempt<unknown> }> => {
-    const result = await sendRead(client, call, credentials, 'createDocument', lookupURL, 'invalidResponse', 'providerRejected', zeroCreate);
+    const result = await sendRead(client, call, credentials, 'createDocument', lookupURL, 'invalidResponse', 'providerRejected', zeroCreate, createLookupSignal(call));
     if ('attempt' in result) return result;
     try { return { ...decodeEarlierDocument(result.response.body), response: result.response }; }
     catch { return { attempt: newQueryBranch('invalidResponse', zeroCreate, client.receipt(call, result.response), docsFailure('createDocument', 'PROTOCOL', 'provider returned an invalid duplicate-lookup response')) }; }
@@ -407,4 +407,11 @@ function convertCreatedDocument(value: Record<string, unknown>): CreatedDocument
   if (value.trashed != null && typeof value.trashed !== 'boolean') throw new TypeError('trashed is invalid');
   const document: CreatedDocument = { documentId: id, title: stringField(value, 'name', ''), ...(parents.length ? { parents } : {}), ...(stringField(value, 'webViewLink', '') ? { webViewLink: stringField(value, 'webViewLink') } : {}), ...(createdTime !== '0001-01-01T00:00:00Z' ? { createdTime } : {}), ...(value.trashed === true ? { isTrashed: true } : {}) };
   return CreatedDocumentSchema.parse(document);
+}
+
+function createLookupSignal(call: Call): AbortSignal {
+  const deadline = call.context.deadline?.getTime();
+  const remaining = deadline === undefined ? 25_000 : Math.max(0, deadline - Date.now());
+  const margin = deadline === undefined ? 0 : Math.min(1_000, Math.max(1, remaining / 10));
+  return AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(Math.max(0, remaining - margin))]);
 }

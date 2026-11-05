@@ -154,8 +154,8 @@ export class JiraClient {
 /** Exact Go url.PathEscape safe characters. */
 export function pathEscape(value: string): string { return encodeURIComponent(value).replace(/%24|%26|%2B|%3D|%3A|%40/gi, escape => String.fromCharCode(Number.parseInt(escape.slice(1), 16))).replace(/[!'()*]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase()); }
 /** Go url.Values.Encode ordering and QueryEscape. */
-export function encodeQuery(query: Record<string, string>): string { return Object.keys(query).sort().map(key => `${queryEscape(key)}=${queryEscape(query[key]!)}`).join('&'); }
-function queryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*~]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase()); }
+export function encodeQuery(query: Record<string, string | string[]>): string { return Object.keys(query).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).flatMap(key => (Array.isArray(query[key]) ? query[key] : [query[key]!])!.map(value => `${queryEscape(key)}=${queryEscape(value)}`)).join('&'); }
+export function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 /** Secret-safe provider failure. */
 export function jiraFailure(operation: string, kind: Failure['kind'], message: string): Failure { return { provider: 'jira', operation, kind, message }; }
 /** Jira status classification shared by setup and operation requests. */

@@ -4,14 +4,14 @@
 import { describe, expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { DocsClient, DocsRequestError, goPathEscape, goQuery } from '../src/client.js';
-import { decodeDocument, renderDocumentText } from '../src/document.js';
+import { decodeDocument, parseObject, renderDocumentText } from '../src/document.js';
 
 const credentials = new StaticCredentialProvider([[{ provider: 'google', name: 'policy-docs' }, { accessToken: new SecretString('safe-token') }]]);
 
 describe('Google Docs client bounds and wire format', () => {
   it('matches Go path and query escaping', () => {
     expect(goPathEscape("a!$&'()+,/:;=?@~")).toBe('a%21$&%27%28%29+%2C%2F:%3B%3D%3F@~'.replace('%3D', '='));
-    expect(goQuery({ z: 'a b~*', a: 'x/y' })).toBe('a=x%2Fy&z=a+b%7E%2A');
+    expect(goQuery({ z: 'a b~*', a: 'x/y' })).toBe('a=x%2Fy&z=a+b~%2A');
   });
 
   it('rejects unsafe endpoint and limit configuration at construction', () => {
@@ -38,6 +38,10 @@ describe('Google Docs client bounds and wire format', () => {
     expect(() => decodeDocument(Buffer.from('{"documentId":"doc1","tabs":[{"tabProperties":{"tabId":"t.0"},"documentTab":{"body":{"content":[{"table":"wrong type"},{"endIndex":2,"paragraph":{}}]}}}]}'))).toThrow();
   });
 
+  it.each(['5.0', '1e3'])('rejects non-integer JSON literal %s for integer fields', literal => {
+    expect(() => parseObject(Buffer.from(`{"occurrencesChanged":${literal}}`))).toThrow();
+    expect(() => parseObject(Buffer.from(`{"startIndex":${literal}}`))).toThrow();
+  });
   it('classifies an oversized error body by status and bounds successful bodies', async () => {
     const call = { context: { cancellationSignal: new AbortController().signal } } as Call;
     const credential = { accessToken: new SecretString('safe-token') };

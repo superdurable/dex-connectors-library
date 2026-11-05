@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { isIP } from 'node:net';
-import { BodyTooLargeError, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -91,7 +91,7 @@ export class GitHubClient {
         this.accessTokens.set(call, token);
       } catch { return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'GitHub authorization is unavailable or revoked'), receipt: {} }; }
     }
-    const search = Object.entries(query).sort(([left], [right]) => left.localeCompare(right)).map(([key, value]) => `${queryEscape(key)}=${queryEscape(value)}`).join('&');
+    const search = encodeGoQuery(query);
     const url = `${this.baseUrl}${path}${search ? `?${search}` : ''}`;
     for (let attempt = 0; attempt < 2; attempt++) {
       let response: ProviderResponse;
@@ -126,9 +126,10 @@ export class GitHubClient {
         } catch { /* Non-JSON errors cannot identify a secondary rate limit. */ }
       }
       if (rateLimited) {
-        let delay = Number(header('retry-after')) * 1000;
+        let delay = parseRetryAfter(header('retry-after'), this.now());
         if (!Number.isSafeInteger(delay) || delay <= 0) {
-          delay = header('x-ratelimit-remaining') === '0' ? Math.max(Number(header('x-ratelimit-reset')) * 1000 - this.now().getTime(), 0) : 0;
+          const reset = header('x-ratelimit-reset');
+          delay = header('x-ratelimit-remaining') === '0' && /^[+-]?\d+$/.test(reset) && Number.isSafeInteger(Number(reset)) ? Math.max(Number(reset) * 1000 - this.now().getTime(), 0) : 0;
           if (!Number.isFinite(delay) || delay <= 0) delay = 60_000;
         }
         return { failure: failure(operation, 'RATE_LIMIT', 'GitHub rate limit was reached'), retryAfterMs: delay, receipt };
@@ -169,7 +170,13 @@ export function hasRequiredScopes(headers: ProviderResponse['headers']): boolean
 }
 
 /** Encode a Go url.Values component. */
-export function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*~]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
+export function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 
 /** Encode one Go url.PathEscape path segment. */
 export function pathEscape(value: string): string { return encodeURIComponent(value).replace(/%24/g, '$').replace(/%26/g, '&').replace(/%2B/g, '+').replace(/%3D/g, '=').replace(/%3A/g, ':').replace(/%40/g, '@').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
+
+/** Encode keys and ordered values like Go url.Values.Encode. */
+export function encodeGoQuery(values: Record<string, string | string[]>): string {
+  return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
+    .flatMap(key => (Array.isArray(values[key]) ? values[key] : [values[key]!])!.map(value => `${queryEscape(key)}=${queryEscape(value)}`)).join('&');
+}

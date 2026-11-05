@@ -181,13 +181,14 @@ export function retryAfterMs(response: ProviderResponse, now: Date): number {
   return parseRetryAfter(header(response.headers, 'retry-after'), now);
 }
 
-/** Match Go url.Values.Encode, including its escaping of tilde. */
-export function goQuery(values: Record<string, string>): string {
-  return Object.keys(values).sort().map(key => `${goQueryEscape(key)}=${goQueryEscape(values[key]!)}`).join('&');
+/** Match Go url.Values.Encode, including literal tilde. */
+export function goQuery(values: Record<string, string | string[]>): string {
+  return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
+    .flatMap(key => (Array.isArray(values[key]) ? values[key] : [values[key]!])!.map(value => `${goQueryEscape(key)}=${goQueryEscape(value)}`)).join('&');
 }
 
 function goQueryEscape(value: string): string {
-  return encodeURIComponent(value).replace(/[!'()*~]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
+  return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
 }
 
 /** Match Go url.PathEscape's literal path character set. */

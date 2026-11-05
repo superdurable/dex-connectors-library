@@ -85,7 +85,7 @@ function arrayField(record: Record<string, unknown>, name: string): unknown[] {
 
 function parseBody(exchange: CalendlyExchange): Record<string, unknown> {
   if (exchange.kind !== 'response') throw new TypeError('missing Calendly response');
-  return parseObject(JSON.parse(Buffer.from(exchange.response.body).toString('utf8')));
+  return parseObject(JSON.parse(Buffer.from(exchange.response.body).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (key === 'position' && typeof value === 'number' && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid Calendly integer'); return value; }));
 }
 
 function responseResource(exchange: CalendlyExchange): Record<string, unknown> { return parseObject(parseBody(exchange).resource); }

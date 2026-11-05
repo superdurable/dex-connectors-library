@@ -31,7 +31,7 @@ function classify<Input>(operation: string, output: Input, exchange: GitHubExcha
   if (!hasRequiredScopes(exchange.response.headers)) return newQueryBranch('insufficientScope', output, exchange.receipt, failure(operation, 'AUTHORIZATION', 'GitHub OAuth grant does not match required scopes'));
   return undefined;
 }
-function decode(body: Uint8Array): unknown { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; }
+function decode(body: Uint8Array): unknown { return JSON.parse(Buffer.from(body).toString('utf8'), (key, value: unknown, context?: { source?: string }) => { if (typeof value === 'number' && ['id', 'number', 'public_repos', 'followers', 'following', 'stargazers_count', 'forks_count', 'open_issues_count', 'total_count', 'additions', 'deletions', 'changes'].includes(key) && !/^-?\d+$/.test(context?.source ?? '')) throw new TypeError('invalid GitHub integer'); return value; }) as unknown; }
 function record(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('invalid GitHub object'); return value as Record<string, unknown>; }
 function stringField(source: Record<string, unknown>, key: string): string { const value = source[key]; if (value == null) return ''; if (typeof value !== 'string') throw new TypeError(`invalid GitHub ${key}`); return value; }
 function integerField(source: Record<string, unknown>, key: string): number { const value = source[key]; if (value == null) return 0; if (!Number.isSafeInteger(value)) throw new TypeError(`invalid GitHub ${key}`); return value as number; }
@@ -100,13 +100,20 @@ function window(start: string, end: string, subject: string, operation: string):
   return invalid(operation, undefined as never, `${subject} window must have a start before its end`);
 }
 function nextPage(headers: Record<string, string | string[] | undefined>, current: number): number {
-  const link = responseHeader(headers, 'link');
-  for (const match of link.matchAll(/<([^>]*)>\s*;\s*rel="([^"]*)"/g)) {
-    if (!match[2]!.split(/\s+/).some(relation => relation.toLowerCase() === 'next')) continue;
-    const target = new URL(match[1]!, 'https://api.github.com');
-    const next = Number(target.searchParams.get('page'));
-    if (!Number.isSafeInteger(next) || next <= current) throw new TypeError('invalid GitHub page link');
-    return next;
+  for (const [name, values] of Object.entries(headers)) {
+    if (name.toLowerCase() !== 'link') continue;
+    for (const link of Array.isArray(values) ? values : [values ?? '']) {
+      for (const match of link.matchAll(/<([^>]*)>\s*;\s*rel="([^"]*)"/g)) {
+        if (!match[2]!.split(/\s+/).some(relation => relation.toLowerCase() === 'next')) continue;
+        let target: URL;
+        try { target = new URL(match[1]!, 'https://api.github.com'); } catch { throw new TypeError('invalid GitHub page link'); }
+        const raw = target.searchParams.get('page');
+        if (!raw || !/^[+-]?\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) throw new TypeError('invalid GitHub page link');
+        const next = Number(raw);
+        if (next <= current) throw new TypeError('invalid GitHub page link');
+        return next;
+      }
+    }
   }
   return 0;
 }

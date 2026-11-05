@@ -105,7 +105,8 @@ export class CalendlyClient {
     const status = response.status;
     if (status === 429) {
       const retryAfter = headerValue(response.headers, 'retry-after');
-      const resetSeconds = Number(headerValue(response.headers, 'x-ratelimit-reset').trim());
+      const resetHeader = headerValue(response.headers, 'x-ratelimit-reset').trim();
+      const resetSeconds = /^[+-]?\d+$/.test(resetHeader) ? Number(resetHeader) : 0;
       return { failure: failure(operation, 'RATE_LIMIT', 'Calendly rate limited the request'), retryAfterMs: parseRetryAfter(retryAfter, this.now()) || (Number.isSafeInteger(resetSeconds) && resetSeconds > 0 ? Math.min(resetSeconds * 1000, 3_600_000) : 0), isRetry: true };
     }
     if (status >= 500) return { failure: failure(operation, 'AVAILABILITY', `Calendly answered HTTP ${status}`), retryAfterMs: 0, isRetry: true };
@@ -125,14 +126,12 @@ export class CalendlyClient {
 export function failure(operation: string, kind: FailureKind, message: string): Failure { return { kind, provider: 'calendly', operation, message }; }
 
 /** Encode keys and values as Go url.Values.Encode does. */
-export function encodeGoQuery(values: Record<string, string>): string {
-  const escape = (value: string) => Array.from(Buffer.from(value)).map(byte => {
-    const char = String.fromCharCode(byte);
-    if (/[A-Za-z0-9_.~-]/.test(char)) return char === '~' ? '%7E' : char;
-    return char === ' ' ? '+' : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`;
-  }).join('');
-  return Object.keys(values).sort().map(key => `${escape(key)}=${escape(values[key]!)}`).join('&');
+export function encodeGoQuery(values: Record<string, string | string[]>): string {
+  return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
+    .flatMap(key => (Array.isArray(values[key]) ? values[key] : [values[key]!])!.map(value => `${queryEscape(key)}=${queryEscape(value)}`)).join('&');
 }
+
+function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 
 function headerValue(headers: ProviderResponse['headers'], name: string): string {
   const value = headers[name];

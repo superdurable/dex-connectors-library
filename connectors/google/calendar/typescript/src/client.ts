@@ -59,9 +59,7 @@ export class CalendarClient {
 
   /** Send a Calendar request, refreshing once after a rejected access token. */
   async request(call: Call, accessToken: string, method: string, path: string, query?: Record<string, string>, payload?: unknown, ifMatch?: string): Promise<CalendarResponse> {
-    const search = new URLSearchParams();
-    for (const key of Object.keys(query ?? {}).sort()) search.set(key, query![key]!);
-    const encodedQuery = search.toString().replace(/~/g, '%7E');
+    const encodedQuery = encodeGoQuery(query ?? {});
     const url = `${this.endpoint}${path}${encodedQuery ? `?${encodedQuery}` : ''}`;
     const body = payload === undefined ? undefined : Buffer.from(JSON.stringify(payload), 'utf8');
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -116,3 +114,11 @@ export function pathEscape(value: string): string {
     return /[A-Za-z0-9._~\-$&+=:@]/.test(character) ? character : `%${byte.toString(16).toUpperCase().padStart(2, '0')}`;
   }).join('');
 }
+
+/** Encode a query with Go url.Values.Encode semantics. */
+export function encodeGoQuery(values: Record<string, string | string[]>): string {
+  return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
+    .flatMap(key => (Array.isArray(values[key]) ? values[key] : [values[key]!])!.map(value => `${queryEscape(key)}=${queryEscape(value)}`)).join('&');
+}
+
+function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }

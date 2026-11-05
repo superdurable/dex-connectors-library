@@ -92,6 +92,15 @@ describe('Go document conversion tables', () => {
     expect(renderDocumentText(parseADFDocument(adf), 'markdown', 0).text).toBe(['### Impact', '', '**Bold** and [site](https://example.com)', '@Ada 2026-09-30', '', '2. two', '', '- [x] done', '', '> Note', '', '```sql', 'select 1', '```', '', '| A |', '| --- |', '| 1 |', '', '---'].join('\n'));
     expect(() => parseADFDocument('{"type":"paragraph"}')).toThrow();
   });
+  it.each([
+    ['+123', '1970-01-01'],
+    ['8640000000000000', '275760-09-13'],
+    ['9223372036854775807', '292278994-08-17'],
+    ['-9223372036854775808', '-292275055-05-16'],
+  ])('formats Go int64 ADF date %s', (timestamp, expected) => {
+    const adf = JSON.stringify({ type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'date', attrs: { timestamp } }] }] });
+    expect(renderDocumentText(parseADFDocument(adf), 'plainText', 0).text).toBe(expected);
+  });
   it('truncates by Unicode character and compares normalized storage', () => {
     expect(renderDocumentText(parseStorageDocument('<p>héllo wörld</p>'), 'plainText', 4)).toEqual({ text: 'héll', isTruncated: true });
     const ours = markdownToStorage('# Title\n\nOne **two**\n\n- item');

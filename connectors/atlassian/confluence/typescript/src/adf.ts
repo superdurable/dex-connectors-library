@@ -80,8 +80,8 @@ function appendADFInline(inlines: DocumentInline[], node: ADFNode): DocumentInli
     case 'emoji': span.text = stringAttribute(node.attrs, 'text') || stringAttribute(node.attrs, 'shortName'); break;
     case 'inlineCard': span.linkHref = safeLinkHref(stringAttribute(node.attrs, 'url')); span.text = span.linkHref; break;
     case 'date': {
-      const timestamp = stringAttribute(node.attrs, 'timestamp'); const milliseconds = Number(timestamp);
-      span.text = /^-?[0-9]+$/.test(timestamp) && Number.isSafeInteger(milliseconds) ? new Date(milliseconds).toISOString().slice(0, 10) : '';
+      const timestamp = stringAttribute(node.attrs, 'timestamp');
+      span.text = formatADFDate(timestamp);
       break;
     }
   }
@@ -89,3 +89,22 @@ function appendADFInline(inlines: DocumentInline[], node: ADFNode): DocumentInli
 }
 function stringAttribute(attributes: Record<string, unknown> | undefined, key: string): string { const value = attributes?.[key]; return typeof value === 'string' ? value : ''; }
 function numberAttribute(attributes: Record<string, unknown> | undefined, key: string): number { const value = attributes?.[key]; return typeof value === 'number' ? value : 0; }
+
+function formatADFDate(timestamp: string): string {
+  if (!/^[+-]?\d+$/.test(timestamp)) return '';
+  const milliseconds = BigInt(timestamp);
+  if (milliseconds < -(1n << 63n) || milliseconds > (1n << 63n) - 1n) return '';
+  let days = milliseconds / 86_400_000n;
+  if (milliseconds < 0n && milliseconds % 86_400_000n !== 0n) days--;
+  const eraDays = days + 719468n;
+  const era = eraDays >= 0n ? eraDays / 146097n : (eraDays - 146096n) / 146097n;
+  const dayOfEra = eraDays - era * 146097n;
+  const yearOfEra = (dayOfEra - dayOfEra / 1460n + dayOfEra / 36524n - dayOfEra / 146096n) / 365n;
+  let year = yearOfEra + era * 400n;
+  const dayOfYear = dayOfEra - (365n * yearOfEra + yearOfEra / 4n - yearOfEra / 100n);
+  const monthPosition = (5n * dayOfYear + 2n) / 153n;
+  const day = dayOfYear - (153n * monthPosition + 2n) / 5n + 1n;
+  const month = monthPosition + (monthPosition < 10n ? 3n : -9n);
+  if (month <= 2n) year++;
+  return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+}

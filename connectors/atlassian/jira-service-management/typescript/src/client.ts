@@ -95,7 +95,7 @@ export class JiraServiceManagementClient {
 
   private async sendOnce(call: Call, token: string, cloudID: string, request: JiraRequest): Promise<JiraResult> {
     const prefix = request.api === 'gateway' ? '' : `/ex/jira/${pathEscape(cloudID)}${request.api === 'desk' ? '/rest/servicedeskapi' : '/rest/api/3'}`;
-    const query = request.query ? '?' + Object.entries(request.query).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${queryEscape(key)}=${queryEscape(value)}`).join('&') : '';
+    const query = request.query ? '?' + encodeGoQuery(request.query) : '';
     let body: Uint8Array | undefined;
     try { if (request.payload !== undefined) body = Buffer.from(JSON.stringify(request.payload), 'utf8'); }
     catch (error) { return { error, isProvablyNotSent: true }; }
@@ -162,5 +162,11 @@ export class JiraServiceManagementClient {
 
 export function isRecord(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value); }
 export function pathEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%24|%26|%2B|%3D|%3A|%40/gi, code => String.fromCharCode(parseInt(code.slice(1), 16))); }
-export function queryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
+export function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 function statusFailureKind(status: number): Failure['kind'] { return status === 400 || status === 422 ? 'VALIDATION' : status === 401 ? 'AUTHENTICATION' : status === 403 ? 'AUTHORIZATION' : status === 404 ? 'NOT_FOUND' : status === 429 ? 'RATE_LIMIT' : status === 409 ? 'CONFLICT' : 'PROVIDER_REJECTION'; }
+
+/** Encode keys and ordered values like Go url.Values.Encode. */
+export function encodeGoQuery(values: Record<string, string | string[]>): string {
+  return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
+    .flatMap(key => (Array.isArray(values[key]) ? values[key] : [values[key]!])!.map(value => `${queryEscape(key)}=${queryEscape(value)}`)).join('&');
+}

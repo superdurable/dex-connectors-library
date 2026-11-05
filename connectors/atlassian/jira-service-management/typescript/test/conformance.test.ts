@@ -19,6 +19,8 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 }
 
 async function invokeJira(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
+  const prior = scenario.priorHeartbeat as { callId?: string; attempt?: number; state?: string } | undefined;
+  if (prior?.state) context.marker = { jiraServiceManagementDispatchedCallId: prior.callId, attempt: prior.attempt, canResend: prior.state === 'canResend' || prior.state === 'notSent' };
   const send = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   const client = new JiraServiceManagementClient({ endpoint: 'http://127.0.0.1:12345', cloudId: '11223344-a1b2-4b33-8c44-def123456789' }, new StaticCredentialProvider([[connection, {
     accessToken: new SecretString('jsm-access-token'), refreshToken: new SecretString('inert-refresh-token'), oauthClientId: 'inert-client-id', oauthClientSecret: new SecretString('inert-client-secret'),
