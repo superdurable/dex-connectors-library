@@ -1,0 +1,11 @@
+# Asana connector for Dex TypeScript
+
+Install `@superdurable/connector-asana@0.1.0` alongside `@superdurable/dex` and `@superdurable/connectors-sdk`. This package implements `listTasks`, `getTask`, `createTask`, `updateTask`, and `addComment`; it does not implement Triggers.
+
+`Client` takes a `Config` and a `CredentialProvider<Credentials>`. Use `newProjectConnection` to load the named Dex Web connection, or `newConnection` to bind a client explicitly. The [approved request example](examples/approved-request-task/flow.ts) is a runnable Flow using every operation and the static `asana-approved-requests` connection name. Start its [Worker](examples/approved-request-task/main.ts) after configuring that connection in Dex Web. The [example guide](examples/approved-request-task/README.md) gives local verification commands.
+
+The personal access token is resolved at each invocation and is sent only in the `Authorization` header. Task and comment POSTs have no Asana idempotency key: they retry a proven unsent request, 429, or 503; an ambiguous outcome selects `uncertain`. A Dex heartbeat checkpoints a returned task or story GID so a resumed attempt reads it back without sending another POST. `updateTask` uses absolute values and may retry; reads retry 408, 429, 5xx, and transport failures. An unwired optional branch fails the Flow.
+
+Task IDs are decimal Asana GIDs. `listTasks` selects one project or section and returns one page of up to 100 tasks. `getTask` includes notes and custom fields. `createTask` accepts a project or workspace, optional section, assignee, date, and text, number, enum, or multi-enum custom fields. `updateTask` completes, reopens, assigns, unassigns, reschedules, clears a due date, sets custom fields, and moves to a section. `addComment` sends plain text to one task.
+
+Run `npm ci` and `npm run check` from this directory. Cross-language provider parity is checked against the Go recordings in [scenarios.json](../../../conformance/connectors/asana/scenarios.json). The real Dex integration test requires `DEX_FLOW_SERVICE_ADDRESS` and uses a local stand-in for Asana. Live Asana authorization and API behavior remain unverified for this TypeScript package.

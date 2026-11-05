@@ -1,0 +1,627 @@
+{
+  "connector": "pagerduty",
+  "scenarios": [
+    {
+      "callId": "95bc17ee-36dd-53dd-bf35-6b997ef12536",
+      "exchanges": [
+        {
+          "body": "{\"incidents\":[{\"id\":\"P123456\",\"title\":\"API latency\",\"status\":\"triggered\"}],\"limit\":25,\"offset\":1,\"more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "incidents": [
+            {
+              "id": "P123456",
+              "status": "triggered",
+              "title": "API latency"
+            }
+          ],
+          "limit": 25,
+          "more": true,
+          "offset": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listIncidents-success",
+      "operation": "listIncidents"
+    },
+    {
+      "callId": "9714fb85-f1bc-5c5e-93a1-f8944dac42e0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "incidents": [],
+          "limit": 0,
+          "more": false,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listIncidents-rejected",
+      "operation": "listIncidents"
+    },
+    {
+      "callId": "636b52b4-e667-54a0-a94e-334d57fc2f81",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "incidents": [],
+          "limit": 0,
+          "more": false,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listIncidents-invalid-response",
+      "operation": "listIncidents"
+    },
+    {
+      "callId": "71201631-be9e-56c4-b40e-e46978c495b8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listIncidents-rate-limit",
+      "operation": "listIncidents"
+    },
+    {
+      "callId": "6d0f470b-964a-5be2-9c42-8a7f47c3cfd3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listIncidents-unavailable",
+      "operation": "listIncidents"
+    },
+    {
+      "callId": "2116440e-5aec-533a-9999-12eae41db021",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 25,
+        "offset": 1
+      },
+      "name": "listIncidents-transport",
+      "operation": "listIncidents"
+    },
+    {
+      "callId": "82340975-5dc7-54ad-bf0b-867e2757da46",
+      "exchanges": [
+        {
+          "body": "{\"incident\":{\"id\":\"P123456\",\"title\":\"API latency\",\"status\":\"triggered\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "P123456",
+          "status": "triggered",
+          "title": "API latency"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "P123456"
+      },
+      "name": "getIncident-success",
+      "operation": "getIncident"
+    },
+    {
+      "callId": "ecfe9fc0-87ba-5c4a-9c82-47cd2bf82386",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "P123456"
+      },
+      "name": "getIncident-rejected",
+      "operation": "getIncident"
+    },
+    {
+      "callId": "7c1ed6f0-91fa-5d49-828d-a37c2b4b9303",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "P123456"
+      },
+      "name": "getIncident-invalid-response",
+      "operation": "getIncident"
+    },
+    {
+      "callId": "85d05d22-3013-5072-8783-7683c2949b38",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "P123456"
+      },
+      "name": "getIncident-rate-limit",
+      "operation": "getIncident"
+    },
+    {
+      "callId": "14cf8094-f5af-5e97-80fa-f535fa92bd46",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "P123456"
+      },
+      "name": "getIncident-unavailable",
+      "operation": "getIncident"
+    },
+    {
+      "callId": "f0b6c9af-b8d1-59e4-8c36-afff43dc6731",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "P123456"
+      },
+      "name": "getIncident-transport",
+      "operation": "getIncident"
+    },
+    {
+      "callId": "d83d5a21-bb63-5945-9e28-7a09223e0f35",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/incidents/P123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.pagerduty+json;version=2"
+            ],
+            "Authorization": [
+              "Token token=test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-pagerduty/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "P123456"
+      },
+      "name": "getIncident-not-found",
+      "operation": "getIncident"
+    },
+    {
+      "callId": "a0f75a18-884e-5c59-9203-a9d23acf9ce7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "incidents": [],
+          "limit": 0,
+          "more": false,
+          "offset": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 101,
+        "offset": 1
+      },
+      "name": "listIncidents-defect",
+      "operation": "listIncidents"
+    },
+    {
+      "callId": "cbc14a50-fcc0-59f0-bb8f-f437a164e28e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "status": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getIncident-defect",
+      "operation": "getIncident"
+    }
+  ],
+  "schemaVersion": 1
+}

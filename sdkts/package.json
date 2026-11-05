@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connectors-sdk",
-  "version": "0.1.1",
+  "version": "0.5.0",
   "description": "Provider-neutral TypeScript contracts for Dex connectors",
   "repository": {
     "type": "git",
@@ -41,6 +41,18 @@
     "./singledispatch": {
       "types": "./dist/singledispatch/index.d.ts",
       "import": "./dist/singledispatch/index.js"
+    },
+    "./textgen": {
+      "types": "./dist/textgen/index.d.ts",
+      "import": "./dist/textgen/index.js"
+    },
+    "./textgen/openaichat": {
+      "types": "./dist/textgen/openaichat/index.d.ts",
+      "import": "./dist/textgen/openaichat/index.js"
+    },
+    "./textgen/textgentest": {
+      "types": "./dist/textgen/textgentest/index.d.ts",
+      "import": "./dist/textgen/textgentest/index.js"
     }
   },
   "files": [
@@ -50,7 +62,7 @@
   ],
   "scripts": {
     "prepack": "npm run build",
-    "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts src/oauthtoken/index.ts src/singledispatch/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts src/providerhttp/index.ts src/projectconfig/index.ts src/connectormock/index.ts src/oauthtoken/index.ts src/singledispatch/index.ts src/textgen/index.ts src/textgen/openaichat/index.ts src/textgen/textgentest/index.ts --format esm --dts --clean",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
     "test": "vitest run",

@@ -164,5 +164,805 @@
       }
     },
     "expectedMismatches": []
+  },
+  {
+    "name": "multipart-boundary-ignored",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-wrong-part-name",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"other\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-wrong-part-body",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "b3RoZXI="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-missing-part",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-wrong-order",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-mixed-boundary-ignored",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/mixed; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/mixed"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-other-parameter-preserved",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; charset=utf-8; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data; charset=utf-8"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-wrong-other-parameter",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; charset=latin1; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data; charset=utf-8"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "header Content-Type"
+    ]
+  },
+  {
+    "name": "multipart-boundary-prefix-in-body",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=random-boundary"
+      ]
+    },
+    "requestBody": "--random-boundary\r\nContent-Disposition: form-data; name=\"field\"\r\nContent-Type: text/plain\r\n\r\nhello\r\n--random-boundaryXsuffix\r\n--random-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\n\u0000\u0001\r\n--random-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"field\""
+              ],
+              "Content-Type": [
+                "text/plain"
+              ]
+            },
+            "bodyBase64": "aGVsbG8NCi0tcmFuZG9tLWJvdW5kYXJ5WHN1ZmZpeA=="
+          },
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-utf8-filename-binary-folded-header",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-invalid-header-line",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ngarbage\r\nX-Unasserted: anything\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-duplicate-boundary-parameter",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary; boundary=another"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body",
+      "header Content-Type"
+    ]
+  },
+  {
+    "name": "multipart-epilogue-ignored",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/form-data; boundary=utf8-boundary"
+      ]
+    },
+    "requestBody": "--utf8-boundary\r\ncontent-disposition: form-data; name=\"file\";\r\n\tfilename=\"r\u00e9sum\u00e9.pdf\" \t\r\ncontent-type: application/octet-stream \t\r\n\r\n\u0080\u00ff\r\n--utf8-boundary--\r\nepilogue bytes\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/form-data"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Disposition": [
+                "form-data; name=\"file\"; filename=\"r\u00e9sum\u00e9.pdf\""
+              ],
+              "Content-Type": [
+                "application/octet-stream"
+              ]
+            },
+            "bodyBase64": "woDDvw=="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-related-boundary-ignored",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/related; boundary=random-go-boundary"
+      ]
+    },
+    "requestBody": "--random-go-boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{\"name\":\"Doc\"}\r\n--random-go-boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nPolicy\u0000\u0001\r\n--random-go-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/related"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Type": [
+                "application/json; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "eyJuYW1lIjoiRG9jIn0="
+          },
+          {
+            "headers": {
+              "Content-Type": [
+                "text/plain; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "UG9saWN5AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-related-alternate-boundary-ignored",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/related; boundary=another-random-go-boundary"
+      ]
+    },
+    "requestBody": "--another-random-go-boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{\"name\":\"Doc\"}\r\n--another-random-go-boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nPolicy\u0000\u0001\r\n--another-random-go-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/related"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Type": [
+                "application/json; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "eyJuYW1lIjoiRG9jIn0="
+          },
+          {
+            "headers": {
+              "Content-Type": [
+                "text/plain; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "UG9saWN5AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "multipart-related-wrong-part-content-type",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/related; boundary=random-go-boundary"
+      ]
+    },
+    "requestBody": "--random-go-boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{\"name\":\"Doc\"}\r\n--random-go-boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nPolicy\u0000\u0001\r\n--random-go-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/related"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Type": [
+                "application/json; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "eyJuYW1lIjoiRG9jIn0="
+          },
+          {
+            "headers": {
+              "Content-Type": [
+                "text/html; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "UG9saWN5AAE="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-related-wrong-part-bytes",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/related; boundary=random-go-boundary"
+      ]
+    },
+    "requestBody": "--random-go-boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{\"name\":\"Doc\"}\r\n--random-go-boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nPolicy\u0000\u0001\r\n--random-go-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/related"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Type": [
+                "application/json; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "eyJuYW1lIjoiRG9jIn0="
+          },
+          {
+            "headers": {
+              "Content-Type": [
+                "text/plain; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "UG9saWN5AAI="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
+  },
+  {
+    "name": "multipart-related-wrong-part-order",
+    "requestPath": "/matcher",
+    "requestHeaders": {
+      "Content-Type": [
+        "multipart/related; boundary=random-go-boundary"
+      ]
+    },
+    "requestBody": "--random-go-boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{\"name\":\"Doc\"}\r\n--random-go-boundary\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nPolicy\u0000\u0001\r\n--random-go-boundary--\r\n",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {
+        "Content-Type": "multipart/related"
+      },
+      "requestBody": {
+        "$multipart": [
+          {
+            "headers": {
+              "Content-Type": [
+                "text/plain; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "UG9saWN5AAE="
+          },
+          {
+            "headers": {
+              "Content-Type": [
+                "application/json; charset=UTF-8"
+              ]
+            },
+            "bodyBase64": "eyJuYW1lIjoiRG9jIn0="
+          }
+        ]
+      }
+    },
+    "expectedMismatches": [
+      "multipart body"
+    ]
   }
 ]
