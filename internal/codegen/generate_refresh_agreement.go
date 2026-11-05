@@ -333,7 +333,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 				invalidValues = append(invalidValues, struct{ suffix, value string }{" with invalid " + placeholder, "invalid/tenant"}, struct{ suffix, value string }{" with non-ASCII " + placeholder, "é.example.com"})
 			}
 			if rule.MaxBytes > 0 {
-				invalidValues = append(invalidValues, struct{ suffix, value string }{" with oversized " + placeholder, strings.Repeat("a", rule.MaxBytes+1)})
+				invalidValues = append(invalidValues, struct{ suffix, value string }{" with oversized " + placeholder, oversizedTemplateValue(rule.MaxBytes, rule.Patterns)})
 			}
 			for _, invalidValue := range invalidValues {
 				invalid := clone(invalidValue.suffix, "reauthorization")
@@ -552,6 +552,20 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		variations[index].RefreshRequiredCases = agreement.refreshRequiredCases(grant, variations[index].Credentials)
 	}
 	return variations
+}
+
+func oversizedTemplateValue(maxBytes int, patterns []string) string {
+	for prefixLabels := 0; prefixLabels <= maxBytes/2; prefixLabels++ {
+		lastLabelBytes := maxBytes + 1 - 2*prefixLabels - len(".com")
+		if lastLabelBytes < 1 || lastLabelBytes > 63 {
+			continue
+		}
+		candidate := strings.Repeat("a.", prefixLabels) + strings.Repeat("a", lastLabelBytes) + ".com"
+		if templatePatternsAcceptValue(patterns, candidate) {
+			return candidate
+		}
+	}
+	return strings.Repeat("a", maxBytes+1)
 }
 
 // declaredGrant is one token request that a method declares.

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -124,7 +125,18 @@ func TestMicrosoftTemplateRulesAgreeOnValidTenantGUID(t *testing.T) {
 					if connector == "outlook-calendar" {
 						value = agreementCase.Settings[placeholder]
 					}
-					require.Len(t, []byte(value), 254)
+					var rule schema.TemplateValueRule
+					for _, method := range manifest.Spec.Auth.Methods {
+						if method.ClientCredentials != nil {
+							rule = method.ClientCredentials.TokenEndpoint.TemplateValueRules[placeholder]
+						}
+					}
+					require.Len(t, []byte(value), rule.MaxBytes+1)
+					matchesPattern := false
+					for _, pattern := range rule.Patterns {
+						matchesPattern = matchesPattern || regexp.MustCompile(pattern).MatchString(value)
+					}
+					require.True(t, matchesPattern, "oversized value must otherwise match a declared pattern")
 					found["oversized"] = true
 				}
 				if strings.Contains(agreementCase.Name, "with non-ASCII ") {
