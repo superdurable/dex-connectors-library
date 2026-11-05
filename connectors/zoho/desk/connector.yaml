@@ -8,6 +8,12 @@ metadata:
   version: v0.24.1
 spec:
   provider: zoho
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-zoho-desk'
+      operations: [searchTickets, getTicket, createTicket, updateTicket, addComment]
+      triggers: []
   codegen:
     go:
       package: desk
