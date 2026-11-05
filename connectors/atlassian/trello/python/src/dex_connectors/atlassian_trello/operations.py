@@ -5,9 +5,11 @@
 import json
 import math
 import re
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
+import dex
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -26,6 +28,8 @@ from dex_connectors.sdk.singledispatch import (
     DecisionKind,
     Fence,
     InsufficientAttemptTimeError,
+    Marker,
+    State,
 )
 
 from ._generated import definitions as definitions
@@ -62,6 +66,47 @@ _DECIMAL_POSITION = re.compile(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-
 _HEX_POSITION = re.compile(
     r"[+-]?0[xX](?:[0-9a-fA-F]+(?:\.[0-9a-fA-F]*)?|\.[0-9a-fA-F]+)[pP][+-]?[0-9]+"
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _TrelloCheckpoint:
+    dispatched_call_id: CallID = field(metadata={"dex_json_name": "trelloDispatchedCallId"})
+    attempt: int = field(metadata={"dex_json_name": "trelloAttempt"})
+    can_retry: bool = field(
+        default=False, metadata={"dex_json_name": "trelloCanRetry", "dex_json_omit_default": True}
+    )
+
+
+class _TrelloHeartbeatContext:
+    def __init__(self, context: dex.AsyncContext) -> None:
+        self._context = context
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._context, name)
+
+    def has_last_heartbeat_value(self) -> bool:
+        return self._context.has_last_heartbeat_value()
+
+    def get_last_heartbeat_value(self, _value_type: type[Marker]) -> Marker | None:
+        checkpoint = self._context.get_last_heartbeat_value(_TrelloCheckpoint)
+        if checkpoint is None:
+            return None
+        return Marker(
+            checkpoint.dispatched_call_id, checkpoint.attempt,
+            State.CAN_RESEND if checkpoint.can_retry else State.CLAIMED,
+        )
+
+    async def heartbeat(self, marker: Marker) -> None:
+        await self._context.heartbeat(_TrelloCheckpoint(
+            marker.call_id, marker.attempt, marker.state in (State.CAN_RESEND, State.NOT_SENT)
+        ))
+
+
+def _trello_fence(call: Call) -> Fence:
+    if call.context is None:
+        raise ValueError("Trello dispatch requires a Dex context")
+    context = _TrelloHeartbeatContext(call.context)
+    return Fence(replace(call, context=cast(dex.AsyncContext, context)), timedelta(seconds=30))
 
 
 def _validate_text(value: str, field: str, required: bool = False) -> None:
@@ -254,7 +299,7 @@ class GetCardOperation:
 
     async def invoke(self, call: Call, input: GetCardInput) -> QueryAttempt[Card]:
         """Read and validate a card from Trello."""
-        empty = Card()
+        empty = Card(position=0)
         try:
             card_id = trello_id(input.card_id, "cardId")
         except ValueError as error:
@@ -306,7 +351,7 @@ async def _single_dispatch(
         return None, MutationAttempt.retry(
             failure(operation, FailureKind.AVAILABILITY, "Dex dispatch context is unavailable")
         )
-    fence = Fence(call, timedelta(seconds=30))
+    fence = _trello_fence(call)
     decision = await fence.decide()
     if decision.kind != DecisionKind.SEND_ALLOWED:
         return None, MutationAttempt.uncertain(

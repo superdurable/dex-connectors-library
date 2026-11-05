@@ -292,6 +292,9 @@ def decode_card(value: object, detail: bool) -> Card:
         else ""
     )
     short_link = value.get("shortLink", "")
+    position = float(value.get("pos") or 0)
+    if math.isfinite(position) and position.is_integer() and abs(position) <= 2**53:
+        position = int(position)
     return Card(
         id=card_id,
         board_id=board_id,
@@ -310,7 +313,7 @@ def decode_card(value: object, detail: bool) -> Card:
         has_more_labels=has_more_labels,
         member_ids=member_ids,
         members=members,
-        position=float(value.get("pos") or 0),
+        position=position,
         url=value.get("url", ""),
         short_url=value.get("shortUrl", ""),
         last_activity_at=parse_time(value.get("dateLastActivity")),

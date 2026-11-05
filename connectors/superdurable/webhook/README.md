@@ -20,6 +20,14 @@ It covers senders that have no dedicated connector, such as form services
 (Typeform, Tally, Jotform), GitHub repository webhooks, Shopify admin
 webhooks, and any Standard Webhooks sender.
 
+## Python package
+
+The [Python package](python/README.md) implements `sendEvent` v0.1.0. It has
+no Trigger. Its [runnable Flow](python/examples/send_event/README.md) uses the
+static `webhook-forwarding` connection, signs one JSON event, and verifies a
+retry through a real Dex Worker and Client. The existing Go package continues
+to provide `requestReceived`.
+
 ## Architecture
 
 The connection's client keeps one `webhooktrigger.Endpoint` per connection.

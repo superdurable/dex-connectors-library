@@ -284,13 +284,14 @@ it("keeps a possibly-sent reply checkpoint until read-back confirms the part", a
 
 it("treats address refusal as unsent and clears the reply checkpoint", async () => {
   let heartbeat: unknown;
+  const heartbeatWrites: unknown[] = [];
   const replyCall = {
     ...call,
     context: {
       ...call.context,
       hasLastHeartbeatValue: () => heartbeat !== undefined && heartbeat !== null,
       getLastHeartbeatValue: () => heartbeat,
-      recordHeartbeat: async (value: unknown) => { heartbeat = value; },
+      recordHeartbeat: async (value: unknown) => { heartbeat = value; heartbeatWrites.push(value); },
     },
   } as Call;
   const client = new IntercomClient({}, validCredentials, {
@@ -301,7 +302,9 @@ it("treats address refusal as unsent and clears the reply checkpoint", async () 
     conversationId: "2002", adminId: "77", messageType: "comment", body: "Hello",
   });
   expect(attempt.kind).toBe("retry");
-  expect(heartbeat).toBeNull();
+  expect(heartbeatWrites).toHaveLength(2);
+  expect(heartbeatWrites[0]).toMatchObject({ intercomReplyDispatchedCallId: call.id });
+  expect(heartbeat).toBeUndefined();
 });
 
 it("uses Go whitespace for reply body validation and HTML", async () => {
