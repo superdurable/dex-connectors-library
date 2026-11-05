@@ -118,6 +118,7 @@ spec:
       pkce: true
       refresh:
         requiredScopes: [read:user, user:email]
+        missingExpiry: reject
         scopeSeparators: whitespaceAndComma
         exactScopes: true
         terminalErrorCodes: [bad_refresh_token, incorrect_client_credentials, invalid_client, invalid_grant]

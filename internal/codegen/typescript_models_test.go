@@ -53,6 +53,22 @@ func TestTypeScriptRefreshDeclarationUsesDecodedManifest(t *testing.T) {
 	}
 }
 
+func TestTypeScriptSalesforceBlankStoredMethodUsesDeclaredDefault(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "salesforce", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manifestFile.Close()
+	manifest, err := schema.Decode(manifestFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := string(generateTypeScriptModels(manifest, nil))
+	if !strings.Contains(models, `const method = selectedMethod || "salesforce-oauth";`) {
+		t.Fatal("blank Salesforce auth_method must select the production OAuth method")
+	}
+}
+
 func TestTypeScriptMultiAuthModelsGolden(t *testing.T) {
 	manifestFile, err := os.Open(filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml"))
 	if err != nil {

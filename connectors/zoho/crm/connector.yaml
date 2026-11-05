@@ -78,6 +78,8 @@ spec:
             - {credential: api_domain, source: api_domain}
           pkce: false
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-eu-oauth
         displayName: European Union (zoho.eu)
@@ -104,6 +106,8 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-in-oauth
         displayName: India (zoho.in)
@@ -130,6 +134,8 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-au-oauth
         displayName: Australia (zoho.com.au)
@@ -156,6 +162,8 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-jp-oauth
         displayName: Japan (zoho.jp)
@@ -182,6 +190,8 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-ca-oauth
         displayName: Canada (zohocloud.ca)
@@ -208,6 +218,8 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-sa-oauth
         displayName: Saudi Arabia (zoho.sa)
@@ -234,6 +246,8 @@ spec:
           credentialMappings: *zohoCRMCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
   operations:
     - name: findRecords

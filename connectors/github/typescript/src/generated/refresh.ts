@@ -41,6 +41,7 @@ export const Authorization = {
     ],
     "refresh": {
       "exactScopes": true,
+      "missingExpiry": "reject",
       "requiredScopes": [
         "read:user",
         "user:email"

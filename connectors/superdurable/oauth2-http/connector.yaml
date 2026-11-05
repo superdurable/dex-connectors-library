@@ -97,6 +97,8 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: {fromSetting: tokenEndpointAuthMethod}
       refresh:
+        missingExpiry: reject
+        storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
     - name: sendRequest
