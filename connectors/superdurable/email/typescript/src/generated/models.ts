@@ -38,7 +38,7 @@ function canonicalGoTimeJSON(value: string): string {
 }
 
 /** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
-export const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {

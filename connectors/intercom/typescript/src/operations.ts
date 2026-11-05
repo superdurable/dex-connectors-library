@@ -687,7 +687,7 @@ export class ReplyToConversationOperation
       exchange.outcome === "defect"
     ) {
       try {
-        await call.context.recordHeartbeat(null);
+        await call.context.recordHeartbeat(undefined);
       } catch {
         /* A retained checkpoint forces safe read-back next attempt. */
       }

@@ -25,7 +25,7 @@ func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	require.NoError(t, err)
 	var cases []codegen.RefreshAgreementCase
 	require.NoError(t, json.Unmarshal(encoded, &cases))
-	require.Len(t, cases, 17)
+	require.Len(t, cases, 19)
 	require.Equal(t, "google-oauth refresh", cases[0].Name)
 	require.Equal(t, "https://oauth2.googleapis.com/token", cases[0].Endpoint)
 	require.Equal(t, "manifest-client-id", cases[0].Parameters["client_id"])
@@ -33,10 +33,10 @@ func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	require.Equal(t, "manifest-refresh-token-2", cases[0].Updates["refresh_token"])
 	require.Equal(t, "retryable", cases[1].ExpectedError)
 	require.Equal(t, "reauthorization", cases[3].ExpectedError)
-	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[9].Name)
-	require.Equal(t, "private_key", cases[9].PrivateKeyMember)
-	require.Equal(t, "manifest-issuer@example.com", cases[9].Assertion.Issuer)
-	require.Equal(t, int64(3600), cases[9].Assertion.LifetimeSeconds)
+	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[10].Name)
+	require.Equal(t, "private_key", cases[10].PrivateKeyMember)
+	require.Equal(t, "manifest-issuer@example.com", cases[10].Assertion.Issuer)
+	require.Equal(t, int64(3600), cases[10].Assertion.LifetimeSeconds)
 }
 
 func TestGenerateRefreshAgreementCasesEncodeTerminalCodesAsArrays(t *testing.T) {
@@ -57,6 +57,38 @@ func TestGenerateRefreshAgreementCasesEncodeTerminalCodesAsArrays(t *testing.T) 
 		`terminal_code in case["terminalErrorCodes"]`)
 	require.Contains(t, string(codegen.GenerateTypeScriptRefreshAgreementTest()),
 		`agreement.terminalErrorCodes?.includes(terminalCode)`)
+}
+
+func TestHubSpotCommaInsideArrayScopeRequiresAtomicMatching(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "hubspot", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []codegen.RefreshAgreementCase
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	var requiredScopes []string
+	for _, agreementCase := range cases {
+		if agreementCase.Name == "hubspot-oauth refresh" {
+			responseScopes, isScopeArray := agreementCase.Response["scopes"].([]any)
+			require.True(t, isScopeArray)
+			for _, responseScope := range responseScopes {
+				requiredScopes = append(requiredScopes, responseScope.(string))
+			}
+		}
+	}
+	require.Greater(t, len(requiredScopes), 1)
+	for _, agreementCase := range cases {
+		if agreementCase.Name != "hubspot-oauth refresh with comma inside one array scope" {
+			continue
+		}
+		require.Equal(t, "reauthorization", agreementCase.ExpectedError)
+		require.Equal(t, []any{strings.Join(requiredScopes, ",")}, agreementCase.Response["scopes"])
+		return
+	}
+	t.Fatal("HubSpot atomic array scope variation is missing")
 }
 
 func TestGenerateRefreshAgreementCasesCoverAlternativeScopes(t *testing.T) {

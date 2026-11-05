@@ -512,7 +512,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["lifetime"],
-          "properties": { "lifetime": { "type": "string", "pattern": "^\\+?(0|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$" } }
+          "properties": { "lifetime": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"} } }
         }
       ]
     },
@@ -588,8 +588,8 @@
         "scopeResourcePrefixCaseInsensitive": { "type": "boolean", "description": "Remove the resource prefix without case." },
         "caseInsensitiveScopes": { "type": "boolean", "description": "Compare scope names without case." },
         "refreshWhenCredentialBlank": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$", "description": "Refresh when this credential is blank." },
-        "expiryCap": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "description": "Maximum token lifetime." },
-        "accessTokenJWTExpiryFallback": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "description": "Use the access-token JWT exp claim, falling back to this lifetime." },
+        "expiryCap": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Maximum token lifetime." },
+        "accessTokenJWTExpiryFallback": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Use the access-token JWT exp claim, falling back to this lifetime." },
         "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
         "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
         "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
@@ -670,7 +670,7 @@
             "responseURLValidation": { "$ref": "#/$defs/responseURLValidation" },
             "trimSpaceSources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" } },
             "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
-            "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^\\+?(0|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$" },
+            "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"} },
             "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
             "credentialCopies": {
               "type": "array",

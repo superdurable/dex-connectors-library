@@ -128,6 +128,45 @@ func TestCatalogManifestsMatchJSONSchema(t *testing.T) {
 	}
 }
 
+func TestManifestDurationPatternsRejectZero(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition map[string]any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	var durationDefinitions []map[string]any
+	var findDurationDefinitions func(any)
+	findDurationDefinitions = func(value any) {
+		switch typedValue := value.(type) {
+		case map[string]any:
+			if pattern, isPattern := typedValue["pattern"].(string); isPattern && strings.Contains(pattern, "ns|us|µs") && typedValue["not"] != nil {
+				durationDefinitions = append(durationDefinitions, typedValue)
+			}
+			for _, child := range typedValue {
+				findDurationDefinitions(child)
+			}
+		case []any:
+			for _, child := range typedValue {
+				findDurationDefinitions(child)
+			}
+		}
+	}
+	findDurationDefinitions(definition)
+	require.Len(t, durationDefinitions, 4)
+	for index, durationDefinition := range durationDefinitions {
+		compiler := jsonschema.NewCompiler()
+		resource := fmt.Sprintf("https://connectors.dex.dev/duration-%d.schema.json", index)
+		require.NoError(t, compiler.AddResource(resource, durationDefinition))
+		compiled, err := compiler.Compile(resource)
+		require.NoError(t, err)
+		for _, invalidDuration := range []string{"0h", "0h0m", "+00.0h"} {
+			require.Error(t, compiled.Validate(invalidDuration), invalidDuration)
+		}
+		for _, validDuration := range []string{"1h", "0h1m", "+0.5s"} {
+			require.NoError(t, compiled.Validate(validDuration), validDuration)
+		}
+	}
+}
+
 func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
 	require.NoError(t, err)

@@ -33,7 +33,9 @@ def credential_values(credentials: Any) -> dict[str, str]:
     return result
 
 
-def credentials_for(case: dict[str, Any], private_key_pem: str, overrides: dict[str, str] | None = None) -> Any:
+def credentials_for(
+    case: dict[str, Any], private_key_pem: str, overrides: dict[str, str] | None = None
+) -> Any:
     """Construct the smallest frozen credential accepted by the manifest driver."""
     material = dict(case["credentials"])
     material.update(overrides or {})
@@ -135,8 +137,11 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             }[refresh_case["expiresAt"]]
             overrides = dict(refresh_case.get("credentials", {}))
             if field := refresh_case.get("jwtAccessTokenCredential"):
-                expiry = state.now + (timedelta(hours=1) if refresh_case["jwtExpiry"] == "fresh" else -timedelta(hours=1))
-                payload = base64.urlsafe_b64encode(json.dumps({"exp": int(expiry.timestamp())}).encode()).rstrip(b"=").decode()
+                offset = timedelta(hours=1) if refresh_case["jwtExpiry"] == "fresh" else -timedelta(hours=1)
+                expiry = state.now + offset
+                payload = base64.urlsafe_b64encode(
+                    json.dumps({"exp": int(expiry.timestamp())}).encode()
+                ).rstrip(b"=").decode()
                 overrides[field] = f"e30.{payload}.signature"
             stored_credentials = credentials_for(case, private_key_pem, overrides)
             stored_state = CredentialRefreshState(stored_credentials, expires_at, state.now)

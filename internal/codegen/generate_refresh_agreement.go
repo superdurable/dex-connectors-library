@@ -314,7 +314,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 			malformedArray.Response["scopes"] = "not-an-array"
 			variations = append(variations, malformedArray)
 			commaInElement := clone(" with comma inside one array scope", "reauthorization")
-			commaInElement.Response["scopes"] = []string{grant.responseScopes[0] + ",manifest-ungranted-scope"}
+			commaInElement.Response["scopes"] = []string{strings.Join(grant.responseScopes, ",")}
 			variations = append(variations, commaInElement)
 		}
 		if grant.scopeResourcePrefix != "" {
@@ -337,11 +337,20 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 				variations = append(variations, wrongPrefixCase)
 			}
 		}
+		upperNames := clone(" with uppercase scope names", "reauthorization")
 		if grant.caseInsensitiveScopes {
-			upperNames := clone(" with uppercase scope names", "")
-			upperNames.Response["scope"] = strings.ToUpper(strings.Join(grant.responseScopes, " "))
-			variations = append(variations, upperNames)
+			upperNames.ExpectedError = ""
 		}
+		if grant.responseScopeField == "scopesArray" {
+			values := make([]string, len(grant.responseScopes))
+			for index, scope := range grant.responseScopes {
+				values[index] = strings.ToUpper(scope)
+			}
+			upperNames.Response["scopes"] = values
+		} else {
+			upperNames.Response["scope"] = strings.ToUpper(strings.Join(grant.responseScopes, " "))
+		}
+		variations = append(variations, upperNames)
 		if grant.responseScopeField != "scopesArray" {
 			comma := clone(" with comma-separated scopes", "reauthorization")
 			comma.Response["scope"] = strings.Join(append(append([]string{}, grant.responseScopes...), grant.responseScopes[0]), ",")

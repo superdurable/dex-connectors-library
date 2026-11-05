@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -78,6 +79,7 @@ type conformanceScenario struct {
 	Attempts            int                       `json:"attempts"`
 	Intermediate        []conformanceIntermediate `json:"intermediate"`
 	PriorHeartbeat      json.RawMessage           `json:"priorHeartbeat"`
+	FixedClock          string                    `json:"fixedClock"`
 	Expected            conformanceDecision       `json:"expected"`
 }
 
@@ -137,11 +139,13 @@ type conformanceMatcherCase struct {
 }
 
 type conformanceOutcome struct {
-	Branch         sdkgo.BranchID
-	Failure        *sdkgo.Failure
-	Value          any
-	Err            error
-	IdempotencyKey string
+	Branch           sdkgo.BranchID
+	Failure          *sdkgo.Failure
+	Value            any
+	Err              error
+	IdempotencyKey   string
+	Heartbeat        json.RawMessage
+	HeartbeatCleared bool
 }
 
 type conformanceInvoker interface {
@@ -198,21 +202,45 @@ func (invocation conformanceQueryInvocation[Input, Output]) InputFields() []stri
 type conformanceMutationInvocation[Input, Output any] struct {
 	t          *testing.T
 	raw        json.RawMessage
-	context    dex.Context
+	context    *conformanceHeartbeatContext
 	operation  sdkgo.Mutation[Input, Output]
 	connection sdkgo.ConnectionRef
 	callID     string
 }
 
 func newConformanceMutationInvocation[Input, Output any](t *testing.T, raw json.RawMessage, context dex.Context, operation sdkgo.Mutation[Input, Output], connection sdkgo.ConnectionRef, callID string) conformanceOperationInvocation {
-	return conformanceMutationInvocation[Input, Output]{t, raw, context, operation, connection, callID}
+	return conformanceMutationInvocation[Input, Output]{t, raw, &conformanceHeartbeatContext{Context: context}, operation, connection, callID}
 }
 
 func (invocation conformanceMutationInvocation[Input, Output]) Invoke() conformanceOutcome {
-	return invokeConformanceMutation(invocation.t, invocation.raw, invocation.context, invocation.operation, invocation.connection, invocation.callID)
+	invocation.context.lastHeartbeat = nil
+	invocation.context.lastHeartbeatCleared = false
+	outcome := invokeConformanceMutation(invocation.t, invocation.raw, invocation.context, invocation.operation, invocation.connection, invocation.callID)
+	outcome.Heartbeat = append(json.RawMessage(nil), invocation.context.lastHeartbeat...)
+	outcome.HeartbeatCleared = invocation.context.lastHeartbeatCleared
+	return outcome
 }
 func (invocation conformanceMutationInvocation[Input, Output]) InputFields() []string {
 	return conformanceInputFields[Input]()
+}
+
+type conformanceHeartbeatContext struct {
+	dex.Context
+	lastHeartbeat        json.RawMessage
+	lastHeartbeatCleared bool
+}
+
+func (context *conformanceHeartbeatContext) RecordHeartbeat(value any) error {
+	if err := context.Context.RecordHeartbeat(value); err != nil {
+		return err
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.lastHeartbeat = encoded
+	context.lastHeartbeatCleared = value == nil
+	return nil
 }
 
 func conformancePriorAttempt(t *testing.T, raw json.RawMessage, restore func([]byte)) int32 {
@@ -220,12 +248,27 @@ func conformancePriorAttempt(t *testing.T, raw json.RawMessage, restore func([]b
 	if len(raw) == 0 {
 		return 0
 	}
-	var marker struct {
-		Attempt int32 `json:"attempt"`
+	var prior struct {
+		Attempt int32           `json:"attempt"`
+		Value   json.RawMessage `json:"value"`
 	}
-	require.NoError(t, json.Unmarshal(raw, &marker))
-	restore(append([]byte(nil), raw...))
-	return marker.Attempt
+	require.NoError(t, json.Unmarshal(raw, &prior))
+	if len(prior.Value) > 0 {
+		restore(append([]byte(nil), prior.Value...))
+	} else {
+		restore(append([]byte(nil), raw...))
+	}
+	return prior.Attempt
+}
+
+func conformanceFixedClock(t *testing.T, scenario conformanceScenario) func() time.Time {
+	t.Helper()
+	if scenario.FixedClock == "" {
+		return func() time.Time { return time.Unix(1, 0).UTC() }
+	}
+	instant, err := time.Parse(time.RFC3339Nano, scenario.FixedClock)
+	require.NoError(t, err)
+	return func() time.Time { return instant }
 }
 
 func invokeConformanceQuery[Input, Output any](t *testing.T, raw json.RawMessage, context dex.Context, operation sdkgo.Query[Input, Output], connection sdkgo.ConnectionRef) conformanceOutcome {
@@ -303,6 +346,13 @@ func TestConnectorConformance(t *testing.T) {
 				outcome := invoker.Invoke(index + 1)
 				decision := conformanceRetryDecision(t, outcome)
 				decision["exchangeCount"] = recorder.requestCount
+				if outcome.HeartbeatCleared {
+					decision["heartbeat"] = map[string]any{"cleared": true}
+				} else if len(outcome.Heartbeat) > 0 {
+					var heartbeat any
+					require.NoError(t, json.Unmarshal(outcome.Heartbeat, &heartbeat))
+					decision["heartbeat"] = heartbeat
+				}
 				recordedIntermediate = append(recordedIntermediate, decision)
 			}
 			outcome := invoker.Invoke(scenario.Attempts)
@@ -415,6 +465,15 @@ func recordConformanceScenario(scenario conformanceScenario, recorder *conforman
 		delete(recorded, "idempotencyKey")
 	}
 	decision := map[string]any{"branch": string(outcome.Branch), "failureKind": "", "retry": false, "retryAfterMs": 0, "uncertain": outcome.Branch == sdkgo.UncertainBranchID, "requestCount": recorder.providerRequestCount}
+	if outcome.HeartbeatCleared {
+		decision["heartbeat"] = map[string]any{"cleared": true}
+	} else if len(outcome.Heartbeat) > 0 {
+		var heartbeat any
+		if err := json.Unmarshal(outcome.Heartbeat, &heartbeat); err != nil {
+			return nil, err
+		}
+		decision["heartbeat"] = heartbeat
+	}
 	if outcome.Err != nil {
 		var retry *sdkgo.RetryError
 		if !errors.As(outcome.Err, &retry) {
@@ -1062,7 +1121,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 	}
 	scenarios := make([]conformanceScenario, 0, len(rawScenarios))
 	for _, rawScenario := range rawScenarios {
-		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "expected", "randomSeed", "randomRequestFields"})
+		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "expected", "fixedClock", "randomSeed", "randomRequestFields"})
 		if err != nil {
 			return nil, err
 		}
@@ -1083,6 +1142,14 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 		for _, field := range scenario.RandomRequestFields {
 			if !strings.HasPrefix(field, "/") || strings.Contains(field, "~") {
 				return nil, errors.New("random request field must be a simple JSON pointer")
+			}
+		}
+		if _, hasFixedClock := fields["fixedClock"]; hasFixedClock {
+			if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) {
+				return nil, errors.New("invalid fixed clock")
+			}
+			if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil {
+				return nil, fmt.Errorf("invalid fixed clock: %w", err)
 			}
 		}
 		var rawExchanges []json.RawMessage
@@ -1204,7 +1271,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			}
 		}
 		if rawExpected, ok := fields["expected"]; ok {
-			if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output"}); err != nil {
+			if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output", "heartbeat"}); err != nil {
 				return nil, err
 			}
 		} else if os.Getenv("CONNECTOR_CONFORMANCE_MODE") != "record" {
@@ -1222,28 +1289,44 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 					required = required[:2]
 					optional = []string{"exchangeCount"}
 				}
+				optional = append(optional, "heartbeat")
 				if _, err := conformanceObject(value, required, optional); err != nil {
 					return nil, err
 				}
 			}
 		}
 		if prior, ok := fields["priorHeartbeat"]; ok {
-			if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"}); err != nil {
+			priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId"})
+			if err != nil {
 				return nil, err
 			}
-			var marker struct {
-				CallID  string `json:"callId"`
-				Attempt int    `json:"attempt"`
-				State   string `json:"state"`
+			if rawValue, wrapped := priorFields["value"]; wrapped {
+				if len(priorFields) != 2 || bytes.Equal(bytes.TrimSpace(rawValue), []byte("null")) || !json.Valid(rawValue) {
+					return nil, errors.New("invalid prior heartbeat value")
+				}
+			} else {
+				if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"}); err != nil {
+					return nil, err
+				}
+				var marker struct {
+					CallID string `json:"callId"`
+					State  string `json:"state"`
+				}
+				if err := json.Unmarshal(prior, &marker); err != nil {
+					return nil, err
+				}
+				if marker.CallID != scenario.CallID {
+					return nil, errors.New("prior heartbeat Call ID differs")
+				}
+				if marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend" {
+					return nil, errors.New("invalid prior heartbeat")
+				}
 			}
-			if err := json.Unmarshal(prior, &marker); err != nil {
-				return nil, err
+			var attempt struct {
+				Attempt int `json:"attempt"`
 			}
-			if marker.CallID != scenario.CallID {
-				return nil, errors.New("prior heartbeat Call ID differs")
-			}
-			if marker.Attempt < 1 || (marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend") {
-				return nil, errors.New("invalid prior heartbeat")
+			if err := json.Unmarshal(prior, &attempt); err != nil || attempt.Attempt < 1 {
+				return nil, errors.New("invalid prior heartbeat attempt")
 			}
 		}
 		for _, intermediate := range scenario.Intermediate {
