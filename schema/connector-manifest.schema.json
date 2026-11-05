@@ -130,7 +130,7 @@
               "additionalProperties": false,
               "required": ["entrypoint", "hostApiRange", "backendCapabilities", "mockScenarios", "icon"],
               "properties": {
-                "entrypoint": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.html$" },
+                "entrypoint": { "type": "string", "pattern": "^[^/].+\\.html$", "not": { "pattern": "(^|/)\\.\\.(/|$)" } },
                 "hostApiRange": { "type": "string", "minLength": 1 },
                 "backendCapabilities": {
                   "type": "array",
@@ -144,7 +144,7 @@
                   "uniqueItems": true,
                   "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
                 },
-                "icon": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.(?:png|svg)$" }
+                "icon": { "type": "string", "pattern": "^[^/].+\\.(?:png|svg)$", "not": { "pattern": "(^|/)\\.\\.(/|$)" } }
               }
             },
             "units": {
@@ -177,6 +177,7 @@
       "properties": {
         "version": { "type": "string", "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
         "package": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+		"timestampFormat": { "const": "rfc3339Nano" },
         "operations": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "triggers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "maxItems": 0 }
       }
@@ -425,6 +426,7 @@
         "protocol": { "enum": ["oauth2", "oidc"] },
         "authorizationEndpoint": { "$ref": "#/$defs/oauthEndpoint" },
         "tokenEndpoint": { "$ref": "#/$defs/oauthEndpoint" },
+        "tokenEndpointNetworkPolicy": { "const": "privateNetworkHTTP", "description": "DNS-pinned private-network HTTP policy for a configurable token endpoint." },
         "authorizationParameters": {
           "type": "object",
           "propertyNames": {
@@ -494,15 +496,23 @@
       "uniqueItems": true,
       "items": { "type": "string", "pattern": "\\S" }
     },
+    "acceptedTokenTypes": {
+      "description": "Successful OAuth token_type values, compared without case; Bearer when absent.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^\\S(?:[\\s\\S]*\\S)?$" }
+    },
     "missingExpiry": {
-      "description": "The expiry of a token whose response has no expires_in: keep stores it without an expiry; lifetime sets one.",
+      "description": "The expiry of a token whose response has no positive expires_in: reject makes a malformed successful response retryable (also the default); keep stores it without expiry; lifetime sets one.",
       "oneOf": [
+        { "const": "reject" },
         { "const": "keep" },
         {
           "type": "object",
           "additionalProperties": false,
           "required": ["lifetime"],
-          "properties": { "lifetime": { "type": "string", "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$" } }
+          "properties": { "lifetime": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"} } }
         }
       ]
     },
@@ -533,6 +543,20 @@
             "fromSetting": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
             "fromKey": { "type": "string", "minLength": 1 },
             "template": { "type": "string", "pattern": "^https://[^/{}]+/.*\\{[a-z][A-Za-z0-9_]*\\}" },
+            "templateValueRules": {
+              "type": "object", "minProperties": 1,
+              "propertyNames": { "pattern": "^[a-z][A-Za-z0-9_]*$" },
+              "additionalProperties": {
+                "type": "object", "additionalProperties": false, "minProperties": 1,
+                "properties": {
+                  "trimSpace": { "type": "boolean" },
+                  "lowercase": { "type": "boolean" },
+                  "maxBytes": { "type": "integer", "minimum": 1 },
+                  "patterns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 6, "pattern": "^\\^\\(\\?:.*\\)\\$$" } },
+                  "reject": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+                }
+              }
+            },
             "values": { "type": "object", "additionalProperties": { "type": "string", "pattern": "\\S" } }
           },
           "oneOf": [
@@ -544,13 +568,51 @@
         }
       ]
     },
+    "responseURLValidation": {
+      "type": "object", "additionalProperties": false, "required": ["credential"],
+      "allOf": [
+        { "anyOf": [{ "required": ["allowedHosts"] }, { "required": ["allowedHostSuffix"] }, { "properties": { "allowAnyHTTPS": { "const": true } }, "required": ["allowAnyHTTPS"] }, { "properties": { "allowLoopback": { "const": true } }, "required": ["allowLoopback"] }] },
+        { "not": { "properties": { "allowAnyHTTPS": { "const": true } }, "required": ["allowAnyHTTPS", "allowedHosts"] } }
+      ],
+      "properties": {
+        "credential": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+        "allowedHosts": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "allowedHostSuffix": { "type": "string", "minLength": 1 },
+        "allowAnyHTTPS": { "type": "boolean" }, "allowLoopback": { "type": "boolean" },
+        "forbidPort": { "type": "boolean" }, "requireResponse": { "type": "boolean" },
+        "defaultURL": { "type": "string", "minLength": 1 }, "refreshWhenInvalid": { "type": "boolean" }
+      }
+    },
     "oauthRefresh": {
       "description": "How a host refreshes the access token. tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, the client credentials, and credentialMappings apply to refresh requests and responses too; a value that a refresh response omits keeps the stored one.",
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        { "not": { "required": ["requiredScopes", "acceptedScopeSets"] } },
+        { "if": { "properties": { "scopeResourcePrefixCaseInsensitive": { "const": true } }, "required": ["scopeResourcePrefixCaseInsensitive"] }, "then": { "required": ["scopeResourcePrefix"] } },
+        { "if": { "required": ["responseScopes"] }, "then": { "not": { "anyOf": [{ "required": ["requiredScopes"] }, { "required": ["exactScopes"] }, { "required": ["scopeSeparators"] }] } } }
+      ],
       "properties": {
+        "trimClientID": { "type": "boolean", "description": "Trim Go Unicode whitespace around the client ID before a refresh request." },
+        "responseURLValidation": { "$ref": "#/$defs/responseURLValidation" },
+        "acceptsMissingTokenType": { "type": "boolean", "description": "Accept a successful token response without token_type." },
+        "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
+        "exactScopes": { "type": "boolean", "description": "Require returned scopes to equal the declared scopes; otherwise require at least the declared scopes when a response includes scope." },
+        "responseScopeField": { "enum": ["scope", "scopesArray"], "description": "Granted scopes from scope string or scopes JSON array." },
+        "scopeResourcePrefix": { "const": "https://graph.microsoft.com/", "description": "Remove the Graph resource prefix from returned scopes." },
+        "scopeResourcePrefixCaseInsensitive": { "type": "boolean", "description": "Remove the resource prefix without case." },
+        "caseInsensitiveScopes": { "type": "boolean", "description": "Compare scope names without case." },
+        "refreshWhenCredentialBlank": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$", "description": "Refresh when this credential is blank." },
+        "expiryCap": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Maximum token lifetime." },
+        "accessTokenJWTExpiryFallback": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Use the access-token JWT exp claim, falling back to this lifetime." },
+        "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
+        "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
+        "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
+        "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported refresh scope; cannot be combined with requiredScopes." },
+        "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
-        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." },
+        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
+        "storedMissingExpiry": { "enum": ["keep", "refresh", "refreshIfRefreshTokenPresent"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" },
         "grants": {
           "description": "The refresh tokens of a method that stores several. When absent, the credential mapped from refresh_token with the method's credentialMappings.",
@@ -561,6 +623,9 @@
             "additionalProperties": false,
             "required": ["refreshTokenCredential", "credentialMappings"],
             "properties": {
+              "acceptsMissingTokenType": { "type": "boolean" },
+              "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
+              "exactScopes": { "type": "boolean" },
               "refreshTokenCredential": { "description": "A secretString credential field; blank skips the grant.", "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
               "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
               "grantedScopes": { "description": "The declared scope set the granted scopes must contain; scopes when absent.", "enum": ["scopes", "userScopes"] }
@@ -574,7 +639,11 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["tokenEndpoint", "clientIDCredential", "clientSecretCredential", "credentialMappings"],
+      "allOf": [{ "if": { "required": ["responseScopes"] }, "then": { "not": { "required": ["scopeSeparators"] } } }, { "not": { "properties": { "storedMissingExpiry": { "const": "refreshIfRefreshTokenPresent" } }, "required": ["storedMissingExpiry"] } }],
       "properties": {
+        "trimClientID": { "type": "boolean", "description": "Trim Go Unicode whitespace around the client ID before a mint request." },
+        "acceptsMissingTokenType": { "type": "boolean" },
+        "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
         "tokenEndpoint": { "$ref": "#/$defs/valueSource" },
         "tokenEndpointAuthMethod": { "$ref": "#/$defs/tokenEndpointAuthMethod" },
         "tokenRequestEncoding": { "$ref": "#/$defs/tokenRequestEncoding" },
@@ -583,7 +652,10 @@
         "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
         "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_client when absent." },
-        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." },
+        "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
+        "storedMissingExpiry": { "enum": ["keep", "refresh", "refreshIfRefreshTokenPresent"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
+        "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
+        "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" }
       }
     },
@@ -597,15 +669,24 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["privateKey", "issuer", "audience", "tokenEndpoint", "lifetime", "credentialMappings"],
+          "allOf": [{ "if": { "required": ["responseScopes"] }, "then": { "not": { "required": ["scopeSeparators"] } } }, { "not": { "properties": { "storedMissingExpiry": { "const": "refreshIfRefreshTokenPresent" } }, "required": ["storedMissingExpiry"] } }],
           "properties": {
+            "acceptsMissingTokenType": { "type": "boolean" },
+            "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
             "keyCredential": { "description": "A secretString credential field holding the JSON key that fromKey sources read.", "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
             "privateKey": { "$ref": "#/$defs/valueSource", "description": "The PEM RSA private key." },
             "issuer": { "$ref": "#/$defs/valueSource" },
             "subject": { "$ref": "#/$defs/valueSource" },
+            "subjectValidation": { "enum": ["goMailAddress"], "description": "Trim Go Unicode whitespace, then require Go mail.ParseAddress to return the identical bare address before signing." },
             "audience": { "$ref": "#/$defs/valueSource" },
             "tokenEndpoint": { "$ref": "#/$defs/valueSource" },
             "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
-            "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$" },
+            "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported JWT mint scope; independent of assertion request scopes." },
+            "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
+            "responseURLValidation": { "$ref": "#/$defs/responseURLValidation" },
+            "trimSpaceSources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" } },
+            "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
+            "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"} },
             "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
             "credentialCopies": {
               "type": "array",
@@ -620,7 +701,9 @@
               }
             },
             "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
-            "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "keep when absent." }
+            "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
+            "refreshWhenCredentialBlank": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+            "storedMissingExpiry": { "enum": ["keep", "refresh", "refreshIfRefreshTokenPresent"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." }
           }
         }
       }

@@ -103,11 +103,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Trello stored credential does not match the connector credential fields")
+        if set(material) - set(('api_key', 'token')):
+            raise ValueError("Trello stored credential does not match the connector credential fields")
         api_key = material.get("api_key")
-        if not isinstance(api_key, str) or not api_key:
-            raise ValueError("Trello credential api_key is required")
+        if api_key is not None and not (isinstance(api_key, str)):
+            raise ValueError("Trello credential api_key has an invalid type")
         token = material.get("token")
-        if not isinstance(token, str) or not token:
+        if token is not None and not (isinstance(token, str)):
+            raise ValueError("Trello credential token has an invalid type")
+        if not api_key:
+            raise ValueError("Trello credential api_key is required")
+        if not token:
             raise ValueError("Trello credential token is required")
         return Credentials(SecretString(api_key), SecretString(token))
 

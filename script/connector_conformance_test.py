@@ -127,11 +127,11 @@ class CoverageValidationTest(unittest.TestCase):
         cases = json.loads((Path(__file__).resolve().parents[1] / "conformance/runners/clock_cases.json").read_text())
         for clock in cases["valid"]:
             with self.subTest(clock=clock):
-                connector_conformance.validate_scenario_clock({"name": "fixed", "clock": clock})
+                connector_conformance.validate_scenario_fixed_clock({"name": "fixed", "fixedClock": clock})
         for clock in cases["invalid"]:
             with self.subTest(clock=clock):
                 with self.assertRaises(ValueError):
-                    connector_conformance.validate_scenario_clock({"name": "fixed", "clock": clock})
+                    connector_conformance.validate_scenario_fixed_clock({"name": "fixed", "fixedClock": clock})
 
     def validate_fixture(self, scenarios: list[dict[str, object]], error: str) -> None:
         with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(connector_conformance, "conformance_exemptions", return_value={}):

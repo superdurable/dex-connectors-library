@@ -12,7 +12,7 @@ import dex_connectors.atlassian_trello as trello
 
 ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
-from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
+from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # type: ignore[import-not-found]  # noqa: E402
 
 SCENARIOS = load_scenarios(ROOT / "conformance/connectors/atlassian/trello/scenarios.json")
 CONNECTION = sdk.ConnectionRef("trello", "trello-test")

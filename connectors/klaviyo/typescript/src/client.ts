@@ -67,4 +67,3 @@ export class InvalidKlaviyoCredentialError extends Error {
   /** Construct a secret-safe credential error. */
   constructor() { super('Klaviyo credentials are unavailable or invalid'); }
 }
-

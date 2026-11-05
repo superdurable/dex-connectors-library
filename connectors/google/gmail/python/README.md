@@ -2,13 +2,13 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.1.1 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
+Version 0.1.2 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
 the Go `messageReceived` and `replyReceived` Triggers are not available in Python.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.1.1`. The package requires
-`dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`; the latter provides
+After release, install `dex-connector-google-gmail==0.1.2`. The package requires
+`dex-connectors-sdk==0.4.0` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
 
@@ -23,6 +23,8 @@ and Gmail send scopes. Dex derives the verified primary email and stores the
 access and refresh tokens in encrypted project storage. Its connection provider
 coordinates token refresh and persists rotated refresh tokens. A service-account
 key with Workspace domain-wide delegation is the administrator-only alternative.
+The refresh driver reads generated manifest grant declarations, while Gmail
+keeps its delegated mailbox and service-account key validation.
 
 The Python connector uses the same manifest authorization guide and safe
 defaults as the Go connector. Dex CLI/Web 1.28.0 supports Python Flow

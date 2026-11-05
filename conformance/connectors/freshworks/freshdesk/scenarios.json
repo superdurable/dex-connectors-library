@@ -247,6 +247,10 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 1,
+          "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc"
+        },
         "output": {
           "ticket": {
             "companyId": 22,
@@ -422,6 +426,10 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 1,
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3"
+        },
         "output": {
           "conversation": {
             "body": "Checking billing",
@@ -723,6 +731,10 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+          "freshdeskRetryAttempt": 2
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -770,6 +782,10 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+          "freshdeskRetryAttempt": 2
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -815,6 +831,10 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+          "freshdeskRetryAttempt": 2
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -967,6 +987,10 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+          "freshdeskRetryAttempt": 2
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1010,6 +1034,10 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+          "freshdeskRetryAttempt": 2
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1051,6 +1079,10 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+          "freshdeskRetryAttempt": 2
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1384,6 +1416,10 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 1,
+          "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc"
+        },
         "output": {
           "ticket": {
             "createdAt": "0001-01-01T00:00:00Z",
@@ -1440,6 +1476,10 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 1,
+          "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc"
+        },
         "output": {
           "ticket": {
             "createdAt": "0001-01-01T00:00:00Z",
@@ -1725,6 +1765,10 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 1,
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3"
+        },
         "output": {
           "conversation": {
             "body": "",
@@ -1777,6 +1821,10 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 1,
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3"
+        },
         "output": {
           "conversation": {
             "body": "",
@@ -1829,6 +1877,10 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 1,
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3"
+        },
         "output": {
           "conversation": {
             "body": "",
@@ -2062,6 +2114,10 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 2,
+          "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc"
+        },
         "output": {
           "ticket": {
             "companyId": 22,
@@ -2112,6 +2168,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "freshdeskDispatchedCallId": "703d7ec0-692e-50db-a914-86d5fecf7dcc",
+            "freshdeskRetryAttempt": 2
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2291,6 +2351,10 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "freshdeskDispatchedAttempt": 2,
+          "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3"
+        },
         "output": {
           "conversation": {
             "body": "Checking billing",
@@ -2316,6 +2380,10 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "freshdeskDispatchedCallId": "e90559f3-dbfc-56b0-915a-9f5b984451f3",
+            "freshdeskRetryAttempt": 2
+          },
           "retryAfterMs": 0
         }
       ],

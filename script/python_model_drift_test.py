@@ -15,6 +15,7 @@ COMPATIBILITY_MODELS = {
     "brevo": {"ContactWriteResult"},
     "cloudflare": {"CachePurge"},
     "datadog": {"QueryMetricsInput"},
+    "google_gemini": {"Content", "GenerateContentRequest", "GenerateContentResponse", "Part", "Usage"},
     "google_gmail": {
         "GetMessageInput",
         "Message",
@@ -34,6 +35,13 @@ COMPATIBILITY_MODELS = {
         "CreateRefundInput",
         "GetCheckoutSessionInput",
         "GetPaymentIntentInput",
+    },
+    "superdurable_llm": {
+        "GenerateTextRequest",
+        "GenerateTextResponse",
+        "textgenMessage",
+        "textgenStructuredOutput",
+        "textgenUsage",
     },
     "supabase": {"UpsertRowsInput"},
     "unsplash": {"Photo", "PhotoPage"},

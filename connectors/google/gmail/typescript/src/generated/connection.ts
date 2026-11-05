@@ -4,6 +4,7 @@
 
 import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
+import { newRefreshingCredentialProvider, type CredentialDecoder, type CredentialEncoder, type SharedCredentialDecoder } from '@superdurable/connectors-sdk/projectconfig';
 import type { GetMessageInput, Message, SendMessageInput, SendMessageOutput, ReplyToMessageInput } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
@@ -51,6 +52,11 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
   const selected = project.configuration.connections.find(entry => entry.connectorId === ConnectorID && entry.connectionName === connectionName);
   if (!selected || selected.provider !== ProviderID) throw new TypeError('project connection is not configured');
   return newConnection(createClient(project, connectionName), reference);
+}
+
+/** Bind renewable project credentials, including shared connection material. */
+export function newProjectCredentialProvider<Credentials>(project: LoadedProject, connectionName: string, decode: CredentialDecoder<Credentials>, encode: CredentialEncoder<Credentials>, decodeShared: SharedCredentialDecoder<Credentials>) {
+  return newRefreshingCredentialProvider(project.connections, { connectorId: ConnectorID, connectionName }, decode, encode, decodeShared);
 }
 
 /** Provider expected by named connections. */
