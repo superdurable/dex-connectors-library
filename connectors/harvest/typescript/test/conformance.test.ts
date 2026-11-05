@@ -13,7 +13,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeHarvest(scenario: Scenario, recorder: ExchangeRecorder) {
   return withScenarioHTTPServer(recorder, async baseUrl => {
-    const client = new Client({ baseUrl: `${baseUrl}/v2`, accountId: '123' }, new StaticCredentialProvider([[connection, { apiKey: new SecretString('test-secret-key') }]]));
+    const client = new Client({ baseUrl, accountId: '123' }, new StaticCredentialProvider([[connection, { apiKey: new SecretString('test-secret-key') }]]));
     const call = scenarioCall(scenario, connection, 'harvest', {
       flowId: 'harvest-conformance', cancellationSignal: new AbortController().signal,
     }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;

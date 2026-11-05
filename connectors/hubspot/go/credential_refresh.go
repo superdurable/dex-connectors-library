@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -122,8 +121,14 @@ func validateGrantedScopes(rawScopes json.RawMessage) error {
 	if err := json.Unmarshal(rawScopes, &grantedScopes); err != nil {
 		return errors.New("HubSpot returned an invalid scopes list")
 	}
-	if !oauthtoken.HasAllScopes(strings.Join(grantedScopes, " "), requiredOAuthScopes) {
-		return errors.New("HubSpot OAuth grant lacks a required CRM scope")
+	granted := make(map[string]bool, len(grantedScopes))
+	for _, scope := range grantedScopes {
+		granted[scope] = true
+	}
+	for _, scope := range requiredOAuthScopes {
+		if !granted[scope] {
+			return errors.New("HubSpot OAuth grant lacks a required CRM scope")
+		}
 	}
 	return nil
 }

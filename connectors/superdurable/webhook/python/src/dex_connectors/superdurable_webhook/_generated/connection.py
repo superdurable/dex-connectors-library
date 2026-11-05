@@ -71,8 +71,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Webhook stored credential does not match the connector credential fields")
+        if set(material) - set(('signing_secret',)):
+            raise ValueError("Webhook stored credential does not match the connector credential fields")
         signing_secret = material.get("signing_secret")
-        if not isinstance(signing_secret, str) or not signing_secret:
+        if signing_secret is not None and not (isinstance(signing_secret, str)):
+            raise ValueError("Webhook credential signing_secret has an invalid type")
+        if not signing_secret:
             raise ValueError("Webhook credential signing_secret is required")
         return Credentials(SecretString(signing_secret))
 

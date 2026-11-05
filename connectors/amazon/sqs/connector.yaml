@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: amazon-sqs
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-amazon-sqs
+      operations: [receiveMessages, deleteMessage, changeMessageVisibility]
+      triggers: []
     typescript:
       version: v0.1.1
       operations: [receiveMessages, deleteMessage, changeMessageVisibility]

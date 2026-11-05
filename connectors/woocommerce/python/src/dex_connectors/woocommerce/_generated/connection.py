@@ -79,11 +79,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("WooCommerce stored credential does not match the connector credential fields")
+        if set(material) - set(('consumer_key', 'consumer_secret')):
+            raise ValueError("WooCommerce stored credential does not match the connector credential fields")
         consumer_key = material.get("consumer_key")
-        if not isinstance(consumer_key, str) or not consumer_key:
-            raise ValueError("WooCommerce credential consumer_key is required")
+        if consumer_key is not None and not (isinstance(consumer_key, str)):
+            raise ValueError("WooCommerce credential consumer_key has an invalid type")
         consumer_secret = material.get("consumer_secret")
-        if not isinstance(consumer_secret, str) or not consumer_secret:
+        if consumer_secret is not None and not (isinstance(consumer_secret, str)):
+            raise ValueError("WooCommerce credential consumer_secret has an invalid type")
+        if not consumer_key:
+            raise ValueError("WooCommerce credential consumer_key is required")
+        if not consumer_secret:
             raise ValueError("WooCommerce credential consumer_secret is required")
         return Credentials(SecretString(consumer_key), SecretString(consumer_secret))
 

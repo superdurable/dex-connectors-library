@@ -2,20 +2,20 @@
   "connector": "harvest",
   "scenarios": [
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "90b2127d-39e5-527d-8c32-27eff3620c56",
       "exchanges": [
         {
-          "body": "{\"projects\":[{\"id\":3001,\"name\":\"Meridian Website\",\"is_active\":true}],\"links\":{\"next\":\"https://api.harvestapp.com/v2/projects?cursor=next_2\"}}",
+          "body": "{\"projects\":[{\"id\":3001,\"name\":\"Meridian Website\",\"is_active\":true}],\"links\":{\"next\":null}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/projects",
+          "path": "/projects",
           "query": {
             "cursor": [
-              "prior_1"
+              "next-token"
             ],
             "per_page": [
-              "10"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -39,7 +39,6 @@
         "branch": "listed",
         "failureKind": "",
         "output": {
-          "nextCursor": "next_2",
           "projects": [
             {
               "id": 3001,
@@ -54,24 +53,27 @@
         "uncertain": false
       },
       "input": {
-        "cursor": "prior_1",
-        "perPage": 10
+        "cursor": "next-token",
+        "perPage": 2
       },
-      "name": "listProjects-listed",
+      "name": "listProjects-success",
       "operation": "listProjects"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "01e26541-1d03-566f-8287-b2871bcefd71",
       "exchanges": [
         {
-          "body": "{\"error\":\"invalid token\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/projects",
+          "path": "/projects",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -102,22 +104,28 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
-      "name": "listProjects-provider-rejected",
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-rejected",
       "operation": "listProjects"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "a346a36c-61a5-5a67-9462-03a5c641c7c0",
       "exchanges": [
         {
-          "body": "{\"broken\":true}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/projects",
+          "path": "/projects",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -148,45 +156,28 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
-      "name": "listProjects-invalid-response",
-      "operation": "listProjects"
-    },
-    {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "projects": []
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
       "input": {
-        "cursor": "invalid cursor",
-        "perPage": 10
+        "cursor": "next-token",
+        "perPage": 2
       },
-      "name": "listProjects-defect",
+      "name": "listProjects-invalid",
       "operation": "listProjects"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "ab55ee57-ee2b-5d4f-a99d-96f14acece1a",
       "exchanges": [
         {
           "body": "{}",
-          "headers": {
-            "Retry-After": "2"
-          },
+          "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/projects",
+          "path": "/projects",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -211,25 +202,31 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 2000,
+        "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
       "name": "listProjects-rate-limit",
       "operation": "listProjects"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "7f7df9af-9f26-5d8e-ae02-859d0f2d4ccc",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/projects",
+          "path": "/projects",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -257,20 +254,26 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
-      "name": "listProjects-unavailable",
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listProjects-server-error",
       "operation": "listProjects"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "527bf6da-b470-5251-8f6b-6ade7c1837d1",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/projects",
+          "path": "/projects",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -298,25 +301,48 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
       "name": "listProjects-transport",
       "operation": "listProjects"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "259d8c9c-c209-5ad9-a132-99ea5de8d0f9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "perPage": -1
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "727517b5-15c6-57e5-9419-d6880837c7ca",
       "exchanges": [
         {
-          "body": "{\"time_entries\":[{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\"}],\"links\":{\"next\":\"https://api.harvestapp.com/v2/time_entries?cursor=next_2\"}}",
+          "body": "{\"time_entries\":[{\"id\":4001,\"project\":{\"id\":3001},\"hours\":2.5,\"spent_date\":\"2026-10-28\"}],\"links\":{\"next\":null}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/time_entries",
+          "path": "/time_entries",
           "query": {
             "cursor": [
-              "prior_1"
+              "next-token"
             ],
             "per_page": [
-              "10"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -340,7 +366,6 @@
         "branch": "listed",
         "failureKind": "",
         "output": {
-          "nextCursor": "next_2",
           "timeEntries": [
             {
               "hours": 2.5,
@@ -358,24 +383,27 @@
         "uncertain": false
       },
       "input": {
-        "cursor": "prior_1",
-        "perPage": 10
+        "cursor": "next-token",
+        "perPage": 2
       },
-      "name": "listTimeEntries-listed",
+      "name": "listTimeEntries-success",
       "operation": "listTimeEntries"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "377c4e05-9fbb-57ef-89e6-89cb9bba3b55",
       "exchanges": [
         {
-          "body": "{\"error\":\"invalid token\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/time_entries",
+          "path": "/time_entries",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -406,22 +434,28 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
-      "name": "listTimeEntries-provider-rejected",
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-rejected",
       "operation": "listTimeEntries"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "b0c60e63-ca28-58b2-93a6-2cf189ce0917",
       "exchanges": [
         {
-          "body": "{\"broken\":true}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/time_entries",
+          "path": "/time_entries",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -452,45 +486,28 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
-      "name": "listTimeEntries-invalid-response",
-      "operation": "listTimeEntries"
-    },
-    {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "timeEntries": []
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
       "input": {
-        "cursor": "invalid cursor",
-        "perPage": 10
+        "cursor": "next-token",
+        "perPage": 2
       },
-      "name": "listTimeEntries-defect",
+      "name": "listTimeEntries-invalid",
       "operation": "listTimeEntries"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "7bc28ea7-0568-508c-95d3-dab58c582596",
       "exchanges": [
         {
           "body": "{}",
-          "headers": {
-            "Retry-After": "2"
-          },
+          "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/time_entries",
+          "path": "/time_entries",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -515,25 +532,31 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 2000,
+        "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
       "name": "listTimeEntries-rate-limit",
       "operation": "listTimeEntries"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "cc6ea921-cd1c-57e6-8cf9-2067e37ad347",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/time_entries",
+          "path": "/time_entries",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -561,20 +584,26 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
-      "name": "listTimeEntries-unavailable",
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
+      "name": "listTimeEntries-server-error",
       "operation": "listTimeEntries"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "1daa9790-5505-51ee-8313-0f13dc530347",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/v2/time_entries",
+          "path": "/time_entries",
           "query": {
+            "cursor": [
+              "next-token"
+            ],
             "per_page": [
-              "100"
+              "2"
             ]
           },
           "requestHeaders": {
@@ -602,8 +631,31 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "input": {},
+      "input": {
+        "cursor": "next-token",
+        "perPage": 2
+      },
       "name": "listTimeEntries-transport",
+      "operation": "listTimeEntries"
+    },
+    {
+      "callId": "715f2207-6b2e-5fd2-9c5e-6cb23506fafe",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "timeEntries": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "perPage": -1
+      },
+      "name": "listTimeEntries-defect",
       "operation": "listTimeEntries"
     }
   ],

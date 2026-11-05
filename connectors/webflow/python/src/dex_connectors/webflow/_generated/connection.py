@@ -79,8 +79,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Webflow stored credential does not match the connector credential fields")
+        if set(material) - set(('site_token',)):
+            raise ValueError("Webflow stored credential does not match the connector credential fields")
         site_token = material.get("site_token")
-        if not isinstance(site_token, str) or not site_token:
+        if site_token is not None and not (isinstance(site_token, str)):
+            raise ValueError("Webflow credential site_token has an invalid type")
+        if not site_token:
             raise ValueError("Webflow credential site_token is required")
         return Credentials(SecretString(site_token))
 
