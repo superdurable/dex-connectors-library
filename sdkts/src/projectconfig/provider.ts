@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout as wait } from 'node:timers/promises';
 import type { Call, CredentialProvider as CredentialProviderContract, CredentialRefreshDriver, CredentialRefreshResult, CredentialRefreshState, RefreshingCredentialProvider as RefreshingCredentialProviderContract, RejectedCredentialRefreshingProvider } from '../credentials.js';
 import { ReauthorizationRequiredError } from '../errors.js';
+import { AddressRefusal } from '../providerhttp/index.js';
 import { OperationRefSchema } from '../types.js';
 import { CredentialEnvelopeSchema, type ConnectionRecord } from './connection_schema.js';
 import { RejectedCredentialNotRefreshedError } from './broker.js';
@@ -142,6 +143,7 @@ export class RefreshingCredentialProvider<C> extends CredentialProvider<C> imple
         throw error;
       }
       await this.#finishExchange(admission, 'READY');
+      if (error instanceof AddressRefusal) throw error;
       throw new RefreshFailedError();
     }
     if (!(result.expiresAt instanceof Date) || !Number.isFinite(result.expiresAt.getTime()) || result.expiresAt.getTime() <= Date.now()) {

@@ -256,7 +256,7 @@ function previousDispatch(call: Call): WriteDispatchMarker | undefined {
   const marker = value as Record<string, unknown>;
   return { clickupDispatchedCallId: String(marker.clickupDispatchedCallId ?? ''), clickupDispatchedAt: Number(marker.clickupDispatchedAt ?? 0) };
 }
-async function clearDispatch(call: Call): Promise<void> { try { await call.context.recordHeartbeat(null); } catch { /* An uncleared marker keeps the next attempt in read back. */ } }
+async function clearDispatch(call: Call): Promise<void> { try { await call.context.recordHeartbeat(undefined); } catch { /* An uncleared marker keeps the next attempt in read back. */ } }
 function matchText(value: string): string { return value.trim().replace(/\s+/g, ' '); }
 
 /** Create one task with a Dex checkpoint and read back on an ambiguous result. */

@@ -302,6 +302,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -353,6 +359,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "",
           "recipients": [],
@@ -429,6 +440,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -499,6 +515,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -688,6 +710,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -757,8 +784,11 @@
       "operation": "sendMessage",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-        "state": "claimed"
+        "value": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "state": "claimed"
+        }
       }
     },
     {
@@ -811,6 +841,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -890,6 +926,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -1036,6 +1078,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "state": "claimed"
+        },
         "requestCount": 5,
         "retry": true,
         "retryAfterMs": 0,
@@ -1174,6 +1221,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "state": "claimed"
+        },
         "requestCount": 5,
         "retry": true,
         "retryAfterMs": 0,
@@ -1310,6 +1362,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "state": "claimed"
+        },
         "requestCount": 5,
         "retry": true,
         "retryAfterMs": 0,
@@ -1350,6 +1407,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1532,6 +1594,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -1557,6 +1625,11 @@
         {
           "exchangeCount": 5,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -1696,6 +1769,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -1800,6 +1879,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -1971,6 +2056,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "state": "claimed"
+        },
         "requestCount": 6,
         "retry": true,
         "retryAfterMs": 0,
@@ -2134,6 +2224,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "state": "claimed"
+        },
         "requestCount": 6,
         "retry": true,
         "retryAfterMs": 0,
@@ -2295,6 +2390,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "state": "claimed"
+        },
         "requestCount": 6,
         "retry": true,
         "retryAfterMs": 0,
@@ -2360,6 +2460,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2595,6 +2700,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "providerId": "sent-1",
+          "state": "claimed"
+        },
         "output": {
           "messageId": "sent-1",
           "recipients": [
@@ -2617,6 +2728,11 @@
         {
           "exchangeCount": 6,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2759,7 +2875,7 @@
       "operation": "getMessage"
     },
     {
-      "callId": "f66bf871-20d0-54d4-9bfe-6bb61791c636",
+      "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
       "exchanges": [
         {
           "body": "{}",
@@ -2792,12 +2908,17 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "f66bf871-20d0-54d4-9bfe-6bb61791c636",
+      "idempotencyKey": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
       "input": {
         "messageId": "message-1",
         "textBody": "Reply"
