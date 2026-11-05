@@ -285,6 +285,7 @@ await fence.recordProviderId(result.providerId);
 
 Manifest token endpoint templates now apply declared `templateValueRules` to each placeholder before path escaping. A rule can trim Go Unicode whitespace, reject names, bound UTF-8 length, accept full-match patterns, and lowercase the accepted value. An invalid value requires reauthorization before any token request. The Microsoft app-only manifests use this to reject multi-tenant aliases and invalid tenants.
 `trimClientID` on refresh or client-credentials declarations trims the client ID sent in the token request when the Go driver does so.
+JWT-bearer grants accept a PEM private key directly from a credential field, as Salesforce declares, without requiring a JSON key credential.
 Private-network HTTP token endpoints also reject fragments and non-printable or non-ASCII URL text before transport, matching the configurable Go connector.
 
 ### 0.6.0

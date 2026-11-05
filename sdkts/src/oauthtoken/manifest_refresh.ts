@@ -282,7 +282,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
 
   async #exchange(grant: Grant, credentials: C, method: ManifestObject, signal: AbortSignal): Promise<TokenResponse> {
     let key: ManifestObject = {};
-    if (grant.kind === 'jwt_bearer') {
+    if (grant.kind === 'jwt_bearer' && grant.keyCredential) {
       try { key = manifestObject(JSON.parse(this.#credentialValue(credentials, grant.keyCredential)) as unknown); }
       catch { throw new ReauthorizationRequiredError(); }
     }
