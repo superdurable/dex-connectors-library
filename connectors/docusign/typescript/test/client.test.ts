@@ -2,12 +2,22 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { escapePath } from '../src/client.js';
+import { escapePath, goQueryEscape } from '../src/client.js';
 import { parseDocuSignTimestamp } from '../src/operations.js';
 
 describe('Go-compatible DocuSign wire values', () => {
   it('escapes path segments like Go url.PathEscape', () => {
     expect(escapePath("A!B'C(D)E*F,G;H?I/J ~ $&+=:@")).toBe('A%21B%27C%28D%29E%2AF%2CG%3BH%3FI%2FJ%20~%20$&+=:@');
+  });
+  it('encodes query components like Go url.QueryEscape', () => {
+    const cases: ReadonlyArray<readonly [string, string]> = [
+      ['a b~*+', 'a+b~%2A%2B'],
+      ['AZaz09-._~', 'AZaz09-._~'],
+      ["! '()*", '%21+%27%28%29%2A'],
+      ['a&b=c/d?e', 'a%26b%3Dc%2Fd%3Fe'],
+      ['é 雪', '%C3%A9+%E9%9B%AA'],
+    ];
+    for (const [value, escaped] of cases) expect(goQueryEscape(value)).toBe(escaped);
   });
   it('rejects invalid calendar dates and hours', () => {
     for (const value of ['2026-02-30T12:00:00Z', '2025-02-29T12:00:00Z', '2026-10-04T24:00:00Z']) {

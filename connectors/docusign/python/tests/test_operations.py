@@ -40,10 +40,24 @@ def test_extended_offset_and_comma_fraction() -> None:
     assert _time("2026-01-05T12:00:00,25+99:59") == datetime(2026, 1, 1, 8, 1, 0, 250000, UTC)
 
 
-def test_go_path_and_query_escaping() -> None:
-    """Keep Go's path-safe punctuation and escaped query tilde."""
+def test_go_path_escaping() -> None:
+    """Keep Go's path-safe punctuation."""
     assert path_escape("a/b!?*:$&+=@") == "a%2Fb%21%3F%2A:$&+=@"
-    assert query_escape("a b~*") == "a+b%7E%2A"
+
+
+@pytest.mark.parametrize(
+    ("value", "escaped"),
+    [
+        ("a b~*+", "a+b~%2A%2B"),
+        ("AZaz09-._~", "AZaz09-._~"),
+        ("! '()*", "%21+%27%28%29%2A"),
+        ("a&b=c/d?e", "a%26b%3Dc%2Fd%3Fe"),
+        ("é 雪", "%C3%A9+%E9%9B%AA"),
+    ],
+)
+def test_go_query_escaping(value: str, escaped: str) -> None:
+    """Match values recorded from Go url.QueryEscape."""
+    assert query_escape(value) == escaped
 
 
 def test_create_request_contains_only_provider_fields() -> None:

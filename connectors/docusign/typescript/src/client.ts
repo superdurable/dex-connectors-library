@@ -304,7 +304,8 @@ export class DocuSignClient {
 }
 
 function nextHour(now: Date): number { return 3_600_000 - (now.getTime() % 3_600_000); }
-function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/~/g, '%7E').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
+/** Encode a query component with Go url.QueryEscape's unreserved tilde and escaped punctuation. */
+export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
 async function readErrorBody(response: Response, maximumBytes: number): Promise<Uint8Array> {
   const reader = response.body?.getReader();
   if (!reader) return new Uint8Array();

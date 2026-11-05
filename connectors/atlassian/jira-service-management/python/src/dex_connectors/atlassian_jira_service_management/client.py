@@ -48,7 +48,7 @@ def path_escape(value: str) -> str:
 
 
 def _query_escape(value: str) -> str:
-    return quote_plus(value, safe="").replace("~", "%7E")
+    return quote_plus(value, safe="~")
 
 
 @dataclass(frozen=True, slots=True)

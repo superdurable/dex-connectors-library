@@ -31,9 +31,19 @@ def test_path_escape_matches_go(value: str, escaped: str) -> None:
     assert path_escape(value) == escaped
 
 
-def test_query_escape_matches_go_values() -> None:
-    """Keep sorted query value encoding equivalent to Go QueryEscape."""
-    assert _query_escape("a b~*+") == "a+b%7E%2A%2B"
+@pytest.mark.parametrize(
+    ("value", "escaped"),
+    [
+        ("a b~*+", "a+b~%2A%2B"),
+        ("AZaz09-._~", "AZaz09-._~"),
+        ("! '()*", "%21+%27%28%29%2A"),
+        ("a&b=c/d?e", "a%26b%3Dc%2Fd%3Fe"),
+        ("é 雪", "%C3%A9+%E9%9B%AA"),
+    ],
+)
+def test_query_escape_matches_go_values(value: str, escaped: str) -> None:
+    """Match values recorded from Go url.QueryEscape."""
+    assert _query_escape(value) == escaped
 
 
 @pytest.mark.parametrize("value", ["ü@example.com", "jane@exämple.com", "jane@[127.0.0.1]", "jane@[::1]"])

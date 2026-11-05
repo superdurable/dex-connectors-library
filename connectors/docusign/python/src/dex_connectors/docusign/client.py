@@ -79,8 +79,8 @@ def path_escape(value: str) -> str:
 
 
 def query_escape(value: str) -> str:
-    """Apply Go url.QueryEscape, including its escaped tilde."""
-    return quote_plus(value, safe="").replace("~", "%7E")
+    """Apply Go url.QueryEscape, including its literal unreserved tilde."""
+    return quote_plus(value, safe="~")
 
 
 @dataclass(frozen=True, slots=True)
