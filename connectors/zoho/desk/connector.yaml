@@ -11,6 +11,12 @@ spec:
   codegen:
     go:
       package: desk
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-zoho-desk
+      operations: [searchTickets, getTicket, createTicket, updateTicket, addComment]
+      triggers: []
   configuration:
     fields:
       - name: orgId
