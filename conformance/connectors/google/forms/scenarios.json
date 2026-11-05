@@ -301,14 +301,14 @@
       "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
       "exchanges": [
         {
-          "body": "{\"responses\": [{\"responseId\": \"r_acme\", \"formId\": \"1FAIpQLintake\", \"createTime\": \"2026-09-30T08:00:00Z\", \"lastSubmittedTime\": \"2026-09-30T09:00:00Z\", \"respondentEmail\": \"buyer@example.com\", \"answers\": {\"q_name\": {\"questionId\": \"q_name\", \"textAnswers\": {\"answers\": [{\"value\": \"Acme GmbH\"}]}}}}], \"nextPageToken\": \"page-two\"}",
+          "body": "{\"responses\":[{\"responseId\":\"r_acme\",\"formId\":\"1FAIpQLintake\",\"createTime\":\"2026-09-30T08:00:00.123456789Z\",\"lastSubmittedTime\":\"2026-09-30T09:00:00.987654321Z\",\"respondentEmail\":\"buyer@example.com\",\"answers\":{\"q_name\":{\"questionId\":\"q_name\",\"textAnswers\":{\"answers\":[{\"value\":\"Acme GmbH\"}]}}}}],\"nextPageToken\":\"page-two\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/forms/1FAIpQLintake/responses",
           "query": {
             "filter": [
-              "timestamp \u003e 2026-09-30T08:00:00Z"
+              "timestamp \u003e 2026-09-30T08:00:00.123456789Z"
             ],
             "pageSize": [
               "2"
@@ -344,9 +344,9 @@
                   ]
                 }
               ],
-              "createdAt": "2026-09-30T08:00:00Z",
+              "createdAt": "2026-09-30T08:00:00.123456789Z",
               "formId": "1FAIpQLintake",
-              "lastSubmittedAt": "2026-09-30T09:00:00Z",
+              "lastSubmittedAt": "2026-09-30T09:00:00.987654321Z",
               "respondentEmail": "buyer@example.com",
               "responseId": "r_acme"
             }
@@ -361,7 +361,7 @@
         "formId": "1FAIpQLintake",
         "pageSize": 2,
         "pageToken": "next-page",
-        "submittedAfter": "2026-09-30T08:00:00Z"
+        "submittedAfter": "2026-09-30T01:00:00.123456789-07:00"
       },
       "name": "listResponses-success",
       "operation": "listResponses"
@@ -691,7 +691,7 @@
       "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
       "exchanges": [
         {
-          "body": "{\"responseId\": \"r_acme\", \"formId\": \"1FAIpQLintake\", \"createTime\": \"2026-09-30T08:00:00Z\", \"lastSubmittedTime\": \"2026-09-30T09:00:00Z\", \"respondentEmail\": \"buyer@example.com\", \"answers\": {\"q_name\": {\"questionId\": \"q_name\", \"textAnswers\": {\"answers\": [{\"value\": \"Acme GmbH\"}]}}}}",
+          "body": "{\"responseId\":\"r_acme\",\"formId\":\"1FAIpQLintake\",\"createTime\":\"2026-09-30T08:00:00.123456789Z\",\"lastSubmittedTime\":\"2026-09-30T09:00:00.987654321Z\",\"respondentEmail\":\"buyer@example.com\",\"answers\":{\"q_name\":{\"questionId\":\"q_name\",\"textAnswers\":{\"answers\":[{\"value\":\"Acme GmbH\"}]}}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -719,9 +719,9 @@
               ]
             }
           ],
-          "createdAt": "2026-09-30T08:00:00Z",
+          "createdAt": "2026-09-30T08:00:00.123456789Z",
           "formId": "1FAIpQLintake",
-          "lastSubmittedAt": "2026-09-30T09:00:00Z",
+          "lastSubmittedAt": "2026-09-30T09:00:00.987654321Z",
           "respondentEmail": "buyer@example.com",
           "responseId": "r_acme"
         },

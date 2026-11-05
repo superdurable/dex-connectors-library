@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from dex_connectors.sdk import RFC3339NanoTimestamp, format_rfc3339_nano
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -163,15 +165,27 @@ class ListResponsesInput:
     form_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'formId'})
     # SubmittedAfter keeps responses submitted after, but not at, this time with Google's
     # "timestamp > N" filter; zero has no lower bound.
-    submitted_after: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'submittedAfter', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+    submitted_after: str = _dataclass_field(default='0001-01-01T00:00:00Z', metadata={'dex_json_name': 'submittedAfter', 'dex_json_omit_default': True})
     # SubmittedAtOrAfter keeps responses submitted at or after this time with Google's
     # "timestamp >= N" filter; zero has no lower bound. Set at most one of the two times.
-    submitted_at_or_after: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'submittedAtOrAfter', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+    submitted_at_or_after: str = _dataclass_field(default='0001-01-01T00:00:00Z', metadata={'dex_json_name': 'submittedAtOrAfter', 'dex_json_omit_default': True})
     # PageSize is 1 to 1000 responses; zero uses the connection's responsePageSize.
     page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
     # PageToken continues a listing with its NextPageToken; blank reads the first page. Google requires
     # the same form and filter as the request that returned the token.
     page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if self.submitted_after is not None:
+            timestamp = self.submitted_after
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
+                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            object.__setattr__(self, 'submitted_after', canonical)
+        if self.submitted_at_or_after is not None:
+            timestamp = self.submitted_at_or_after
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
+                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            object.__setattr__(self, 'submitted_at_or_after', canonical)
 
 
 setattr(ListResponsesInput, '__module__', 'dex_connectors.google_forms.models')
@@ -229,10 +243,10 @@ class FormResponse:
     # FormID is the form the response answers.
     form_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'formId'})
     # CreatedAt is when the response was first submitted, in UTC.
-    created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+    created_at: str = _dataclass_field(default='0001-01-01T00:00:00Z', metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True})
     # LastSubmittedAt is when the response was most recently submitted, in UTC. It is later than
     # CreatedAt after a respondent edits the response, and grade changes do not move it.
-    last_submitted_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'lastSubmittedAt', 'dex_json_format': 'rfc3339'})
+    last_submitted_at: str = _dataclass_field(default='0001-01-01T00:00:00Z', metadata={'dex_json_name': 'lastSubmittedAt'})
     # RespondentEmail is the respondent's address when the form collects it.
     respondent_email: str = _dataclass_field(default='', metadata={'dex_json_name': 'respondentEmail', 'dex_json_omit_default': True})
     # TotalScore is the response's points when the form is a quiz and the response was graded.
@@ -241,6 +255,16 @@ class FormResponse:
     answers: tuple[FormAnswer, ...] = ()
 
     def __post_init__(self) -> None:
+        if self.created_at is not None:
+            timestamp = self.created_at
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
+                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            object.__setattr__(self, 'created_at', canonical)
+        if self.last_submitted_at is not None:
+            timestamp = self.last_submitted_at
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
+                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            object.__setattr__(self, 'last_submitted_at', canonical)
         object.__setattr__(self, 'answers', _replace_nil_slices(self.answers, 1))
 
 

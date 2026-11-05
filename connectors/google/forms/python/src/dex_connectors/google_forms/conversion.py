@@ -68,10 +68,10 @@ def _array(value: Any) -> list[Any]:
     return value
 
 
-def _time(value: Any) -> datetime:
+def _time(value: Any) -> str:
     raw = _string(value)
     if not raw:
-        return datetime.min.replace(tzinfo=UTC)
+        return "0001-01-01T00:00:00Z"
     match = _TIME.fullmatch(raw)
     if not match:
         raise ValueError("provider time has an invalid format")
@@ -88,7 +88,8 @@ def _time(value: Any) -> datetime:
                 raise ValueError("provider time offset is invalid")
             delta = timedelta(hours=hours, minutes=minutes)
             parsed += delta if offset[0] == "-" else -delta
-        return parsed
+        fractional = f".{fraction.rstrip('0')}" if fraction.rstrip("0") else ""
+        return parsed.isoformat(timespec="seconds").replace("+00:00", fractional + "Z")
     except (ValueError, OverflowError) as error:
         raise ValueError("provider time is invalid") from error
 
@@ -257,7 +258,7 @@ def decode_response(value: Any, form_id: str) -> FormResponse:
     resource = _object(value)
     response_id = _string(resource.get("responseId"))
     submitted = _time(resource.get("lastSubmittedTime"))
-    if not is_google_id(response_id) or submitted == datetime.min.replace(tzinfo=UTC):
+    if not is_google_id(response_id) or submitted == "0001-01-01T00:00:00Z":
         raise ValueError("response lacks a valid ID or submission time")
     if _string(resource.get("formId")) not in ("", form_id):
         raise ValueError("response belongs to a different form")

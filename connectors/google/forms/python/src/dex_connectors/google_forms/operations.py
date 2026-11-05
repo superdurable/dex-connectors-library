@@ -3,12 +3,21 @@
 """Google Forms read operations and Go-compatible branch classification."""
 
 import json
+import re
 from datetime import UTC, datetime
 from typing import TypeVar
 from urllib.parse import quote
 
 import httpx
-from dex_connectors.sdk import Call, Failure, FailureKind, QueryAttempt, QueryDefinition, Receipt
+from dex_connectors.sdk import (
+    Call,
+    Failure,
+    FailureKind,
+    QueryAttempt,
+    QueryDefinition,
+    Receipt,
+    RFC3339NanoTimestamp,
+)
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
@@ -53,6 +62,13 @@ def _query_escape(value: str) -> str:
 
 def _query_string(fields: dict[str, str]) -> str:
     return "&".join(f"{_query_escape(key)}={_query_escape(fields[key])}" for key in sorted(fields))
+
+
+def _utc_timestamp(value: str) -> str:
+    timestamp = RFC3339NanoTimestamp.from_wire(value)
+    second = timestamp.parsed.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    fraction = re.match(r"\.\d+", timestamp.wire[19:])
+    return second[:-1] + (fraction.group() if fraction else "") + "Z"
 
 
 def _status_failure_kind(status: int, tokens: tuple[str, ...]) -> FailureKind:
@@ -235,7 +251,7 @@ class ListResponsesOperation:
         """Call forms.responses.list with the exact Go filter and query fields."""
         if (
             not is_google_id(input.form_id)
-            or (input.submitted_after.year > 1 and input.submitted_at_or_after.year > 1)
+            or (input.submitted_after[:4] != "0001" and input.submitted_at_or_after[:4] != "0001")
             or len(input.page_token.encode()) > 4096
             or any(ord(char) <= 32 or ord(char) == 127 for char in input.page_token)
         ):
@@ -260,14 +276,12 @@ class ListResponsesOperation:
         query = {"pageSize": str(page_size)}
         if input.page_token:
             query["pageToken"] = input.page_token
-        selected = input.submitted_after if input.submitted_after.year > 1 else input.submitted_at_or_after
-        if selected.year > 1:
-            utc = selected.astimezone(UTC)
-            timestamp = utc.isoformat(timespec="microseconds").replace("+00:00", "Z")
-            timestamp = timestamp.replace(".000000Z", "Z").rstrip("0") if "." in timestamp else timestamp
-            if not timestamp.endswith("Z"):
-                timestamp += "Z"
-            operator = ">" if input.submitted_after.year > 1 else ">="
+        selected = (
+            input.submitted_after if input.submitted_after[:4] != "0001" else input.submitted_at_or_after
+        )
+        if selected[:4] != "0001":
+            timestamp = _utc_timestamp(selected)
+            operator = ">" if input.submitted_after[:4] != "0001" else ">="
             query["filter"] = f"timestamp {operator} {timestamp}"
         target = (
             self._client.api_base_url

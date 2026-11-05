@@ -33,13 +33,18 @@ async def test_response_recorder_reads_all_operations_in_real_dex(tmp_path: Path
                 body = {"formId": "form_1", "info": {"title": "Vendor intake"}, "items": []}
             elif self.path == "/v1/forms/form_1/responses?pageSize=25":
                 body = {
-                    "responses": [{"responseId": "response_1", "lastSubmittedTime": "2026-09-30T09:00:00Z"}]
+                    "responses": [
+                        {
+                            "responseId": "response_1",
+                            "lastSubmittedTime": "2026-09-30T09:00:00.123456789Z",
+                        }
+                    ]
                 }
             elif self.path == "/v1/forms/form_1/responses/response_1":
                 body = {
                     "formId": "form_1",
                     "responseId": "response_1",
-                    "lastSubmittedTime": "2026-09-30T09:00:00Z",
+                    "lastSubmittedTime": "2026-09-30T09:00:00.123456789Z",
                 }
             else:
                 self.send_error(404)
@@ -78,6 +83,7 @@ async def test_response_recorder_reads_all_operations_in_real_dex(tmp_path: Path
             result = await dex_client.wait_for_flow(flow_id, timedelta(seconds=30))
             assert result.status == dex.FlowStatus.COMPLETED, result.error_message
             assert result.single_output(FormResponse).response_id == "response_1"
+            assert result.single_output(FormResponse).last_submitted_at == "2026-09-30T09:00:00.123456789Z"
             assert requests == [
                 "/v1/forms/form_1",
                 "/v1/forms/form_1/responses?pageSize=25",
