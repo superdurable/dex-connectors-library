@@ -52,12 +52,16 @@ def json_object(body: bytes | dict[str, Any]) -> dict[str, Any]:
     if isinstance(body, dict):
         return body
     try:
-        decoded = json.loads(body, parse_float=Decimal)
+        decoded = json.loads(body, parse_float=Decimal, parse_constant=_reject_nonfinite_number)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("response is not a message object") from error
     if not isinstance(decoded, dict):
         raise ValueError("response is not a message object")
     return decoded
+
+
+def _reject_nonfinite_number(value: str) -> None:
+    raise ValueError(f"response contains non-finite number {value}")
 
 
 def string_value(resource: dict[str, Any], key: str) -> str:

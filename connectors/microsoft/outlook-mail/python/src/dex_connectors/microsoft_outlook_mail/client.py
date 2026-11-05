@@ -7,11 +7,20 @@ import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from email.utils import parseaddr
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, quote_plus, urlsplit
 
 import httpx
-from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CredentialProvider,
+    Failure,
+    FailureKind,
+    ReauthorizationRequiredError,
+    Receipt,
+    RetryError,
+)
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
@@ -45,7 +54,7 @@ GUID_PATTERN = re.compile(r"^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12
 
 def path_escape(value: str) -> str:
     """Escape a Graph path segment as Go url.PathEscape does."""
-    return quote(value, safe="-._~!$&'()+,;=:@")
+    return quote(value, safe="$&+-._:=@~")
 
 
 def query_escape(value: str) -> str:
@@ -113,9 +122,14 @@ class Client:
         if type(config.max_response_bytes) is not int or config.max_response_bytes < 1:
             raise ValueError("Microsoft Graph response limit must be positive")
         self.mailbox = config.mailbox.strip()
+        mailbox_name, mailbox_address = parseaddr(self.mailbox)
         if self.mailbox and not (
             GUID_PATTERN.fullmatch(self.mailbox)
-            or ("@" in self.mailbox and not any(character in self.mailbox for character in "/?#%'\\"))
+            or (
+                not mailbox_name
+                and mailbox_address == self.mailbox
+                and not any(character in self.mailbox for character in "/?#%'\\")
+            )
         ):
             raise ValueError(
                 "configuration mailbox must be an address such as support@contoso.com or an Entra object ID"
@@ -174,24 +188,31 @@ class Client:
                 resolved = await self.credentials.resolve_with_refresh(call)  # type: ignore[attr-defined]
             else:
                 resolved = await self.credentials.resolve(call)
-        except Exception as error:
-            from dex_connectors.sdk import ReauthorizationRequiredError
-
-            if isinstance(error, ReauthorizationRequiredError):
-                return None, Exchange(
-                    "rejected",
-                    problem=failure(
-                        operation,
-                        FailureKind.AUTHENTICATION,
-                        "Microsoft authorization must be renewed: authorize the connection again or replace the client secret",  # noqa: E501
-                    ),
-                )
+        except ReauthorizationRequiredError:
+            return None, Exchange(
+                "rejected",
+                problem=failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "Microsoft authorization must be renewed: authorize the connection again or replace the client secret",  # noqa: E501
+                ),
+            )
+        except (OSError, RetryError):
             return None, Exchange(
                 "retry",
                 problem=failure(
                     operation,
                     FailureKind.AVAILABILITY,
                     "the Microsoft token endpoint is temporarily unavailable",
+                ),
+            )
+        except Exception:
+            return None, Exchange(
+                "defect",
+                problem=failure(
+                    operation,
+                    FailureKind.AUTHENTICATION,
+                    "Outlook Mail connection credentials are unavailable",
                 ),
             )
         if resolved.access_token is None or not is_header_safe_credential(resolved.access_token.reveal()):
@@ -207,6 +228,13 @@ class Client:
             root = "/me"
         elif resolved.auth_method_id == "app-only" and self.mailbox:
             root = "/users/" + path_escape(self.mailbox)
+        elif resolved.auth_method_id != "app-only":
+            return None, Exchange(
+                "defect",
+                problem=failure(
+                    operation, FailureKind.VALIDATION, "Outlook Mail authorization method is not supported"
+                ),
+            )
         else:
             return None, Exchange(
                 "defect",

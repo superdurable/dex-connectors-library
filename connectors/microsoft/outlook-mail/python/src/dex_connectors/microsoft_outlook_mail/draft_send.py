@@ -105,6 +105,8 @@ def _before_dispatch(
         return MutationAttempt.branch_result("notFound", value, receipt, result.problem)
     if result.outcome == "defect":
         return MutationAttempt.branch_result("defect", value, receipt, result.problem)
+    if result.outcome == "not_found":
+        return MutationAttempt.branch_result("providerRejected", value, receipt, result.problem)
     return MutationAttempt.branch_result(
         "providerRejected",
         value,
@@ -292,7 +294,9 @@ async def _create_draft(
     else:
         action = "/createReplyAll" if input.is_reply_all else "/createReply"
         result = await session.exchange(
-            "POST", "/messages/" + path_escape(input.message_id) + action, payload={"comment": input.text}
+            "POST",
+            "/messages/" + path_escape(input.message_id.strip()) + action,
+            payload={"comment": input.text},
         )
         if result.outcome == "invalid":
             return None, Exchange(
