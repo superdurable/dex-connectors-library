@@ -1747,6 +1747,9 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -1932,6 +1935,9 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -2324,6 +2330,9 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -2563,6 +2572,9 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -2592,6 +2604,9 @@
         {
           "exchangeCount": 2,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2640,6 +2655,9 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2695,6 +2713,9 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
