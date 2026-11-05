@@ -1,0 +1,92 @@
+{
+  "connectorId": "mysql",
+  "releaseTag": "connectors/mysql/go/v0.23.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-mysql",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newQueryRowsStep",
+      "kind": "query",
+      "operationId": "query",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "truncated",
+          "field": "truncated",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newExecuteStatementStep",
+      "kind": "mutation",
+      "operationId": "execute",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "limitExceeded",
+          "field": "limitExceeded",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
