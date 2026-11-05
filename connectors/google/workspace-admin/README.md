@@ -251,3 +251,7 @@ Worker, retry, persistence, and duplicate-dispatch coverage:
 ```bash
 GOWORK=off go test -tags=integration ./... -count=1 -v
 ```
+
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements all seven Directory API operations with generated Step factories and generated refresh handling for Workspace domain-wide delegation and Google OAuth. Its [get-user Flow](typescript/examples/get-user/README.md) uses the static connection name `workspace-admin-directory` and runs through a real Dex Worker. Go-recorded provider scenarios cover success, rejection, retry, transport failure, read-back convergence, and invalid responses. Live Google authorization and provider behavior still require a user-controlled Dex Web connection.

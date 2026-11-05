@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: google
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-google-workspace-admin"
+      operations: [getUser, listUsers, createUser, suspendUser, unsuspendUser, addUserToGroup, removeUserFromGroup]
+      triggers: []
   codegen:
     go:
       package: workspaceadmin
