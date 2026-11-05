@@ -5,7 +5,9 @@ package schema_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -74,6 +76,97 @@ spec:
 	require.Equal(t, "MessageCreatedEvent", manifest.Spec.Triggers[0].EventType)
 }
 
+func TestCatalogManifestsMatchJSONSchema(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	compiler := jsonschema.NewCompiler()
+	require.NoError(t, compiler.AddResource("https://superdurable.dev/schemas/connector-manifest-v1alpha1.json", definition))
+	compiled, err := compiler.Compile("https://superdurable.dev/schemas/connector-manifest-v1alpha1.json")
+	require.NoError(t, err)
+	catalogSource, err := os.ReadFile("../catalog.yaml")
+	require.NoError(t, err)
+	var catalog struct {
+		Directories []string `yaml:"directories"`
+	}
+	require.NoError(t, yaml.Unmarshal(catalogSource, &catalog))
+	visited := make(map[string]bool)
+	err = filepath.WalkDir("../connectors", func(path string, entry os.DirEntry, walkError error) error {
+		if walkError != nil {
+			return walkError
+		}
+		if entry.Name() != "connector.yaml" {
+			return nil
+		}
+		source, readError := os.ReadFile(path)
+		if readError != nil {
+			return readError
+		}
+		var document any
+		if decodeError := yaml.Unmarshal(source, &document); decodeError != nil {
+			return decodeError
+		}
+		encoded, encodeError := json.Marshal(document)
+		if encodeError != nil {
+			return encodeError
+		}
+		if decodeError := json.Unmarshal(encoded, &document); decodeError != nil {
+			return decodeError
+		}
+		visited[filepath.ToSlash(path)] = true
+		if validationError := compiled.Validate(document); validationError != nil {
+			return fmt.Errorf("%s: %w", path, validationError)
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, catalog.Directories)
+	require.Len(t, visited, len(catalog.Directories))
+	for _, directory := range catalog.Directories {
+		require.True(t, visited[filepath.ToSlash(filepath.Join("..", directory, "connector.yaml"))], directory)
+	}
+}
+
+func TestManifestDurationPatternsRejectZero(t *testing.T) {
+	contents, err := os.ReadFile("connector-manifest.schema.json")
+	require.NoError(t, err)
+	var definition map[string]any
+	require.NoError(t, json.Unmarshal(contents, &definition))
+	var durationDefinitions []map[string]any
+	var findDurationDefinitions func(any)
+	findDurationDefinitions = func(value any) {
+		switch typedValue := value.(type) {
+		case map[string]any:
+			if pattern, isPattern := typedValue["pattern"].(string); isPattern && strings.Contains(pattern, "ns|us|µs") && typedValue["not"] != nil {
+				durationDefinitions = append(durationDefinitions, typedValue)
+			}
+			for _, child := range typedValue {
+				findDurationDefinitions(child)
+			}
+		case []any:
+			for _, child := range typedValue {
+				findDurationDefinitions(child)
+			}
+		}
+	}
+	findDurationDefinitions(definition)
+	require.Len(t, durationDefinitions, 4)
+	for index, durationDefinition := range durationDefinitions {
+		compiler := jsonschema.NewCompiler()
+		resource := fmt.Sprintf("https://connectors.dex.dev/duration-%d.schema.json", index)
+		require.NoError(t, compiler.AddResource(resource, durationDefinition))
+		compiled, err := compiler.Compile(resource)
+		require.NoError(t, err)
+		for _, invalidDuration := range []string{"0h", "0h0m", "+00.0h"} {
+			require.Error(t, compiled.Validate(invalidDuration), invalidDuration)
+		}
+		for _, validDuration := range []string{"1h", "0h1m", "+0.5s"} {
+			require.NoError(t, compiled.Validate(validDuration), validDuration)
+		}
+	}
+}
+
 func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 	fixture, err := os.ReadFile("testdata/google-oauth.yaml")
 	require.NoError(t, err)
@@ -83,6 +176,9 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 		problem       string
 	}{
 		{name: "valid independent versions", languageBlock: "  languages:\n    python: {version: v0.2.0, package: dex-connector-google-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v1.0.0, package: '@superdurable/connector-google-sheets', operations: [appendRows], triggers: []}\n"},
+		{name: "valid nanosecond timestamps", languageBlock: "  languages:\n    python: {version: v0.2.0, timestampFormat: rfc3339Nano, operations: [appendRows], triggers: []}\n    typescript: {version: v1.0.0, operations: [appendRows], triggers: []}\n"},
+		{name: "invalid Python timestamp format", languageBlock: "  languages:\n    python: {version: v0.2.0, timestampFormat: milliseconds, operations: [appendRows], triggers: []}\n", problem: "spec.languages.python.timestampFormat"},
+		{name: "TypeScript timestamp format", languageBlock: "  languages:\n    typescript: {version: v1.0.0, timestampFormat: rfc3339Nano, operations: [], triggers: []}\n", problem: "spec.languages.typescript.timestampFormat"},
 		{name: "invalid Python version", languageBlock: "  languages:\n    python: {version: 0.2.0}\n", problem: "spec.languages.python.version"},
 		{name: "invalid npm name", languageBlock: "  languages:\n    typescript: {version: v0.2.0, package: invalid, operations: [appendRows], triggers: []}\n", problem: "spec.languages.typescript.package"},
 		{name: "missing lists", languageBlock: "  languages:\n    python: {version: v0.2.0}\n", problem: "spec.languages.python.operations is required"},

@@ -23,6 +23,20 @@ Every other branch is optional: `notFound` (except `listForms`),
 `providerRejected`, `invalidResponse`, and `defect`. Every time in a Result is
 UTC.
 
+## Python package
+
+The `dex-connector-typeform` Python package implements the four operations in
+the table above. Its generated connection bindings, models, Step factories, and
+mocks follow this manifest; the hand-written client performs the Typeform API
+calls. The Python package does not yet implement `responseSubmitted`.
+
+The runnable [form catalog example](python/examples/form_catalog/README.md)
+starts a Flow with the static `typeform-forms` connection. Its integration test
+ran through a real local Dex Worker and Client against a provider stand-in.
+Go-recorded [conformance scenarios](../../conformance/connectors/typeform/scenarios.json)
+verify Python requests, branches, retries, and results. The Python port's live
+Typeform authorization and API behavior have not been verified.
+
 ## Mocks
 
 The generated `typeformmock` package defaults to one customer signup form

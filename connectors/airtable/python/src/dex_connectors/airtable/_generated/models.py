@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -17,7 +19,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 # FieldEqualityFilter matches records whose field equals one typed value.
 # Exactly one of Text, Number, and Checkbox is set; prefer the constructors
 # TextFieldEquals, NumberFieldEquals, and CheckboxFieldEquals.
-# 
+#
 # The connector writes the filter as an Airtable formula such as
 # {Policy Key} = "refund-standard", so it follows Airtable's formula
 # comparison rules. A linked record, lookup, or multiple select field compares
@@ -56,7 +58,7 @@ setattr(RecordSort, '__module__', 'dex_connectors.airtable.models')
 
 
 # ListRecordsInput selects one page of a table's records.
-# 
+#
 # Filters and Formula combine with AND into Airtable's filterByFormula: typed
 # equality filters are escaped by the connector, and Formula is passed through
 # as written, so it should come from application code rather than end users.
@@ -98,6 +100,12 @@ class Record:
     # Fields maps each non-empty field, by field name, to its cell value.
     # Airtable omits empty fields, so a missing key means the field is empty.
     fields: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_time, str):
+            object.__setattr__(self, 'created_time', parse_go_datetime(self.created_time, 'created_time'))
+        elif self.created_time is not None:
+            validate_go_datetime(self.created_time, 'created_time')
 
 
 setattr(Record, '__module__', 'dex_connectors.airtable.models')
@@ -148,7 +156,7 @@ setattr(RecordUpsert, '__module__', 'dex_connectors.airtable.models')
 
 
 # UpsertRecordsInput creates or updates up to 10 records in one table.
-# 
+#
 # Airtable matches each record to an existing record whose merge fields equal
 # the record's values for them: no match creates a record, one match updates
 # it, leaving fields the write does not name unchanged, and several matches
@@ -227,7 +235,7 @@ setattr(RecordUpdate, '__module__', 'dex_connectors.airtable.models')
 
 
 # UpdateRecordsInput updates up to 10 records in one table by record ID.
-# 
+#
 # Each value replaces the field's whole value, including every link of a
 # linked record field, so repeating the same update leaves the records
 # unchanged.

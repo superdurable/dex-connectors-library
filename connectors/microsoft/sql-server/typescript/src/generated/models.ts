@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -44,6 +45,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret password of the user named in user. Azure SQL Database contained user: set it with ALTER USER dex_app WITH PASSWORD = '...'. SQL Server login, including Amazon RDS and Azure SQL Managed Instance: ALTER LOGIN dex_app WITH PASSWORD = '...' (https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-login-transact-sql). Dex keeps it out of Flow state, logs, and Results. Blank is invalid. */
   password: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["password"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["password"] != null && !(typeof fields["password"] === 'string')) throw new TypeError("credential password has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["password"]) throw new TypeError("credential password is required");
+  credentials.password = new SecretString((fields["password"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
