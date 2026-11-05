@@ -27,3 +27,9 @@ ADAPTER = conformance.PythonOperationAdapter(
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     await conformance.replay(scenario, ADAPTER.invoke, "/gmail/v1")
+
+
+def test_wrapped_prior_heartbeat_uses_json_codec() -> None:
+    scenario = next(item for item in SCENARIOS if item["name"] == "sendMessage-pre-send-match")
+    context = conformance.HeartbeatContext(scenario["priorHeartbeat"])
+    assert context.get_last_heartbeat_value(dict[str, str | int]) == scenario["priorHeartbeat"]["value"]

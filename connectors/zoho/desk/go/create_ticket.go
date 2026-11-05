@@ -86,8 +86,8 @@ func (CreateTicketOperation) IdempotencyKey(callID sdkgo.CallID, _ CreateTicketI
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v1/tickets at most once per Step execution. Only a 429 or a connection
-// that never opened is retried; any other unconfirmed outcome selects uncertain without resending.
+// Invoke sends POST /api/v1/tickets once per safe attempt. A 429, 503, or request that never left
+// the process retries; other unconfirmed outcomes select uncertain without resending.
 func (operation CreateTicketOperation) Invoke(call sdkgo.Call, input CreateTicketInput) sdkgo.MutationAttempt[CreateTicketOutput] {
 	branches := singleDispatchBranches{providerRejected: CreateTicketBranchProviderRejected, defect: CreateTicketBranchDefect}
 	if err := validateCreateTicketInput(input); err != nil {

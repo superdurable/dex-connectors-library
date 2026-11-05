@@ -1,0 +1,1 @@
+{"statement":"SELECT COUNT(*) AS EVENT_COUNT FROM USAGE_EVENTS WHERE ACCOUNT_ID = ?","parameters":["acct_003"]}

@@ -3,10 +3,12 @@
 
 import { generateKeyPairSync, verify } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import http from 'node:http';
+import { describe, expect, it, vi } from 'vitest';
 import { SecretString } from '../src/credentials.js';
-import { ReauthorizationRequiredError } from '../src/errors.js';
+import { ReauthorizationRequiredError, RetryError } from '../src/errors.js';
 import { ManifestCredentialRefreshDriver } from '../src/oauthtoken/index.js';
+import { AddressRefusal } from '../src/providerhttp/index.js';
 
 interface Credentials {
   accessToken: SecretString;
@@ -63,7 +65,7 @@ describe('manifest credential refresh', () => {
     expect(requests).toBe(4);
   });
 
-  it('refreshes schema-decoded Jira and Slack declarations with declared token-type fields', async () => {
+  it('refreshes schema-decoded provider declarations with declared token-type fields', async () => {
     const jiraAuth = JSON.parse(readFileSync(new URL('./fixtures/jira-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const slackAuth = JSON.parse(readFileSync(new URL('./fixtures/slack-auth.json', import.meta.url), 'utf8')) as Record<string, unknown>;
     const jira = new ManifestCredentialRefreshDriver<{
@@ -157,6 +159,51 @@ describe('manifest credential refresh', () => {
     expect((await keeping.refresh(state(), new AbortController().signal)).expiresAt.getTime()).toBe(0);
   });
 
+  it('refreshes stored credentials without expiry but rejects a response without expires_in', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = ((method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>);
+    refresh.storedMissingExpiry = 'refresh';
+    refresh.acceptsMissingTokenType = true;
+    let response: Record<string, unknown> = { access_token: 'next', expires_in: 3600, scope: 'files.read' };
+    let requests = 0;
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields, fetch: async () => { requests++; return Response.json(response); } });
+    const noExpiry = { credentials: credentials(), now: new Date() };
+    expect(driver.refreshRequired(noExpiry)).toBe(true);
+    await expect(driver.refresh(noExpiry, new AbortController().signal)).resolves.toBeDefined();
+    response = { access_token: 'next', scope: 'files.read' };
+    await expect(driver.refresh(noExpiry, new AbortController().signal)).rejects.toThrow('omitted required fields');
+    expect(requests).toBe(2);
+  });
+
+  it.each(['refresh', 'client_credentials', 'jwt_bearer'] as const)(
+    'validates stored missing expiry separately from response lifetime for %s', grantKind => {
+      const configured = grantKind === 'refresh' ? structuredClone(auth) as Record<string, unknown>
+        : grantKind === 'client_credentials' ? { clientCredentials: {
+          credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+        } } as Record<string, unknown>
+          : { serviceAccount: { jwtBearer: {
+            credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+          } } } as Record<string, unknown>;
+      const grant = grantKind === 'refresh'
+        ? (((configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>)
+        : grantKind === 'client_credentials' ? configured.clientCredentials as Record<string, unknown>
+          : (configured.serviceAccount as Record<string, unknown>).jwtBearer as Record<string, unknown>;
+      const driver = () => new ManifestCredentialRefreshDriver<Credentials>({
+        providerName: 'Example', auth: configured, credentialFields,
+      });
+      const undated = { credentials: credentials(), now: new Date() };
+      grant.missingExpiry = { lifetime: '1h' };
+      expect(driver().refreshRequired(undated)).toBe(false);
+      grant.storedMissingExpiry = 'refresh';
+      expect(driver().refreshRequired(undated)).toBe(true);
+      grant.storedMissingExpiry = 'keep';
+      expect(driver().refreshRequired(undated)).toBe(false);
+      grant.storedMissingExpiry = 'invalid';
+      expect(driver).toThrow('manifest storedMissingExpiry must be refresh or keep');
+    });
+
   it('uses public authentication only when client secret is optional', async () => {
     const configured = structuredClone(auth) as Record<string, unknown>;
     const method = (configured.methods as Record<string, unknown>[])[0]!;
@@ -226,13 +273,13 @@ describe('manifest credential refresh', () => {
     refresh.missingExpiry = { lifetime: '+1h' };
     expect((await driverFor().refresh(state(), new AbortController().signal)).expiresAt.getTime()).toBeGreaterThan(Date.now() + 59 * 60_000);
     refresh.missingExpiry = { lifetime: '0' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     refresh.missingExpiry = { lifetime: '1fortnight' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     refresh.missingExpiry = { lifetime: '2562048h' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     refresh.missingExpiry = { lifetime: '-1h' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     expect(requests).toBe(3);
     refresh.missingExpiry = 'keep';
     refresh.grants = [
@@ -255,7 +302,7 @@ describe('manifest credential refresh', () => {
       currentCode = code;
       const rejected = driver.refresh(state(), new AbortController().signal);
       if (code === 'invalid_client' || code === 'invalid_grant') await expect(rejected).rejects.toBeInstanceOf(ReauthorizationRequiredError);
-      else await expect(rejected).rejects.toThrow('HTTP 400');
+      else await expect(rejected).rejects.toBeInstanceOf(RetryError);
     }
     const successStatusError: typeof fetch = async () => Response.json({ error: 'invalid_grant' });
     const accepting = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth, credentialFields, fetch: successStatusError });
@@ -292,6 +339,92 @@ describe('manifest credential refresh', () => {
       now: new Date(),
     }, new AbortController().signal);
     expect(result.credentials.accessToken.reveal()).toBe('minted');
+  });
+
+  it('validates and canonicalizes Microsoft tenant templates before dispatch', async () => {
+    const requests: string[] = [];
+    const auth = {
+      type: 'apiKey', fields: [
+        { name: 'tenant_id', type: 'string' }, { name: 'client_id', type: 'string' },
+        { name: 'client_secret', type: 'secretString' }, { name: 'access_token', type: 'secretString' },
+      ], clientCredentials: {
+        tokenEndpoint: { template: 'https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token',
+          templateValueRules: { tenant_id: { trimSpace: true, lowercase: true, maxBytes: 253,
+            patterns: ['^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$',
+              '^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}$'],
+            reject: ['common', 'organizations', 'consumers'] } } },
+        trimClientID: true,
+        clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
+        scopes: ['https://graph.microsoft.com/.default'],
+        credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+      },
+    };
+    const driver = new ManifestCredentialRefreshDriver<{ tenantId: string; clientId: string; clientSecret: SecretString; accessToken: SecretString }>({
+      providerName: 'Microsoft', auth,
+      credentialFields: { tenant_id: 'tenantId', client_id: 'clientId', client_secret: 'clientSecret', access_token: 'accessToken' },
+      fetch: async (input, init) => {
+        requests.push(String(input));
+        expect(new URLSearchParams(String(init?.body)).get('client_id')).toBe('client');
+        return Response.json({ access_token: 'new', expires_in: 3600, token_type: 'Bearer' });
+      },
+    });
+    const refresh = (tenantId: string) => driver.refresh({ credentials: {
+      tenantId, clientId: '  client  ', clientSecret: new SecretString('secret'), accessToken: new SecretString(''),
+    }, now: new Date() }, new AbortController().signal);
+    for (const tenant of ['common', ' Organizations ', 'CONSUMERS', 'contoso', 'a/b.com', 'x'.repeat(254)])
+      await expect(refresh(tenant)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    expect(requests).toEqual([]);
+    await refresh('  Contoso.OnMicrosoft.com  ');
+    expect(requests).toEqual(['https://login.microsoftonline.com/contoso.onmicrosoft.com/oauth2/v2.0/token']);
+  });
+
+  it('checks complete template alternatives and validates rules at construction', async () => {
+    const declaration = { clientCredentials: {
+      tokenEndpoint: { template: 'https://example.test/{tenant}', templateValueRules: {
+        tenant: { patterns: ['a|ab'], maxBytes: 253, lowercase: false },
+      } },
+      clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+    } };
+    const fields = { tenant: 'tenant', client_id: 'client_id', client_secret: 'client_secret', access_token: 'access_token' };
+    const endpoints: string[] = [];
+    const clientIDs: string[] = [];
+    const createDriver = () => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: declaration,
+      credentialFields: fields, fetch: async (input, init) => { endpoints.push(String(input));
+        clientIDs.push(new URLSearchParams(String(init?.body)).get('client_id') ?? '');
+        return Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer' }); } });
+    const refresh = (tenant: string, clientID = 'client') => createDriver().refresh({ credentials: {
+      tenant, client_id: clientID, client_secret: new SecretString('secret'), access_token: new SecretString(''),
+    }, now: new Date() }, new AbortController().signal);
+    await refresh('ab');
+    expect(endpoints).toEqual(['https://example.test/ab']);
+    const rule = declaration.clientCredentials.tokenEndpoint.templateValueRules.tenant as Record<string, unknown>;
+    rule.patterns = ['[A-Za-z]+'];
+    await refresh('A'.repeat(253));
+    await expect(refresh('A'.repeat(254))).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    rule.maxBytes = 0;
+    await expect(refresh('A')).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    rule.maxBytes = 253;
+    await refresh('AbC');
+    expect(endpoints.at(-1)).toBe('https://example.test/AbC');
+    expect(clientIDs.at(-1)).toBe('client');
+    (declaration.clientCredentials as Record<string, unknown>).trimClientID = false;
+    await refresh('AbC', '  client  ');
+    expect(clientIDs.at(-1)).toBe('  client  ');
+    for (const value of ['K', 'ſ'])
+      await expect(refresh(value)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    for (const invalidPattern of ['(?=a)a', '(a)\\1', 'a)|(b', '\\p{L}', '\\Qa\\E', '[[:alpha:]]', '(?i)a']) {
+      rule.patterns = [invalidPattern];
+      expect(createDriver, invalidPattern).toThrow(TypeError);
+    }
+    rule.patterns = ['\\(?x'];
+    expect(createDriver).not.toThrow();
+    rule.patterns = ['[A-Za-z]+'];
+    for (const invalidRule of [{ patterns: ['(?i)abc'] }, { reject: [42] }, { unknown: true }]) {
+      Object.assign(rule, invalidRule);
+      expect(createDriver).toThrow(TypeError);
+      for (const key of Object.keys(invalidRule)) delete rule[key];
+    }
   });
 
   it('rotates both declared Slack-style grants and keeps the earliest expiry', async () => {
@@ -381,6 +514,50 @@ describe('manifest credential refresh', () => {
     await check('files.read,files.write', false);
   });
 
+  it('checks client-credentials scopes with declared comma separators', async () => {
+    const configured = { type: 'apiKey', clientCredentials: {
+      tokenEndpoint: 'https://oauth.example.test/token', clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
+      scopes: ['files.read', 'files.write'], scopeSeparators: 'whitespaceAndComma',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+    } };
+    let returnedScope = 'files.read,files.write';
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: returnedScope }) });
+    await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+    returnedScope = 'files.read,other';
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+  });
+
+  it('accepts any declared alternative scope set and rejects unrelated scopes', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const oauth = ((configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>);
+    const refresh = oauth.refresh as Record<string, unknown>;
+    refresh.acceptedScopeSets = [['files.read', 'offline_access'], ['files.manage']];
+    let returnedScope = '';
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: returnedScope }) });
+    for (const scope of ['', 'files.read', 'files.manage', 'files.manage extra']) {
+      returnedScope = scope;
+      await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+    }
+    returnedScope = 'files.other';
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    refresh.exactScopes = true;
+    returnedScope = 'files.manage extra';
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+  });
+
+  it('ignores reported scope only when the manifest declares the Go driver policy', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const oauth = (configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>;
+    const refresh = oauth.refresh as Record<string, unknown>;
+    const makeDriver = () => new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields, fetch: async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: 'other' }) });
+    await expect(makeDriver().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    refresh.responseScopes = 'ignore';
+    await expect(makeDriver().refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+  });
+
   it('never refreshes a method without a declared grant', async () => {
     const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth, credentialFields });
     expect(driver.refreshRequired({ ...state(), credentials: { ...credentials(), authMethodId: 'static' } })).toBe(false);
@@ -399,15 +576,18 @@ describe('manifest credential refresh', () => {
         { name: 'delegated_user', type: 'string' }, { name: 'primary_email', type: 'string' },
       ], serviceAccount: { jwtBearer: {
         keyCredential: 'service_account_key', privateKey: { fromKey: 'private_key' },
-        issuer: { fromKey: 'client_email' }, subject: { fromCredential: 'delegated_user' },
+        issuer: { fromKey: 'client_email' }, subject: { fromCredential: 'delegated_user' }, trimSpaceSources: ['delegated_user'],
+        subjectValidation: 'goMailAddress',
         audience: { fromKey: 'token_uri' }, tokenEndpoint: { fromKey: 'token_uri' },
         scopes: ['offline_access', 'mail.read'], lifetime: '1h',
+        acceptedScopeSets: [['mail.read'], ['mail.manage']], scopeSeparators: 'whitespaceAndComma',
         credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
         credentialCopies: [{ credential: 'primary_email', fromCredential: 'delegated_user' }],
       } },
     };
     const fields = { access_token: 'accessToken', service_account_key: 'serviceAccountKey', delegated_user: 'delegatedUser', primary_email: 'primaryEmail' };
     const key = JSON.stringify({ private_key: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(), client_email: 'service@example.test', token_uri: 'https://oauth.example.test/token' });
+    let returnedScope = 'offline_access mail.read';
     const fetcher: typeof fetch = async (input, init) => {
       expect(String(input)).toBe('https://oauth.example.test/token');
       const assertion = new URLSearchParams(String(init?.body)).get('assertion') ?? '';
@@ -417,12 +597,20 @@ describe('manifest credential refresh', () => {
       expect(claims).toMatchObject({ iss: 'service@example.test', sub: 'user@example.test', aud: 'https://oauth.example.test/token', scope: 'offline_access mail.read' });
       expect(Number(claims.exp) - Number(claims.iat)).toBe(3600);
       expect(verify('RSA-SHA256', Buffer.from(`${segments[0]}.${segments[1]}`), publicKey, Buffer.from(segments[2]!, 'base64url'))).toBe(true);
-      return Response.json({ access_token: 'delegated', expires_in: 3600, token_type: 'Bearer', scope: 'offline_access mail.read' });
+      return Response.json({ access_token: 'delegated', expires_in: 3600, token_type: 'Bearer', scope: returnedScope });
     };
     const driver = new ManifestCredentialRefreshDriver<{ accessToken: SecretString; serviceAccountKey: SecretString; delegatedUser: string; primaryEmail: string }>({ providerName: 'Example', auth: delegatedAuth, credentialFields: fields, fetch: fetcher });
     const result = await driver.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() }, new AbortController().signal);
     expect(result.credentials.accessToken.reveal()).toBe('delegated');
     expect(result.credentials.primaryEmail).toBe('user@example.test');
+    await expect(driver.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: '\u00a0user@example.test\u00a0', primaryEmail: '' }, now: new Date() },
+      new AbortController().signal)).resolves.toBeDefined();
+    returnedScope = 'mail.manage,extra';
+    await expect(driver.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
+      new AbortController().signal)).resolves.toBeDefined();
+    returnedScope = 'mail.other';
+    await expect(driver.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
+      new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
     const retryable = new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: delegatedAuth, credentialFields: fields,
       fetch: async () => { throw new Error('temporary network failure'); } });
     await expect(retryable.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
@@ -436,5 +624,227 @@ describe('manifest credential refresh', () => {
     invalidLifetime.serviceAccount.jwtBearer.lifetime = '500us';
     await expect(invalid.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key), delegatedUser: 'user@example.test', primaryEmail: '' }, now: new Date() },
       new AbortController().signal)).rejects.toThrow('at least one millisecond');
+  });
+
+  it('matches Go mail.ParseAddress for delegated subjects before any token request', async () => {
+    const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const key = JSON.stringify({ private_key: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+      client_email: 'service@example.test', token_uri: 'https://oauth.example.test/token' });
+    const delegatedAuth = { type: 'serviceAccount', serviceAccount: { jwtBearer: {
+      keyCredential: 'service_account_key', privateKey: { fromKey: 'private_key' }, issuer: { fromKey: 'client_email' },
+      subject: { fromCredential: 'delegated_user' }, subjectValidation: 'goMailAddress',
+      audience: { fromKey: 'token_uri' }, tokenEndpoint: { fromKey: 'token_uri' }, scopes: ['mail.read'], lifetime: '1h',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+    } } };
+    let requests = 0;
+    const driver = new ManifestCredentialRefreshDriver({ providerName: 'Google', auth: delegatedAuth,
+      credentialFields: { access_token: 'accessToken', service_account_key: 'serviceAccountKey', delegated_user: 'delegatedUser' },
+      fetch: async () => { requests++; return Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer' }); } });
+    const cases = readFileSync(new URL('./fixtures/go-mail-addresses.jsonl', import.meta.url), 'utf8').trim().split('\n')
+      .map(line => JSON.parse(line) as { input: string; accepted: boolean });
+    for (const testCase of cases) {
+      const previousRequests = requests;
+      const refresh = driver.refresh({ credentials: { accessToken: new SecretString(''), serviceAccountKey: new SecretString(key),
+        delegatedUser: testCase.input }, now: new Date() }, new AbortController().signal);
+      if (testCase.accepted) {
+        await expect(refresh, testCase.input).resolves.toBeDefined();
+        expect(requests).toBe(previousRequests + 1);
+      } else {
+        await expect(refresh, testCase.input).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+        expect(requests).toBe(previousRequests);
+      }
+    }
+  });
+
+  it('retries a Help Scout style response without positive expires_in', async () => {
+    const clientAuth = { fields: [{ name: 'access_token', type: 'secretString' }], clientCredentials: {
+      tokenEndpoint: 'https://oauth.example.test/token', clientIDCredential: 'client_id',
+      clientSecretCredential: 'client_secret', missingExpiry: 'reject',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+    } };
+    let response: Record<string, unknown> = { access_token: 'next', token_type: 'Bearer' };
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Help Scout', auth: clientAuth,
+      credentialFields, fetch: async () => Response.json(response) });
+    for (const expiry of [undefined, 0, -1]) {
+      response = { access_token: 'next', token_type: 'Bearer', ...(expiry === undefined ? {} : { expires_in: expiry }) };
+      await expect(driver.refresh(state(), new AbortController().signal)).rejects.toThrow('omitted required fields');
+    }
+    response = { access_token: 'next', token_type: 'Bearer', expires_in: 3600 };
+    await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+  });
+
+  it('rejects ignored client scope sets and invalid JWT declarations at construction', () => {
+    const clientAuth = { clientCredentials: { acceptedScopeSets: [['read']], tokenEndpoint: 'https://oauth.example.test/token',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }] } };
+    expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: clientAuth, credentialFields })).toThrow(TypeError);
+    const jwtAuth = { serviceAccount: { jwtBearer: { lifetime: '1h',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }] } } };
+    const assertion = jwtAuth.serviceAccount.jwtBearer as Record<string, unknown>;
+    for (const declaration of [{ subjectValidation: 'other' }, { subjectValidation: null },
+      { subjectValidation: 'goMailAddress' }, { scopeSeparators: null }, { scopeSeparators: 'other' },
+      { acceptedScopeSets: null }]) {
+      Object.assign(assertion, declaration);
+      expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: jwtAuth, credentialFields })).toThrow(TypeError);
+      for (const key of Object.keys(declaration)) delete assertion[key];
+    }
+  });
+
+  it('rejects unknown manifest response declarations', () => {
+    for (const declaration of [{ missingExpiry: 'unknown' }, { acceptedScopeSets: [] }, { responseScopes: 'unknown' },
+      { acceptedScopeSets: [['read'], []] }, { scopeSeparators: 'comma' },
+      { missingExpiry: null }, { acceptedScopeSets: null }, { scopeSeparators: null },
+      { missingExpiry: { lifetime: '0s' } }, { missingExpiry: { lifetime: 'nonsense' } }]) {
+      const configured = structuredClone(auth) as Record<string, unknown>;
+      const method = (configured.methods as Record<string, unknown>[])[0]!;
+      Object.assign((method.oauth2 as Record<string, unknown>).refresh as object, declaration);
+      expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: configured, credentialFields })).toThrow(TypeError);
+    }
+  });
+});
+
+describe('Go-specific manifest refresh declarations', () => {
+  it('checks scope arrays, Graph prefixes, URL origins, and capped expiry', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = (method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>;
+    refresh.requiredScopes = ['files.read'];
+    refresh.responseScopeField = 'scopesArray';
+    refresh.scopeResourcePrefix = 'https://graph.microsoft.com/';
+    refresh.caseInsensitiveScopes = true;
+    refresh.scopeResourcePrefixCaseInsensitive = true;
+    refresh.expiryCap = '1h';
+    refresh.responseURLValidation = { credential: 'instance_url', allowedHosts: ['example.test'], requireResponse: true, refreshWhenInvalid: true };
+    let body: Record<string, unknown> = { access_token: 'next', token_type: 'Bearer', expires_in: 7200,
+      scopes: ['HTTPS://GRAPH.MICROSOFT.COM/FILES.READ'], instance_url: 'https://example.test/' };
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json(body) });
+    expect(driver.refreshRequired({ ...state(), expiresAt: new Date(Date.now() + 3600_000) })).toBe(true);
+    const result = await driver.refresh(state(), new AbortController().signal);
+    expect(result.credentials.instanceUrl).toBe('https://example.test');
+    expect(result.expiresAt.getTime()).toBeLessThan(Date.now() + 3601_000);
+    body = { ...body, scopes: ['other'] };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    body = { ...body, scopes: ['files.read,other'] };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    body = { ...body, scopes: [] };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    body = { ...body, scope: 'other' };
+    delete body.scopes;
+    await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+    body.scopes = null;
+    await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+    body = { ...body, scopes: ['files.read'], instance_url: 'https://foreign.test' };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(RetryError);
+    refresh.scopeResourcePrefixCaseInsensitive = false;
+    body = { ...body, scopes: ['HTTPS://GRAPH.MICROSOFT.COM/FILES.READ'], instance_url: 'https://example.test' };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    refresh.scopeResourcePrefixCaseInsensitive = true;
+    body = { ...body, instance_url: null };
+    await expect(driver.refresh({ ...state(), credentials: { ...credentials(), instanceUrl: 'https://example.test/' } }, new AbortController().signal))
+      .resolves.toMatchObject({ credentials: { instanceUrl: 'https://example.test' } });
+  });
+
+  it('validates URL declarations, loopback origins, and blank refresh fields', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const oauth = (configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>;
+    const refresh = oauth.refresh as Record<string, unknown>;
+    refresh.refreshWhenCredentialBlank = 'instance_url';
+    refresh.responseURLValidation = { credential: 'instance_url', allowedHosts: ['example.test'], allowLoopback: true,
+      allowedHostSuffix: 'example.test', forbidPort: true, defaultURL: 'https://example.test', refreshWhenInvalid: true };
+    const fetcher = vi.fn(async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: 'files.read' }));
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields, fetch: fetcher });
+    expect(driver.refreshRequired({ ...state(), credentials: { ...credentials(), instanceUrl: '' }, expiresAt: new Date(Date.now() + 3600_000) })).toBe(true);
+    const result = await driver.refresh({ ...state(), credentials: { ...credentials(), instanceUrl: '' } }, new AbortController().signal);
+    expect(result.credentials.instanceUrl).toBe('https://example.test');
+    for (const instanceUrl of ['http://[::1]', 'http://127.0.0.2']) {
+      await expect(driver.refresh({ ...state(), credentials: { ...credentials(), instanceUrl } }, new AbortController().signal))
+        .resolves.toMatchObject({ credentials: { instanceUrl } });
+    }
+    for (const instanceUrl of ['https://example.test:8443', 'https://example.test:443', 'https://badexample.test', 'http://127.1', 'http://2130706433']) {
+      await expect(driver.refresh({ ...state(), credentials: { ...credentials(), instanceUrl } }, new AbortController().signal))
+        .rejects.toBeInstanceOf(RetryError);
+    }
+    expect(fetcher).toHaveBeenCalledTimes(8);
+    refresh.responseURLValidation = { credential: 'instance_url', allowAnyHTTPS: true };
+    const anyHTTPS = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields, fetch: fetcher });
+    await expect(anyHTTPS.refresh({ ...state(), credentials: { ...credentials(), instanceUrl: 'https://other.test' } }, new AbortController().signal))
+      .resolves.toBeDefined();
+    for (const badRule of [{ credential: 'instance_url', unexpected: true }, { allowAnyHTTPS: true }]) {
+      refresh.responseURLValidation = badRule;
+      expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: configured, credentialFields })).toThrow(TypeError);
+    }
+    refresh.responseURLValidation = {};
+    refresh.refreshWhenCredentialBlank = 'missing';
+    expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: configured, credentialFields })).toThrow(TypeError);
+  });
+
+  it('retries an invalid token endpoint setting', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const oauth = (configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>;
+    oauth.tokenEndpoint = { fromSetting: 'tokenEndpoint' };
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      settings: { tokenEndpoint: 'not-a-url' }, fetch: vi.fn() });
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(RetryError);
+  });
+
+  it('uses JWT exp and keeps undated tokens without a refresh grant', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = (method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>;
+    refresh.missingExpiry = 'keep';
+    refresh.storedMissingExpiry = 'refreshIfRefreshTokenPresent';
+    refresh.accessTokenJWTExpiryFallback = '1h';
+    const exp = Math.floor(Date.now() / 1000) + 7200;
+    const jwt = `e30.${Buffer.from(JSON.stringify({ exp })).toString('base64url')}.signature`;
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json({ access_token: jwt, token_type: 'Bearer', scope: 'files.read' }) });
+    expect(driver.refreshRequired({ credentials: { ...credentials(), accessToken: new SecretString(jwt) }, now: new Date() })).toBe(false);
+    expect(driver.refreshRequired({ credentials: { ...credentials(), accessToken: new SecretString('bad') }, now: new Date() })).toBe(true);
+    expect(driver.refreshRequired({ credentials: { ...credentials(), refreshToken: new SecretString('') }, now: new Date() })).toBe(false);
+    const result = await driver.refresh(state(), new AbortController().signal);
+    expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now() + 7100_000);
+    const past = `e30.${Buffer.from(JSON.stringify({ exp: 1000 })).toString('base64url')}.signature`;
+    const pastDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json({ access_token: past, token_type: 'Bearer', scope: 'files.read' }) });
+    const pastResult = await pastDriver.refresh(state(), new AbortController().signal);
+    expect(pastResult.expiresAt.getTime()).toBeGreaterThan(Date.now() + 3_500_000);
+    expect(pastResult.expiresAt.getTime()).toBeLessThan(Date.now() + 3_700_000);
+  });
+});
+
+describe('manifest token endpoint address policy', () => {
+  it('refuses forbidden HTTP endpoints without using either transport', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const oauth = method.oauth2 as Record<string, unknown>;
+    oauth.tokenEndpoint = { fromSetting: 'tokenEndpoint' };
+    oauth.tokenEndpointNetworkPolicy = 'privateNetworkHTTP';
+    const globalFetch = vi.fn(async () => Response.json({ access_token: 'leaked', expires_in: 3600, token_type: 'Bearer' }));
+    const request = vi.spyOn(http, 'request');
+    vi.stubGlobal('fetch', globalFetch);
+    try {
+      for (const tokenEndpoint of [
+        'http://169.254.169.254/token', 'http://[fe80::1]/token', 'http://[fd00:ec2::254]/token',
+        'http://[::ffff:169.254.169.254]/token', 'http://2852039166/token',
+        'http://0251.0376.0251.0376/token', 'http://169.254.1/token', 'http://8.8.8.8/token',
+      ]) {
+        const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+          credentialFields, settings: { tokenEndpoint } });
+        await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(AddressRefusal);
+        expect(globalFetch, tokenEndpoint).not.toHaveBeenCalled();
+        expect(request, tokenEndpoint).not.toHaveBeenCalled();
+      }
+      for (const tokenEndpoint of ['https://identity.example/token#fragment', 'https://identity.example/a b',
+        'https://identity.example/é', 'https://identity.example/\tpath']) {
+        const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+          credentialFields, settings: { tokenEndpoint } });
+        await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+        expect(globalFetch, tokenEndpoint).not.toHaveBeenCalled();
+        expect(request, tokenEndpoint).not.toHaveBeenCalled();
+      }
+    } finally {
+      request.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 });
