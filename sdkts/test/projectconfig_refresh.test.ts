@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { createCall, SecretString, type CredentialRefreshDriver } from '../src/credentials.js';
 import { ReauthorizationRequiredError } from '../src/errors.js';
 import { TokenEndpoint } from '../src/oauthtoken/index.js';
+import { AddressRefusal } from '../src/providerhttp/index.js';
 import { ConnectionStore, CredentialMaterial, connectionPath, connectionRecord, credentialEnvelope, type ConnectionKey } from '../src/projectconfig/connections.js';
 import { loadFromEnvironment } from '../src/projectconfig/environment.js';
 import { CredentialProvider, RefreshFailedError, RefreshingCredentialProvider, RejectedCredentialNotRefreshedError } from '../src/projectconfig/index.js';
@@ -195,6 +196,20 @@ describe('project credential refresh', () => {
     await expect(provider.resolveWithRefresh(call, driver(async () => { throw new ReauthorizationRequiredError(); }))).rejects.toBeInstanceOf(ReauthorizationRequiredError);
     expect((await store.readConnection(key)).status).toBe('REAUTHORIZATION_REQUIRED');
     await expect(provider.resolveWithRefresh(call, driver(async () => { throw new Error('must not dispatch'); }))).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+  });
+
+  it('preserves a token endpoint address refusal through project refresh', async () => {
+    const store = await seededStore();
+    const provider = new RefreshingCredentialProvider(store, key, decode, encode);
+    const refusal = new AddressRefusal('resolved address violates policy');
+    const endpoint = new TokenEndpoint({ providerName: 'fixture', url: 'https://example.test/token',
+      fetch: async () => { throw refusal; } });
+    const refreshDriver = driver(async state => {
+      await endpoint.exchangeRefreshToken({ id: 'client', authenticationMethod: 'none' }, new SecretString(state.credentials.refreshToken));
+      throw new Error('unreachable');
+    });
+    await expect(provider.resolveWithRefresh(call, refreshDriver)).rejects.toBe(refusal);
+    expect((await store.readConnection(key)).status).toBe('READY');
   });
 
   it('forces a rejection refresh only after authoritative expiry', async () => {

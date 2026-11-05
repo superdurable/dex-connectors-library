@@ -218,6 +218,33 @@ func TestRateLimitedCreateWaitsAndCreatesOneTicketWithRealDex(t *testing.T) {
 	require.Equal(t, 1, provider.ticketCount())
 }
 
+func TestCreate503RetriesAnd500StaysUncertainWithRealDex(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+	}{
+		{name: "503", status: http.StatusServiceUnavailable},
+		{name: "500", status: http.StatusInternalServerError},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newFakeZohoDesk(t)
+			provider.firstCreateFailureStatus = test.status
+			harness := newTriageHarness(t, provider, defaultRequestTimeout)
+			if test.status == http.StatusServiceUnavailable {
+				outcome := harness.runTriage(t, "create-503", integrationIssueInput())
+				require.Equal(t, TriageTicketOpened, outcome.Action)
+				require.Equal(t, 2, provider.count("create"), "the cleared marker permits the retry")
+				require.Equal(t, 1, provider.ticketCount())
+				return
+			}
+			result := harness.waitForFlow(t, harness.startTriage(t, "create-500", integrationIssueInput()))
+			require.Equal(t, dex.FlowFailed, result.Status)
+			require.Contains(t, result.ErrorMessage, "uncertain")
+			require.Equal(t, 1, provider.count("create"))
+		})
+	}
+}
+
 // TestLostWorkerDuringCreateFailsUncertainWithoutResendingWithRealDex replaces the Worker while
 // Zoho Desk holds the create; the next attempt finds the dispatch marker and sends nothing.
 func TestLostWorkerDuringCreateFailsUncertainWithoutResendingWithRealDex(t *testing.T) {
@@ -249,6 +276,33 @@ func TestLostCommentResponseFailsUncertainAndIsNeverResentWithRealDex(t *testing
 	require.Contains(t, result.ErrorMessage, "no target")
 	require.Equal(t, 1, provider.count("comment"), "an unconfirmed comment is never resent")
 	require.Len(t, provider.ticketsNewestFirst()[0].comments, 1)
+}
+
+func TestComment503RetriesAnd500StaysUncertainWithRealDex(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+	}{
+		{name: "503", status: http.StatusServiceUnavailable},
+		{name: "500", status: http.StatusInternalServerError},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			provider := newFakeZohoDesk(t)
+			provider.firstCommentFailureStatus = test.status
+			harness := newTriageHarness(t, provider, defaultRequestTimeout)
+			if test.status == http.StatusServiceUnavailable {
+				outcome := harness.runTriage(t, "comment-503", integrationIssueInput())
+				require.Equal(t, TriageTicketOpened, outcome.Action)
+				require.Equal(t, 2, provider.count("comment"), "the cleared marker permits the retry")
+				require.Len(t, provider.ticketsNewestFirst()[0].comments, 1)
+				return
+			}
+			result := harness.waitForFlow(t, harness.startTriage(t, "comment-500", integrationIssueInput()))
+			require.Equal(t, dex.FlowFailed, result.Status)
+			require.Contains(t, result.ErrorMessage, "uncertain")
+			require.Equal(t, 1, provider.count("comment"))
+		})
+	}
 }
 
 // TestRevokedAccessTokenIsRefreshedOnceAndTheCreateIsSentOnceWithRealDex runs a refreshing credential
@@ -349,6 +403,8 @@ type fakeZohoDesk struct {
 	losesFirstUpdateResponse  bool
 	losesFirstCommentResponse bool
 	rateLimitsFirstCreate     bool
+	firstCreateFailureStatus  int
+	firstCommentFailureStatus int
 	rejectsCreate             bool
 	holdsFirstCreate          chan struct{}
 	holdsFirstUpdate          chan struct{}
@@ -565,6 +621,10 @@ func (provider *fakeZohoDesk) listComments(response http.ResponseWriter, request
 
 func (provider *fakeZohoDesk) createTicket(response http.ResponseWriter, request *http.Request, body []byte) {
 	attempt := provider.record("create", request, body)
+	if attempt == 1 && provider.firstCreateFailureStatus != 0 {
+		provider.writeJSON(response, provider.firstCreateFailureStatus, `{"errorCode":"SERVER_ERROR"}`)
+		return
+	}
 	if provider.rejectsCreate {
 		provider.writeJSON(response, http.StatusUnprocessableEntity,
 			`{"errorCode":"INVALID_DATA","message":"SENTINEL The data does not comply","errors":[{"fieldName":"/departmentId","errorType":"invalid","errorMessage":"SENTINEL"}]}`)
@@ -638,6 +698,10 @@ func (provider *fakeZohoDesk) updateTicket(response http.ResponseWriter, request
 
 func (provider *fakeZohoDesk) addComment(response http.ResponseWriter, request *http.Request, body []byte, ticketID string) {
 	attempt := provider.record("comment", request, body)
+	if attempt == 1 && provider.firstCommentFailureStatus != 0 {
+		provider.writeJSON(response, provider.firstCommentFailureStatus, `{"errorCode":"SERVER_ERROR"}`)
+		return
+	}
 	var payload struct {
 		Content     string `json:"content"`
 		IsPublic    bool   `json:"isPublic"`
