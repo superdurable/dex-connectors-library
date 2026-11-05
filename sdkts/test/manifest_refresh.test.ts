@@ -5,7 +5,7 @@ import { generateKeyPairSync, verify } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SecretString } from '../src/credentials.js';
-import { ReauthorizationRequiredError } from '../src/errors.js';
+import { ReauthorizationRequiredError, RetryError } from '../src/errors.js';
 import { ManifestCredentialRefreshDriver } from '../src/oauthtoken/index.js';
 
 interface Credentials {
@@ -300,7 +300,7 @@ describe('manifest credential refresh', () => {
       currentCode = code;
       const rejected = driver.refresh(state(), new AbortController().signal);
       if (code === 'invalid_client' || code === 'invalid_grant') await expect(rejected).rejects.toBeInstanceOf(ReauthorizationRequiredError);
-      else await expect(rejected).rejects.toThrow('HTTP 400');
+      else await expect(rejected).rejects.toBeInstanceOf(RetryError);
     }
     const successStatusError: typeof fetch = async () => Response.json({ error: 'invalid_grant' });
     const accepting = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth, credentialFields, fetch: successStatusError });

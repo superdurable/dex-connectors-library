@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { ReauthorizationRequiredError } from '../errors.js';
+import { ReauthorizationRequiredError, RetryError } from '../errors.js';
 import { isIP } from 'node:net';
 import { SecretString, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '../credentials.js';
 import {
@@ -104,7 +104,13 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     const expiries: number[] = [];
     for (const grant of grants) {
       if (grant.refreshField && !this.#credentialValue(credentials, grant.refreshField)) continue;
-      const token = await this.#exchange(grant, credentials, method, signal);
+      let token: TokenResponse;
+      try { token = await this.#exchange(grant, credentials, method, signal); }
+      catch (error) {
+        if (error instanceof ReauthorizationRequiredError || error instanceof TypeError) throw error;
+        throw new RetryError({ kind: 'PROTOCOL', provider: this.#providerName, operation: 'refreshCredentials',
+          message: error instanceof Error ? error.message : 'token endpoint failed' });
+      }
       const requiredScopes = this.#scopes(grant.scopes).filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access');
       const acceptedScopeSets = manifestList(grant.acceptedScopeSets).map(manifestList)
         .map(set => set.filter((scope): scope is string => typeof scope === 'string')

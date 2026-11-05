@@ -283,7 +283,7 @@ await fence.recordProviderId(result.providerId);
 
 ### 0.6.0
 
-Manifest token grants accept `responseScopes: ignore` when the Go credential driver does not inspect reported scope values. The default checks returned scopes against declared requirements.
+Manifest token grants accept `responseScopes: ignore` when the Go credential driver does not inspect reported scope values. The default checks returned scopes against declared requirements. Retryable token endpoint failures from manifest refresh now throw `RetryError`.
 
 ### 0.5.0
 
