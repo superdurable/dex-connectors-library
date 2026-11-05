@@ -45,6 +45,10 @@ _DATE = re.compile(r"(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:[.,](\d+))?(Z|[+-
 _VALUE_OPERATORS = frozenset({"EQ", "NEQ", "LT", "LTE", "GT", "GTE", "CONTAINS_TOKEN", "NOT_CONTAINS_TOKEN"})
 
 
+def _encode_query(values: dict[str, str]) -> str:
+    return urlencode(sorted(values.items()))
+
+
 def _object_type(value: str) -> None:
     if value not in ("contacts", "companies", "deals"):
         raise ValueError("object type must be contacts, companies, or deals")
@@ -373,7 +377,7 @@ class GetObjectOperation:
                 self.client.receipt(call),
                 failure("getObject", FailureKind.VALIDATION, str(error)),
             )
-        query = urlencode(
+        query = _encode_query(
             {"archived": "false", **({"properties": ",".join(properties)} if properties else {})}
         )
         result = await self.client.exchange(

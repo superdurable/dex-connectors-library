@@ -69,6 +69,10 @@ def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "quickbooks", operation, message)
 
 
+def _encode_query(values: dict[str, str]) -> str:
+    return urlencode(sorted(values.items()))
+
+
 def _fault(body: bytes) -> tuple[str, list[str], int]:
     try:
         envelope = json.loads(body)
@@ -416,7 +420,7 @@ class Client:
                     ),
                 )
             parameters["requestid"] = str(call.idempotency_key)
-        query_string = urlencode(sorted(parameters.items()))
+        query_string = _encode_query(parameters)
         target = f"{self.endpoint}/{realm}{path}?{query_string}"
         headers = {
             "Accept": "application/json",

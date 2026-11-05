@@ -16,7 +16,7 @@ from dex_connectors.sdk import (
 )
 
 from dex_connectors.microsoft_entra_id import Client, Config, Credentials, GetUserInput
-from dex_connectors.microsoft_entra_id.client import convert_user, path_escape, query_escape
+from dex_connectors.microsoft_entra_id.client import convert_user, odata_query, path_escape, query_escape
 
 USER_ID = "11111111-2222-4333-8444-555555555555"
 CONNECTION = ConnectionRef("microsoft", "entra-test")
@@ -27,6 +27,19 @@ def test_path_and_query_escape_match_go() -> None:
     """Keep Graph IDs and OData values byte-for-byte compatible with Go."""
     assert path_escape("$a!b'c()*+,;?/@example.com") == "$a%21b%27c%28%29%2A+%2C%3B%3F%2F@example.com"
     assert query_escape("a b~*+") == "a%20b~%2A%2B"
+
+
+@pytest.mark.parametrize(
+    "values, expected",
+    [
+        ({"$filter": "displayName eq 'a b~*'", "$select": "id,userPrincipalName"},
+         "$filter=displayName%20eq%20%27a%20b~%2A%27&$select=id%2CuserPrincipalName"),
+        ({"$select": "a b~*+!'()"}, "$select=a%20b~%2A%2B%21%27%28%29"),
+    ],
+)
+def test_odata_query_matches_go(values: dict[str, str], expected: str) -> None:
+    """Keep the Go connector's literal OData keys and percent-encoded spaces."""
+    assert odata_query(values) == expected
 
 
 def test_graph_user_wrong_typed_fields_are_not_coerced() -> None:

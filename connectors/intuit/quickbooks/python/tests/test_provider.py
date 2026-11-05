@@ -19,7 +19,7 @@ from dex_connectors.sdk import (
 )
 
 from dex_connectors.intuit_quickbooks import Client, Config, Credentials
-from dex_connectors.intuit_quickbooks.client import _classify, _resolve_realm
+from dex_connectors.intuit_quickbooks.client import _classify, _encode_query, _resolve_realm
 from dex_connectors.intuit_quickbooks.provider import (
     decode_invoice,
     parse_timestamp,
@@ -52,6 +52,20 @@ def test_large_error_body_still_classifies_by_status() -> None:
     """Ignore the success-response size limit when QuickBooks returns a 503."""
     result = _classify("getInvoice", 503, httpx.Headers(), b"x" * 1000, 5, "", datetime.now(UTC))
     assert result.outcome == "retry"
+
+
+@pytest.mark.parametrize(
+    "values, expected",
+    [
+        ({"z": "a b~*+!'()", "a": "slash/", "x": "é"},
+         "a=slash%2F&x=%C3%A9&z=a+b~%2A%2B%21%27%28%29"),
+        ({"properties": "email,first name~*", "archived": "false"},
+         "archived=false&properties=email%2Cfirst+name~%2A"),
+    ],
+)
+def test_query_encoding_matches_go(values: dict[str, str], expected: str) -> None:
+    """Encode sorted QuickBooks parameters exactly like Go url.Values.Encode."""
+    assert _encode_query(values) == expected
 
 
 @pytest.mark.parametrize("value, expected", [("+5", 60.0), ("-5", 60.0), ("7200", 3600.0)])
