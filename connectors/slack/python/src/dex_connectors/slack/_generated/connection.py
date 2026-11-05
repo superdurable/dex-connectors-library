@@ -193,17 +193,17 @@ def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"endpoint", "maxResponseBytes", "maxMessageCharacters"}:
         raise ValueError("Slack configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
-    if "endpoint" in value:
+    if "endpoint" in value and value["endpoint"] != '':
         endpoint = value["endpoint"]
         if not (isinstance(endpoint, str)):
             raise ValueError("Slack configuration endpoint has an invalid type")
         config_arguments['endpoint'] = endpoint
-    if "maxResponseBytes" in value:
+    if "maxResponseBytes" in value and value["maxResponseBytes"] != '':
         max_response_bytes = value["maxResponseBytes"]
         if not (type(max_response_bytes) is int):
             raise ValueError("Slack configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
-    if "maxMessageCharacters" in value:
+    if "maxMessageCharacters" in value and value["maxMessageCharacters"] != '':
         max_message_characters = value["maxMessageCharacters"]
         if not (type(max_message_characters) is int):
             raise ValueError("Slack configuration maxMessageCharacters has an invalid type")
