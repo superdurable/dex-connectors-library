@@ -13,6 +13,7 @@ export const Authorization = {
         "source": "access_token"
       }
     ],
+    "missingExpiry": "reject",
     "terminalErrorCodes": [
       "invalid_client",
       "unauthorized_client"
