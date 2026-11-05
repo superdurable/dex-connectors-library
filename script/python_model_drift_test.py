@@ -35,6 +35,13 @@ COMPATIBILITY_MODELS = {
         "GetCheckoutSessionInput",
         "GetPaymentIntentInput",
     },
+    "superdurable_llm": {
+        "GenerateTextRequest",
+        "GenerateTextResponse",
+        "textgenMessage",
+        "textgenStructuredOutput",
+        "textgenUsage",
+    },
     "supabase": {"UpsertRowsInput"},
     "unsplash": {"Photo", "PhotoPage"},
     "vercel": {"DeploymentsPage"},
