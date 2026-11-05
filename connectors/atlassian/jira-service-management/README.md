@@ -15,6 +15,8 @@ labels, priority, and workflow transitions use the Jira platform API at
 
 Install this connector with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/jira-service-management/go@v0.24.0`.
 
+The TypeScript package `@superdurable/connector-atlassian-jira-service-management@0.1.0` implements all seven operations. See its [package README](typescript/README.md) and [runnable Flow](typescript/examples/find-customer/README.md). Its provider behavior is checked against Go-recorded conformance scenarios; live Atlassian behavior remains unverified.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `findCustomerByEmail` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |
