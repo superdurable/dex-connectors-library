@@ -44,6 +44,7 @@ spec:
             - {credential: instance_url, source: instance_url}
           pkce: true
           refresh:
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client]
             missingExpiry: {lifetime: 2h}
             additionalParameters: {scope: offline_access files.read}
@@ -101,6 +102,7 @@ spec:
           startURL: https://example.com/apps
           steps: [Grant the application permissions.]
         clientCredentials:
+          storedMissingExpiry: refresh
           tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}
           clientIDCredential: client_id
           clientSecretCredential: client_secret
@@ -123,6 +125,7 @@ spec:
           steps: [Create a key and delegate it.]
         serviceAccount:
           jwtBearer:
+            storedMissingExpiry: refresh
             keyCredential: service_account_key
             privateKey: {fromKey: private_key}
             issuer: {fromKey: client_email}
