@@ -692,6 +692,10 @@ def render_connection():
     )
     connection_label = metadata["displayName"]
     has_refresh = payload["hasDeclaredTokenGrants"]
+    has_private_token_endpoint = has_refresh and any(
+        (method.get("oauth2") or {}).get("tokenEndpointNetworkPolicy") == "privateNetworkHTTP"
+        for method in (auth_methods or [spec["auth"]])
+    )
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
@@ -711,6 +715,7 @@ def render_connection():
         ),
         *(["from dex_connectors.sdk.projectconfig.provider import RefreshingCredentialProvider",
             "from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver"] if has_refresh else []),
+        *(["from dex_connectors.sdk.providerhttp import new_provider_http_client"] if has_private_token_endpoint else []),
         "",
         "from ..client import Client, Config"
         + (", Credentials" if auth_fields() else ""),
@@ -948,7 +953,7 @@ def render_connection():
             lines += ["        return Credentials(" + ", ".join(values) + ")", ""]
         if has_refresh:
             decoder = lines[decoder_body_start:]
-            decoder = [line[4:] if line.startswith("    ") else line for line in decoder]
+            decoder = [line.removeprefix("    ") for line in decoder]
             decoder = [
                 "    is_shared = shared" if "is_shared = bool(self.project.shared_connections" in line else line
                 for line in decoder
@@ -1041,7 +1046,14 @@ def render_connection():
         else "config, http_client"
     )
     if has_refresh:
-        lines.append("    http_client = http_client or httpx.AsyncClient()")
+        if has_private_token_endpoint:
+            lines += [
+                "    if http_client is not None:",
+                f"        raise ValueError({quoted(connection_label + ' private token endpoint does not accept a custom HTTP client')})",
+                '    http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")',
+            ]
+        else:
+            lines.append("    http_client = http_client or httpx.AsyncClient()")
     lines += [
         f"    client = Client({client_args})",
         "    return new_connection(client, reference)",

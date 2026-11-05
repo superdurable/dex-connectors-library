@@ -155,6 +155,13 @@ the adapter's exported names stable. The checked-in runnable examples remain
 the consuming application for each package; changing generated Step or mock
 behavior requires running that package's TypeScript checks and example tests.
 
+Generated Python project connections for manifests with a
+`privateNetworkHTTP` token endpoint create a DNS-pinned policy client and reject
+an injected `http_client`. The policy client is also used by the generated
+operation adapter. Generated TypeScript project connections do not inject a
+refresh `fetch`; application refresh drivers must leave `fetch` unset for this
+policy so the SDK uses its pinned transport.
+
 The Python build backend must include the JSON as package data: in the source
 and sdist under `src/dex_connectors/<slug_with_underscores>/`, and in the wheel
 under `dex_connectors/<slug_with_underscores>/`. If the npm

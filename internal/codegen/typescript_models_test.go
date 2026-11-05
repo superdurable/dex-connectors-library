@@ -53,6 +53,30 @@ func TestTypeScriptRefreshDeclarationUsesDecodedManifest(t *testing.T) {
 	}
 }
 
+func TestTypeScriptPrivateTokenEndpointProjectConnectionDoesNotInjectFetch(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "superdurable", "oauth2-http", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manifestFile.Close()
+	manifest, err := schema.Decode(manifestFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{TypeScript: &schema.LanguagePackage{Operations: []string{}, Triggers: []string{}}}
+	declaration, err := generateTypeScriptRefreshDeclaration(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(declaration), `"tokenEndpointNetworkPolicy": "privateNetworkHTTP"`) {
+		t.Fatal("generated declaration omits private token endpoint policy")
+	}
+	connection := string(generateTypeScriptConnection(manifest, nil))
+	if strings.Contains(connection, "fetch:") || strings.Contains(connection, "new ManifestCredentialRefreshDriver") {
+		t.Fatal("generated project connection injects an unrestricted refresh transport")
+	}
+}
+
 func TestTypeScriptSalesforceBlankStoredMethodUsesDeclaredDefault(t *testing.T) {
 	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "salesforce", "connector.yaml"))
 	if err != nil {

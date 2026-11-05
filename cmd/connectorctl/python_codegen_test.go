@@ -42,6 +42,35 @@ func TestPythonRefreshDeclarationUsesDecodedManifest(t *testing.T) {
 	}
 }
 
+func TestPythonPrivateTokenEndpointProjectConnectionUsesPolicyClient(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "superdurable", "oauth2-http", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{}, Triggers: []string{}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest, PackageName: "superdurable_oauth2_http", MockPackageName: "oauth2httpmock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection := generated["connection.py"]
+	for _, required := range []string{
+		"from dex_connectors.sdk.providerhttp import new_provider_http_client",
+		`http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")`,
+		"if http_client is not None:",
+		"private token endpoint does not accept a custom HTTP client",
+	} {
+		if !strings.Contains(connection, required) {
+			t.Errorf("generated private endpoint connection omits %q", required)
+		}
+	}
+	if strings.Contains(connection, "http_client = http_client or httpx.AsyncClient()") {
+		t.Error("generated private endpoint connection constructs an unrestricted HTTP client")
+	}
+}
+
 func TestPythonSalesforceBlankStoredMethodUsesDeclaredDefault(t *testing.T) {
 	manifest, err := load(filepath.Join("..", "..", "connectors", "salesforce", "connector.yaml"))
 	if err != nil {
