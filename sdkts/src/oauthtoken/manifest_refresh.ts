@@ -547,9 +547,10 @@ function validateResponseURL(value: string, rule: ManifestObject): string {
   const host = parsed.hostname.toLowerCase();
   const authority = value.slice(value.indexOf('://') + 3).split('/')[0]!;
   const rawHost = authority.startsWith('[') ? authority.slice(1, authority.indexOf(']')) : authority.split(':')[0]!;
+  const hasExplicitPort = authority.startsWith('[') ? authority.slice(authority.indexOf(']') + 1).startsWith(':') : authority.includes(':');
   const loopback = rawHost.toLowerCase() === 'localhost' || isLoopbackIPAddressLiteral(rawHost);
   if (parsed.protocol !== 'https:' && !(rule.allowLoopback === true && loopback && parsed.protocol === 'http:')) throw new TypeError('response URL is invalid');
-  if (rule.forbidPort === true && parsed.port) throw new TypeError('response URL is invalid');
+  if (rule.forbidPort === true && hasExplicitPort) throw new TypeError('response URL is invalid');
   const hosts = manifestList(rule.allowedHosts);
   const suffix = manifestText(rule.allowedHostSuffix);
   if (!(rule.allowAnyHTTPS === true && parsed.protocol === 'https:') &&

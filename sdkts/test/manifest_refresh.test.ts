@@ -671,11 +671,11 @@ describe('Go-specific manifest refresh declarations', () => {
       await expect(driver.refresh({ ...state(), credentials: { ...credentials(), instanceUrl } }, new AbortController().signal))
         .resolves.toMatchObject({ credentials: { instanceUrl } });
     }
-    for (const instanceUrl of ['https://example.test:8443', 'https://badexample.test', 'http://127.1', 'http://2130706433']) {
+    for (const instanceUrl of ['https://example.test:8443', 'https://example.test:443', 'https://badexample.test', 'http://127.1', 'http://2130706433']) {
       await expect(driver.refresh({ ...state(), credentials: { ...credentials(), instanceUrl } }, new AbortController().signal))
         .rejects.toBeInstanceOf(RetryError);
     }
-    expect(fetcher).toHaveBeenCalledTimes(7);
+    expect(fetcher).toHaveBeenCalledTimes(8);
     refresh.responseURLValidation = { credential: 'instance_url', allowAnyHTTPS: true };
     const anyHTTPS = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields, fetch: fetcher });
     await expect(anyHTTPS.refresh({ ...state(), credentials: { ...credentials(), instanceUrl: 'https://other.test' } }, new AbortController().signal))
