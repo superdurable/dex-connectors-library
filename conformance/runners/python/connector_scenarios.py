@@ -11,6 +11,7 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import fields
 from datetime import UTC, datetime, timedelta
+from email.message import Message
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
@@ -99,6 +100,16 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
                                                  for key, value in exchange[field].items())):
                     raise ValueError(f"{scenario['name']}: invalid {field}")
             body = exchange.get("requestBody")
+            if isinstance(body, dict) and "$multipart" in body and (
+                set(body) != {"$multipart"} or not isinstance(body["$multipart"], list)
+                or any(not isinstance(part, dict) or set(part) != {"headers", "bodyBase64"}
+                       or not isinstance(part["headers"], dict)
+                       or any(not isinstance(name, str) or not isinstance(values, list)
+                              or not values or any(not isinstance(value, str) for value in values)
+                              for name, values in part["headers"].items())
+                       or not isinstance(part["bodyBase64"], str) for part in body["$multipart"])
+            ):
+                raise ValueError(f"{scenario['name']}: invalid multipart expectation")
             if isinstance(body, dict) and "$rawMime" in body and (
                 set(body) - {"$rawMime", "threadId"} or not isinstance(body["$rawMime"], str)
             ):
@@ -129,6 +140,71 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
         if "idempotencyKey" in scenario and not isinstance(scenario["idempotencyKey"], str):
             raise ValueError(f"{scenario['name']}: idempotency key must be a string")
     return scenarios
+
+
+def _multipart_media_type(content_type: str) -> tuple[str, tuple[tuple[str, str], ...]]:
+    message = Message()
+    message["Content-Type"] = content_type
+    parameter_names = [name.lower() for name, _ in (message.get_params() or [])[1:]]
+    if len(parameter_names) != len(set(parameter_names)):
+        raise ValueError("duplicate multipart media type parameter")
+    media_type = message.get_content_type()
+    parameters = tuple(sorted((name, value) for name, value in (message.get_params() or [])[1:]
+                              if name != "boundary"))
+    return media_type, parameters
+
+
+def _is_multipart(content_type: str) -> bool:
+    return _multipart_media_type(content_type)[0] in {"multipart/form-data", "multipart/mixed", "multipart/related"}
+
+
+def _multipart_body(content_type: str, body: bytes) -> dict[str, object]:
+    message = Message()
+    message["Content-Type"] = content_type
+    boundary = message.get_param("boundary")
+    if not _is_multipart(content_type) or not isinstance(boundary, str) or not boundary:
+        raise ValueError("missing multipart boundary")
+    delimiter = b"--" + boundary.encode("ascii")
+    if not body.startswith(delimiter):
+        raise ValueError("invalid multipart opening delimiter")
+    position = len(delimiter)
+    parts: list[dict[str, object]] = []
+    while True:
+        if body[position:position + 2] == b"--":
+            break
+        if body[position:position + 2] != b"\r\n":
+            raise ValueError("invalid multipart delimiter")
+        header_start = position + 2
+        header_end = body.find(b"\r\n\r\n", header_start)
+        if header_end < 0:
+            raise ValueError("missing multipart part headers")
+        part_headers: dict[str, list[str]] = {}
+        last_name = ""
+        for raw_line in body[header_start:header_end].split(b"\r\n"):
+            if b"\r" in raw_line or b"\n" in raw_line:
+                raise ValueError("invalid multipart part header")
+            if raw_line.startswith((b" ", b"\t")):
+                if not last_name:
+                    raise ValueError("invalid multipart part header")
+                part_headers[last_name][-1] += " " + raw_line.strip(b" \t").decode("utf-8")
+                continue
+            name_bytes, separator, value_bytes = raw_line.partition(b":")
+            if not separator or not re.fullmatch(rb"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name_bytes):
+                raise ValueError("invalid multipart part header")
+            name = "-".join(component[:1].upper() + component[1:].lower()
+                            for component in name_bytes.decode("ascii").split("-"))
+            part_headers.setdefault(name, []).append(value_bytes.strip(b" \t").decode("utf-8"))
+            last_name = name
+        content_start = header_end + 4
+        part_delimiter = b"\r\n" + delimiter
+        content_end = body.find(part_delimiter, content_start)
+        while content_end >= 0 and body[content_end + len(part_delimiter):content_end + len(part_delimiter) + 2] not in (b"\r\n", b"--"):
+            content_end = body.find(part_delimiter, content_end + 1)
+        if content_end < 0:
+            raise ValueError("missing multipart closing delimiter")
+        parts.append({"headers": part_headers, "bodyBase64": base64.b64encode(body[content_start:content_end]).decode("ascii")})
+        position = content_end + 2 + len(delimiter)
+    return {"$multipart": parts}
 
 
 class ExchangeRecorder:
@@ -166,8 +242,13 @@ class ExchangeRecorder:
                     self.mismatches.append(f"request {index}: unasserted {field} {key}={values!r}")
         if "requestBody" in exchange:
             expected_body = exchange["requestBody"]
-            actual_body = request.content.decode()
-            if isinstance(expected_body, dict) and "$rawMimeContains" in expected_body:
+            actual_body = "" if isinstance(expected_body, dict) and "$multipart" in expected_body else request.content.decode()
+            if isinstance(expected_body, dict) and "$multipart" in expected_body:
+                try:
+                    self._equal(index, "multipart body", _multipart_body(request.headers.get("content-type", ""), request.content), expected_body)
+                except ValueError as error:
+                    self.mismatches.append(f"request {index}: invalid multipart body: {error}")
+            elif isinstance(expected_body, dict) and "$rawMimeContains" in expected_body:
                 try:
                     payload = json.loads(actual_body)
                     expected_keys = {"raw"} | ({"threadId"} if "threadId" in expected_body else set())
@@ -206,7 +287,15 @@ class ExchangeRecorder:
         elif not exchange.get("form") and request.content:
             self.mismatches.append(f"request {index}: unasserted body")
         for name, value in exchange.get("requestHeaders", {}).items():
-            self._equal(index, f"header {name}", request.headers.get_list(name), value if isinstance(value, list) else [value])
+            expected_values = value if isinstance(value, list) else [value]
+            actual_values = request.headers.get_list(name)
+            if name.lower() == "content-type" and len(expected_values) == len(actual_values) == 1 and _is_multipart(expected_values[0]):
+                try:
+                    self._equal(index, f"header {name}", _multipart_media_type(actual_values[0]), _multipart_media_type(expected_values[0]))
+                except ValueError as error:
+                    self.mismatches.append(f"request {index}: invalid header {name}: {error}")
+            else:
+                self._equal(index, f"header {name}", actual_values, expected_values)
         ignored_headers = {"host", "accept-encoding", "connection", "content-length"}
         for name, value in request.headers.items():
             if name in ignored_headers or name == "idempotency-key":

@@ -14,7 +14,7 @@ spec:
       operations: [listLeads, getLead]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: '@superdurable/connector-close'
       operations: [listLeads, getLead]
       triggers: []
