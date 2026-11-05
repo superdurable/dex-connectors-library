@@ -12,7 +12,7 @@ from dex_connectors.superdurable_oauth2_http import (
     new_send_request_step,
 )
 
-CONNECTION_NAME = "oauth2-http"
+CONNECTION_NAME = "oauth2-http-api"
 FLOW_TYPE = "OAuth2HTTPPythonAPIRequest"
 
 
@@ -31,7 +31,7 @@ class APIRequestFlow(dex.Flow[SendRequestInput]):
 
     def __init__(self, connection: Connection) -> None:
         if connection.reference.name != CONNECTION_NAME:
-            raise ValueError("OAuth HTTP request Flow requires the static oauth2-http connection")
+            raise ValueError("OAuth HTTP request Flow requires the static oauth2-http-api connection")
         self.complete = _Complete()
         self.send_request = new_send_request_step(
             step_type="OAuth2HTTPPythonSendRequest",

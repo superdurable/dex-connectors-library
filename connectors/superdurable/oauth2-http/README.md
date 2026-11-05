@@ -223,7 +223,7 @@ that read one path of the protected API and record the answer.
 
 The [Python package](python/README.md) exposes the same `sendRequest` Mutation
 through a typed Step factory. Its [API request example](python/examples/api_request/README.md)
-uses the static `oauth2-http` connection and has a real Dex Worker and Client
+uses the static `oauth2-http-api` connection and has a real Dex Worker and Client
 integration test. The package uses Connector SDK 0.7.0 manifest-generated OAuth
 refresh and Go-recorded provider conformance scenarios.
 
