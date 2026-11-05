@@ -80,9 +80,12 @@ def _count(value: Any) -> int:
     if isinstance(value, bool) or not isinstance(value, (int, str)):
         raise ValueError("count is neither a string nor a number")
     text = str(value)
-    if not re.fullmatch(r"[0-9]+", text):
+    if not re.fullmatch(r"[+-]?[0-9]+", text):
         raise ValueError("count is not a non-negative integer")
-    return int(text)
+    count = int(text)
+    if count < 0 or count > 2**63 - 1:
+        raise ValueError("count is not a non-negative integer")
+    return count
 
 
 def _flag(value: Any) -> bool:
