@@ -702,10 +702,7 @@ class CreateTaskOperation:
                 raise ValueError("invalid custom field")
             for custom_field in input.custom_fields:
                 custom_field_id = custom_field["id"] if isinstance(custom_field, dict) else custom_field.id
-                if (
-                    isinstance(custom_field, dict) and "value" not in custom_field
-                    or not isinstance(custom_field, dict) and custom_field.value is None
-                ):
+                if isinstance(custom_field, dict) and "value" not in custom_field:
                     raise ValueError(f"custom field {custom_field_id} needs a JSON value")
                 custom_field_value = (
                     custom_field["value"] if isinstance(custom_field, dict) else custom_field.value

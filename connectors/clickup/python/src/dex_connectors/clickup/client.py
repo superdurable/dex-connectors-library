@@ -3,7 +3,6 @@
 """ClickUp HTTP client and provider outcome classification."""
 
 import json
-import math
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -406,7 +405,12 @@ def unix_milliseconds(value: Any) -> datetime | None:
 
 def decode_object(body: bytes) -> dict[str, Any]:
     """Decode one JSON object; reject arrays and scalars."""
-    value = json.loads(body, parse_float=_JSONNumber, parse_constant=_reject_non_json_number)
+    value = json.loads(
+        body,
+        parse_float=_JSONNumber,
+        parse_int=_decode_json_integer,
+        parse_constant=_reject_non_json_number,
+    )
     if not isinstance(value, dict):
         raise ValueError("response is not a JSON object")
     return value
@@ -425,13 +429,19 @@ def _reject_non_json_number(value: str) -> None:
     raise ValueError(f"invalid JSON number {value}")
 
 
+def _decode_json_integer(source: str) -> int | _JSONNumber:
+    return _JSONNumber(source) if source == "-0" else int(source)
+
+
 def _exact_custom_field_value(value: Any, field_id: str) -> Any:
     if isinstance(value, Decimal):
         try:
             converted = float(value)
+            encoded = json.dumps(converted, allow_nan=False)
         except (OverflowError, ValueError) as error:
             raise ValueError(f"custom field {field_id} value cannot be represented exactly") from error
-        if not math.isfinite(converted) or Decimal.from_float(converted) != value:
+        source = value.source if isinstance(value, _JSONNumber) else str(value)
+        if encoded != source:
             raise ValueError(f"custom field {field_id} value cannot be represented exactly")
         return converted
     if isinstance(value, list):

@@ -3,6 +3,7 @@
 """Focused ClickUp HTTP and wire-decoding checks."""
 
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -24,7 +25,11 @@ from dex_connectors.clickup.client import (
     path_escape,
     unix_milliseconds,
 )
-from dex_connectors.clickup.models import CreateTaskInput, FindMemberByEmailInput, GetTaskInput
+from dex_connectors.clickup.models import (
+    CreateTaskInput,
+    FindMemberByEmailInput,
+    GetTaskInput,
+)
 from dex_connectors.clickup.operations import _bare_email, _budgeted_exchange, _equal_fold
 
 
@@ -97,7 +102,7 @@ def test_wrong_typed_nested_fields_are_invalid(field: dict) -> None:
         decode_task({"id": "abc", **field}, details=True)
 
 
-@pytest.mark.parametrize("literal", ["12345678901234567890.5", "1e400", "0.1"])
+@pytest.mark.parametrize("literal", ["12345678901234567890.5", "1e400", "1.10", "1e2", "-0"])
 def test_custom_field_numbers_that_python_cannot_preserve_are_invalid(literal: str) -> None:
     """A returned custom field value never silently loses Go's JSON number."""
     response = f'{{"id":"abc","custom_fields":[{{"id":"field1","value":{literal}}}]}}'
@@ -105,10 +110,16 @@ def test_custom_field_numbers_that_python_cannot_preserve_are_invalid(literal: s
         decode_task(decode_object(response.encode()), details=True)
 
 
-def test_custom_field_exact_number_and_non_json_number() -> None:
-    """Exactly representable values survive and NaN is not JSON."""
-    response = b'{"id":"abc","custom_fields":[{"id":"field1","value":1.5}]}'
-    assert decode_task(decode_object(response), details=True).custom_fields[0].value == 1.5
+@pytest.mark.parametrize("literal", ["1.5", "0.1", "19.99", "12345678901234567890"])
+def test_custom_field_number_preserves_json_text(literal: str) -> None:
+    """The codec emits the same number text that Go returns from RawMessage."""
+    response = f'{{"id":"abc","custom_fields":[{{"id":"field1","value":{literal}}}]}}'
+    value = decode_task(decode_object(response.encode()), details=True).custom_fields[0].value
+    assert json.dumps(value) == literal
+
+
+def test_non_json_custom_field_number_is_invalid() -> None:
+    """NaN is not valid provider JSON."""
     with pytest.raises(ValueError, match="invalid JSON number"):
         decode_object(b'{"id":"abc","custom_fields":[{"id":"field1","value":NaN}]}')
 
