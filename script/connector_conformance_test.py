@@ -35,10 +35,10 @@ class LegacyConformanceSelectionTest(unittest.TestCase):
                 connector_conformance.run_connector(connector, ["connectors/legacy/python/client.py"])
 
 
-class DatabaseExemptionTest(unittest.TestCase):
-    def test_reviewed_database_connectors_are_exempt_without_fixtures(self) -> None:
+class NativeWireExemptionTest(unittest.TestCase):
+    def test_reviewed_native_connectors_are_exempt_without_fixtures(self) -> None:
         exemptions = connector_conformance.conformance_exemptions()
-        self.assertEqual(set(exemptions), connector_conformance.DATABASE_WIRE_CONNECTORS)
+        self.assertEqual(set(exemptions), connector_conformance.NATIVE_WIRE_CONNECTORS)
         for connector_path, reason in exemptions.items():
             with self.subTest(connector=connector_path), patch.object(connector_conformance.subprocess, "run") as run:
                 output = io.StringIO()
@@ -58,7 +58,7 @@ class DatabaseExemptionTest(unittest.TestCase):
             exemption_file.parent.mkdir()
             exemption_file.write_text(json.dumps({"schemaVersion": 1, "exemptions": [
                 {"connector": "connectors/stripe", "reason": "convenient"}]}))
-            with self.assertRaisesRegex(ValueError, "not an approved database-wire connector"):
+            with self.assertRaisesRegex(ValueError, "not an approved native-wire connector"):
                 connector_conformance.conformance_exemptions()
 
     def test_duplicate_and_empty_reasons_are_rejected(self) -> None:
@@ -95,6 +95,30 @@ class DatabaseExemptionTest(unittest.TestCase):
             shared = connector_conformance.database_ci_matrix(["conformance/exemptions.yaml"])
             self.assertEqual({item["connector"] for item in shared},
                              {"connectors/postgresql", "connectors/mysql"})
+
+    def test_database_ci_matrix_ignores_email_package(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(
+            connector_conformance, "conformance_exemptions", return_value={"connectors/superdurable/email": "wire"}
+        ):
+            package = Path(directory) / "connectors/superdurable/email/python"
+            package.mkdir(parents=True)
+            (package / "pyproject.toml").write_text("[project]\n")
+            self.assertEqual(connector_conformance.database_ci_matrix(["conformance/exemptions.yaml"]), [])
+
+    def test_email_ci_matrix_selects_only_changed_exempt_packages(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)), patch.object(
+            connector_conformance, "conformance_exemptions", return_value={"connectors/superdurable/email": "wire"}
+        ):
+            root = Path(directory)
+            package = root / "connectors/superdurable/email/python"
+            package.mkdir(parents=True)
+            (package / "pyproject.toml").write_text("[project]\n")
+            self.assertEqual(connector_conformance.email_ci_matrix(["connectors/mysql/go/client.go"]), [])
+            expected = [{"connector": "connectors/superdurable/email"}]
+            self.assertEqual(connector_conformance.email_ci_matrix(["connectors/superdurable/email/python/src/client.py"]), expected)
+            self.assertEqual(connector_conformance.email_ci_matrix(["conformance/exemptions.yaml"]), expected)
+            (package / "pyproject.toml").unlink()
+            self.assertEqual(connector_conformance.email_ci_matrix(["conformance/exemptions.yaml"]), [])
 
 
 class CoverageValidationTest(unittest.TestCase):

@@ -6,14 +6,14 @@
       "name": "oauth_client_id",
       "goName": "OAuthClientID",
       "type": "string",
-      "description": "Non-secret Client ID copied from https://api.slack.com/apps after selecting the app > Basic Information > App Credentials; blank means OAuth installation and token refresh cannot start.",
+      "description": "Non-secret Client ID copied from https://api.slack.com/apps after selecting the app \u003e Basic Information \u003e App Credentials; blank means OAuth installation and token refresh cannot start.",
       "required": false
     },
     {
       "name": "oauth_client_secret",
       "goName": "OAuthClientSecret",
       "type": "secretString",
-      "description": "Secret copied from https://api.slack.com/apps after selecting the app > Basic Information > App Credentials > Client Secret; store it only in this credential field and blank means OAuth installation and refresh cannot start.",
+      "description": "Secret copied from https://api.slack.com/apps after selecting the app \u003e Basic Information \u003e App Credentials \u003e Client Secret; store it only in this credential field and blank means OAuth installation and refresh cannot start.",
       "required": false
     },
     {
@@ -48,17 +48,17 @@
       "name": "app_token",
       "goName": "AppToken",
       "type": "secretString",
-      "description": "Secret xapp- token from Slack app > Basic Information > App-Level Tokens; generate it with connections:write and copy the value shown once. Triggers receive events through Socket Mode with it; blank means a host that installed its own Slack app relays the events instead.",
+      "description": "Secret xapp- token from Slack app \u003e Basic Information \u003e App-Level Tokens; generate it with connections:write and copy the value shown once. Triggers receive events through Socket Mode with it; blank means a host that installed its own Slack app relays the events instead.",
       "required": false
     }
   ],
   "guide": {
     "startURL": "https://api.slack.com/apps",
     "steps": [
-      "Create or select a Slack app; under OAuth & Permissions add the displayed bot and user token scopes, then add the exact Redirect URI shown below.",
-      "Under Socket Mode, enable Socket Mode; under Basic Information > App-Level Tokens, generate an xapp- token with connections:write.",
-      "Copy Client ID and Client Secret from Basic Information > App Credentials and paste them below; also paste the xapp- token in app_token, which Triggers need to receive events through Socket Mode.",
-      "Under OAuth & Permissions enable Token Rotation only after this release is deployed; rotating bot and user access tokens expire after 12 hours and each refresh token is one-use."
+      "Create or select a Slack app; under OAuth \u0026 Permissions add the displayed bot and user token scopes, then add the exact Redirect URI shown below.",
+      "Under Socket Mode, enable Socket Mode; under Basic Information \u003e App-Level Tokens, generate an xapp- token with connections:write.",
+      "Copy Client ID and Client Secret from Basic Information \u003e App Credentials and paste them below; also paste the xapp- token in app_token, which Triggers need to receive events through Socket Mode.",
+      "Under OAuth \u0026 Permissions enable Token Rotation only after this release is deployed; rotating bot and user access tokens expire after 12 hours and each refresh token is one-use."
     ]
   },
   "oauth2": {
@@ -100,6 +100,7 @@
     "protocol": "oauth2",
     "tokenEndpointAuthMethod": "client_secret_basic",
     "refresh": {
+      "scopeSeparators": "whitespaceAndComma",
       "terminalErrorCodes": [
         "invalid_refresh_token",
         "bad_client_secret",
@@ -111,6 +112,10 @@
       ],
       "grants": [
         {
+          "acceptedTokenTypes": [
+            "bot"
+          ],
+          "exactScopes": true,
           "refreshTokenCredential": "bot_refresh_token",
           "credentialMappings": [
             {
@@ -121,12 +126,13 @@
               "credential": "bot_refresh_token",
               "source": "refresh_token"
             }
-          ],
-          "acceptedTokenTypes": [
-            "bot"
           ]
         },
         {
+          "acceptedTokenTypes": [
+            "user"
+          ],
+          "exactScopes": true,
           "refreshTokenCredential": "user_refresh_token",
           "credentialMappings": [
             {
@@ -138,10 +144,7 @@
               "source": "refresh_token"
             }
           ],
-          "grantedScopes": "userScopes",
-          "acceptedTokenTypes": [
-            "user"
-          ]
+          "grantedScopes": "userScopes"
         }
       ]
     }

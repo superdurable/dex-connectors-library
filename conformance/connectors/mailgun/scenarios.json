@@ -1,0 +1,741 @@
+{
+  "connector": "mailgun",
+  "scenarios": [
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"event-1\",\"event\":\"delivered\",\"timestamp\":1793100000.5}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "event": "delivered",
+              "id": "event-1",
+              "timestamp": 1793100000.5
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.test",
+        "limit": 20
+      },
+      "name": "getEvents-listed",
+      "operation": "getEvents"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.test",
+        "limit": 20
+      },
+      "name": "getEvents-provider-rejected",
+      "operation": "getEvents"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "{\"paging\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.test",
+        "limit": 20
+      },
+      "name": "getEvents-invalid-response",
+      "operation": "getEvents"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.test",
+        "limit": 20
+      },
+      "name": "getEvents-rate-limit",
+      "operation": "getEvents"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.test",
+        "limit": 20
+      },
+      "name": "getEvents-server-error",
+      "operation": "getEvents"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.test",
+        "limit": 20
+      },
+      "name": "getEvents-transport-failure",
+      "operation": "getEvents"
+    },
+    {
+      "attempts": 2,
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"items\":[{\"id\":\"event-1\",\"event\":\"delivered\",\"timestamp\":1793100000.5}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/example.test/events",
+          "query": {
+            "limit": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "event": "delivered",
+              "id": "event-1",
+              "timestamp": 1793100000.5
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "example.test",
+        "limit": 20
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "getEvents-retry-recovery",
+      "operation": "getEvents"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "domain": "bad/path",
+        "limit": 301
+      },
+      "name": "getEvents-invalid-input",
+      "operation": "getEvents"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"name\":\"example.test\",\"state\":\"active\"}],\"total_count\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "domains": [
+            {
+              "name": "example.test",
+              "state": "active"
+            }
+          ],
+          "totalCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listDomains-listed",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"private\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "domains": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listDomains-provider-rejected",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "{\"items\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "domains": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listDomains-invalid-response",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listDomains-rate-limit",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listDomains-server-error",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "skip": 2
+      },
+      "name": "listDomains-transport-failure",
+      "operation": "listDomains"
+    },
+    {
+      "attempts": 2,
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"items\":[{\"name\":\"example.test\",\"state\":\"active\"}],\"total_count\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v4/domains",
+          "query": {
+            "limit": [
+              "10"
+            ],
+            "skip": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic YXBpOnRlc3Qta2V5LTEyMw=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "domains": [
+            {
+              "name": "example.test",
+              "state": "active"
+            }
+          ],
+          "totalCount": 1
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 10,
+        "skip": 2
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "listDomains-retry-recovery",
+      "operation": "listDomains"
+    },
+    {
+      "callId": "614a05e0-1776-5bad-a744-85a79d25c628",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "domains": [],
+          "totalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 1001,
+        "skip": -1
+      },
+      "name": "listDomains-invalid-input",
+      "operation": "listDomains"
+    }
+  ],
+  "schemaVersion": 1
+}
