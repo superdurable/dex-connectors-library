@@ -197,47 +197,47 @@ def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"baseUrl", "apiVersion", "timeout", "maxResponseBytes", "defaultRepositoryLimit", "maxRepositories", "maxPullRequestBodyCharacters", "maxPatchCharacters", "maxCommitMessageCharacters"}:
         raise ValueError("GitHub configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
-    if "baseUrl" in value:
+    if "baseUrl" in value and value["baseUrl"] != '':
         base_url = value["baseUrl"]
         if not (isinstance(base_url, str)):
             raise ValueError("GitHub configuration baseUrl has an invalid type")
         config_arguments['base_url'] = base_url
-    if "apiVersion" in value:
+    if "apiVersion" in value and value["apiVersion"] != '':
         api_version = value["apiVersion"]
         if not (isinstance(api_version, str)):
             raise ValueError("GitHub configuration apiVersion has an invalid type")
         config_arguments['api_version'] = api_version
-    if "timeout" in value:
+    if "timeout" in value and value["timeout"] != '':
         timeout = value["timeout"]
         if not (type(timeout) is int):
             raise ValueError("GitHub configuration timeout has an invalid type")
         config_arguments['timeout_seconds'] = timeout / 1_000_000_000
-    if "maxResponseBytes" in value:
+    if "maxResponseBytes" in value and value["maxResponseBytes"] != '':
         max_response_bytes = value["maxResponseBytes"]
         if not (type(max_response_bytes) is int):
             raise ValueError("GitHub configuration maxResponseBytes has an invalid type")
         config_arguments['max_response_bytes'] = max_response_bytes
-    if "defaultRepositoryLimit" in value:
+    if "defaultRepositoryLimit" in value and value["defaultRepositoryLimit"] != '':
         default_repository_limit = value["defaultRepositoryLimit"]
         if not (type(default_repository_limit) is int):
             raise ValueError("GitHub configuration defaultRepositoryLimit has an invalid type")
         config_arguments['default_repository_limit'] = default_repository_limit
-    if "maxRepositories" in value:
+    if "maxRepositories" in value and value["maxRepositories"] != '':
         max_repositories = value["maxRepositories"]
         if not (type(max_repositories) is int):
             raise ValueError("GitHub configuration maxRepositories has an invalid type")
         config_arguments['max_repositories'] = max_repositories
-    if "maxPullRequestBodyCharacters" in value:
+    if "maxPullRequestBodyCharacters" in value and value["maxPullRequestBodyCharacters"] != '':
         max_pull_request_body_characters = value["maxPullRequestBodyCharacters"]
         if not (type(max_pull_request_body_characters) is int):
             raise ValueError("GitHub configuration maxPullRequestBodyCharacters has an invalid type")
         config_arguments['max_pull_request_body_characters'] = max_pull_request_body_characters
-    if "maxPatchCharacters" in value:
+    if "maxPatchCharacters" in value and value["maxPatchCharacters"] != '':
         max_patch_characters = value["maxPatchCharacters"]
         if not (type(max_patch_characters) is int):
             raise ValueError("GitHub configuration maxPatchCharacters has an invalid type")
         config_arguments['max_patch_characters'] = max_patch_characters
-    if "maxCommitMessageCharacters" in value:
+    if "maxCommitMessageCharacters" in value and value["maxCommitMessageCharacters"] != '':
         max_commit_message_characters = value["maxCommitMessageCharacters"]
         if not (type(max_commit_message_characters) is int):
             raise ValueError("GitHub configuration maxCommitMessageCharacters has an invalid type")
