@@ -1233,6 +1233,16 @@ codecs, and derive mutation idempotency keys through their production SDK paths.
 Other recovery paths remain a review requirement.
 For HTTP multipart/form-data, multipart/mixed, and multipart/related, recordings
 keep ordered part headers and bytes while ignoring the random outer boundary.
+When a connector generates a random request value, keep production entropy from
+`crypto/rand` and inject the shared synthetic SHA-256 counter stream only in its
+Go conformance adapter. Declare `randomSeed` and `randomRequestFields` in each
+affected scenario. The seed must start `SYNTHETIC_CONFORMANCE_`; the fields are
+simple JSON pointers. Go record mode replaces those strings with SHA-256 digest
+descriptors, and all runners hash the actual value before exact body comparison.
+Python and TypeScript adapters can use `SyntheticRandomSource` and its Go-compatible
+bounded integer method to reproduce the Go byte stream and `crypto/rand.Int` draws.
+See the [conformance contract](../conformance/connectors/README.md) for the stream
+format and secret-safe recording rules.
 
 Keep the language runners in `conformance/runners/`, outside published packages.
 Connector Python and TypeScript tests import them by repository path and only
