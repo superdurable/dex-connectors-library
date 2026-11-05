@@ -8,7 +8,7 @@ import https, { createServer as createTLSServer } from 'node:https';
 import { createServer as createTCPServer, type Socket } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter,
+  AddressRefusal, BodyTooLargeError, ProviderStalledError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter,
   encodeQueryValues, readBoundedBody, readErrorTokens, sendProviderRequest, validateBaseURL,
 } from '../src/providerhttp/index.js';
 import { isAllowedProviderIPAddress, isLocalStorageHost, isPrivateBrokerHost } from '../src/netpolicy.js';
@@ -108,6 +108,21 @@ describe('provider HTTP', () => {
       maxResponseBytes: 1024, addressPolicy: 'privateNetworkHTTP' }))
       .rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false,
         status: 200, headers: { 'x-request-id': 'received' } });
+  });
+
+  it('preserves response metadata when a successful body stalls', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'X-Request-ID': 'stalled' });
+      response.write('partial');
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'GET',
+      maxResponseBytes: 1024, addressPolicy: 'privateNetworkHTTP', stallTimeoutMs: 20, timeoutMs: 1000 }))
+      .rejects.toMatchObject({ name: ProviderStalledError.name, status: 200,
+        headers: { 'x-request-id': 'stalled' } });
   });
 
   it('drains an oversized response to EOF without retaining or observing later chunks', async () => {

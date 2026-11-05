@@ -44,8 +44,15 @@ export class ProviderTransportError extends Error {
 
 /** Provider emitted no response byte within the configured stall timeout. */
 export class ProviderStalledError extends Error {
+  /** HTTP status when the response stalled after its headers arrived. */ readonly status: number | undefined;
+  /** HTTP headers when the response stalled after its headers arrived. */ readonly headers: http.IncomingHttpHeaders | undefined;
   /** Construct a sanitized no-byte timeout failure. */
-  constructor() { super('provider sent no bytes within the stall timeout'); this.name = 'ProviderStalledError'; }
+  constructor(status?: number, headers?: http.IncomingHttpHeaders) {
+    super('provider sent no bytes within the stall timeout');
+    this.name = 'ProviderStalledError';
+    this.status = status;
+    this.headers = headers;
+  }
 }
 
 /** Public HTTPS, owned private HTTP, or caller-owned unrestricted transport. */
@@ -202,7 +209,8 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
         let stallTimer: ReturnType<typeof setTimeout> | undefined;
         const observeProgress = () => {
           if (stallTimer) clearTimeout(stallTimer);
-          if (request.stallTimeoutMs && request.stallTimeoutMs > 0) stallTimer = setTimeout(() => response.destroy(new ProviderStalledError()), request.stallTimeoutMs);
+          if (request.stallTimeoutMs && request.stallTimeoutMs > 0) stallTimer = setTimeout(() =>
+            response.destroy(new ProviderStalledError(response.statusCode ?? 0, response.headers)), request.stallTimeoutMs);
         };
         observeProgress();
         void (async () => {
