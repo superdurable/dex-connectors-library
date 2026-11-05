@@ -250,9 +250,35 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 	}
 	variations = append(variations, missingType)
 	if grant.responseScopesPolicy != schema.ResponseScopesIgnore && len(grant.responseScopes) > 0 {
-		if len(grant.acceptedScopeSets) > 0 && grant.scopeSeparators == schema.ScopeSeparatorsWhitespaceAndComma {
+		if grant.responseScopeField == "scopesArray" {
+			emptyArray := clone(" with empty array scope", "reauthorization")
+			emptyArray.Response["scopes"] = []string{}
+			variations = append(variations, emptyArray)
+			wrongArray := clone(" with missing array scope", "reauthorization")
+			wrongArray.Response["scopes"] = []string{"manifest-ungranted-scope"}
+			variations = append(variations, wrongArray)
+			malformedArray := clone(" with malformed array scope", "reauthorization")
+			malformedArray.Response["scopes"] = "not-an-array"
+			variations = append(variations, malformedArray)
+		}
+		if grant.scopeResourcePrefix != "" {
+			prefixed := clone(" with resource-prefixed scopes", "")
+			values := make([]string, len(grant.responseScopes))
+			for index, scope := range grant.responseScopes {
+				values[index] = grant.scopeResourcePrefix + scope
+				if grant.scopeResourcePrefixCaseInsensitive {
+					values[index] = strings.ToUpper(values[index])
+				}
+			}
+			prefixed.Response["scope"] = strings.Join(values, " ")
+			variations = append(variations, prefixed)
+		}
+		if grant.scopeSeparators == schema.ScopeSeparatorsWhitespaceAndComma {
 			comma := clone(" with comma-separated scopes", "")
-			comma.Response["scope"] = strings.Join(grant.responseScopes, ",") + ",manifest-extra-scope"
+			comma.Response["scope"] = strings.Join(grant.responseScopes, ",")
+			if !grant.exactScopes {
+				comma.Response["scope"] = comma.Response["scope"].(string) + ",manifest-extra-scope"
+			}
 			variations = append(variations, comma)
 		}
 		for index, scopeSet := range grant.acceptedScopeSets {
@@ -270,11 +296,42 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		}
 	}
 	differentScope := clone(" with different reported scope", "")
-	differentScope.Response["scope"] = "manifest-ungranted-scope"
+	if grant.responseScopeField == "scopesArray" {
+		differentScope.Response["scopes"] = []string{"manifest-ungranted-scope"}
+	} else {
+		differentScope.Response["scope"] = "manifest-ungranted-scope"
+	}
 	if grant.responseScopesPolicy != schema.ResponseScopesIgnore && len(grant.responseScopes) > 0 {
 		differentScope.ExpectedError = "reauthorization"
 	}
 	variations = append(variations, differentScope)
+	if rule := grant.responseURLValidation; rule != nil {
+		for _, mapping := range grant.mappings {
+			if mapping.Credential != rule.Credential {
+				continue
+			}
+			missingURL := clone(" without provider URL", "")
+			delete(missingURL.Response, mapping.Source)
+			if rule.RequireResponse {
+				missingURL.ExpectedError = "retryable"
+			} else if prior := base.Credentials[rule.Credential]; prior != "" {
+				missingURL.Updates[rule.Credential] = prior
+			} else {
+				missingURL.Updates[rule.Credential] = rule.DefaultURL
+			}
+			variations = append(variations, missingURL)
+			nonStringURL := clone(" with non-string provider URL", "retryable")
+			nonStringURL.Response[mapping.Source] = 7
+			variations = append(variations, nonStringURL)
+			foreignURL := clone(" with foreign provider URL", "retryable")
+			foreignURL.Response[mapping.Source] = "https://foreign.example.invalid"
+			if rule.AllowAnyHTTPS {
+				foreignURL.Response[mapping.Source] = "https://foreign.example.invalid/path"
+			}
+			variations = append(variations, foreignURL)
+			break
+		}
+	}
 	missingExpiry := clone(" without expires_in", "")
 	delete(missingExpiry.Response, "expires_in")
 	if grant.missingExpiry == nil || grant.missingExpiry.Reject {
@@ -292,6 +349,20 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		missingExpiry.ExpectedExpiryMilliseconds = &milliseconds
 	}
 	variations = append(variations, missingExpiry)
+	if grant.accessTokenJWTExpiryFallback != "" && missingExpiry.ExpectedError == "" {
+		fallback, _ := time.ParseDuration(grant.accessTokenJWTExpiryFallback)
+		milliseconds := float64(fallback) / float64(time.Millisecond)
+		missingExpiry.ExpectedExpiryMilliseconds = &milliseconds
+		variations[len(variations)-1] = missingExpiry
+	}
+	if grant.expiryCap != "" {
+		capped := clone(" with expiry above cap", "")
+		capped.Response["expires_in"] = 7200
+		capDuration, _ := time.ParseDuration(grant.expiryCap)
+		milliseconds := float64(capDuration) / float64(time.Millisecond)
+		capped.ExpectedExpiryMilliseconds = &milliseconds
+		variations = append(variations, capped)
+	}
 	if grant.refreshToken != "" {
 		keptRefreshToken := clone(" without refresh_token", "")
 		delete(keptRefreshToken.Response, "refresh_token")
@@ -303,18 +374,25 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 
 // declaredGrant is one token request that a method declares.
 type declaredGrant struct {
-	name         string
-	methodLabel  string
-	method       schema.AuthMethod
-	kind         string
-	endpoint     schema.ValueSource
-	authMethod   schema.ValueSource
-	encoding     string
-	clientID     string
-	clientSecret string
-	refreshToken string
-	mappings     []schema.OAuthCredentialMapping
-	copies       []schema.CredentialCopy
+	responseScopeField                 string
+	scopeResourcePrefix                string
+	caseInsensitiveScopes              bool
+	scopeResourcePrefixCaseInsensitive bool
+	expiryCap                          string
+	accessTokenJWTExpiryFallback       string
+	responseURLValidation              *schema.ResponseURLValidation
+	name                               string
+	methodLabel                        string
+	method                             schema.AuthMethod
+	kind                               string
+	endpoint                           schema.ValueSource
+	authMethod                         schema.ValueSource
+	encoding                           string
+	clientID                           string
+	clientSecret                       string
+	refreshToken                       string
+	mappings                           []schema.OAuthCredentialMapping
+	copies                             []schema.CredentialCopy
 	// requestScopes are sent as the scope parameter or claim; responseScopes are what a successful response reports.
 	requestScopes           []string
 	responseScopes          []string
@@ -467,11 +545,18 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					mappings: refreshGrant.CredentialMappings, responseScopes: withoutString(responseScopes, offlineAccessScope),
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
 					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
-					acceptedScopeSets:    refresh.AcceptedScopeSets,
-					responseScopesPolicy: refresh.ResponseScopes,
-					storedMissingExpiry:  refresh.StoredMissingExpiry,
-					scopeSeparators:      refresh.ScopeSeparators,
-					allowsPublicClient:   refresh.AllowsPublicClient,
+					acceptedScopeSets:                  refresh.AcceptedScopeSets,
+					responseScopesPolicy:               refresh.ResponseScopes,
+					responseScopeField:                 refresh.ResponseScopeField,
+					scopeResourcePrefix:                refresh.ScopeResourcePrefix,
+					caseInsensitiveScopes:              refresh.CaseInsensitiveScopes,
+					scopeResourcePrefixCaseInsensitive: refresh.ScopeResourcePrefixCaseInsensitive,
+					expiryCap:                          refresh.ExpiryCap,
+					accessTokenJWTExpiryFallback:       refresh.AccessTokenJWTExpiryFallback,
+					responseURLValidation:              refresh.ResponseURLValidation,
+					storedMissingExpiry:                refresh.StoredMissingExpiry,
+					scopeSeparators:                    refresh.ScopeSeparators,
+					allowsPublicClient:                 refresh.AllowsPublicClient,
 				})
 			}
 		}
@@ -483,7 +568,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				requestScopes: clientCredentials.Scopes, responseScopes: clientCredentials.Scopes,
 				terminalCodes: defaultStrings(clientCredentials.TerminalErrorCodes, "invalid_client"), missingExpiry: clientCredentials.MissingExpiry, additional: clientCredentials.AdditionalParameters,
 				acceptedTokenTypes: defaultStrings(clientCredentials.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: clientCredentials.AcceptsMissingTokenType,
-				responseScopesPolicy: clientCredentials.ResponseScopes, storedMissingExpiry: clientCredentials.StoredMissingExpiry,
+				responseScopesPolicy: clientCredentials.ResponseScopes, storedMissingExpiry: clientCredentials.StoredMissingExpiry, scopeSeparators: clientCredentials.ScopeSeparators,
 			})
 		}
 		if method.ServiceAccount != nil && method.ServiceAccount.JWTBearer != nil {
@@ -499,6 +584,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				missingExpiry: jwtBearer.MissingExpiry, jwtBearer: jwtBearer,
 				acceptedTokenTypes: defaultStrings(jwtBearer.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: jwtBearer.AcceptsMissingTokenType,
 				responseScopesPolicy: jwtBearer.ResponseScopes, storedMissingExpiry: jwtBearer.StoredMissingExpiry,
+				responseURLValidation: jwtBearer.ResponseURLValidation,
 			})
 		}
 	}
@@ -507,6 +593,9 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 
 // variants returns one variant for each value that a values map translates, or one variant without a fixed value.
 func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []grantVariant {
+	if grant.method.OAuth2 != nil && grant.method.OAuth2.TokenEndpointNetworkPolicy == "privateNetworkHTTP" && grant.endpoint.FromSetting != "" {
+		return []grantVariant{{}, {field: grant.endpoint.FromSetting, value: "http://127.0.0.1/token"}}
+	}
 	var translated []schema.ValueSource
 	translated = append(translated, grant.endpoint, grant.authMethod)
 	if grant.jwtBearer != nil {
@@ -632,8 +721,12 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 	if !isPublicClient || grant.allowsPublicClient {
 		generation.mustWrite("\t\t\tvariations: []manifestVariation{\n")
 		for _, variation := range agreement.responseVariations(RefreshAgreementCase{Response: response}, grant) {
-			generation.mustWrite("\t\t\t\t{name: %q, response: %s, expectedError: %q},\n",
-				variation.Name, goAnyMap(variation.Response), variation.ExpectedError)
+			expectedExpiry := float64(0)
+			if variation.ExpectedExpiryMilliseconds != nil {
+				expectedExpiry = *variation.ExpectedExpiryMilliseconds
+			}
+			generation.mustWrite("\t\t\t\t{name: %q, response: %s, expectedError: %q, expectedExpiry: time.Duration(%d)},\n",
+				variation.Name, goAnyMap(variation.Response), variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)))
 		}
 		generation.mustWrite("\t\t\t},\n")
 	}
@@ -721,6 +814,19 @@ func (agreement *refreshAgreementGenerator) sampleCredentials(grant declaredGran
 			credentials[mapping.Credential] = sampleAccessToken
 		case "refresh_token":
 			credentials[mapping.Credential] = sampleRefreshToken
+		}
+	}
+	if rule := grant.responseURLValidation; rule != nil {
+		for _, mapping := range grant.mappings {
+			if mapping.Credential == rule.Credential {
+				if responseValue := sample.Response[mapping.Source]; responseValue != "" {
+					credentials[rule.Credential] = responseValue
+				} else if rule.DefaultURL != "" {
+					credentials[rule.Credential] = rule.DefaultURL
+				} else {
+					credentials[rule.Credential] = "https://manifest.example.com"
+				}
+			}
 		}
 	}
 	for _, placeholder := range agreement.templatePlaceholders(grant) {
@@ -827,7 +933,11 @@ func (agreement *refreshAgreementGenerator) sampleKeyMembers(grant declaredGrant
 func (agreement *refreshAgreementGenerator) sampleResponse(grant declaredGrant, credentials map[string]string, sample RefreshAgreementSample) (map[string]any, map[string]string) {
 	response := map[string]any{"token_type": grant.acceptedTokenTypes[0], "expires_in": sampleExpiresInSecond}
 	if len(grant.responseScopes) > 0 {
-		response["scope"] = strings.Join(grant.responseScopes, " ")
+		if grant.responseScopeField == "scopesArray" {
+			response["scopes"] = grant.responseScopes
+		} else {
+			response["scope"] = strings.Join(grant.responseScopes, " ")
+		}
 	}
 	updates := map[string]string{}
 	for _, mapping := range grant.mappings {
@@ -1157,6 +1267,12 @@ func goAnyMap(values map[string]any) string {
 			expression = strconv.Itoa(value)
 		case map[string]any:
 			expression = goAnyMap(value)
+		case []string:
+			quoted := make([]string, len(value))
+			for index, item := range value {
+				quoted[index] = strconv.Quote(item)
+			}
+			expression = "[]string{" + strings.Join(quoted, ", ") + "}"
 		default:
 			panic(fmt.Sprintf("unsupported token response value %T", value))
 		}

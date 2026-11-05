@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"sort"
@@ -49,12 +50,30 @@ const (
 	StoredMissingExpiryKeep = "keep"
 	// StoredMissingExpiryRefresh renews a present access token without recorded expiry.
 	StoredMissingExpiryRefresh = "refresh"
+	// StoredMissingExpiryRefreshIfPossible keeps an undated token when no refresh token exists.
+	StoredMissingExpiryRefreshIfPossible = "refreshIfRefreshTokenPresent"
 )
 
 // OAuthRefresh declares how a host refreshes an OAuth method's access token with the stored refresh token. The
 // method's tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, client credentials and credentialMappings
 // apply to the refresh request and response too.
 type OAuthRefresh struct {
+	// ResponseURLValidation validates a mapped provider URL before it is stored.
+	ResponseURLValidation *ResponseURLValidation `yaml:"responseURLValidation,omitempty" json:"responseURLValidation,omitempty"`
+	// ResponseScopeField selects the provider's granted-scope response member; scopesArray is a JSON string array.
+	ResponseScopeField string `yaml:"responseScopeField,omitempty" json:"responseScopeField,omitempty"`
+	// ScopeResourcePrefix is removed from each returned scope before comparison.
+	ScopeResourcePrefix string `yaml:"scopeResourcePrefix,omitempty" json:"scopeResourcePrefix,omitempty"`
+	// ScopeResourcePrefixCaseInsensitive removes the prefix without case, when the Go driver does so.
+	ScopeResourcePrefixCaseInsensitive bool `yaml:"scopeResourcePrefixCaseInsensitive,omitempty" json:"scopeResourcePrefixCaseInsensitive,omitempty"`
+	// CaseInsensitiveScopes compares returned and required scopes without case.
+	CaseInsensitiveScopes bool `yaml:"caseInsensitiveScopes,omitempty" json:"caseInsensitiveScopes,omitempty"`
+	// RefreshWhenCredentialBlank refreshes when this mapped credential field is blank.
+	RefreshWhenCredentialBlank string `yaml:"refreshWhenCredentialBlank,omitempty" json:"refreshWhenCredentialBlank,omitempty"`
+	// ExpiryCap limits a reported token lifetime.
+	ExpiryCap string `yaml:"expiryCap,omitempty" json:"expiryCap,omitempty"`
+	// AccessTokenJWTExpiryFallback uses JWT exp for an undated token and this lifetime if exp is unreadable.
+	AccessTokenJWTExpiryFallback string `yaml:"accessTokenJWTExpiryFallback,omitempty" json:"accessTokenJWTExpiryFallback,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
 	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
 	// AcceptedTokenTypes replaces the default Bearer token type for all grants unless a grant overrides it.
@@ -117,6 +136,8 @@ type MissingExpiry struct {
 // ClientCredentialsGrant declares how a host mints an apiKey method's access token with the OAuth client
 // credentials grant (RFC 6749 section 4.4) from the stored client ID and secret.
 type ClientCredentialsGrant struct {
+	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes.
+	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
 	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
 	// AcceptedTokenTypes replaces the default Bearer token type.
@@ -159,6 +180,12 @@ type ServiceAccount struct {
 // JWTBearerGrant declares how a host mints a serviceAccount method's access token: it signs an RS256 JWT bearer
 // assertion (RFC 7523) with the stored private key and exchanges it at the token endpoint.
 type JWTBearerGrant struct {
+	// TrimSpaceSources trims surrounding Unicode whitespace from these assertion credential sources.
+	TrimSpaceSources []string `yaml:"trimSpaceSources,omitempty" json:"trimSpaceSources,omitempty"`
+	// ResponseURLValidation validates a mapped provider URL before it is stored.
+	ResponseURLValidation *ResponseURLValidation `yaml:"responseURLValidation,omitempty" json:"responseURLValidation,omitempty"`
+	// RefreshWhenCredentialBlank refreshes when this mapped credential field is blank.
+	RefreshWhenCredentialBlank string `yaml:"refreshWhenCredentialBlank,omitempty" json:"refreshWhenCredentialBlank,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
 	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
 	// AcceptedTokenTypes replaces the default Bearer token type.
@@ -207,6 +234,28 @@ type CredentialCopy struct {
 	Credential string `yaml:"credential" json:"credential"`
 	// FromCredential is the credential field that supplies it.
 	FromCredential string `yaml:"fromCredential" json:"fromCredential"`
+}
+
+// ResponseURLValidation describes a provider API origin accepted from a token response or stored credential.
+type ResponseURLValidation struct {
+	// Credential is the URL credential mapped from the token response.
+	Credential string `yaml:"credential" json:"credential"`
+	// AllowedHosts lists exact HTTPS hosts, such as a Zoho data center's production and sandbox hosts.
+	AllowedHosts []string `yaml:"allowedHosts,omitempty" json:"allowedHosts,omitempty"`
+	// AllowedHostSuffix accepts the exact suffix host and its subdomains.
+	AllowedHostSuffix string `yaml:"allowedHostSuffix,omitempty" json:"allowedHostSuffix,omitempty"`
+	// AllowAnyHTTPS accepts any HTTPS origin, as Salesforce does.
+	AllowAnyHTTPS bool `yaml:"allowAnyHTTPS,omitempty" json:"allowAnyHTTPS,omitempty"`
+	// AllowLoopback accepts loopback origins, including HTTP.
+	AllowLoopback bool `yaml:"allowLoopback,omitempty" json:"allowLoopback,omitempty"`
+	// ForbidPort rejects any explicit port.
+	ForbidPort bool `yaml:"forbidPort,omitempty" json:"forbidPort,omitempty"`
+	// RequireResponse rejects a token response that omits the URL.
+	RequireResponse bool `yaml:"requireResponse,omitempty" json:"requireResponse,omitempty"`
+	// DefaultURL is used when both the response and stored credential omit the URL.
+	DefaultURL string `yaml:"defaultURL,omitempty" json:"defaultURL,omitempty"`
+	// RefreshWhenInvalid refreshes a fresh token whose stored URL fails this rule.
+	RefreshWhenInvalid bool `yaml:"refreshWhenInvalid,omitempty" json:"refreshWhenInvalid,omitempty"`
 }
 
 // ValueSource is a value that a host resolves from the connection: an OAuth endpoint or scope list, a token request
@@ -463,6 +512,29 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, refresh.TerminalErrorCodes, refresh.MissingExpiry, refresh.AdditionalParameters)...)
 	problems = append(problems, validateStoredMissingExpiry(label, refresh.StoredMissingExpiry)...)
+	problems = append(problems, grantContext.validateResponseURL(label, refresh.ResponseURLValidation, oauth.CredentialMappings)...)
+	if refresh.ResponseScopeField != "" && refresh.ResponseScopeField != "scope" && refresh.ResponseScopeField != "scopesArray" {
+		problems = append(problems, label+" responseScopeField must be scope or scopesArray")
+	}
+	if refresh.ScopeResourcePrefix != "" && refresh.ScopeResourcePrefix != "https://graph.microsoft.com/" {
+		problems = append(problems, label+" scopeResourcePrefix must be https://graph.microsoft.com/")
+	}
+	if refresh.ScopeResourcePrefixCaseInsensitive && refresh.ScopeResourcePrefix == "" {
+		problems = append(problems, label+" scopeResourcePrefixCaseInsensitive requires scopeResourcePrefix")
+	}
+	if refresh.RefreshWhenCredentialBlank != "" && !grantContext.isCredential(refresh.RefreshWhenCredentialBlank) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a credential field")
+	}
+	if refresh.ExpiryCap != "" {
+		if duration, err := time.ParseDuration(refresh.ExpiryCap); err != nil || duration <= 0 {
+			problems = append(problems, label+" expiryCap must be a positive duration")
+		}
+	}
+	if refresh.AccessTokenJWTExpiryFallback != "" {
+		if duration, err := time.ParseDuration(refresh.AccessTokenJWTExpiryFallback); err != nil || duration <= 0 {
+			problems = append(problems, label+" accessTokenJWTExpiryFallback must be a positive duration")
+		}
+	}
 	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
 	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
 	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", refresh.AcceptedScopeSets)...)
@@ -511,6 +583,9 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
 	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
 	problems = append(problems, validateResponseScopes(label, grant.ResponseScopes)...)
+	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
+		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
+	}
 	return problems
 }
 
@@ -536,6 +611,13 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	if grant.SubjectValidation != "" && (grant.SubjectValidation != "goMailAddress" || grant.Subject == nil) {
 		problems = append(problems, label+" subjectValidation requires a subject and must be goMailAddress")
 	}
+	seenTrim := map[string]bool{}
+	for _, field := range grant.TrimSpaceSources {
+		if !grantContext.isCredential(field) || seenTrim[field] {
+			problems = append(problems, label+" trimSpaceSources must name unique credential fields")
+		}
+		seenTrim[field] = true
+	}
 	problems = append(problems, grantContext.validateEndpointSource(label+" tokenEndpoint", grant.TokenEndpoint, hasKey)...)
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", grant.AcceptedScopeSets)...)
@@ -557,6 +639,10 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, nil)...)
 	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
+	problems = append(problems, grantContext.validateResponseURL(label, grant.ResponseURLValidation, grant.CredentialMappings)...)
+	if grant.RefreshWhenCredentialBlank != "" && !grantContext.isCredential(grant.RefreshWhenCredentialBlank) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a credential field")
+	}
 	return problems
 }
 
@@ -604,10 +690,47 @@ func (grantContext tokenGrantContext) validateClientAuthentication(label string,
 }
 
 func validateStoredMissingExpiry(label, policy string) []string {
-	if policy != "" && policy != StoredMissingExpiryKeep && policy != StoredMissingExpiryRefresh {
-		return []string{label + " storedMissingExpiry must be keep or refresh"}
+	if policy != "" && policy != StoredMissingExpiryKeep && policy != StoredMissingExpiryRefresh && policy != StoredMissingExpiryRefreshIfPossible {
+		return []string{label + " storedMissingExpiry must be keep, refresh, or refreshIfRefreshTokenPresent"}
 	}
 	return nil
+}
+
+func (grantContext tokenGrantContext) validateResponseURL(label string, rule *ResponseURLValidation, mappings []OAuthCredentialMapping) []string {
+	if rule == nil {
+		return nil
+	}
+	var problems []string
+	if !grantContext.isCredentialOfType(rule.Credential, "url") && !grantContext.isCredentialOfType(rule.Credential, "string") {
+		problems = append(problems, label+" responseURLValidation credential must name a URL or string credential")
+	}
+	if !slices.ContainsFunc(mappings, func(mapping OAuthCredentialMapping) bool { return mapping.Credential == rule.Credential }) {
+		problems = append(problems, label+" responseURLValidation credential must be mapped from the response")
+	}
+	if !rule.AllowAnyHTTPS && len(rule.AllowedHosts) == 0 && rule.AllowedHostSuffix == "" && !rule.AllowLoopback {
+		problems = append(problems, label+" responseURLValidation requires an allowed host policy")
+	}
+	seen := map[string]bool{}
+	for _, host := range rule.AllowedHosts {
+		if host == "" || host != strings.ToLower(host) || strings.ContainsAny(host, "/:@?# ") || seen[host] {
+			problems = append(problems, label+" responseURLValidation allowedHosts must be unique lowercase hostnames")
+		}
+		seen[host] = true
+	}
+	if suffix := rule.AllowedHostSuffix; suffix != "" && (suffix != strings.ToLower(suffix) || strings.ContainsAny(suffix, "/:@?# ")) {
+		problems = append(problems, label+" responseURLValidation allowedHostSuffix must be a lowercase hostname")
+	}
+	if rule.DefaultURL != "" {
+		parsed, err := url.Parse(rule.DefaultURL)
+		if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
+			!slices.Contains(rule.AllowedHosts, parsed.Hostname()) {
+			problems = append(problems, label+" responseURLValidation defaultURL must be an allowed HTTPS host")
+		}
+	}
+	if rule.AllowLoopback && rule.ForbidPort && rule.AllowAnyHTTPS {
+		problems = append(problems, label+" responseURLValidation has conflicting loopback and port policy")
+	}
+	return problems
 }
 
 func (grantContext tokenGrantContext) validateResponseRules(label string, terminalErrorCodes []string, missingExpiry *MissingExpiry, additionalParameters map[string]string) []string {

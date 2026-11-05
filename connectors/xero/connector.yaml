@@ -56,6 +56,7 @@ spec:
         clientCredentials:
           missingExpiry: reject
           storedMissingExpiry: refresh
+          scopeSeparators: whitespaceAndComma
           tokenEndpoint: https://identity.xero.com/connect/token
           tokenEndpointAuthMethod: client_secret_basic
           clientIDCredential: client_id

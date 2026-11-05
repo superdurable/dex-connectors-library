@@ -73,6 +73,7 @@ spec:
       refresh:
         missingExpiry: reject
         storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
         terminalErrorCodes: [invalid_request, invalid_client, invalid_grant, unauthorized_client]
   operations:
     - name: listMeetings

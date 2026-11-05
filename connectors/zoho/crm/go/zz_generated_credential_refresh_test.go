@@ -52,9 +52,10 @@ type manifestGrant struct {
 }
 
 type manifestVariation struct {
-	name          string
-	response      map[string]any
-	expectedError string
+	name           string
+	response       map[string]any
+	expectedError  string
+	expectedExpiry time.Duration
 }
 
 // manifestAssertion holds the JWT bearer claims that connector.yaml declares.
@@ -139,11 +140,15 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
-			_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
+			startedAt := time.Now().UTC()
+			result, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
 			require.Len(t, endpoint.requests, 1, "a response variation reaches the provider")
 			switch variation.expectedError {
 			case "":
 				require.NoError(t, err)
+				if variation.expectedExpiry > 0 {
+					require.WithinDuration(t, startedAt.Add(variation.expectedExpiry), result.ExpiresAt, 3*time.Second)
+				}
 			case "reauthorization":
 				require.True(t, sdkgo.IsReauthorizationRequired(err), "the declared scope variation requires reauthorization: %v", err)
 			case "retryable":
@@ -369,7 +374,7 @@ func manifestGrants() []manifestGrant {
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
-					APIDomain:         "manifest-api_domain",
+					APIDomain:         "https://www.zohoapis.com",
 				}
 			},
 			endpoint:   "https://accounts.zoho.com/oauth/v2/token",
@@ -380,11 +385,15 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " without provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with non-string provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": 7, "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with foreign provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://foreign.example.invalid", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(3600000000000)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
@@ -400,7 +409,7 @@ func manifestGrants() []manifestGrant {
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
-					APIDomain:         "manifest-api_domain",
+					APIDomain:         "https://www.zohoapis.eu",
 				}
 			},
 			endpoint:   "https://accounts.zoho.eu/oauth/v2/token",
@@ -411,11 +420,15 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " without provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with non-string provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": 7, "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with foreign provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://foreign.example.invalid", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(3600000000000)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
@@ -431,7 +444,7 @@ func manifestGrants() []manifestGrant {
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
-					APIDomain:         "manifest-api_domain",
+					APIDomain:         "https://www.zohoapis.in",
 				}
 			},
 			endpoint:   "https://accounts.zoho.in/oauth/v2/token",
@@ -442,11 +455,15 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " without provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with non-string provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": 7, "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with foreign provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://foreign.example.invalid", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(3600000000000)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
@@ -462,7 +479,7 @@ func manifestGrants() []manifestGrant {
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
-					APIDomain:         "manifest-api_domain",
+					APIDomain:         "https://www.zohoapis.com.au",
 				}
 			},
 			endpoint:   "https://accounts.zoho.com.au/oauth/v2/token",
@@ -473,11 +490,15 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " without provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with non-string provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": 7, "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with foreign provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://foreign.example.invalid", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(3600000000000)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
@@ -493,7 +514,7 @@ func manifestGrants() []manifestGrant {
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
-					APIDomain:         "manifest-api_domain",
+					APIDomain:         "https://www.zohoapis.jp",
 				}
 			},
 			endpoint:   "https://accounts.zoho.jp/oauth/v2/token",
@@ -504,11 +525,15 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " without provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with non-string provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": 7, "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with foreign provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://foreign.example.invalid", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(3600000000000)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
@@ -524,7 +549,7 @@ func manifestGrants() []manifestGrant {
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
-					APIDomain:         "manifest-api_domain",
+					APIDomain:         "https://www.zohoapis.ca",
 				}
 			},
 			endpoint:   "https://accounts.zohocloud.ca/oauth/v2/token",
@@ -535,11 +560,15 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " without provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with non-string provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": 7, "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with foreign provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://foreign.example.invalid", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(3600000000000)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
@@ -555,7 +584,7 @@ func manifestGrants() []manifestGrant {
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
 					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
-					APIDomain:         "manifest-api_domain",
+					APIDomain:         "https://www.zohoapis.sa",
 				}
 			},
 			endpoint:   "https://accounts.zoho.sa/oauth/v2/token",
@@ -566,11 +595,15 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " without provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with non-string provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": 7, "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with foreign provider URL", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://foreign.example.invalid", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(3600000000000)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",

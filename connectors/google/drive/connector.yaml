@@ -93,6 +93,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            scopeSeparators: whitespaceAndComma
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
@@ -127,6 +128,7 @@ spec:
             - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
         serviceAccount:
           jwtBearer:
+            scopeSeparators: whitespaceAndComma
             missingExpiry: reject
             storedMissingExpiry: refresh
             keyCredential: service_account_key

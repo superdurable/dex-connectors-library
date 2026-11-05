@@ -52,9 +52,10 @@ type manifestGrant struct {
 }
 
 type manifestVariation struct {
-	name          string
-	response      map[string]any
-	expectedError string
+	name           string
+	response       map[string]any
+	expectedError  string
+	expectedExpiry time.Duration
 }
 
 // manifestAssertion holds the JWT bearer claims that connector.yaml declares.
@@ -139,11 +140,15 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
-			_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
+			startedAt := time.Now().UTC()
+			result, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
 			require.Len(t, endpoint.requests, 1, "a response variation reaches the provider")
 			switch variation.expectedError {
 			case "":
 				require.NoError(t, err)
+				if variation.expectedExpiry > 0 {
+					require.WithinDuration(t, startedAt.Add(variation.expectedExpiry), result.ExpiresAt, 3*time.Second)
+				}
 			case "reauthorization":
 				require.True(t, sdkgo.IsReauthorizationRequired(err), "the declared scope variation requires reauthorization: %v", err)
 			case "retryable":
@@ -376,13 +381,16 @@ func manifestGrants() []manifestGrant {
 			clientID:   "manifest-client-id",
 			secret:     "manifest-client-secret",
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
-			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "oauth crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write crm.objects.deals.read crm.objects.deals.write crm.objects.owners.read", "token_type": "Bearer"},
+			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scopes": []string{"oauth", "crm.objects.contacts.read", "crm.objects.contacts.write", "crm.objects.companies.read", "crm.objects.companies.write", "crm.objects.deals.read", "crm.objects.deals.write", "crm.objects.owners.read"}, "token_type": "Bearer"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "oauth crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write crm.objects.deals.read crm.objects.deals.write crm.objects.owners.read", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "oauth crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write crm.objects.deals.read crm.objects.deals.write crm.objects.owners.read"}, expectedError: "retryable"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "oauth crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write crm.objects.deals.read crm.objects.deals.write crm.objects.owners.read", "token_type": "Bearer"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "oauth crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write crm.objects.deals.read crm.objects.deals.write crm.objects.owners.read", "token_type": "Bearer"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scopes": []string{"oauth", "crm.objects.contacts.read", "crm.objects.contacts.write", "crm.objects.companies.read", "crm.objects.companies.write", "crm.objects.deals.read", "crm.objects.deals.write", "crm.objects.owners.read"}, "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scopes": []string{"oauth", "crm.objects.contacts.read", "crm.objects.contacts.write", "crm.objects.companies.read", "crm.objects.companies.write", "crm.objects.deals.read", "crm.objects.deals.write", "crm.objects.owners.read"}}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with empty array scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scopes": []string{}, "token_type": "Bearer"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " with missing array scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scopes": []string{"manifest-ungranted-scope"}, "token_type": "Bearer"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " with malformed array scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scopes": "not-an-array", "token_type": "Bearer"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scopes": []string{"manifest-ungranted-scope"}, "token_type": "Bearer"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scopes": []string{"oauth", "crm.objects.contacts.read", "crm.objects.contacts.write", "crm.objects.companies.read", "crm.objects.companies.write", "crm.objects.deals.read", "crm.objects.deals.write", "crm.objects.owners.read"}, "token_type": "Bearer"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scopes": []string{"oauth", "crm.objects.contacts.read", "crm.objects.contacts.write", "crm.objects.companies.read", "crm.objects.companies.write", "crm.objects.deals.read", "crm.objects.deals.write", "crm.objects.owners.read"}, "token_type": "Bearer"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",

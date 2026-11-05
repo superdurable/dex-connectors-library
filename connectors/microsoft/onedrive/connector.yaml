@@ -94,6 +94,8 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            scopeResourcePrefix: https://graph.microsoft.com/
+            caseInsensitiveScopes: true
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, invalid_request, invalid_scope, interaction_required, consent_required]

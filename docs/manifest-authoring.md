@@ -604,6 +604,26 @@ The generated agreement always sends a different reported scope to verify this
 decision.
 Use `scopeSeparators: whitespaceAndComma` on that grant when its Go driver
 accepts comma-separated scope responses.
+`refresh.responseScopeField: scopesArray` checks a provider's `scopes` JSON
+array, as HubSpot does. `scopeResourcePrefix` removes a declared resource URI
+from each returned scope, and `caseInsensitiveScopes` compares names without
+case for Microsoft Graph. `scopeResourcePrefixCaseInsensitive` also removes
+an uppercase prefix when the Go driver accepts it. `clientCredentials.scopeSeparators` applies the same
+comma-aware parsing to client-credentials grants.
+`refresh.expiryCap` limits a reported lifetime. A grant with
+`accessTokenJWTExpiryFallback` reads the access token JWT `exp` for an undated
+stored token and a response without `expires_in`; an unreadable or past claim
+uses the declared fallback lifetime after refresh.
+`refresh.refreshWhenCredentialBlank` checks a mapped credential along with the
+access token. `responseURLValidation` declares the mapped URL credential,
+accepted hosts or suffix, loopback policy, optional production default, and
+whether a response is required. It validates returned and reused values before
+storage; `refreshWhenInvalid` also renews an otherwise fresh credential.
+`storedMissingExpiry: refreshIfRefreshTokenPresent` keeps an undated access
+token when no stored refresh token can renew it.
+For a configurable OAuth token endpoint, `oauth2.tokenEndpointNetworkPolicy:
+privateNetworkHTTP` uses DNS-pinned SDK address checks and permits HTTP only
+to loopback or private addresses; link-local addresses are refused.
 `refresh.exactScopes: true` requires set equality, including a reported scope
 value. An individual grant may override this with `exactScopes: true` or `false`. Choose these
 rules from the provider's actual response and the Go refresh driver; grant
@@ -679,6 +699,8 @@ other credential fields after each mint. `terminalErrorCodes` defaults to
 the delegated `sub` to equal the bare address returned by Go
 `mail.ParseAddress`. A bad subject requires reauthorization before any token
 request. Declare it only when the Go refresh driver applies that rule.
+`trimSpaceSources` names JWT assertion credential fields that the Go driver
+trims before signing; a blank result requires reauthorization.
 
 ```yaml
 serviceAccount:

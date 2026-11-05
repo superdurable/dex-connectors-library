@@ -52,9 +52,10 @@ type manifestGrant struct {
 }
 
 type manifestVariation struct {
-	name          string
-	response      map[string]any
-	expectedError string
+	name           string
+	response       map[string]any
+	expectedError  string
+	expectedExpiry time.Duration
 }
 
 // manifestAssertion holds the JWT bearer claims that connector.yaml declares.
@@ -139,11 +140,15 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
-			_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
+			startedAt := time.Now().UTC()
+			result, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
 			require.Len(t, endpoint.requests, 1, "a response variation reaches the provider")
 			switch variation.expectedError {
 			case "":
 				require.NoError(t, err)
+				if variation.expectedExpiry > 0 {
+					require.WithinDuration(t, startedAt.Add(variation.expectedExpiry), result.ExpiresAt, 3*time.Second)
+				}
 			case "reauthorization":
 				require.True(t, sdkgo.IsReauthorizationRequired(err), "the declared scope variation requires reauthorization: %v", err)
 			case "retryable":
@@ -382,12 +387,13 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write"}, expectedError: "retryable"},
-				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write manifest-extra-scope", "token_type": "bot"}, expectedError: "reauthorization"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "bot"}, expectedError: "reauthorization"},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with comma-separated scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history,groups:history,channels:read,groups:read,users:read,chat:write", "token_type": "bot"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write manifest-extra-scope", "token_type": "bot"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "bot"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"},
 			refreshToken:       "bot_refresh_token",
@@ -439,12 +445,13 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "user"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history"}, expectedError: "retryable"},
-				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history manifest-extra-scope", "token_type": "user"}, expectedError: "reauthorization"},
-				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "user"}, expectedError: "reauthorization"},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "user"}, expectedError: "retryable"},
-				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history", "token_type": "user"}, expectedError: ""},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " with comma-separated scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history,groups:history", "token_type": "user"}, expectedError: "", expectedExpiry: time.Duration(0)},
+				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history manifest-extra-scope", "token_type": "user"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "user"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0)},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "user"}, expectedError: "retryable", expectedExpiry: time.Duration(0)},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history", "token_type": "user"}, expectedError: "", expectedExpiry: time.Duration(0)},
 			},
 			updates:            map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"},
 			refreshToken:       "user_refresh_token",

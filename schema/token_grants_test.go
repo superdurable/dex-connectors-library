@@ -126,6 +126,26 @@ func TestInvalidRefreshScopeSeparatorsAreRejected(t *testing.T) {
 	require.ErrorContains(t, err, "scopeSeparators")
 }
 
+func TestNewRefreshDeclarationsRejectInvalidValues(t *testing.T) {
+	manifestFile, err := os.Open("../connectors/hubspot/connector.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	refresh := manifest.Spec.Auth.Methods[1].OAuth2.Refresh
+	refresh.ResponseScopeField = "unknown"
+	require.ErrorContains(t, manifest.Validate(), "responseScopeField must be scope or scopesArray")
+	refresh.ResponseScopeField = "scopesArray"
+	refresh.ExpiryCap = "-1h"
+	require.ErrorContains(t, manifest.Validate(), "expiryCap must be a positive duration")
+	refresh.ExpiryCap = ""
+	refresh.ScopeResourcePrefixCaseInsensitive = true
+	require.ErrorContains(t, manifest.Validate(), "scopeResourcePrefixCaseInsensitive requires scopeResourcePrefix")
+	refresh.ScopeResourcePrefixCaseInsensitive = false
+	refresh.ResponseURLValidation = &schema.ResponseURLValidation{Credential: "access_token", AllowedHosts: []string{"example.com"}}
+	require.ErrorContains(t, manifest.Validate(), "responseURLValidation credential must name a URL or string credential")
+}
+
 func TestDecodeTokenGrantDeclarations(t *testing.T) {
 	manifest := decodeFixture(t, "token-grants.yaml")
 	methods := map[string]schema.AuthMethod{}
@@ -217,7 +237,7 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		}, problem: "missingExpiry must be reject, keep, or {lifetime: <duration>}"},
 		"an unknown stored missing expiry policy": {edits: []manifestEdit{
 			{"storedMissingExpiry: refresh", "storedMissingExpiry: never"},
-		}, problem: "storedMissingExpiry must be keep or refresh"},
+		}, problem: "storedMissingExpiry must be keep, refresh, or refreshIfRefreshTokenPresent"},
 		"a negative missing expiry lifetime": {edits: []manifestEdit{
 			{"missingExpiry: {lifetime: 2h}\n            additionalParameters", "missingExpiry: {lifetime: -2h}\n            additionalParameters"},
 		}, problem: "missingExpiry lifetime must be a positive duration"},

@@ -35,6 +35,7 @@ type manifestVariation struct {
 	name string
 	response map[string]any
 	expectedError string
+	expectedExpiry time.Duration
 }
 
 // manifestAssertion holds the JWT bearer claims that connector.yaml declares.
@@ -119,11 +120,15 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
-			_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
+			startedAt := time.Now().UTC()
+			result, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
 			require.Len(t, endpoint.requests, 1, "a response variation reaches the provider")
 			switch variation.expectedError {
 			case "":
 				require.NoError(t, err)
+				if variation.expectedExpiry > 0 {
+					require.WithinDuration(t, startedAt.Add(variation.expectedExpiry), result.ExpiresAt, 3*time.Second)
+				}
 			case "reauthorization":
 				require.True(t, sdkgo.IsReauthorizationRequired(err), "the declared scope variation requires reauthorization: %v", err)
 			case "retryable":

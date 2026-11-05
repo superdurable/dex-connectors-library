@@ -426,6 +426,7 @@
         "protocol": { "enum": ["oauth2", "oidc"] },
         "authorizationEndpoint": { "$ref": "#/$defs/oauthEndpoint" },
         "tokenEndpoint": { "$ref": "#/$defs/oauthEndpoint" },
+        "tokenEndpointNetworkPolicy": { "const": "privateNetworkHTTP", "description": "DNS-pinned private-network HTTP policy for a configurable token endpoint." },
         "authorizationParameters": {
           "type": "object",
           "propertyNames": {
@@ -553,14 +554,33 @@
         }
       ]
     },
+    "responseURLValidation": {
+      "type": "object", "additionalProperties": false, "required": ["credential"],
+      "properties": {
+        "credential": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+        "allowedHosts": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "allowedHostSuffix": { "type": "string", "minLength": 1 },
+        "allowAnyHTTPS": { "type": "boolean" }, "allowLoopback": { "type": "boolean" },
+        "forbidPort": { "type": "boolean" }, "requireResponse": { "type": "boolean" },
+        "defaultURL": { "type": "string", "minLength": 1 }, "refreshWhenInvalid": { "type": "boolean" }
+      }
+    },
     "oauthRefresh": {
       "description": "How a host refreshes the access token. tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, the client credentials, and credentialMappings apply to refresh requests and responses too; a value that a refresh response omits keeps the stored one.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "responseURLValidation": { "$ref": "#/$defs/responseURLValidation" },
         "acceptsMissingTokenType": { "type": "boolean", "description": "Accept a successful token response without token_type." },
         "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
         "exactScopes": { "type": "boolean", "description": "Require returned scopes to equal the declared scopes; otherwise require at least the declared scopes when a response includes scope." },
+        "responseScopeField": { "enum": ["scope", "scopesArray"], "description": "Granted scopes from scope string or scopes JSON array." },
+        "scopeResourcePrefix": { "const": "https://graph.microsoft.com/", "description": "Remove the Graph resource prefix from returned scopes." },
+        "scopeResourcePrefixCaseInsensitive": { "type": "boolean", "description": "Remove the resource prefix without case." },
+        "caseInsensitiveScopes": { "type": "boolean", "description": "Compare scope names without case." },
+        "refreshWhenCredentialBlank": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$", "description": "Refresh when this credential is blank." },
+        "expiryCap": { "type": "string", "pattern": "^[1-9][0-9]*h$", "description": "Maximum token lifetime." },
+        "accessTokenJWTExpiryFallback": { "type": "string", "pattern": "^[1-9][0-9]*h$", "description": "Use the access-token JWT exp claim, falling back to this lifetime." },
         "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
         "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
         "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
@@ -568,7 +588,7 @@
         "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
         "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
-        "storedMissingExpiry": { "enum": ["keep", "refresh"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
+        "storedMissingExpiry": { "enum": ["keep", "refresh", "refreshIfRefreshTokenPresent"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" },
         "grants": {
           "description": "The refresh tokens of a method that stores several. When absent, the credential mapped from refresh_token with the method's credentialMappings.",
@@ -607,7 +627,8 @@
         "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
         "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_client when absent." },
         "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
-        "storedMissingExpiry": { "enum": ["keep", "refresh"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
+        "storedMissingExpiry": { "enum": ["keep", "refresh", "refreshIfRefreshTokenPresent"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." },
+        "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
         "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
         "additionalParameters": { "$ref": "#/$defs/additionalTokenParameters" }
       }
@@ -635,6 +656,8 @@
             "scopes": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
             "acceptedScopeSets": { "type": "array", "minItems": 1, "items": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "description": "Any one complete set satisfies a reported JWT mint scope; independent of assertion request scopes." },
             "responseScopes": { "const": "ignore", "description": "Do not inspect reported token scope values; absent means check them." },
+            "responseURLValidation": { "$ref": "#/$defs/responseURLValidation" },
+            "trimSpaceSources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" } },
             "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
             "lifetime": { "description": "How long after iat the assertion expires.", "type": "string", "pattern": "^\\+?(0|(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+)$" },
             "credentialMappings": { "$ref": "#/$defs/credentialMappings" },
@@ -652,7 +675,8 @@
             },
             "terminalErrorCodes": { "$ref": "#/$defs/terminalErrorCodes", "description": "invalid_grant when absent." },
             "missingExpiry": { "$ref": "#/$defs/missingExpiry", "description": "reject when absent." },
-            "storedMissingExpiry": { "enum": ["keep", "refresh"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." }
+            "refreshWhenCredentialBlank": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+            "storedMissingExpiry": { "enum": ["keep", "refresh", "refreshIfRefreshTokenPresent"], "description": "Keep or refresh a stored access token without recorded expiry; keep when absent." }
           }
         }
       }
