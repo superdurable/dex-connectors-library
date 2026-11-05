@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -35,6 +36,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret API key of the provider chosen in provider, created on that provider's API key page that the guide lists, or issued by your OpenAI-compatible gateway administrator: an sk- key for OpenAI, Qwen, DeepSeek, or Kimi, sk-ant- for Claude, AIza for Gemini, LLM|<id>|<secret> for Meta, an opaque key for Mistral or a custom gateway, or xai- for xAI. It is stored only as this connection's secret and sent only to the chosen provider's API host, in x-goog-api-key for Gemini and as an Authorization bearer token for every other provider. Required. */
   apiKey: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_key"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

@@ -1,0 +1,658 @@
+{
+  "connector": "square",
+  "scenarios": [
+    {
+      "callId": "6a8bd78c-1fb1-50f8-a79e-d5007aa6846d",
+      "exchanges": [
+        {
+          "body": "{\"payments\":[{\"id\":\"pay_101\",\"status\":\"COMPLETED\",\"amount_money\":{\"amount\":2900,\"currency\":\"USD\"}}],\"cursor\":\"\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "",
+          "payments": [
+            {
+              "amount_money": {
+                "amount": 2900,
+                "currency": "USD"
+              },
+              "id": "pay_101",
+              "status": "COMPLETED"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listPayments-success",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "dd00ce7c-c8ef-5e1b-a309-2474b636798d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "payments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listPayments-rejected",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "9ecfc963-c7e5-56ed-a2c2-d4fc0f961b33",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "payments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listPayments-invalid",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "3257f5b1-ef83-58c3-801b-f9f547ae0175",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "cursor": "",
+          "payments": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listPayments-not-found",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "93480a5d-4003-53bc-b4b7-2c3e1b7af747",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listPayments-rate-limit",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "c56adc6c-6409-5a1c-8193-4f82d03fe8de",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listPayments-server-error",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "add10f0d-a44e-5a98-834d-7e554570cd95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments",
+          "query": {
+            "cursor": [
+              "next-token"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-token"
+      },
+      "name": "listPayments-transport",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "e653d766-d956-5032-a759-541357aa8656",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "payments": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "bad?"
+      },
+      "name": "listPayments-defect",
+      "operation": "listPayments"
+    },
+    {
+      "callId": "59ea3a78-4605-5205-880b-969b8667c1c9",
+      "exchanges": [
+        {
+          "body": "{\"payment\":{\"id\":\"pay_101\",\"status\":\"COMPLETED\",\"amount_money\":{\"amount\":2900,\"currency\":\"USD\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount_money": {
+            "amount": 2900,
+            "currency": "USD"
+          },
+          "id": "pay_101",
+          "status": "COMPLETED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "getPayment-success",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "f42d16b2-7d2d-58a3-be67-b51a584a7eec",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "getPayment-rejected",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "3a7053f5-cb0d-5aaf-9428-496081311d6d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "getPayment-invalid",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "4d8e1fa9-75b6-50c3-913f-bc2d5036341f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "getPayment-not-found",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "631c7634-fd67-505a-82dc-3ff00684ea4b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "getPayment-rate-limit",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "6fa5c94f-eb00-5390-8a1e-01eedbac07d1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "getPayment-server-error",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "701f8e20-b8ac-5cb4-98ea-5f5b06f592cf",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Square-Version": [
+              "2026-09-16"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_101"
+      },
+      "name": "getPayment-transport",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "e68f02de-6444-53f1-88b5-beaaeaa88368",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount_money": {
+            "amount": 0,
+            "currency": ""
+          },
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": ""
+      },
+      "name": "getPayment-defect",
+      "operation": "getPayment"
+    }
+  ],
+  "schemaVersion": 1
+}

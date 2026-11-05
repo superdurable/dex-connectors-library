@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -46,6 +48,16 @@ class FormSummary:
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # LastUpdatedAt is when the form last changed, in UTC.
     last_updated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'lastUpdatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.last_updated_at, str):
+            object.__setattr__(self, 'last_updated_at', parse_go_datetime(self.last_updated_at, 'last_updated_at'))
+        elif self.last_updated_at is not None:
+            validate_go_datetime(self.last_updated_at, 'last_updated_at')
 
 
 setattr(FormSummary, '__module__', 'dex_connectors.typeform.models')
@@ -166,6 +178,16 @@ class ListResponsesInput:
     # After keeps responses submitted after the response with this token, such as the newest token a Flow
     # already processed; blank has no lower cursor. Set Before or After, not both.
     after: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.since, str):
+            object.__setattr__(self, 'since', parse_go_datetime(self.since, 'since'))
+        elif self.since is not None:
+            validate_go_datetime(self.since, 'since')
+        if isinstance(self.until, str):
+            object.__setattr__(self, 'until', parse_go_datetime(self.until, 'until'))
+        elif self.until is not None:
+            validate_go_datetime(self.until, 'until')
 
 
 setattr(ListResponsesInput, '__module__', 'dex_connectors.typeform.models')
@@ -328,6 +350,14 @@ class FormResponse:
     ending_ref: str = _dataclass_field(default='', metadata={'dex_json_name': 'endingRef', 'dex_json_omit_default': True})
 
     def __post_init__(self) -> None:
+        if isinstance(self.landed_at, str):
+            object.__setattr__(self, 'landed_at', parse_go_datetime(self.landed_at, 'landed_at'))
+        elif self.landed_at is not None:
+            validate_go_datetime(self.landed_at, 'landed_at')
+        if isinstance(self.submitted_at, str):
+            object.__setattr__(self, 'submitted_at', parse_go_datetime(self.submitted_at, 'submitted_at'))
+        elif self.submitted_at is not None:
+            validate_go_datetime(self.submitted_at, 'submitted_at')
         object.__setattr__(self, 'answers', _replace_nil_slices(self.answers, 1))
 
 
@@ -399,6 +429,14 @@ class Webhook:
     updated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
         object.__setattr__(self, 'event_types', _replace_nil_slices(self.event_types, 1))
 
 

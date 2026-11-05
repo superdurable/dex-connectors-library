@@ -9,7 +9,7 @@ from dex_connectors.sdk import ConnectionRef, Query, Call, SecretString
 from dex_connectors.sdk.projectconfig import ConnectionKey, LoadedProject
 
 from ..client import Client, Config, Credentials
-from .definitions import CONNECTOR_ID, GENERATE_CONTENT_DEFINITION
+from .definitions import CONNECTOR_ID, PROVIDER, GENERATE_CONTENT_DEFINITION
 from ..models import GenerateContentRequest, GenerateContentResponse
 
 class Connection:
@@ -22,7 +22,7 @@ class Connection:
         client: Client | None = None,
     ) -> None:
         reference.validate()
-        if reference.provider != CONNECTOR_ID or generate_content is None:
+        if reference.provider != PROVIDER or generate_content is None:
             raise ValueError("Gemini connection provider and operations are required")
         if generate_content.definition().operation != GENERATE_CONTENT_DEFINITION.operation:
             raise ValueError("Gemini connection operation identity differs")
@@ -71,8 +71,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Gemini stored credential does not match the connector credential fields")
+        if set(material) - set(('api_key',)):
+            raise ValueError("Gemini stored credential does not match the connector credential fields")
         api_key = material.get("api_key")
-        if not isinstance(api_key, str) or not api_key:
+        if api_key is not None and not (isinstance(api_key, str)):
+            raise ValueError("Gemini credential api_key has an invalid type")
+        if not api_key:
             raise ValueError("Gemini credential api_key is required")
         return Credentials(SecretString(api_key))
 
@@ -82,7 +88,7 @@ def new_project_connection(
 ) -> Connection:
     if project is None:
         raise ValueError("Gemini connection requires loaded project configuration")
-    reference = ConnectionRef(CONNECTOR_ID, connection_name)
+    reference = ConnectionRef(PROVIDER, connection_name)
     reference.validate()
     key = ConnectionKey(CONNECTOR_ID, connection_name)
     matching = [
@@ -92,7 +98,7 @@ def new_project_connection(
     ]
     if len(matching) != 1:
         raise ValueError("Gemini project connection is missing or duplicated")
-    if matching[0].provider != CONNECTOR_ID:
+    if matching[0].provider != PROVIDER:
         raise ValueError("Gemini project connection provider differs")
     config = _decode_config(matching[0].configuration)
     client = Client(config, _ProjectCredentialSource(project, key), http_client)

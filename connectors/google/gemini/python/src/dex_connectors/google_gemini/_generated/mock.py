@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import Content, GenerateContentRequest, GenerateContentResponse, Part, Usage
-from .definitions import CONNECTOR_ID, BLOCKED, DEFECT, GENERATED, GENERATE_CONTENT_DEFINITION, INVALID_RESPONSE, PROVIDER_REJECTED, TRUNCATED
+from .definitions import CONNECTOR_ID, PROVIDER, BLOCKED, DEFECT, GENERATED, GENERATE_CONTENT_DEFINITION, INVALID_RESPONSE, PROVIDER_REJECTED, TRUNCATED
 
 def generate_content_generated(value: GenerateContentResponse, failure: Failure | None = None) -> Case[GenerateContentResponse]:
     return Case.branch_result(GENERATED, value, failure)
@@ -74,7 +74,7 @@ class Mock:
         self.generate_content_script.default(generate_content_launch_summary())
         self._connection = new_connection_with_operations(
             generate_content=self.generate_content_script,
-            reference=ConnectionRef(CONNECTOR_ID, connection_name),
+            reference=ConnectionRef(PROVIDER, connection_name),
         )
 
     def connection(self) -> Connection:

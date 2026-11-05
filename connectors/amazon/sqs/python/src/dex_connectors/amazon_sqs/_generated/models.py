@@ -5,6 +5,8 @@
 from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 # ReceiveMessagesInput selects one queue and how long and how many messages to wait for.
 @dataclass(frozen=True, slots=True)
 class ReceiveMessagesInput:
@@ -65,6 +67,16 @@ class Message:
     sequence_number: str = _dataclass_field(default='', metadata={'dex_json_name': 'sequenceNumber', 'dex_json_omit_default': True})
     # MessageAttributes are the sender's custom message attributes, keyed by name.
     message_attributes: dict[str, MessageAttributeValue] = _dataclass_field(default_factory=dict, metadata={'dex_json_name': 'messageAttributes', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.sent_at, str):
+            object.__setattr__(self, 'sent_at', parse_go_datetime(self.sent_at, 'sent_at'))
+        elif self.sent_at is not None:
+            validate_go_datetime(self.sent_at, 'sent_at')
+        if isinstance(self.first_received_at, str):
+            object.__setattr__(self, 'first_received_at', parse_go_datetime(self.first_received_at, 'first_received_at'))
+        elif self.first_received_at is not None:
+            validate_go_datetime(self.first_received_at, 'first_received_at')
 
 
 setattr(Message, '__module__', 'dex_connectors.amazon_sqs.models')
@@ -139,6 +151,12 @@ class ChangedMessageVisibility:
     visibility_timeout_seconds: int = _dataclass_field(default=0, metadata={'dex_json_name': 'visibilityTimeoutSeconds'})
     # VisibleAfter is when the message becomes visible again, measured from the Worker clock when SQS answered.
     visible_after: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'visibleAfter', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.visible_after, str):
+            object.__setattr__(self, 'visible_after', parse_go_datetime(self.visible_after, 'visible_after'))
+        elif self.visible_after is not None:
+            validate_go_datetime(self.visible_after, 'visible_after')
 
 
 setattr(ChangedMessageVisibility, '__module__', 'dex_connectors.amazon_sqs.models')

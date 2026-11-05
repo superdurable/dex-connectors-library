@@ -111,11 +111,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Re:amaze stored credential does not match the connector credential fields")
+        if set(material) - set(('email', 'api_token')):
+            raise ValueError("Re:amaze stored credential does not match the connector credential fields")
         email = material.get("email")
-        if not isinstance(email, str) or not email:
-            raise ValueError("Re:amaze credential email is required")
+        if email is not None and not (isinstance(email, str)):
+            raise ValueError("Re:amaze credential email has an invalid type")
         api_token = material.get("api_token")
-        if not isinstance(api_token, str) or not api_token:
+        if api_token is not None and not (isinstance(api_token, str)):
+            raise ValueError("Re:amaze credential api_token has an invalid type")
+        if not email:
+            raise ValueError("Re:amaze credential email is required")
+        if not api_token:
             raise ValueError("Re:amaze credential api_token is required")
         return Credentials(email, SecretString(api_token))
 

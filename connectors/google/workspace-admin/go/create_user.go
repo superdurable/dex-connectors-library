@@ -4,9 +4,9 @@
 package workspaceadmin
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -109,7 +109,7 @@ func (operation CreateUserOperation) Invoke(call sdkgo.Call, input CreateUserInp
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateUserBranchDefect, CreateUserOutput{}, failure, sdkgo.Receipt{})
 	}
-	if request.Password, err = generateInitialPassword(); err != nil {
+	if request.Password, err = generateInitialPassword(operation.client.initialPasswordRandomSource); err != nil {
 		return sdkgo.NewMutationBranch(CreateUserBranchDefect, CreateUserOutput{}, failurePointer(sdkgo.FailureLocalDefect, operationID, "initial password could not be generated"), sdkgo.Receipt{})
 	}
 	exchange := operation.client.exchange(call, &credential, operationID, directoryRequest{method: http.MethodPost, path: "/users", payload: request})
@@ -206,9 +206,10 @@ func buildCreateUserRequest(input CreateUserInput, creationKey string) (createUs
 }
 
 // generateInitialPassword returns 256 random bits as URL-safe text that lives only in the request body.
-func generateInitialPassword() (string, error) {
+
+func generateInitialPassword(randomSource io.Reader) (string, error) {
 	random := make([]byte, initialPasswordRandomBytes)
-	if _, err := rand.Read(random); err != nil {
+	if _, err := io.ReadFull(randomSource, random); err != nil {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(random), nil
