@@ -100,14 +100,48 @@ func TestMicrosoftTemplateRulesAgreeOnValidTenantGUID(t *testing.T) {
 			require.NoError(t, err)
 			var cases []codegen.RefreshAgreementCase
 			require.NoError(t, json.Unmarshal(encoded, &cases))
-			found := false
+			found := map[string]bool{}
+			placeholder := "tenant_id"
+			if connector == "outlook-calendar" {
+				placeholder = "tenantId"
+			}
 			for _, agreementCase := range cases {
 				if strings.Contains(agreementCase.Name, "01234567-89ab-cdef-0123-456789abcdef") {
 					require.Contains(t, agreementCase.Endpoint, "01234567-89ab-cdef-0123-456789abcdef")
-					found = true
+					found["guid"] = true
+				}
+				if strings.Contains(agreementCase.Name, "Manifest.Example.com") {
+					if connector == "entra-id" || connector == "onedrive" {
+						require.Contains(t, agreementCase.Endpoint, "manifest.example.com")
+					} else {
+						require.Contains(t, agreementCase.Endpoint, "Manifest.Example.com")
+					}
+					found["mixed"] = true
+				}
+				if strings.Contains(agreementCase.Name, "with oversized ") {
+					require.Equal(t, "reauthorization", agreementCase.ExpectedError)
+					value := agreementCase.Credentials[placeholder]
+					if connector == "outlook-calendar" {
+						value = agreementCase.Settings[placeholder]
+					}
+					require.Len(t, []byte(value), 254)
+					found["oversized"] = true
+				}
+				if strings.Contains(agreementCase.Name, "with non-ASCII ") {
+					require.Equal(t, "reauthorization", agreementCase.ExpectedError)
+					value := agreementCase.Credentials[placeholder]
+					if connector == "outlook-calendar" {
+						value = agreementCase.Settings[placeholder]
+					}
+					require.Contains(t, value, "é")
+					found["nonASCII"] = true
+				}
+				if strings.Contains(agreementCase.Name, "with rejected "+placeholder+" common") {
+					require.Equal(t, "reauthorization", agreementCase.ExpectedError)
+					found["alias"] = true
 				}
 			}
-			require.True(t, found, "the agreement must exercise a valid GUID tenant")
+			require.Equal(t, map[string]bool{"guid": true, "mixed": true, "oversized": true, "nonASCII": true, "alias": true}, found)
 			contents, err := os.ReadFile(filepath.Join("..", "..", "connectors", "microsoft", connector, "connector.yaml"))
 			require.NoError(t, err)
 			broken := strings.Replace(string(contents), "-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$", "-[0-9A-Fa-f]{12})$", 1)

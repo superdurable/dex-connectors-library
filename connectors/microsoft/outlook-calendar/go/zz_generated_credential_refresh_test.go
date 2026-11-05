@@ -65,6 +65,7 @@ type manifestVariation struct {
 	name                 string
 	response             map[string]any
 	credentials          map[string]string
+	settings             map[string]string
 	updates              map[string]string
 	refreshRequiredCases []manifestRefreshRequiredCase
 	expectedError        string
@@ -207,11 +208,15 @@ func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, priv
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
+			variationGrant := grant
+			if variation.settings != nil {
+				variationGrant.settings = variation.settings
+			}
 			if len(variation.credentials) > 0 {
-				requireManifestRefreshRequiredCases(t, grant, privateKeyPEM, variation.credentials, variation.refreshRequiredCases)
+				requireManifestRefreshRequiredCases(t, variationGrant, privateKeyPEM, variation.credentials, variation.refreshRequiredCases)
 			}
 			startedAt := time.Now().UTC()
-			result, endpoint, err := grant.refreshWithOverrides(t, privateKeyPEM, http.StatusOK, variation.response, variation.credentials)
+			result, endpoint, err := variationGrant.refreshWithOverrides(t, privateKeyPEM, http.StatusOK, variation.response, variation.credentials)
 			if variation.beforeRequest {
 				require.Empty(t, endpoint.requests, "an invalid template value never reaches the provider")
 				require.True(t, sdkgo.IsReauthorizationRequired(err), "invalid template values require reauthorization: %v", err)
@@ -538,6 +543,12 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "client_credentials", "scope": "https://graph.microsoft.com/.default"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"},
 			variations: []manifestVariation{
+				{name: " with rejected tenantId common", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "common"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId organizations", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "organizations"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId consumers", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "consumers"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with invalid tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "invalid/tenant"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with non-ASCII tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "é.example.com"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with oversized tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
@@ -585,6 +596,12 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "client_credentials", "scope": "https://graph.microsoft.com/.default"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"},
 			variations: []manifestVariation{
+				{name: " with rejected tenantId common", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "common"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId organizations", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "organizations"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId consumers", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "consumers"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with invalid tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "invalid/tenant"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with non-ASCII tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "é.example.com"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with oversized tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
@@ -632,6 +649,65 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "client_credentials", "scope": "https://graph.microsoft.com/.default"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"},
 			variations: []manifestVariation{
+				{name: " with rejected tenantId common", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "common"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId organizations", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "organizations"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId consumers", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "consumers"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with invalid tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "invalid/tenant"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with non-ASCII tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "é.example.com"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with oversized tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+			},
+			updates:            map[string]string{"access_token": "manifest-access-token-2"},
+			terminalErrorCodes: []string{"invalid_client", "unauthorized_client", "invalid_request", "invalid_scope"},
+		},
+		{
+			name:     "app-only clientCredentials with tenantId \"Manifest.Example.com\"",
+			methodID: "app-only",
+			credentials: func(privateKeyPEM string, overrides map[string]string) outlookcalendar.Credentials {
+				credentials := outlookcalendar.Credentials{
+					AuthMethodID: "app-only",
+					ClientID:     "manifest-client-id",
+					ClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
+					AccessToken:  sdkgo.NewSecretString("manifest-access-token"),
+				}
+				if value, ok := overrides["client_id"]; ok {
+					credentials.ClientID = value
+				}
+				if value, ok := overrides["client_secret"]; ok {
+					credentials.ClientSecret = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["access_token"]; ok {
+					credentials.AccessToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["refresh_token"]; ok {
+					credentials.RefreshToken = sdkgo.NewSecretString(value)
+				}
+				return credentials
+			},
+			refreshRequiredCases: []manifestRefreshRequiredCase{
+				{name: "fresh token", credentials: map[string]string{}, expiresAt: "fresh", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "expired token", credentials: map[string]string{}, expiresAt: "expired", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token", credentials: map[string]string{}, expiresAt: "missing", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "blank access token", credentials: map[string]string{"access_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+			},
+			settings:   map[string]string{"tenantId": "Manifest.Example.com"},
+			endpoint:   "https://login.microsoftonline.com/Manifest.Example.com/oauth2/v2.0/token",
+			encoding:   "form",
+			clientAuth: "client_secret_post",
+			clientID:   "manifest-client-id",
+			secret:     "manifest-client-secret",
+			parameters: map[string]string{"grant_type": "client_credentials", "scope": "https://graph.microsoft.com/.default"},
+			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"},
+			variations: []manifestVariation{
+				{name: " with rejected tenantId common", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "common"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId organizations", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "organizations"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with rejected tenantId consumers", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "consumers"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with invalid tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "invalid/tenant"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with non-ASCII tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "é.example.com"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
+				{name: " with oversized tenantId", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, settings: map[string]string{"tenantId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false, beforeRequest: true},
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://graph.microsoft.com/.default"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},

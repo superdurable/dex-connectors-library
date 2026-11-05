@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/format"
+	"maps"
 	"net/url"
 	"regexp"
 	"slices"
@@ -307,6 +308,10 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		for name, value := range base.Credentials {
 			variation.Credentials[name] = value
 		}
+		variation.Settings = make(map[string]string, len(base.Settings))
+		for name, value := range base.Settings {
+			variation.Settings[name] = value
+		}
 		variation.Updates = make(map[string]string, len(base.Updates))
 		for name, value := range base.Updates {
 			variation.Updates[name] = value
@@ -316,18 +321,27 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 	var variations []RefreshAgreementCase
 	for _, source := range agreement.sources(grant) {
 		for placeholder, rule := range source.TemplateValueRules {
-			if _, isCredential := base.Credentials[placeholder]; !isCredential {
+			_, isCredential := base.Credentials[placeholder]
+			if _, isSetting := base.Settings[placeholder]; !isCredential && !isSetting {
 				continue
 			}
+			invalidValues := []struct{ suffix, value string }{}
 			for _, rejected := range rule.Reject {
-				invalid := clone(" with rejected "+placeholder+" "+rejected, "reauthorization")
-				invalid.Credentials[placeholder] = rejected
-				invalid.MayRefuseWithoutCall = true
-				variations = append(variations, invalid)
+				invalidValues = append(invalidValues, struct{ suffix, value string }{" with rejected " + placeholder + " " + rejected, rejected})
 			}
 			if len(rule.Patterns) > 0 {
-				invalid := clone(" with invalid "+placeholder, "reauthorization")
-				invalid.Credentials[placeholder] = "invalid/tenant"
+				invalidValues = append(invalidValues, struct{ suffix, value string }{" with invalid " + placeholder, "invalid/tenant"}, struct{ suffix, value string }{" with non-ASCII " + placeholder, "é.example.com"})
+			}
+			if rule.MaxBytes > 0 {
+				invalidValues = append(invalidValues, struct{ suffix, value string }{" with oversized " + placeholder, strings.Repeat("a", rule.MaxBytes+1)})
+			}
+			for _, invalidValue := range invalidValues {
+				invalid := clone(invalidValue.suffix, "reauthorization")
+				if isCredential {
+					invalid.Credentials[placeholder] = invalidValue.value
+				} else {
+					invalid.Settings[placeholder] = invalidValue.value
+				}
 				invalid.MayRefuseWithoutCall = true
 				variations = append(variations, invalid)
 			}
@@ -657,7 +671,7 @@ func (agreement *refreshAgreementGenerator) validateTemplateGUIDSamples() error 
 					if err != nil {
 						return fmt.Errorf("%s templateValueRules %s pattern: %w", grant.name, placeholder, err)
 					}
-					if strings.Contains(pattern, "[0-9A-Fa-f]{8}") && !compiled.MatchString(sampleTenantGUID) {
+					if strings.Contains(pattern, "[0-9A-Fa-f]{8}") && !templatePatternMatchesEntireValue(compiled, sampleTenantGUID) {
 						return fmt.Errorf("%s templateValueRules %s rejects valid GUID sample", grant.name, placeholder)
 					}
 				}
@@ -827,7 +841,7 @@ func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []gran
 		for _, source := range agreement.sources(grant) {
 			for name, rule := range source.TemplateValueRules {
 				for _, pattern := range rule.Patterns {
-					if regexp.MustCompile(pattern).MatchString(sampleTenantGUID) {
+					if templatePatternMatchesEntireValue(regexp.MustCompile(pattern), sampleTenantGUID) {
 						variants = append(variants, grantVariant{field: name, value: sampleTenantGUID})
 						break
 					}
@@ -835,8 +849,11 @@ func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []gran
 				if rule.TrimSpace {
 					variants = append(variants, grantVariant{field: name, value: "  " + sampleTemplateValue + "  "})
 				}
-				if rule.Lowercase {
-					variants = append(variants, grantVariant{field: name, value: "Manifest.Example.com"})
+				for _, mixedCase := range []string{"Manifest.Example.com", "01234567-89AB-CDEF-0123-456789ABCDEF"} {
+					if len(rule.Patterns) == 0 || templatePatternsAcceptValue(rule.Patterns, mixedCase) {
+						variants = append(variants, grantVariant{field: name, value: mixedCase})
+						break
+					}
 				}
 			}
 		}
@@ -976,7 +993,7 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 	generation.mustWrite("\t\t\tresponse: %s,\n", goAnyMap(response))
 	if !isPublicClient || grant.allowsPublicClient {
 		generation.mustWrite("\t\t\tvariations: []manifestVariation{\n")
-		for _, variation := range agreement.responseVariations(RefreshAgreementCase{Response: response, Credentials: credentials, Updates: updates}, grant) {
+		for _, variation := range agreement.responseVariations(RefreshAgreementCase{Response: response, Credentials: credentials, Settings: settings, Updates: updates}, grant) {
 			expectedExpiry := float64(0)
 			if variation.ExpectedExpiryMilliseconds != nil {
 				expectedExpiry = *variation.ExpectedExpiryMilliseconds
@@ -987,6 +1004,10 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 					credentialsOverride[name] = value
 				}
 			}
+			settingsOverride := ""
+			if !maps.Equal(settings, variation.Settings) {
+				settingsOverride = ", settings: " + goStringMap(variation.Settings)
+			}
 			beforeRequest := ""
 			if variation.MayRefuseWithoutCall {
 				beforeRequest = ", beforeRequest: true"
@@ -995,8 +1016,8 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 			if len(credentialsOverride) > 0 {
 				refreshRequiredCases = ", refreshRequiredCases: " + goRefreshRequiredCases(variation.RefreshRequiredCases)
 			}
-			generation.mustWrite("\t\t\t\t{name: %q, response: %s, credentials: %s, updates: %s%s, expectedError: %q, expectedExpiry: time.Duration(%d), checkExpiry: %t%s},\n",
-				variation.Name, goAnyMap(variation.Response), goStringMap(credentialsOverride), goStringMap(variation.Updates), refreshRequiredCases, variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)), variation.ExpectedExpiryMilliseconds != nil, beforeRequest)
+			generation.mustWrite("\t\t\t\t{name: %q, response: %s, credentials: %s%s, updates: %s%s, expectedError: %q, expectedExpiry: time.Duration(%d), checkExpiry: %t%s},\n",
+				variation.Name, goAnyMap(variation.Response), goStringMap(credentialsOverride), settingsOverride, goStringMap(variation.Updates), refreshRequiredCases, variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)), variation.ExpectedExpiryMilliseconds != nil, beforeRequest)
 		}
 		generation.mustWrite("\t\t\t},\n")
 	}
@@ -1420,7 +1441,7 @@ func applyTemplateValueRule(value string, rule schema.TemplateValueRule) (string
 	if len(rule.Patterns) > 0 {
 		matched := false
 		for _, pattern := range rule.Patterns {
-			if regexp.MustCompile(pattern).MatchString(value) {
+			if templatePatternMatchesEntireValue(regexp.MustCompile(pattern), value) {
 				matched = true
 				break
 			}
@@ -1433,6 +1454,20 @@ func applyTemplateValueRule(value string, rule schema.TemplateValueRule) (string
 		value = strings.ToLower(value)
 	}
 	return value, nil
+}
+
+func templatePatternsAcceptValue(patterns []string, value string) bool {
+	for _, pattern := range patterns {
+		if templatePatternMatchesEntireValue(regexp.MustCompile(pattern), value) {
+			return true
+		}
+	}
+	return false
+}
+
+func templatePatternMatchesEntireValue(pattern *regexp.Regexp, value string) bool {
+	matched := pattern.FindStringIndex(value)
+	return matched != nil && matched[0] == 0 && matched[1] == len(value)
 }
 
 func templatePlaceholders(template string) []string {

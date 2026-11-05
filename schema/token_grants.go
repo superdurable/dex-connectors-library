@@ -301,6 +301,17 @@ type TemplateValueRule struct {
 	Reject []string `yaml:"reject,omitempty" json:"reject,omitempty"`
 }
 
+// UnmarshalYAML rejects template rule fields that the connector cannot enforce.
+func (rule *TemplateValueRule) UnmarshalYAML(node *yaml.Node) error {
+	type templateValueRuleMapping TemplateValueRule
+	var mapping templateValueRuleMapping
+	if err := decodeKnownYAMLMapping(node, &mapping, "trimSpace", "lowercase", "maxBytes", "patterns", "reject"); err != nil {
+		return fmt.Errorf("line %d: template value rule: %w", node.Line, err)
+	}
+	*rule = TemplateValueRule(mapping)
+	return nil
+}
+
 // UnmarshalYAML reads reject, keep, or {lifetime: <duration>}.
 func (missingExpiry *MissingExpiry) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind == yaml.ScalarNode {

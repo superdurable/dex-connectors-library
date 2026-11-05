@@ -65,6 +65,7 @@ type manifestVariation struct {
 	name                 string
 	response             map[string]any
 	credentials          map[string]string
+	settings             map[string]string
 	updates              map[string]string
 	refreshRequiredCases []manifestRefreshRequiredCase
 	expectedError        string
@@ -207,11 +208,15 @@ func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, priv
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
+			variationGrant := grant
+			if variation.settings != nil {
+				variationGrant.settings = variation.settings
+			}
 			if len(variation.credentials) > 0 {
-				requireManifestRefreshRequiredCases(t, grant, privateKeyPEM, variation.credentials, variation.refreshRequiredCases)
+				requireManifestRefreshRequiredCases(t, variationGrant, privateKeyPEM, variation.credentials, variation.refreshRequiredCases)
 			}
 			startedAt := time.Now().UTC()
-			result, endpoint, err := grant.refreshWithOverrides(t, privateKeyPEM, http.StatusOK, variation.response, variation.credentials)
+			result, endpoint, err := variationGrant.refreshWithOverrides(t, privateKeyPEM, http.StatusOK, variation.response, variation.credentials)
 			if variation.beforeRequest {
 				require.Empty(t, endpoint.requests, "an invalid template value never reaches the provider")
 				require.True(t, sdkgo.IsReauthorizationRequired(err), "invalid template values require reauthorization: %v", err)
