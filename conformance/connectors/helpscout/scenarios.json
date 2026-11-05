@@ -1,0 +1,3198 @@
+{
+  "connector": "helpscout",
+  "scenarios": [
+    {
+      "callId": "366fde73-b416-5b41-9d2f-cbbbaec26b61",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"conversations\":[{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}]},\"_links\":{\"next\":{\"href\":\"x\"}},\"page\":{\"totalElements\":51,\"totalPages\":3}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "mailbox": [
+              "123"
+            ],
+            "modifiedSince": [
+              "2026-09-30T00:30:00Z"
+            ],
+            "page": [
+              "2"
+            ],
+            "query": [
+              "(email:\"jane+orders@acme.example.com\")"
+            ],
+            "status": [
+              "pending"
+            ],
+            "tag": [
+              "billing"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "conversations": [
+            {
+              "createdAt": "2026-09-29T22:46:22Z",
+              "id": 501,
+              "mailboxId": 123,
+              "number": 12,
+              "primaryCustomer": {
+                "email": "jane@acme.example.com",
+                "id": 238604,
+                "type": "customer"
+              },
+              "state": "published",
+              "status": "active",
+              "subject": "Billing question",
+              "tags": [
+                "billing"
+              ],
+              "threadCount": 1,
+              "type": "email"
+            }
+          ],
+          "nextPage": 3,
+          "page": 2,
+          "totalConversations": 51,
+          "totalPages": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerEmail": "jane+orders@acme.example.com",
+        "mailboxId": 123,
+        "modifiedSince": "2026-09-29T17:30:00.750-07:00",
+        "page": 2,
+        "status": "pending",
+        "tag": "billing"
+      },
+      "name": "search-success",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "8e6b6df5-4f9c-5771-97bb-ba5ef2637195",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "conversations": [],
+          "page": 0,
+          "totalConversations": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "search-rejected",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "bb2ff76c-c853-5c27-a64e-129459d189db",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"conversations\":[{\"id\":0}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "conversations": [],
+          "page": 0,
+          "totalConversations": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "search-invalid",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "c864bdd5-abda-5fdb-9463-626c967b0a1a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "conversations": [],
+          "page": 0,
+          "totalConversations": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "search-defect",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "9f7458df-34b2-5309-8071-ea916274fcc1",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"_embedded\":{\"threads\":[{\"id\":560,\"type\":\"customer\",\"status\":\"active\",\"state\":\"published\",\"body\":\"Hello\",\"createdAt\":\"2026-09-30T07:59:00Z\"}]},\"_links\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501/threads",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "createdAt": "2026-09-29T22:46:22Z",
+            "id": 501,
+            "mailboxId": 123,
+            "number": 12,
+            "primaryCustomer": {
+              "email": "jane@acme.example.com",
+              "id": 238604,
+              "type": "customer"
+            },
+            "state": "published",
+            "status": "active",
+            "subject": "Billing question",
+            "tags": [
+              "billing"
+            ],
+            "threadCount": 1,
+            "type": "email"
+          },
+          "threads": [
+            {
+              "body": "Hello",
+              "createdAt": "2026-09-30T07:59:00Z",
+              "id": 560,
+              "state": "published",
+              "status": "active",
+              "type": "customer"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-success",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "27d858bf-babc-53cf-baa6-4909f3b32ac6",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "https://api.helpscout.net/v2/conversations/777"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 301
+        }
+      ],
+      "expected": {
+        "branch": "merged",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          },
+          "mergedIntoConversationId": 777,
+          "threads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-merged",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "238b1c47-1fe7-5298-8f4f-baf5755eb359",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          },
+          "threads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-not-found",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "93dbf747-040e-500e-bd59-39906f898035",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          },
+          "threads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-rejected",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "bf9de2e6-6ebd-5f62-966c-a88eab53276c",
+      "exchanges": [
+        {
+          "body": "{\"id\":999}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          },
+          "threads": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-invalid",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "b068b287-c6e8-5d51-91b6-8546a5c9f3c1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          },
+          "threads": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 0
+      },
+      "name": "get-defect",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Resource-Id": "567"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": 501,
+          "customerId": 238604,
+          "threadId": 567
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "customerId": 238604,
+        "status": "pending",
+        "text": "We refunded the duplicate charge."
+      },
+      "name": "reply-success",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Resource-Id": "568"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/notes",
+          "requestBody": {
+            "text": "Internal note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": 501,
+          "isInternalNote": true,
+          "threadId": 568
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "name": "reply-note",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "conversationId": 501,
+          "customerId": 238604
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "customerId": 238604,
+        "status": "pending",
+        "text": "We refunded the duplicate charge."
+      },
+      "name": "reply-not-found",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 412
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "conversationId": 501,
+          "customerId": 238604
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "customerId": 238604,
+        "status": "pending",
+        "text": "We refunded the duplicate charge."
+      },
+      "name": "reply-rejected",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "conversationId": 501,
+          "customerId": 238604
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "customerId": 238604,
+        "status": "pending",
+        "text": "We refunded the duplicate charge."
+      },
+      "name": "reply-uncertain",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "conversationId": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 0,
+        "text": "Hello"
+      },
+      "name": "reply-defect",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/assignTo",
+            "value": 99
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/v2/conversations/501/tags",
+          "requestBody": {
+            "tags": [
+              "vip"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"pending\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"vip\"}],\"createdAt\":\"2026-09-29T22:46:22Z\",\"assignee\":{\"id\":99,\"type\":\"user\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "assignee": {
+              "id": 99,
+              "type": "user"
+            },
+            "createdAt": "2026-09-29T22:46:22Z",
+            "id": 501,
+            "mailboxId": 123,
+            "number": 12,
+            "primaryCustomer": {
+              "email": "jane@acme.example.com",
+              "id": 238604,
+              "type": "customer"
+            },
+            "state": "published",
+            "status": "pending",
+            "subject": "Billing question",
+            "tags": [
+              "vip"
+            ],
+            "threadCount": 1,
+            "type": "email"
+          }
+        },
+        "requestCount": 5,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "addTags": [
+          "vip"
+        ],
+        "assigneeId": 99,
+        "conversationId": 501,
+        "removeTags": [
+          "billing"
+        ],
+        "status": "pending"
+      },
+      "name": "update-success",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\",\"assignee\":{\"id\":99}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "remove",
+            "path": "/assignTo"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "conversation": {
+            "createdAt": "2026-09-29T22:46:22Z",
+            "id": 501,
+            "mailboxId": 123,
+            "number": 12,
+            "primaryCustomer": {
+              "email": "jane@acme.example.com",
+              "id": 238604,
+              "type": "customer"
+            },
+            "state": "published",
+            "status": "active",
+            "subject": "Billing question",
+            "tags": [
+              "billing"
+            ],
+            "threadCount": 1,
+            "type": "email"
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501,
+        "isUnassigned": true
+      },
+      "name": "update-unassign",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "addTags": [
+          "vip"
+        ],
+        "assigneeId": 99,
+        "conversationId": 501,
+        "removeTags": [
+          "billing"
+        ],
+        "status": "pending"
+      },
+      "name": "update-not-found",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 412
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "conversation": {
+            "createdAt": "2026-09-29T22:46:22Z",
+            "id": 501,
+            "mailboxId": 123,
+            "number": 12,
+            "primaryCustomer": {
+              "email": "jane@acme.example.com",
+              "id": 238604,
+              "type": "customer"
+            },
+            "state": "published",
+            "status": "active",
+            "subject": "Billing question",
+            "tags": [
+              "billing"
+            ],
+            "threadCount": 1,
+            "type": "email"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "addTags": [
+          "vip"
+        ],
+        "assigneeId": 99,
+        "conversationId": 501,
+        "removeTags": [
+          "billing"
+        ],
+        "status": "pending"
+      },
+      "name": "update-rejected",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":999}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "addTags": [
+          "vip"
+        ],
+        "assigneeId": 99,
+        "conversationId": 501,
+        "removeTags": [
+          "billing"
+        ],
+        "status": "pending"
+      },
+      "name": "update-invalid",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "conversation": {
+            "id": 0,
+            "mailboxId": 0,
+            "number": 0,
+            "status": "",
+            "subject": "",
+            "tags": [],
+            "threadCount": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501
+      },
+      "name": "update-defect",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "13449987-7cb2-5f13-8ea0-c3736bfef512",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"customers\":[{\"id\":1001,\"firstName\":\"Jane\",\"lastName\":\"Smith\",\"organizationId\":35,\"conversationCount\":4,\"createdAt\":\"2026-01-10T12:34:12Z\",\"updatedAt\":\"2026-01-11T20:18:33Z\",\"_embedded\":{\"emails\":[{\"value\":\"jane@acme.example.com\"}]}}]},\"_links\":{\"next\":{\"href\":\"x\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "customers": [
+            {
+              "conversationCount": 4,
+              "createdAt": "2026-01-10T12:34:12Z",
+              "emails": [
+                "jane@acme.example.com"
+              ],
+              "firstName": "Jane",
+              "id": 1001,
+              "lastName": "Smith",
+              "organizationId": 35,
+              "updatedAt": "2026-01-11T20:18:33Z"
+            }
+          ],
+          "email": "jane@acme.example.com",
+          "hasMore": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-success",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "39ce13df-794f-5906-b1a4-914f3ad68a23",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"customers\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "customers": [],
+          "email": "jane@acme.example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-not-found",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "7532303b-e6ef-5c39-9646-bfb1ff076dfe",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "customers": [],
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-rejected",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "18fc9b1c-e1fb-5952-ae53-50dce409907c",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"customers\":[{\"id\":0}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customers": [],
+          "email": "jane@acme.example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-invalid",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "7cb01616-5cdd-5983-9f20-41d380038102",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customers": [],
+          "email": "invalid"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "invalid"
+      },
+      "name": "find-defect",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "c0f52d3a-c668-575f-95a5-5396c87f9820",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "search-429",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "c4b2c191-4284-566b-b10a-5b309e6168cd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "search-5xx",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "3841663f-b7f1-5fe5-b5e1-b650fadeab9b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "search-transport",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "c6e57a5b-e14b-5dcf-9028-19b6c30bff3c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-429",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "205bd5f9-1fab-5b27-a0a0-76d769e0d819",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-5xx",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "5c7892ff-f569-5a04-b10f-6e40a69ee101",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-transport",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "customerId": 238604,
+        "status": "pending",
+        "text": "We refunded the duplicate charge."
+      },
+      "name": "reply-429",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "customerId": 238604,
+        "status": "pending",
+        "text": "We refunded the duplicate charge."
+      },
+      "name": "reply-5xx",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "status": "pending",
+            "text": "We refunded the duplicate charge."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "customerId": 238604,
+        "status": "pending",
+        "text": "We refunded the duplicate charge."
+      },
+      "name": "reply-transport",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "addTags": [
+          "vip"
+        ],
+        "assigneeId": 99,
+        "conversationId": 501,
+        "removeTags": [
+          "billing"
+        ],
+        "status": "pending"
+      },
+      "name": "update-429-write",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "addTags": [
+          "vip"
+        ],
+        "assigneeId": 99,
+        "conversationId": 501,
+        "removeTags": [
+          "billing"
+        ],
+        "status": "pending"
+      },
+      "name": "update-5xx-write",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "addTags": [
+          "vip"
+        ],
+        "assigneeId": 99,
+        "conversationId": 501,
+        "removeTags": [
+          "billing"
+        ],
+        "status": "pending"
+      },
+      "name": "update-transport-write",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "a63864ef-bec0-5378-b150-17ac6f99e388",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-429",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "cf078e76-9807-5391-823f-dd0ac2d1628d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-5xx",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "63afdcb3-9dd5-5f65-bc94-6d3f2f6a2c95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-transport",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501,
+        "status": "pending"
+      },
+      "name": "update-429",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501,
+        "status": "pending"
+      },
+      "name": "update-5xx",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501,
+        "status": "pending"
+      },
+      "name": "update-transport",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "9f7458df-34b2-5309-8071-ea916274fcc1",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501/threads",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-threads-429",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "text": "Reply to primary customer"
+      },
+      "name": "reply-primary-read-429",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501,
+        "status": "pending"
+      },
+      "name": "update-readback-429",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "9f7458df-34b2-5309-8071-ea916274fcc1",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501/threads",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-threads-5xx",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "text": "Reply to primary customer"
+      },
+      "name": "reply-primary-read-5xx",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501,
+        "status": "pending"
+      },
+      "name": "update-readback-5xx",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "9f7458df-34b2-5309-8071-ea916274fcc1",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501/threads",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conversationId": 501,
+        "threadLimit": 2
+      },
+      "name": "get-threads-transport",
+      "operation": "getConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "text": "Reply to primary customer"
+      },
+      "name": "reply-primary-read-transport",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/v2/conversations/501",
+          "requestBody": {
+            "op": "replace",
+            "path": "/status",
+            "value": "pending"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "65659395-4342-5b5f-8fc5-2e86a3e7cfef",
+      "input": {
+        "conversationId": 501,
+        "status": "pending"
+      },
+      "name": "update-readback-transport",
+      "operation": "updateConversation"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {
+            "Resource-Id": "569"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/reply",
+          "requestBody": {
+            "customer": {
+              "id": 238604
+            },
+            "text": "Reply to primary customer"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": 501,
+          "customerId": 238604,
+          "threadId": 569
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "text": "Reply to primary customer"
+      },
+      "name": "reply-primary-success",
+      "operation": "replyToConversation"
+    },
+    {
+      "callId": "366fde73-b416-5b41-9d2f-cbbbaec26b61",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"conversations\":[]},\"page\":{\"totalElements\":0,\"totalPages\":0}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "query": [
+              "(email:\"éva@例子.测试\")"
+            ],
+            "tag": [
+              "star*tilde~"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "conversations": [],
+          "page": 1,
+          "totalConversations": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "customerEmail": "éva@例子.测试",
+        "tag": "star*tilde~"
+      },
+      "name": "search-special-query",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "13449987-7cb2-5f13-8ea0-c3736bfef512",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"customers\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@[127.0.0.1]"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "customers": [],
+          "email": "jane@[127.0.0.1]"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@[127.0.0.1]"
+      },
+      "name": "find-domain-literal",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "13449987-7cb2-5f13-8ea0-c3736bfef512",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"customers\":[{\"id\":\"wrong\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v3/customers",
+          "query": {
+            "email": [
+              "jane@acme.example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customers": [],
+          "email": "jane@acme.example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@acme.example.com"
+      },
+      "name": "find-wrong-type",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "366fde73-b416-5b41-9d2f-cbbbaec26b61",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\":{\"conversations\":[{\"id\":\"wrong\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "conversations": [],
+          "page": 0,
+          "totalConversations": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "search-wrong-type",
+      "operation": "searchConversations"
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\": {\"threads\": [{\"id\": 569, \"type\": \"message\", \"createdAt\": \"2026-09-30T09:00:00Z\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501/threads",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":501,\"number\":12,\"threads\":1,\"type\":\"email\",\"status\":\"active\",\"state\":\"published\",\"subject\":\"Billing question\",\"mailboxId\":123,\"primaryCustomer\":{\"id\":238604,\"type\":\"customer\",\"email\":\"jane@acme.example.com\"},\"tags\":[{\"tag\":\"billing\"}],\"createdAt\":\"2026-09-29T22:46:22Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": 501,
+          "customerId": 238604,
+          "threadId": 569
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "text": "Reply to primary customer"
+      },
+      "name": "reply-readback-primary",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+        "providerId": "569",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{\"_embedded\": {\"threads\": [{\"id\": 569, \"type\": \"message\", \"createdAt\": \"2026-09-30T09:00:00Z\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v2/conversations/501/threads",
+          "query": {
+            "page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "replied",
+        "failureKind": "",
+        "output": {
+          "conversationId": 501,
+          "isInternalNote": true,
+          "threadId": 569
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "name": "reply-readback-note",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+        "providerId": "569",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "conversationId": 501,
+          "isInternalNote": true
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "name": "reply-readback-uncertain",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v2/conversations/501/notes",
+          "requestBody": {
+            "text": "Internal note"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-HELPSCOUT-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json; charset=UTF-8"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "conversationId": 501,
+          "isInternalNote": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+      "input": {
+        "conversationId": 501,
+        "isInternalNote": true,
+        "text": "Internal note"
+      },
+      "name": "reply-500-uncertain",
+      "operation": "replyToConversation",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+        "state": "canResend"
+      }
+    }
+  ],
+  "schemaVersion": 1
+}
