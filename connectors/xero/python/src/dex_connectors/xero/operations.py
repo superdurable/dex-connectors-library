@@ -8,7 +8,7 @@ import ipaddress
 import json
 import re
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal as ExactDecimal
 from email.utils import parseaddr
 from typing import Any, TypeVar
@@ -34,7 +34,7 @@ from ._generated.definitions import (
     LIST_INVOICES_DEFINITION,
     RECORD_PAYMENT_DEFINITION,
 )
-from .client import Client, Exchange, failure, go_path_escape, is_uuid
+from .client import Client, Exchange, equal_fold, failure, go_path_escape, is_uuid
 from .models import (
     Contact,
     ContactPage,
@@ -65,19 +65,31 @@ _ZERO_TIME = datetime.min.replace(tzinfo=UTC)
 _T = TypeVar("_T")
 
 
+def _reject_nonfinite(value: str) -> object:
+    raise ValueError("Xero returned a non-finite JSON number")
+
+
+def _exact_integer(value: str) -> int | ExactDecimal:
+    return ExactDecimal(value) if value == "-0" else int(value)
+
+
 def _field(value: object, name: str, expected: type, default: Any) -> Any:
     if not isinstance(value, dict):
         raise ValueError("response is not a JSON object")
     found = value.get(name)
     if found is None:
         return default
+    if expected is int and type(found) is ExactDecimal and str(found) == "-0":
+        return 0
     if expected is bool:
         if type(found) is bool:
             return found
         if isinstance(found, str) and found.lower() in ("true", "false"):
             return found.lower() == "true"
         raise ValueError(f"{name} is not a boolean")
-    if type(found) is not expected:
+    if type(found) is not expected or (
+        expected is int and isinstance(found, int) and not -(2**63) <= found <= 2**63 - 1
+    ):
         raise ValueError(f"{name} has an invalid type")
     return found
 
@@ -85,9 +97,13 @@ def _field(value: object, name: str, expected: type, default: Any) -> Any:
 def _decimal(value: object, name: str) -> str:
     if value is None:
         return ""
-    if type(value) not in (str, int, ExactDecimal) or not _DECIMAL.fullmatch(str(value).strip()):
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return ""
+    if type(value) not in (str, int, ExactDecimal) or not _DECIMAL.fullmatch(str(value)):
         raise ValueError(f"{name} is not an exact decimal")
-    return str(value).strip()
+    return str(value)
 
 
 def _wire_decimal(value: object, name: str) -> str:
@@ -111,7 +127,8 @@ def _dotnet(value: str) -> datetime:
     match = _DOTNET.fullmatch(value)
     if match is None:
         raise ValueError("invalid Xero date")
-    return datetime.fromtimestamp(int(match.group(1)) / 1000, UTC)
+    seconds, milliseconds = divmod(int(match.group(1)), 1000)
+    return datetime.fromtimestamp(seconds, UTC) + timedelta(milliseconds=milliseconds)
 
 
 def _wire_date(value: dict[str, Any], string_field: str, dotnet_field: str) -> str:
@@ -147,7 +164,9 @@ def _contact(value: object) -> Contact:
 def _page(
     body: bytes, collection: str, decoder: Callable[[object], _T], page: int, page_size: int
 ) -> tuple[tuple[_T, ...], int, int, bool]:
-    document = json.loads(body, parse_float=ExactDecimal)
+    document = json.loads(
+        body, parse_int=_exact_integer, parse_float=ExactDecimal, parse_constant=_reject_nonfinite
+    )
     values = _field(document, collection, list, None)
     if values is None:
         raise ValueError(f"response has no {collection} list")
@@ -160,7 +179,9 @@ def _page(
 
 
 def _single(body: bytes, collection: str) -> dict[str, Any]:
-    document = json.loads(body, parse_float=ExactDecimal)
+    document = json.loads(
+        body, parse_int=_exact_integer, parse_float=ExactDecimal, parse_constant=_reject_nonfinite
+    )
     values = _field(document, collection, list, None)
     if values is None or len(values) != 1 or not isinstance(values[0], dict):
         raise ValueError(f"response has no single {collection} element")
@@ -455,7 +476,7 @@ class FindContactByEmailOperation:
         matches = tuple(
             contact
             for contact in contacts
-            if contact.email_address.strip().casefold() == email.casefold()
+            if equal_fold(contact.email_address.strip(), email)
             and (input.includes_archived or contact.status in ("ACTIVE", ""))
         )
         if not matches:

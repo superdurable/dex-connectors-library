@@ -26,7 +26,9 @@ def _field(value: dict[str, object], name: str, kind: type[T], default: T) -> T:
     item = value.get(name, default)
     if item is None:
         return default
-    if type(item) is not kind:
+    if type(item) is not kind or (
+        kind is int and isinstance(item, int) and not -(2**63) <= item <= 2**63 - 1
+    ):
         raise ValueError("Zoom returned an unusable meeting")
     return item
 
@@ -82,9 +84,13 @@ def _time(value: object) -> str | None:
 
 def _document(body: bytes) -> dict[str, object]:
     try:
-        return _object(json.loads(body))
-    except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as error:
+        return _object(json.loads(body, parse_constant=_reject_nonfinite))
+    except (UnicodeDecodeError, ValueError, TypeError) as error:
         raise ValueError("Zoom returned an unusable meeting") from error
+
+
+def _reject_nonfinite(value: str) -> object:
+    raise ValueError("Zoom returned a non-finite JSON number")
 
 
 def decode_meeting(value: dict[str, object]) -> Meeting:

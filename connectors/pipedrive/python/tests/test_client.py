@@ -70,6 +70,43 @@ def test_go_provider_timestamp_keeps_nanos_and_large_offset() -> None:
     assert record.add_time == "2026-11-01T08:01:00.123456789Z"
 
 
+@pytest.mark.parametrize("number", ["12345678901234567.89", "1e-7", "1e400", "NaN"])
+def test_record_rejects_json_numbers_that_cannot_round_trip(number: str) -> None:
+    """Fail visibly instead of silently rounding an open-ended CRM field."""
+    body = ('{"success":true,"data":{"id":42,"value":' + number + '}}').encode()
+    with pytest.raises(ValueError, match="fields or custom_fields"):
+        decode_record_body("deals", body)
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_is_reused_by_later_requests_in_attempt() -> None:
+    """A refreshed search token also authorizes the following upsert request."""
+    class RefreshingCredentials:
+        async def resolve(self, _call: Call) -> Credentials:
+            return old
+
+        async def resolve_after_rejection(self, _call: Call) -> Credentials:
+            return new
+
+    old = Credentials("pipedrive-oauth", access_token=SecretString("old"), api_domain="http://127.0.0.1")
+    new = Credentials("pipedrive-oauth", access_token=SecretString("new"), api_domain="http://127.0.0.1")
+    observed: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        observed.append(request.headers["Authorization"])
+        return httpx.Response(401 if len(observed) == 1 else 200, json={"success": True, "data": []})
+
+    connection = ConnectionRef("pipedrive", "unit")
+    call = Call(CallID("test-call"), connection, OperationRef("pipedrive", "upsertObject"))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as transport:
+        client = Client(Config(endpoint="http://127.0.0.1"), RefreshingCredentials(), transport)
+        resolved, issue = await client.resolve(call, "upsertObject")
+        assert issue is None and resolved is not None
+        await client.exchange(call, "upsertObject", resolved, "GET", "/api/v2/deals/search")
+        await client.exchange(call, "upsertObject", resolved, "POST", "/api/v2/deals", body=b"{}")
+    assert observed == ["Bearer old", "Bearer new", "Bearer new"]
+
+
 @pytest.mark.parametrize(
     "address", ["ada@example.com", "ü@例子.测试", "foo@[127.0.0.1]", '"x y"@example.com']
 )

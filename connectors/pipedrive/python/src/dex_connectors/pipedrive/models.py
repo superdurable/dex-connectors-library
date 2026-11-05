@@ -3,6 +3,7 @@
 """Generated Pipedrive models and strict API v2 response decoding."""
 
 import json
+import math
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -41,6 +42,10 @@ _RFC3339 = re.compile(
     r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})"
     r"(?:[.,]([0-9]+))?(Z|([+-])([0-9]{2}):([0-9]{2}))\Z"
 )
+
+
+class PrecisionLossError(ValueError):
+    """A provider JSON number cannot survive the Python output codec unchanged."""
 
 
 def validate_object_type(object_type: str) -> None:
@@ -123,7 +128,9 @@ def _time(value: object) -> str:
 def decode_envelope(body: bytes) -> tuple[object, dict[str, Any]]:
     """Decode the success wrapper while rejecting missing or null data."""
     try:
-        envelope = _object(json.loads(body))
+        envelope = _object(json.loads(body, parse_float=_exact_fraction, parse_constant=_reject_fraction))
+    except PrecisionLossError:
+        raise
     except (ValueError, UnicodeDecodeError):
         raise ValueError("Pipedrive returned a malformed response") from None
     if (
@@ -133,6 +140,19 @@ def decode_envelope(body: bytes) -> tuple[object, dict[str, Any]]:
     ):
         raise ValueError("Pipedrive returned a malformed response")
     return envelope["data"], envelope
+
+
+def _reject_fraction(value: str) -> object:
+    raise PrecisionLossError(
+        "Pipedrive returned a JSON number that fields or custom_fields cannot preserve exactly"
+    )
+
+
+def _exact_fraction(value: str) -> float:
+    number = float(value)
+    if not math.isfinite(number) or json.dumps(number) != value:
+        _reject_fraction(value)
+    return number
 
 
 def _next_cursor(envelope: dict[str, Any]) -> str:

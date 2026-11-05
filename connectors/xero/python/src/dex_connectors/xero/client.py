@@ -10,7 +10,6 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING
 from urllib.parse import quote, urlencode
 
@@ -19,9 +18,13 @@ from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, R
 from dex_connectors.sdk.credentials import ReauthorizationRequiredError
 from dex_connectors.sdk.projectconfig.provider import ExchangePendingError, RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
+    MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
+    ProviderTransportError,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
+    read_error_tokens,
     send_traced,
 )
 
@@ -43,6 +46,10 @@ _RATE_COUNT = re.compile(r"[0-9]{1,10}\Z")
 _API = "https://api.xero.com"
 
 
+def _reject_nonfinite(value: str) -> object:
+    raise ValueError("Xero returned a non-finite JSON number")
+
+
 def is_uuid(value: str) -> bool:
     """Return whether a value has Xero's UUID wire shape."""
     return _UUID.fullmatch(value) is not None
@@ -55,7 +62,40 @@ def go_path_escape(value: str) -> str:
 
 def go_query(values: dict[str, str]) -> str:
     """Encode sorted query keys with Go url.Values.Encode semantics."""
-    return urlencode(sorted(values.items()), safe="").replace("~", "%7E")
+    return urlencode(sorted(values.items()), safe="")
+
+
+def equal_fold(left: str, right: str) -> bool:
+    """Compare Unicode strings with Go's one-rune-at-a-time simple folding."""
+    return len(left) == len(right) and all(
+        first == second
+        or (len(first.lower()) == len(second.lower()) == 1 and first.lower() == second.lower())
+        or (len(first.upper()) == len(second.upper()) == 1 and first.upper() == second.upper())
+        or (len(first.casefold()) == len(second.casefold()) == 1 and first.casefold() == second.casefold())
+        for first, second in zip(left, right, strict=True)
+    )
+
+
+def _error_summary(body: bytes, token: str) -> str:
+    parts: list[str] = []
+    for pointers in (("/Type",), ("/ErrorNumber",), ("/Detail", "/detail", "/error")):
+        matches = read_error_tokens(body, pointers)
+        if (matches and (not token or token not in matches[0])
+                and (pointers[0] != "/ErrorNumber" or _RATE_COUNT.fullmatch(matches[0]))):
+            parts.append("error " + matches[0] if pointers[0] == "/ErrorNumber" else matches[0])
+    try:
+        document = json.loads(body)
+        elements = document.get("Elements", []) if isinstance(document, dict) else []
+        count = min(sum(
+            len(element.get("ValidationErrors", []))
+            for element in elements if isinstance(element, dict)
+            and isinstance(element.get("ValidationErrors", []), list)
+        ), 1000)
+        if count:
+            parts.append(f"{count} validation error" + ("s" if count != 1 else ""))
+    except (ValueError, TypeError, AttributeError):
+        pass
+    return " [" + "; ".join(parts) + "]" if parts else ""
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -234,7 +274,9 @@ class Client:
                 if tenant_exchange.outcome != "success":
                     return tenant_exchange
                 try:
-                    connections = json.loads(tenant_exchange.body)
+                    connections = json.loads(
+                        tenant_exchange.body, parse_constant=_reject_nonfinite
+                    )
                 except (ValueError, TypeError):
                     return Exchange(
                         "rejected",
@@ -268,7 +310,7 @@ class Client:
                         and (
                             not organisation
                             or isinstance(entry.get("tenantName"), str)
-                            and entry["tenantName"].strip().casefold() == organisation.casefold()
+                            and equal_fold(entry["tenantName"].strip(), organisation)
                         )
                     ]
                     if len(candidates) != 1:
@@ -387,8 +429,21 @@ class Client:
             if _RATE_COUNT.fullmatch(value):
                 metadata[key] = value
         if not 200 <= status < 300:
-            await response.aclose()
-            return self._classify_status(operation, status, response.headers, metadata)
+            chunks: list[bytes] = []
+            remaining = MAX_ERROR_BODY_BYTES
+            try:
+                async for chunk in response.aiter_bytes():
+                    chunks.append(chunk[:remaining])
+                    remaining -= min(len(chunk), remaining)
+                    if not remaining:
+                        break
+            except (httpx.TransportError, ProviderTransportError):
+                chunks = []
+            finally:
+                await response.aclose()
+            return self._classify_status(
+                operation, status, response.headers, metadata, _error_summary(b"".join(chunks), token)
+            )
         try:
             body = await read_bounded_body(response, self.config.max_response_bytes)
         except BodyTooLargeError:
@@ -403,7 +458,7 @@ class Client:
                 ),
                 metadata=metadata,
             )
-        except httpx.TransportError:
+        except ProviderTransportError:
             return Exchange(
                 "retry",
                 status,
@@ -424,19 +479,10 @@ class Client:
         return Exchange("success", status, response.headers, body, metadata=metadata)
 
     def _classify_status(
-        self, operation: str, status: int, headers: httpx.Headers, metadata: dict[str, str]
+        self, operation: str, status: int, headers: httpx.Headers, metadata: dict[str, str], summary: str = ""
     ) -> Exchange:
-        retry_after = 0.0
         retry_value = headers.get("Retry-After", "").strip()
-        if _RATE_COUNT.fullmatch(retry_value):
-            retry_after = float(min(int(retry_value), 3600))
-        else:
-            try:
-                retry_after = min(
-                    max((parsedate_to_datetime(retry_value) - self._now()).total_seconds(), 0), 3600
-                )
-            except (ValueError, TypeError, OverflowError):
-                pass
+        retry_after = parse_retry_after(retry_value, self._now())
         messages = {
             500: ("server", FailureKind.AVAILABILITY, "Xero failed internally"),
             501: ("rejected", FailureKind.PROVIDER_REJECTION, "Xero does not implement the request"),
@@ -460,7 +506,7 @@ class Client:
                     error=failure(
                         operation,
                         FailureKind.QUOTA_EXHAUSTED,
-                        "Xero's daily API limit for the organisation is exhausted (HTTP 429)",
+                        "Xero's daily API limit for the organisation is exhausted (HTTP 429)" + summary,
                     ),
                     metadata=metadata,
                 )
@@ -471,7 +517,7 @@ class Client:
                 error=failure(
                     operation,
                     FailureKind.RATE_LIMIT,
-                    f"Xero's {problem.lower() or 'rate'} limit throttled the request (HTTP 429)",
+                    f"Xero's {problem.lower() or 'rate'} limit throttled the request (HTTP 429)" + summary,
                 ),
                 retry_after=retry_after,
                 metadata=metadata,
@@ -488,7 +534,7 @@ class Client:
             outcome,
             status,
             headers,
-            error=failure(operation, kind, f"{message} (HTTP {status})"),
+            error=failure(operation, kind, f"{message} (HTTP {status})" + summary),
             retry_after=retry_after,
             metadata=metadata,
         )

@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Focused Spotify configuration and provider-shape checks."""
 
+import json
+from pathlib import Path
+
 import pytest
 from dex_connectors.sdk import ConnectionRef, SecretString, StaticCredentialProvider
 
@@ -40,6 +43,16 @@ def test_invalid_provider_page_fails(body: bytes) -> None:
     """Wrong provider shapes never become a successful empty page."""
     with pytest.raises((ValueError, TypeError)):
         _decode_page(body, "3cEYpjA9oz9GiPac4AsH4n")
+
+
+def test_added_at_rejects_nanosecond_truncation() -> None:
+    """Reject a valid Go timestamp when datetime would lose three digits."""
+    root = Path(__file__).parents[4]
+    scenarios = json.loads((root / "conformance/connectors/spotify/scenarios.json").read_text())
+    body = json.loads(scenarios["scenarios"][0]["exchanges"][0]["body"])
+    body["items"][0]["added_at"] = "2026-09-01T12:30:00.123456789Z"
+    with pytest.raises(ValueError, match="added_at"):
+        _decode_page(json.dumps(body).encode(), "3cEYpjA9oz9GiPac4AsH4n")
 
 
 def test_generated_project_configuration_and_private_credentials() -> None:

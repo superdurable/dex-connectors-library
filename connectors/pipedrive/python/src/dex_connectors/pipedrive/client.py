@@ -6,6 +6,7 @@ import ipaddress
 import math
 import re
 from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -101,6 +102,9 @@ class Client:
         self.http_client = http_client or new_provider_http_client(20)
         self._owns_client = http_client is None
         self.now = now or (lambda: datetime.now(UTC))
+        self._attempt_credentials: ContextVar[Credentials | None] = ContextVar(
+            "pipedrive_attempt_credentials", default=None
+        )
 
     async def aclose(self) -> None:
         """Close the connector-owned provider transport."""
@@ -208,6 +212,7 @@ class Client:
                         "Pipedrive OAuth connection has no valid api_domain; reconnect the connection",
                     ),
                 )
+        self._attempt_credentials.set(credentials)
         return credentials, None
 
     @staticmethod
@@ -232,6 +237,7 @@ class Client:
         allow_refresh: bool = True,
     ) -> Exchange:
         """Send one API exchange and refresh an OAuth credential once after 401."""
+        credentials = self._attempt_credentials.get() or credentials
         result = await self._exchange_once(call, operation, credentials, method, path, query, body)
         if (
             result.status == 401
@@ -246,6 +252,7 @@ class Client:
                     and self._token(replacement) != self._token(credentials)
                     and is_header_safe_credential(self._token(replacement))
                 ):
+                    self._attempt_credentials.set(replacement)
                     return await self._exchange_once(call, operation, replacement, method, path, query, body)
             except Exception:
                 pass

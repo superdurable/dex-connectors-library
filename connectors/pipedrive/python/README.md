@@ -6,4 +6,6 @@ Load a named Pipedrive connection from Dex project configuration with `new_proje
 
 See the runnable [deal lookup example](examples/deal_lookup/README.md) for a Flow, Worker, start command, and a real Dex integration test. `getObject` returns a complete record; search returns partial records, which can be hydrated through `getObject`. Non-happy branches are optional and fail an example Flow unless explicitly wired for a business reaction. The source of truth for authorization and configuration is the connector's [`connector.yaml`](../connector.yaml).
 
+Open-ended `fields` and `customFields` values retain their JSON number spelling when Python can encode it unchanged. A number that would round or change spelling makes a read select `invalidResponse`; an already accepted write can instead be `uncertain`.
+
 Run the package checks from this directory with `uv sync` and `uv run pytest`. Run provider replay from the repository root with `make test-connector-conformance CONNECTOR_DIRECTORY=connectors/pipedrive`. Live Pipedrive authorization and API behavior are unverified.

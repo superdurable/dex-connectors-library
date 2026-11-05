@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Zoom meeting Queries and Mutations with Go-compatible outcomes."""
 
+import re
+from datetime import UTC, datetime, timedelta
+
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -11,6 +14,7 @@ from dex_connectors.sdk import (
     MutationDefinition,
     QueryAttempt,
     QueryDefinition,
+    ReauthorizationRequiredError,
     Receipt,
 )
 from dex_connectors.sdk.singledispatch import (
@@ -560,8 +564,18 @@ class CreateMeetingOperation:
             try:
                 replacement = await resolver(call)
                 replaced = replacement.access_token.reveal() != credentials.access_token.reveal()
-            except Exception:
+            except ReauthorizationRequiredError:
                 replaced = False
+            except Exception:
+                return MutationAttempt.branch_result(
+                    "providerRejected",
+                    requested,
+                    receipt,
+                    failure(
+                        operation, FailureKind.AVAILABILITY,
+                        "Zoom credential refresh is temporarily unavailable",
+                    ),
+                )
             if replaced:
                 try:
                     await fence.record_can_resend()
@@ -608,8 +622,12 @@ class CreateMeetingOperation:
         """Confirm a prior accepted ID without another create request."""
         operation = "createMeeting"
         try:
+            if re.fullmatch(r"[+-]?[0-9]+", provider_id) is None:
+                raise ValueError("invalid meeting ID")
             meeting_id = int(provider_id)
             _positive_meeting_id(meeting_id)
+            if meeting_id > 2**63 - 1:
+                raise ValueError("meeting ID exceeds int64")
         except ValueError:
             return MutationAttempt.uncertain(
                 requested,
@@ -626,6 +644,11 @@ class CreateMeetingOperation:
                 else MutationAttempt.uncertain(requested, problem, self.client.receipt(call, provider_id))
             )
         assert credentials is not None
+        if call.context is not None and call.context.deadline is not None:
+            if call.context.deadline - datetime.now(UTC) <= timedelta(seconds=1):
+                return MutationAttempt.retry(failure(
+                    operation, FailureKind.AVAILABILITY, "Zoom meeting read-back has insufficient time"
+                ))
         exchange = await self.client.exchange(call, credentials, "GET", "/meetings/" + provider_id)
         if exchange.error:
             return MutationAttempt.retry(

@@ -6,6 +6,7 @@ operations through generated Dex Step factories. It requires
 refresh wiring. Configure `xero-books` in Dex Web **Connections** using the
 [connector setup](../README.md#xero-setup). Provider operations use exact
 decimal strings and send writes under the Call ID as `Idempotency-Key`.
+Wire decimals retain their exact digits, including `-0` and trailing zeros; exponent-form numbers are rejected as invalid responses.
 
 The [runnable contact lookup](examples/contact_lookup/README.md) is the minimal
 consuming application. From this directory, install and verify it with:

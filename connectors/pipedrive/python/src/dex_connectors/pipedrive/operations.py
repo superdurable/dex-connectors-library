@@ -58,11 +58,21 @@ _CUSTOM_FIELD = re.compile(r"[0-9a-f]{40}\Z")
 _STANDARD_FIELD = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
 
 
+def _equal_fold(left: str, right: str) -> bool:
+    return len(left) == len(right) and all(
+        first == second
+        or (len(first.lower()) == len(second.lower()) == 1 and first.lower() == second.lower())
+        or (len(first.upper()) == len(second.upper()) == 1 and first.upper() == second.upper())
+        or (len(first.casefold()) == len(second.casefold()) == 1 and first.casefold() == second.casefold())
+        for first, second in zip(left, right, strict=True)
+    )
+
+
 def _encode_query(values: dict[str, str]) -> str:
     """Encode sorted query pairs like Go's url.Values.Encode."""
 
     def escape(value: str) -> str:
-        return quote_plus(value, safe="").replace("~", "%7E")
+        return quote_plus(value, safe="")
 
     return "&".join(f"{escape(key)}={escape(values[key])}" for key in sorted(values))
 
@@ -712,9 +722,9 @@ class UpsertObjectOperation:
         matches = []
         for record in page.objects:
             if input.object_type == "organizations":
-                found = record.name.strip().casefold() == input.id_value.casefold()
+                found = _equal_fold(record.name.strip(), input.id_value)
             else:
-                found = any(email.strip().casefold() == input.id_value.casefold() for email in record.emails)
+                found = any(_equal_fold(email.strip(), input.id_value) for email in record.emails)
             if found:
                 matches.append(record.id)
         return matches, bool(page.next_cursor), result
@@ -727,6 +737,7 @@ class UpsertObjectOperation:
         object_id: str,
         update_body: bytes | None,
         earlier_create: bool,
+        fence: Fence,
     ) -> MutationAttempt[UpsertedObject]:
         method = "PATCH" if update_body is not None else "GET"
         result = await self.client.exchange(
@@ -757,6 +768,17 @@ class UpsertObjectOperation:
                 receipt,
                 cast(Failure, result.failure).kind,
             )
+        if not earlier_create and result.outcome in ("notSent", "rateLimited", "unavailable"):
+            try:
+                await fence.record_not_sent()
+            except Exception:
+                return MutationAttempt.retry(failure(
+                    "upsertObject", FailureKind.AVAILABILITY,
+                    (
+                        "The single-dispatch fence could not authorize a send or retry; "
+                        "the next attempt must reconcile the checkpoint"
+                    ),
+                ))
         return _mutation_result(result, receipt, _upsert_empty())
 
     async def invoke(self, call: Call, input: UpsertObjectInput) -> MutationAttempt[UpsertedObject]:
@@ -817,10 +839,10 @@ class UpsertObjectOperation:
             decision.marker.provider_id if decision.marker and decision.marker.call_id == call.id else ""
         )
         if earlier_create and marker_id:
-            read = await self._read_or_update(call, input, credentials, marker_id, None, True)
+            read = await self._read_or_update(call, input, credentials, marker_id, None, True, fence)
             if read.kind != "branch" or read.branch != definitions.UPSERTED or update_body is None:
                 return read
-            return await self._read_or_update(call, input, credentials, marker_id, update_body, True)
+            return await self._read_or_update(call, input, credentials, marker_id, update_body, True, fence)
         matches, has_more, result = await self._find_matches(call, input, credentials, identity_field)
         receipt = self.client.receipt(call, result)
         if result.outcome != "succeeded":
@@ -862,7 +884,7 @@ class UpsertObjectOperation:
             )
         if len(matches) == 1:
             return await self._read_or_update(
-                call, input, credentials, matches[0], update_body, earlier_create
+                call, input, credentials, matches[0], update_body, earlier_create, fence
             )
         if earlier_create:
             return _uncertain(operation, "Pipedrive search finds no record with the identity value", receipt)
@@ -954,7 +976,7 @@ class UpsertObjectOperation:
                 receipt,
                 FailureKind.PROTOCOL,
             )
-        read = await self._read_or_update(call, input, credentials, matches[0], None, True)
+        read = await self._read_or_update(call, input, credentials, matches[0], None, True, fence)
         if read.kind == "retry":
             return read
         if read.branch != definitions.UPSERTED or read.value is None:

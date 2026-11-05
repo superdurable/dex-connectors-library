@@ -5,7 +5,7 @@
 import ipaddress
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import urlsplit
 
 import httpx
@@ -22,6 +22,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -38,6 +39,7 @@ from ._generated.definitions import (
     NOT_FOUND,
     PROVIDER_REJECTED,
 )
+from ._generated.timestamps import parse_go_datetime
 from .models import ListPlaylistTracksInput, PlaylistAlbum, PlaylistArtist, PlaylistTrack, PlaylistTrackPage
 
 _SPOTIFY_ID = re.compile(r"[A-Za-z0-9]{22}\Z")
@@ -230,12 +232,7 @@ def _validate_input(input: ListPlaylistTracksInput) -> tuple[str, str, int, int]
 
 
 def _retry_after(headers: httpx.Headers) -> float:
-    value = headers.get("Retry-After", "").strip()
-    if re.fullmatch(r"[+-]?[0-9]+", value):
-        seconds = int(value)
-        if 0 < seconds <= (2**63 - 1) // 1_000_000_000:
-            return float(seconds)
-    return 60.0
+    return parse_retry_after(headers.get("Retry-After", ""), datetime.now(UTC)) or 60.0
 
 
 def _object(value: object) -> dict[str, object]:
@@ -251,7 +248,7 @@ def _string(value: object) -> str:
 
 
 def _integer(value: object) -> int:
-    if type(value) is not int:
+    if type(value) is not int or not -(2**63) <= value <= 2**63 - 1:
         raise ValueError("expected integer")
     return value
 
@@ -374,7 +371,7 @@ def _track(provider: object, item: dict[str, object], position: int) -> Playlist
     added_at = None
     if added is not None:
         text = _string(added)
-        added_at = datetime.fromisoformat(text.replace("Z", "+00:00").replace(",", "."))
+        added_at = parse_go_datetime(text, "added_at")
     playable = value.get("is_playable")
     if playable is not None:
         playable = _boolean(playable)
@@ -398,7 +395,7 @@ def _track(provider: object, item: dict[str, object], position: int) -> Playlist
 
 
 def _decode_page(body: bytes, playlist_id: str) -> PlaylistTrackPage:
-    provider = _object(json.loads(body))
+    provider = _object(json.loads(body, parse_constant=_reject_nonfinite))
     limit = _field_integer(provider, "limit")
     offset = _field_integer(provider, "offset")
     total = _field_integer(provider, "total")
@@ -421,3 +418,7 @@ def _decode_page(body: bytes, playlist_id: str) -> PlaylistTrackPage:
             raise ValueError("invalid Spotify next page")
         next_offset = offset + len(items)
     return PlaylistTrackPage(playlist_id, tuple(tracks), skipped, limit, offset, total, next_offset)
+
+
+def _reject_nonfinite(value: str) -> object:
+    raise ValueError("Spotify returned a non-finite JSON number")

@@ -79,7 +79,7 @@ async def test_query_escape_matches_go_values_encoding() -> None:
             query={"ts": "a~b", "channel": "C 1"},
         )
     assert response.status == 200
-    assert captured[0].url.query == b"channel=C+1&ts=a%7Eb"
+    assert captured[0].url.query == b"channel=C+1&ts=a~b"
 
 
 @pytest.mark.asyncio

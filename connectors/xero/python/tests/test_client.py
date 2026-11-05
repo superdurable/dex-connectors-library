@@ -10,7 +10,8 @@ from dex_connectors.sdk.credentials import ReauthorizationRequiredError
 from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 
 from dex_connectors.xero import Client, Config
-from dex_connectors.xero.client import go_path_escape, go_query
+from dex_connectors.xero.client import _error_summary, go_path_escape, go_query
+from dex_connectors.xero.operations import _single, _wire_decimal
 
 
 class _FailedCredentials:
@@ -32,7 +33,21 @@ def _call() -> Call:
 
 def test_go_url_escaping_preserves_only_go_safe_characters() -> None:
     assert go_path_escape("A!$&+'()*,;?/~") == "A%21$&+%27%28%29%2A%2C%3B%3F%2F~"
-    assert go_query({"z": "a b~*", "a": "x/y"}) == "a=x%2Fy&z=a+b%7E%2A"
+    assert go_query({"z": "a b~*", "a": "x/y"}) == "a=x%2Fy&z=a+b~%2A"
+
+
+def test_decimal_wire_literals_keep_negative_zero_and_reject_exponents() -> None:
+    assert _wire_decimal(_single(b'{"Invoices":[{"Total":-0}]}', "Invoices"), "Total") == "-0"
+    with pytest.raises(ValueError, match="Total"):
+        _wire_decimal(_single(b'{"Invoices":[{"Total":0.0000001}]}', "Invoices"), "Total")
+
+
+def test_error_summary_uses_only_safe_tokens_and_bounded_validation_count() -> None:
+    body = (b'{"Type":"ValidationException","ErrorNumber":42,"Detail":"BadRequest",'
+            b'"Elements":[{"ValidationErrors":[{},{}]}]}')
+    assert _error_summary(body, "secret") == (
+        " [ValidationException; error 42; BadRequest; 2 validation errors]"
+    )
 
 
 def test_local_provider_url_rejects_non_loopback_host() -> None:

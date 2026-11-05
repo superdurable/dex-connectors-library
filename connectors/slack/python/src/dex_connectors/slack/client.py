@@ -29,6 +29,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -112,7 +113,7 @@ def _decode_body(body: bytes) -> dict[str, Any]:
     if not body:
         raise ValueError("Slack returned an empty response")
     try:
-        decoded = json.loads(body)
+        decoded = json.loads(body, parse_constant=_reject_nonfinite)
     except (UnicodeError, ValueError) as error:
         raise ValueError("Slack returned malformed JSON") from error
     if decoded is None:
@@ -145,6 +146,10 @@ def _decode_body(body: bytes) -> dict[str, Any]:
     return decoded
 
 
+def _reject_nonfinite(value: str) -> object:
+    raise ValueError("Slack returned a non-finite JSON number")
+
+
 def _rejection_kind(response: _Response) -> FailureKind:
     code = (response.decoded or {}).get("error", "")
     if code in ("invalid_auth", "not_authed", "token_expired", "token_revoked", "account_inactive"):
@@ -160,11 +165,7 @@ def _rejection_kind(response: _Response) -> FailureKind:
 
 def _retry_after(response: _Response) -> float:
     raw = (response.headers or httpx.Headers()).get("Retry-After", "")
-    try:
-        seconds = int(raw)
-    except ValueError:
-        return 0
-    return float(seconds) if seconds > 0 else 0
+    return parse_retry_after(raw, datetime.now(UTC))
 
 
 class Client:
@@ -239,7 +240,7 @@ class Client:
     ) -> _Response:
         url = self.endpoint + "/" + api_method
         if query:
-            url += "?" + urlencode(sorted(query.items())).replace("~", "%7E")
+            url += "?" + urlencode(sorted(query.items()))
         headers = {"Authorization": "Bearer " + getattr(credentials, token_field).reveal()}
         if payload is not None:
             headers["Content-Type"] = "application/json; charset=utf-8"

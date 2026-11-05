@@ -6,4 +6,6 @@ Install `dex-connector-spotify==0.1.0`. The `listPlaylistTracks` Query lists one
 
 Spotify 429 and 5xx responses and transport errors retry. Revoked authorization, denied access, missing playlists, provider rejection, invalid responses, and invalid local input select the matching terminal branch. A connection can be created with `Client`, a typed credential provider, and `new_connection` for custom applications. Close the client after the Worker stops. It owns and closes an injected HTTP transport.
 
+The `addedAt` timestamp must round-trip through Python `datetime` without losing precision. A provider timestamp with nanoseconds beyond microsecond precision selects `invalidResponse`.
+
 Run `uv run --with-editable ../../../sdkpython pytest` from this directory, and run the Go conformance recording in `../go` when fixtures change. Live Spotify OAuth and playlist access require an application configured in the [Spotify developer dashboard](https://developer.spotify.com/dashboard); they have not been verified by the checked-in tests.

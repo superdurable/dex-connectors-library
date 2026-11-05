@@ -188,9 +188,9 @@ class Client:
         target = self.endpoint + path
         if query:
             target += "?" + "&".join(
-                quote_plus(key, safe="").replace("~", "%7E")
+                quote_plus(key, safe="")
                 + "="
-                + quote_plus(value, safe="").replace("~", "%7E")
+                + quote_plus(value, safe="")
                 for key, value in sorted(query.items())
             )
         headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
