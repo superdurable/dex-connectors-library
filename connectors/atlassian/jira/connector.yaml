@@ -87,6 +87,7 @@ spec:
         missingExpiry: reject
         storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma
+        acceptedScopeSets: [[read:jira-work, write:jira-work]]
         acceptsMissingTokenType: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   studio:

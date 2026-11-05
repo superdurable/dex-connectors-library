@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from ipaddress import ip_address
 from typing import Any, Generic, TypeVar, cast
 from urllib.parse import quote
 
@@ -24,14 +25,13 @@ from . import (
     JWTBearerAssertion,
     MissingExpiryRule,
     TokenEndpoint,
-    has_all_scopes,
     is_refresh_required,
     parse_rsa_private_key_pem,
     sign_jwt_bearer_assertion,
 )
 
 Credential = TypeVar("Credential")
-_DURATION_PART = re.compile(r"(\d+(?:\.\d+)?)(ns|us|µs|μs|ms|s|m|h)")
+_DURATION_PART = re.compile(r"((?:\d+(?:\.\d*)?|\.\d+))(ns|us|µs|μs|ms|s|m|h)")
 
 
 class ManifestCredentialRefreshDriver(Generic[Credential]):
@@ -39,8 +39,12 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
 
     ``auth`` is the manifest's ``spec.auth`` JSON object. ``credential_fields``
     maps its wire field names to attributes on a frozen credential dataclass.
-    Credentials for a multi-method manifest carry ``auth_method_id``. The host
+    Credentials for a multi-method manifest carry ``auth_method_id``; an empty
+    value selects ``defaultMethod``. The host
     owns the HTTP client, refresh admission, and complete replacement.
+    ``storedMissingExpiry`` controls undated stored tokens for every grant and
+    defaults to ``keep``. The separate ``missingExpiry`` controls responses
+    without ``expires_in``; a declared lifetime does not refresh stored tokens.
     """
 
     def __init__(
@@ -69,6 +73,10 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         self._http_client = http_client
         self._settings = dict(settings or {})
         self._now = now or (lambda: datetime.now(UTC))
+        for method in auth.get("methods") or [auth]:
+            for grant in self._grants(method):
+                self._validate_stored_missing_expiry(grant)
+                self._validate_new_declarations(grant)
 
     def refresh_required(self, state: CredentialRefreshState[Credential]) -> bool:
         """Check declared access fields and the host's single credential expiry."""
@@ -87,7 +95,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         )
         missing_expiry_rule = (
             MissingExpiryRule.REFRESH_WHEN_EXPIRY_MISSING
-            if any(grant["missing_expiry"] for grant in grants)
+            if any(grant["stored_missing_expiry"] == "refresh" for grant in grants)
             else MissingExpiryRule.KEEP_WHEN_EXPIRY_MISSING
         )
         return is_refresh_required(
@@ -113,11 +121,21 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             required_scopes = self._scopes(grant["scopes"])
             if grant["kind"] == "refresh":
                 required_scopes = [scope for scope in required_scopes if scope != "offline_access"]
-            returned_scopes = set(filter(None, re.split(r"[\s,]+", token.scope)))
+            separators = r"[ ,]+" if grant["scope_separators"] == "whitespaceAndComma" else r"\s+"
+            granted_scopes = set(re.split(separators, token.scope)) - {""}
+            accepted_scope_sets = grant.get("accepted_scope_sets") or [required_scopes]
+            if grant["kind"] == "refresh":
+                accepted_scope_sets = [
+                    [scope for scope in scope_set if scope != "offline_access"]
+                    for scope_set in accepted_scope_sets
+                ]
             has_wrong_scopes = (
-                returned_scopes != set(required_scopes)
-                if len(grants) > 1
-                else bool(token.scope) and not has_all_scopes(token.scope, tuple(required_scopes))
+                (bool(token.scope.strip()) or grant["exact_scopes"])
+                and not any(
+                    set(scope_set) <= granted_scopes
+                    and (not grant["exact_scopes"] or granted_scopes == set(scope_set))
+                    for scope_set in accepted_scope_sets
+                )
             )
             if has_wrong_scopes:
                 raise ReauthorizationRequiredError()
@@ -155,8 +173,6 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         if not hasattr(credentials, "auth_method_id"):
             raise ValueError("multi-method credentials require auth_method_id")
         method_id = cast(Any, credentials).auth_method_id
-        if not method_id and len(methods) > 1:
-            raise ReauthorizationRequiredError()
         method_id = method_id or self._auth.get("defaultMethod", "")
         for method in methods:
             if method.get("id") == method_id:
@@ -193,18 +209,29 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "encoding": oauth.get("tokenRequestEncoding", "form"),
                     "client_id": oauth["clientIDCredential"],
                     "client_secret": oauth["clientSecretCredential"],
-                    "client_secret_optional": not self._is_required_field(
-                        method, oauth["clientSecretCredential"]
-                    ),
+                    "allows_public_client": refresh.get("allowsPublicClient", False),
                     "refresh_field": grant["refreshTokenCredential"],
                     "mappings": grant["credentialMappings"],
-                    "scopes": oauth.get("userScopes", [])
+                    "scopes": (oauth.get("userScopes", [])
                     if grant.get("grantedScopes") == "userScopes"
-                    else oauth.get("scopes", []),
+                    else refresh.get("requiredScopes", oauth.get("scopes", []))),
+                    "accepted_scope_sets": refresh.get("acceptedScopeSets"),
+                    "declares_accepted_scope_sets": "acceptedScopeSets" in refresh,
                     "terminal_codes": refresh.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": grant.get("acceptedTokenTypes")
                     or refresh.get("acceptedTokenTypes") or ["Bearer"],
-                    "accepts_missing_token_type": refresh.get("acceptsMissingTokenType", False),
+                    "exact_scopes": grant.get("exactScopes", refresh.get("exactScopes", False)),
+                    "scope_separators": refresh.get("scopeSeparators", "whitespace"),
+                    "accepts_missing_token_type": grant.get(
+                        "acceptsMissingTokenType", refresh.get("acceptsMissingTokenType", False)
+                    ),
+                    "accepts_missing_expires_in": (
+                        refresh.get("missingExpiry") is not None
+                        and refresh.get("missingExpiry") != "reject"
+                    ),
+                    "missing_expiry_policy": refresh.get("missingExpiry"),
+                    "declares_missing_expiry": "missingExpiry" in refresh,
+                    "stored_missing_expiry": refresh.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (refresh.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(refresh.get("missingExpiry"), dict)
                     else "",
@@ -225,9 +252,20 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "mappings": client["credentialMappings"],
                     "scopes": client.get("scopes", []),
                     "request_scopes": client.get("scopes", []),
+                    "accepted_scope_sets": client.get("acceptedScopeSets"),
+                    "declares_accepted_scope_sets": "acceptedScopeSets" in client,
                     "terminal_codes": client.get("terminalErrorCodes") or ["invalid_client"],
                     "accepted_token_types": client.get("acceptedTokenTypes") or ["Bearer"],
+                    "exact_scopes": False,
+                    "scope_separators": "whitespace",
                     "accepts_missing_token_type": client.get("acceptsMissingTokenType", False),
+                    "accepts_missing_expires_in": (
+                        client.get("missingExpiry") is not None
+                        and client.get("missingExpiry") != "reject"
+                    ),
+                    "missing_expiry_policy": client.get("missingExpiry"),
+                    "declares_missing_expiry": "missingExpiry" in client,
+                    "stored_missing_expiry": client.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (client.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(client.get("missingExpiry"), dict)
                     else "",
@@ -246,9 +284,20 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "mappings": bearer["credentialMappings"],
                     "copies": bearer.get("credentialCopies", []),
                     "scopes": bearer.get("scopes", []),
+                    "accepted_scope_sets": bearer.get("acceptedScopeSets"),
+                    "declares_accepted_scope_sets": "acceptedScopeSets" in bearer,
                     "terminal_codes": bearer.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": bearer.get("acceptedTokenTypes") or ["Bearer"],
+                    "exact_scopes": False,
+                    "scope_separators": bearer.get("scopeSeparators", "whitespace"),
                     "accepts_missing_token_type": bearer.get("acceptsMissingTokenType", False),
+                    "accepts_missing_expires_in": (
+                        bearer.get("missingExpiry") is not None
+                        and bearer.get("missingExpiry") != "reject"
+                    ),
+                    "missing_expiry_policy": bearer.get("missingExpiry"),
+                    "declares_missing_expiry": "missingExpiry" in bearer,
+                    "stored_missing_expiry": bearer.get("storedMissingExpiry", "keep"),
                     "missing_expiry": (bearer.get("missingExpiry") or {}).get("lifetime", "")
                     if isinstance(bearer.get("missingExpiry"), dict)
                     else "",
@@ -260,17 +309,24 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
     async def _exchange(
         self, grant: Mapping[str, Any], credentials: Credential
     ) -> tuple[Any, list[dict[str, str]]]:
-        key: dict[str, str] = {}
+        key: dict[str, Any] = {}
         if grant["kind"] == "jwt_bearer":
             try:
                 parsed = json.loads(self._credential_value(credentials, grant["key_credential"]))
+                key_fields = {
+                    source["fromKey"] for source in (
+                        grant["endpoint"], grant["assertion"]["privateKey"],
+                        grant["assertion"]["issuer"], grant["assertion"]["audience"],
+                        grant["assertion"].get("subject"),
+                    ) if isinstance(source, dict) and "fromKey" in source
+                }
                 if not isinstance(parsed, dict) or any(
-                    not isinstance(value, str) for value in parsed.values()
+                    field in parsed and not isinstance(parsed[field], str) for field in key_fields
                 ):
                     raise ValueError("invalid service account key")
-                key = cast(dict[str, str], parsed)
-            except (ValueError, UnicodeDecodeError) as error:
-                raise ReauthorizationRequiredError(error) from error
+                key = parsed
+            except (ValueError, UnicodeDecodeError):
+                raise ReauthorizationRequiredError() from None
         endpoint = TokenEndpoint(
             self._provider_name,
             self._resolve_source(grant["endpoint"], credentials, key),
@@ -278,7 +334,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             terminal_error_codes=tuple(grant["terminal_codes"]),
             accepted_token_types=tuple(grant["accepted_token_types"]),
             accepts_missing_token_type=bool(grant["accepts_missing_token_type"]),
-            accepts_missing_expires_in=True,
+            accepts_missing_expires_in=bool(grant["accepts_missing_expires_in"]),
             uses_json_request_body=grant["encoding"] == "json",
             additional_request_parameters=dict(grant["additional"]),
         )
@@ -286,15 +342,21 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             assertion = grant["assertion"]
             lifetime = _parse_duration(assertion["lifetime"])
             try:
+                subject = (
+                    self._resolve_source(assertion["subject"], credentials, key)
+                    if assertion.get("subject") else ""
+                )
+                if assertion.get("subjectValidation") == "goMailAddress":
+                    subject = _trim_go_space(subject)
+                    if not _is_go_mail_address(subject):
+                        raise ReauthorizationRequiredError()
                 private_key = parse_rsa_private_key_pem(
                     self._resolve_source(assertion["privateKey"], credentials, key)
                 )
                 signed = sign_jwt_bearer_assertion(
                     JWTBearerAssertion(
                         issuer=self._resolve_source(assertion["issuer"], credentials, key),
-                        subject=self._resolve_source(assertion["subject"], credentials, key)
-                        if assertion.get("subject")
-                        else "",
+                        subject=subject,
                         audience=self._resolve_source(assertion["audience"], credentials, key),
                         scope=" ".join(self._scopes(assertion.get("scopes", []))),
                         issued_at=self._now(),
@@ -306,8 +368,10 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 raise ReauthorizationRequiredError(error) from error
             return await endpoint.exchange_jwt_bearer_assertion(signed), list(grant.get("copies", []))
         secret = self._credential_value(credentials, grant["client_secret"])
+        if not secret and grant["kind"] == "refresh" and not grant["allows_public_client"]:
+            raise ReauthorizationRequiredError()
         method = self._resolve_source(grant["authentication"], credentials, key)
-        if not secret and grant["kind"] == "refresh" and grant["client_secret_optional"]:
+        if not secret and grant["kind"] == "refresh" and grant["allows_public_client"]:
             method = "none"
         client = ClientCredentials(
             self._credential_value(credentials, grant["client_id"]),
@@ -332,22 +396,51 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 return str(field.get("type")) == "secretString"
         return False
 
-    def _is_required_field(self, method: Mapping[str, Any], name: str) -> bool:
-        for field in method.get("fields") or []:
-            if field.get("name") == name:
-                return bool(field.get("required", False))
-        return True
-
     def _validate_grant(self, grant: Mapping[str, Any]) -> None:
+        self._validate_stored_missing_expiry(grant)
         for mapping in grant["mappings"]:
             if not mapping.get("source") or mapping.get("credential") not in self._fields:
                 raise ValueError("manifest credential field is not mapped")
         for copy in grant.get("copies", []):
             if copy.get("credential") not in self._fields or copy.get("fromCredential") not in self._fields:
                 raise ValueError("manifest credential field is not mapped")
-        _parse_duration(grant.get("missing_expiry", ""))
+        missing_expiry = grant.get("missing_expiry", "")
+        if missing_expiry and _parse_duration(missing_expiry) <= timedelta(0):
+            raise ValueError("manifest grant duration must be positive")
         if grant["kind"] == "jwt_bearer":
-            _parse_duration(grant["assertion"]["lifetime"])
+            if _parse_duration(grant["assertion"]["lifetime"]) < timedelta(milliseconds=1):
+                raise ValueError("manifest JWT assertion lifetime must be at least one millisecond")
+
+    def _validate_stored_missing_expiry(self, grant: Mapping[str, Any]) -> None:
+        if grant["stored_missing_expiry"] not in ("refresh", "keep"):
+            raise ValueError("manifest storedMissingExpiry must be refresh or keep")
+
+    def _validate_new_declarations(self, grant: Mapping[str, Any]) -> None:
+        policy = grant.get("missing_expiry_policy")
+        if grant["declares_missing_expiry"] and policy not in ("reject", "keep") and not (
+            isinstance(policy, dict) and set(policy) == {"lifetime"}
+            and isinstance(policy["lifetime"], str)
+            and _parse_duration(policy["lifetime"]) > timedelta(0)
+        ):
+            raise ValueError("manifest missingExpiry must be reject, keep, or a positive lifetime")
+        if grant["scope_separators"] not in ("whitespace", "whitespaceAndComma"):
+            raise ValueError("manifest scopeSeparators is invalid")
+        scope_sets = grant.get("accepted_scope_sets")
+        if grant["kind"] == "client_credentials" and grant["declares_accepted_scope_sets"]:
+            raise ValueError("manifest clientCredentials does not support acceptedScopeSets")
+        if grant["declares_accepted_scope_sets"] and (
+            not isinstance(scope_sets, list) or not scope_sets or any(
+            not isinstance(scope_set, list) or not scope_set or any(
+                not isinstance(scope, str) or not scope for scope in scope_set
+            ) for scope_set in scope_sets
+        )):
+            raise ValueError("manifest acceptedScopeSets is invalid")
+        if grant["kind"] == "jwt_bearer":
+            assertion = grant["assertion"]
+            if "subjectValidation" in assertion and assertion["subjectValidation"] != "goMailAddress":
+                raise ValueError("manifest subjectValidation is invalid")
+            if "subjectValidation" in assertion and not assertion.get("subject"):
+                raise ValueError("manifest subjectValidation requires a subject")
 
     def _scopes(self, source: Any) -> list[str]:
         if isinstance(source, list):
@@ -356,7 +449,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             return self._settings.get(source["fromSetting"], "").split()
         return []
 
-    def _resolve_source(self, source: Any, credentials: Credential, key: Mapping[str, str]) -> str:
+    def _resolve_source(self, source: Any, credentials: Credential, key: Mapping[str, Any]) -> str:
         if isinstance(source, str):
             return source
         if "value" in source:
@@ -391,25 +484,81 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
 
 
 def _parse_duration(value: str) -> timedelta:
-    """Parse the manifest's positive Go duration units used for grant lifetime."""
+    """Validate Go duration syntax and nanosecond range for grant lifetimes."""
     if not value:
         return timedelta(0)
-    total = 0.0
+    if value in ("0", "+0", "-0"):
+        return timedelta(0)
+    sign = -1 if value.startswith("-") else 1
+    if value.startswith(("+", "-")):
+        value = value[1:]
+    unit_nanoseconds = {
+        "ns": 1, "us": 1000, "µs": 1000, "μs": 1000,
+        "ms": 1_000_000, "s": 1_000_000_000,
+        "m": 60_000_000_000, "h": 3_600_000_000_000,
+    }
+    total_nanoseconds = 0
     position = 0
     for part in _DURATION_PART.finditer(value):
         if part.start() != position:
             raise ValueError("manifest grant duration is invalid")
-        total += float(part.group(1)) * {
-            "ns": 1e-9, "us": 1e-6, "µs": 1e-6, "μs": 1e-6,
-            "ms": 0.001, "s": 1, "m": 60, "h": 3600,
-        }[part.group(2)]
+        whole, _, fraction = part.group(1).partition(".")
+        unit = unit_nanoseconds[part.group(2)]
+        total_nanoseconds += int(whole or "0") * unit
+        if fraction:
+            total_nanoseconds += int(fraction) * unit // 10 ** len(fraction)
         position = part.end()
-    if position != len(value) or total <= 0:
+    maximum = 2**63 if sign < 0 else 2**63 - 1
+    if position != len(value) or total_nanoseconds > maximum:
         raise ValueError("manifest grant duration is invalid")
-    try:
-        return timedelta(seconds=max(total, 1e-6))
-    except OverflowError as error:
-        raise ValueError("manifest grant duration is invalid") from error
+    return sign * timedelta(microseconds=total_nanoseconds // 1000)
+
+
+def _trim_go_space(value: str) -> str:
+    """Trim the Unicode White_Space points used by Go strings.TrimSpace."""
+    def is_space(character: str) -> bool:
+        code = ord(character)
+        return (code == 0x20 or 0x09 <= code <= 0x0D or code in (0x85, 0xA0, 0x1680)
+                or 0x2000 <= code <= 0x200A or code in (0x2028, 0x2029, 0x202F, 0x205F, 0x3000))
+
+    start, end = 0, len(value)
+    while start < end and is_space(value[start]):
+        start += 1
+    while end > start and is_space(value[end - 1]):
+        end -= 1
+    return value[start:end]
+
+
+def _is_go_mail_address(value: str) -> bool:
+    """Match Go 1.24 net/mail addr-spec cases whose parsed address equals its input."""
+    if value.count("@") != 1:
+        return False
+    local, domain = value.split("@")
+
+    def is_atom(text: str) -> bool:
+        if not text or text[0] == "." or text[-1] == "." or ".." in text:
+            return False
+        for character in text:
+            code = ord(character)
+            if 0xD800 <= code <= 0xDFFF:
+                return False
+            if code >= 0x80:
+                continue
+            if code < 0x21 or code > 0x7E or character in '()<>[]:;@\\,"':
+                return False
+        return True
+
+    if not is_atom(local):
+        return False
+    if domain.startswith("[") and domain.endswith("]"):
+        if "%" in domain:
+            return False
+        try:
+            ip_address(domain[1:-1])
+        except ValueError:
+            return False
+        return True
+    return is_atom(domain)
 
 
 __all__ = ["ManifestCredentialRefreshDriver"]

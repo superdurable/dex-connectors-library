@@ -1,5 +1,11 @@
 # Microsoft SQL Server Connector
 
+## TypeScript package
+
+`@superdurable/connector-microsoft-sql-server` v0.1.0 provides the `query` and `execute` operations with `mssql` over Tedious. Install it with `npm install @superdurable/connector-microsoft-sql-server`, then load the named Dex project connection with `newProjectConnection(project, ConnectionName)`. The runnable [query example](typescript/examples/query-rows/README.md) and [record-refund write example](typescript/examples/record-refund/README.md) show Workers, starters, and static connection names. See the [TypeScript package contract](typescript/README.md) for TLS roots, pinned session settings, and type limitations.
+
+The TypeScript package uses the same manifest configuration fields and branches as Go. Use constant, parameterized SQL with `@p1` through `@pN`; bind user values in `parameters`. An `execute` statement must be idempotent across retries, and `idempotencyKeyPlaceholder` appends the stable Dex Call ID. Its `uncertain` branch means a failed COMMIT may have reached SQL Server. The TypeScript test suite checks SQL Server error-number classification; `test/integration.test.ts` needs the `SQLSERVER_CONNECTOR_TEST_*` variables and a disposable SQL Server database, and `test/dex.integration.test.ts` additionally needs a real `dexcli dev` Flow service address.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/sql-server`.
 
 > **Verification status: Dex-integrated, not live.** Verified on a real Dex stack against a
@@ -22,6 +28,22 @@ is the newest release whose `go.mod` accepts Go 1.24, which every module in this
 v1.10.0 and later require Go 1.25. Each operation opens one connection, runs one transaction, and
 closes the connection. The connector keeps no pool, so a rotated password takes effect on the next
 Step.
+
+## Python package
+
+The [Python package](python/README.md) adds native `query` and `execute` operations at
+`v0.1.0`, with a [runnable refund Flow](python/examples/record_refund/flow.py).
+Its default `mandatory` TLS mode verifies a server certificate. Python currently rejects
+`strict` and `trust-server-certificate` before connecting because its native driver lacks
+per-connection support for those modes; the Go connector continues to support them.
+The Python package has a real Dex example integration test and SQL Server service-container
+integration tests in CI. Live provider behavior remains unverified.
+Python also selects `invalidResponse` for `TIME`, `DATETIME2`, or `DATETIMEOFFSET`
+result columns at scale 7, because its native driver would lose the seventh digit.
+The Python package preserves declared decimal and money scales, returns SQL CLR values as
+typed base64, sums trigger row counts, and verifies certificate DNS and IP Subject Alternative
+Names before login. Its mandatory TLS mode uses a system CA file or `certifi` fallback;
+`SQLSERVER_SSL_CA` can select a private CA file on the Worker.
 
 ## Company directory
 
@@ -408,6 +430,12 @@ SQLSERVER_CONNECTOR_TEST_DATABASE=dex_connector_test SQLSERVER_CONNECTOR_TEST_US
 SQLSERVER_CONNECTOR_TEST_PASSWORD=... SQLSERVER_CONNECTOR_TEST_ENCRYPT=mandatory \
 DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=live ./... -count=1
 ```
+
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements `query` and `execute` with the
+same operation and branch identities as Go. Its runnable Dex query Flow is under
+[`typescript/examples/query-rows`](typescript/examples/query-rows/README.md).
 
 ## Limitations
 
