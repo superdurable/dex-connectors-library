@@ -1,0 +1,3615 @@
+{
+  "connector": "xero",
+  "scenarios": [
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000000",
+      "exchanges": [
+        {
+          "body": "{\"Contacts\":[{\"ContactID\":\"025867f1-d741-4d6b-b1af-9ac774b59ba7\",\"Name\":\"City Agency\",\"ContactStatus\":\"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "IDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "searchTerm": [
+              "Agency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+              "name": "City Agency",
+              "status": "ACTIVE",
+              "updatedAt": "0001-01-01T00:00:00Z"
+            }
+          ],
+          "hasMorePages": false,
+          "page": 2,
+          "pageSize": 10
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "includesArchived": true,
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "searchTerm": "Agency"
+      },
+      "name": "listContacts-success",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000001",
+      "exchanges": [
+        {
+          "body": "{\"Type\":\"ValidationException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "IDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "searchTerm": [
+              "Agency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "contacts": [],
+          "hasMorePages": false,
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "includesArchived": true,
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "searchTerm": "Agency"
+      },
+      "name": "listContacts-provider-rejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000002",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3600",
+            "X-Rate-Limit-Problem": "day"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "IDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "searchTerm": [
+              "Agency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "dailyLimitReached",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "contacts": [],
+          "hasMorePages": false,
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "includesArchived": true,
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "searchTerm": "Agency"
+      },
+      "name": "listContacts-daily-limit",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000003",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4",
+            "X-Rate-Limit-Problem": "minute"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "IDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "searchTerm": [
+              "Agency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "includesArchived": true,
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "searchTerm": "Agency"
+      },
+      "name": "listContacts-minute-retry",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000004",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "IDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "searchTerm": [
+              "Agency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "includesArchived": true,
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "searchTerm": "Agency"
+      },
+      "name": "listContacts-server-retry",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "IDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "searchTerm": [
+              "Agency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "includesArchived": true,
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "searchTerm": "Agency"
+      },
+      "name": "listContacts-transport",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{\"Unexpected\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "IDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "searchTerm": [
+              "Agency"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contacts": [],
+          "hasMorePages": false,
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "includesArchived": true,
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "searchTerm": "Agency"
+      },
+      "name": "listContacts-invalid-response",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000107",
+      "exchanges": [
+        {
+          "body": "{\"Contacts\":[{\"ContactID\":\"025867f1-d741-4d6b-b1af-9ac774b59ba7\",\"Name\":\"City Agency\",\"ContactStatus\":\"ACTIVE\",\"EmailAddress\":\"accounts@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contact": {
+            "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+            "emailAddress": "accounts@example.com",
+            "name": "City Agency",
+            "status": "ACTIVE",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": "accounts@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-success",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000108",
+      "exchanges": [
+        {
+          "body": "{\"Type\":\"ValidationException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "emailAddress": "accounts@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-provider-rejected",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000109",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3600",
+            "X-Rate-Limit-Problem": "day"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "dailyLimitReached",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "emailAddress": "accounts@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-daily-limit",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000110",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4",
+            "X-Rate-Limit-Problem": "minute"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-minute-retry",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000111",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-server-retry",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000112",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-transport",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000113",
+      "exchanges": [
+        {
+          "body": "{\"Unexpected\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "accounts@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-invalid-response",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000114",
+      "exchanges": [
+        {
+          "body": "{\"Contacts\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "accounts@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-not-found",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000115",
+      "exchanges": [
+        {
+          "body": "{\"Contacts\":[{\"ContactID\":\"025867f1-d741-4d6b-b1af-9ac774b59ba7\",\"EmailAddress\":\"accounts@example.com\",\"ContactStatus\":\"ACTIVE\"},{\"ContactID\":\"086bc733-40d6-499f-80e3-90570255fa9b\",\"EmailAddress\":\"accounts@example.com\",\"ContactStatus\":\"ACTIVE\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Contacts",
+          "query": {
+            "includeArchived": [
+              "true"
+            ],
+            "page": [
+              "1"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "where": [
+              "EmailAddress==\"accounts@example.com\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "ambiguous",
+        "failureKind": "CONFLICT",
+        "output": {
+          "emailAddress": "accounts@example.com",
+          "matches": [
+            {
+              "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+              "emailAddress": "accounts@example.com",
+              "name": "",
+              "status": "ACTIVE",
+              "updatedAt": "0001-01-01T00:00:00Z"
+            },
+            {
+              "contactId": "086bc733-40d6-499f-80e3-90570255fa9b",
+              "emailAddress": "accounts@example.com",
+              "name": "",
+              "status": "ACTIVE",
+              "updatedAt": "0001-01-01T00:00:00Z"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "accounts@example.com",
+        "includesArchived": true
+      },
+      "name": "findContactByEmail-ambiguous",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000216",
+      "exchanges": [
+        {
+          "body": "{\"Invoices\":[{\"InvoiceID\":\"243216c5-369e-4056-ac67-05388f86dc81\",\"Type\":\"ACCREC\",\"Status\":\"AUTHORISED\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contact": {
+            "contactId": ""
+          },
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "status": "AUTHORISED",
+          "type": "ACCREC",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-success",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000217",
+      "exchanges": [
+        {
+          "body": "{\"Type\":\"ValidationException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "contact": {
+            "contactId": ""
+          },
+          "invoiceId": "",
+          "status": "",
+          "type": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-provider-rejected",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000218",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3600",
+            "X-Rate-Limit-Problem": "day"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "dailyLimitReached",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "contact": {
+            "contactId": ""
+          },
+          "invoiceId": "",
+          "status": "",
+          "type": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-daily-limit",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000219",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4",
+            "X-Rate-Limit-Problem": "minute"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-minute-retry",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000220",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-server-retry",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000221",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-transport",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000222",
+      "exchanges": [
+        {
+          "body": "{\"Unexpected\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contact": {
+            "contactId": ""
+          },
+          "invoiceId": "",
+          "status": "",
+          "type": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-invalid-response",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000223",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/243216c5-369e-4056-ac67-05388f86dc81",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contact": {
+            "contactId": ""
+          },
+          "invoiceId": "",
+          "status": "",
+          "type": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+      },
+      "name": "getInvoice-not-found",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000324",
+      "exchanges": [
+        {
+          "body": "{\"Invoices\":[{\"InvoiceID\":\"243216c5-369e-4056-ac67-05388f86dc81\",\"Type\":\"ACCREC\",\"Status\":\"AUTHORISED\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices",
+          "query": {
+            "ContactIDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "InvoiceNumbers": [
+              "INV-0042"
+            ],
+            "Statuses": [
+              "AUTHORISED"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "unitdp": [
+              "4"
+            ],
+            "where": [
+              "Type==\"ACCREC\" AND Reference==\"ORDER-1042\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [
+            {
+              "contact": {
+                "contactId": ""
+              },
+              "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+              "status": "AUTHORISED",
+              "type": "ACCREC",
+              "updatedAt": "0001-01-01T00:00:00Z"
+            }
+          ],
+          "page": 2,
+          "pageSize": 10
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "invoiceNumbers": [
+          "INV-0042"
+        ],
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "reference": "ORDER-1042",
+        "statuses": [
+          "AUTHORISED"
+        ],
+        "type": "ACCREC"
+      },
+      "name": "listInvoices-success",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000325",
+      "exchanges": [
+        {
+          "body": "{\"Type\":\"ValidationException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices",
+          "query": {
+            "ContactIDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "InvoiceNumbers": [
+              "INV-0042"
+            ],
+            "Statuses": [
+              "AUTHORISED"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "unitdp": [
+              "4"
+            ],
+            "where": [
+              "Type==\"ACCREC\" AND Reference==\"ORDER-1042\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [],
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "invoiceNumbers": [
+          "INV-0042"
+        ],
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "reference": "ORDER-1042",
+        "statuses": [
+          "AUTHORISED"
+        ],
+        "type": "ACCREC"
+      },
+      "name": "listInvoices-provider-rejected",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000326",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3600",
+            "X-Rate-Limit-Problem": "day"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices",
+          "query": {
+            "ContactIDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "InvoiceNumbers": [
+              "INV-0042"
+            ],
+            "Statuses": [
+              "AUTHORISED"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "unitdp": [
+              "4"
+            ],
+            "where": [
+              "Type==\"ACCREC\" AND Reference==\"ORDER-1042\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "dailyLimitReached",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [],
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "invoiceNumbers": [
+          "INV-0042"
+        ],
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "reference": "ORDER-1042",
+        "statuses": [
+          "AUTHORISED"
+        ],
+        "type": "ACCREC"
+      },
+      "name": "listInvoices-daily-limit",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000327",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4",
+            "X-Rate-Limit-Problem": "minute"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices",
+          "query": {
+            "ContactIDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "InvoiceNumbers": [
+              "INV-0042"
+            ],
+            "Statuses": [
+              "AUTHORISED"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "unitdp": [
+              "4"
+            ],
+            "where": [
+              "Type==\"ACCREC\" AND Reference==\"ORDER-1042\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "invoiceNumbers": [
+          "INV-0042"
+        ],
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "reference": "ORDER-1042",
+        "statuses": [
+          "AUTHORISED"
+        ],
+        "type": "ACCREC"
+      },
+      "name": "listInvoices-minute-retry",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000328",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices",
+          "query": {
+            "ContactIDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "InvoiceNumbers": [
+              "INV-0042"
+            ],
+            "Statuses": [
+              "AUTHORISED"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "unitdp": [
+              "4"
+            ],
+            "where": [
+              "Type==\"ACCREC\" AND Reference==\"ORDER-1042\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "invoiceNumbers": [
+          "INV-0042"
+        ],
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "reference": "ORDER-1042",
+        "statuses": [
+          "AUTHORISED"
+        ],
+        "type": "ACCREC"
+      },
+      "name": "listInvoices-server-retry",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000329",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices",
+          "query": {
+            "ContactIDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "InvoiceNumbers": [
+              "INV-0042"
+            ],
+            "Statuses": [
+              "AUTHORISED"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "unitdp": [
+              "4"
+            ],
+            "where": [
+              "Type==\"ACCREC\" AND Reference==\"ORDER-1042\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "invoiceNumbers": [
+          "INV-0042"
+        ],
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "reference": "ORDER-1042",
+        "statuses": [
+          "AUTHORISED"
+        ],
+        "type": "ACCREC"
+      },
+      "name": "listInvoices-transport",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000000330",
+      "exchanges": [
+        {
+          "body": "{\"Unexpected\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices",
+          "query": {
+            "ContactIDs": [
+              "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            ],
+            "InvoiceNumbers": [
+              "INV-0042"
+            ],
+            "Statuses": [
+              "AUTHORISED"
+            ],
+            "page": [
+              "2"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "unitdp": [
+              "4"
+            ],
+            "where": [
+              "Type==\"ACCREC\" AND Reference==\"ORDER-1042\""
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "If-Modified-Since": [
+              "2026-10-01T09:00:00"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [],
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactIds": [
+          "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+        ],
+        "invoiceNumbers": [
+          "INV-0042"
+        ],
+        "modifiedSince": "2026-10-01T09:00:00Z",
+        "page": 2,
+        "pageSize": 10,
+        "reference": "ORDER-1042",
+        "statuses": [
+          "AUTHORISED"
+        ],
+        "type": "ACCREC"
+      },
+      "name": "listInvoices-invalid-response",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{\"Invoices\":[{\"InvoiceID\":\"243216c5-369e-4056-ac67-05388f86dc81\",\"Type\":\"ACCREC\",\"Status\":\"AUTHORISED\"}]}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+            "status": "AUTHORISED",
+            "type": "ACCREC",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "reference": "ORDER-1042"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-success",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{\"Type\":\"ValidationException\"}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "",
+            "status": "",
+            "type": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "reference": "ORDER-1042"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-provider-rejected",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {
+            "Retry-After": "3600",
+            "X-Rate-Limit-Problem": "day"
+          },
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "dailyLimitReached",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "",
+            "status": "",
+            "type": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "reference": "ORDER-1042"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-daily-limit",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {
+            "Retry-After": "4",
+            "X-Rate-Limit-Problem": "minute"
+          },
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-minute-retry",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-server-retry",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-transport",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{\"Unexpected\":[]}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "",
+            "status": "",
+            "type": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "reference": "ORDER-1042"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-invalid-response",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "",
+            "status": "",
+            "type": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "reference": "ORDER-1042"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-uncertain-server",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [
+        {
+          "body": "{\"Invoices\":[{\"InvoiceID\":\"243216c5-369e-4056-ac67-05388f86dc81\",\"Type\":\"ACCREC\",\"Status\":\"AUTHORISED\",\"ValidationErrors\":[{\"Message\":\"invalid\"}]}]}",
+          "derivedKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Invoices",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestBody": {
+            "BrandingThemeID": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+            "Contact": {
+              "ContactID": "025867f1-d741-4d6b-b1af-9ac774b59ba7"
+            },
+            "CurrencyCode": "USD",
+            "Date": "2026-10-01",
+            "DueDate": "2026-10-15",
+            "InvoiceNumber": "INV-0042",
+            "LineAmountTypes": "Exclusive",
+            "LineItems": [
+              {
+                "AccountCode": "200",
+                "Description": "Bouquet",
+                "DiscountRate": 12.5,
+                "ItemCode": "FLOWER",
+                "Quantity": 2,
+                "TaxType": "OUTPUT",
+                "UnitAmount": 49.95
+              }
+            ],
+            "Reference": "ORDER-1042",
+            "Status": "AUTHORISED",
+            "Type": "ACCREC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "",
+            "status": "",
+            "type": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          },
+          "reference": "ORDER-1042"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "brandingThemeId": "5aec467c-6f1d-48ac-931e-ee62e60a632e",
+        "contactId": "025867f1-d741-4d6b-b1af-9ac774b59ba7",
+        "currencyCode": "USD",
+        "date": "2026-10-01",
+        "dueDate": "2026-10-15",
+        "invoiceNumber": "INV-0042",
+        "lineAmountTypes": "Exclusive",
+        "lineItems": [
+          {
+            "accountCode": "200",
+            "description": "Bouquet",
+            "discountRate": "12.5",
+            "itemCode": "FLOWER",
+            "quantity": "2",
+            "taxType": "OUTPUT",
+            "unitAmount": "49.9500"
+          }
+        ],
+        "reference": "ORDER-1042",
+        "status": "AUTHORISED",
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-element-rejected",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{\"Payments\":[{\"PaymentID\":\"b26fd49a-cbae-470a-a8f8-bcbc119e0379\",\"Amount\":\"49.95\",\"Invoice\":{\"InvoiceID\":\"243216c5-369e-4056-ac67-05388f86dc81\"}}]}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "recorded",
+        "failureKind": "",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "49.95",
+            "invoice": {
+              "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "paymentId": "b26fd49a-cbae-470a-a8f8-bcbc119e0379",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-success",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{\"Type\":\"ValidationException\"}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-provider-rejected",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {
+            "Retry-After": "3600",
+            "X-Rate-Limit-Problem": "day"
+          },
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "dailyLimitReached",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-daily-limit",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {
+            "Retry-After": "4",
+            "X-Rate-Limit-Problem": "minute"
+          },
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-minute-retry",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-server-retry",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-transport",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{\"Unexpected\":[]}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-invalid-response",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-uncertain-server",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{\"Payments\":[{\"PaymentID\":\"b26fd49a-cbae-470a-a8f8-bcbc119e0379\",\"Amount\":\"49.95\",\"Invoice\":{\"InvoiceID\":\"243216c5-369e-4056-ac67-05388f86dc81\"},\"ValidationErrors\":[{\"Message\":\"invalid\"}]}]}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "AccountID": "086bc733-40d6-499f-80e3-90570255fa9b"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountId": "086bc733-40d6-499f-80e3-90570255fa9b",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-element-rejected",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000009999",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Invoices/INV/0042? A",
+          "query": {
+            "unitdp": [
+              "4"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contact": {
+            "contactId": ""
+          },
+          "invoiceId": "",
+          "status": "",
+          "type": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "invoiceNumber": "INV/0042? A"
+      },
+      "name": "getInvoice-number-path",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [
+        {
+          "body": "{}",
+          "derivedKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+          "headers": {},
+          "keyMode": "derived",
+          "method": "PUT",
+          "path": "/Payments",
+          "requestBody": {
+            "Account": {
+              "Code": "090"
+            },
+            "Amount": 49.95,
+            "BankAmount": 50,
+            "Date": "2026-10-01",
+            "Invoice": {
+              "InvoiceID": "243216c5-369e-4056-ac67-05388f86dc81"
+            },
+            "IsReconciled": true,
+            "Reference": "PAY-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer xero-test-access-token-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "accountCode": "090",
+        "accountId": "",
+        "amount": "49.95",
+        "bankAmount": "50.00",
+        "date": "2026-10-01",
+        "invoiceId": "243216c5-369e-4056-ac67-05388f86dc81",
+        "isReconciled": true,
+        "reference": "PAY-1"
+      },
+      "name": "recordPayment-account-code",
+      "operation": "recordPayment"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000009000",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contacts": [],
+          "hasMorePages": false,
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000009001",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "invalid"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "invalid"
+      },
+      "name": "findContactByEmail-defect",
+      "operation": "findContactByEmail"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000009002",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contact": {
+            "contactId": ""
+          },
+          "invoiceId": "",
+          "status": "",
+          "type": "",
+          "updatedAt": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getInvoice-defect",
+      "operation": "getInvoice"
+    },
+    {
+      "callId": "c0ffee00-0000-4000-8000-000000009003",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMorePages": false,
+          "invoices": [],
+          "page": 0,
+          "pageSize": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1
+      },
+      "name": "listInvoices-defect",
+      "operation": "listInvoices"
+    },
+    {
+      "callId": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoice": {
+            "contact": {
+              "contactId": ""
+            },
+            "invoiceId": "",
+            "status": "",
+            "type": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "801feb97-5ad4-5063-b93c-9a25f054e79b",
+      "input": {
+        "type": "ACCREC"
+      },
+      "name": "createInvoice-defect",
+      "operation": "createInvoice"
+    },
+    {
+      "callId": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invoiceId": "invalid",
+          "payment": {
+            "account": {},
+            "amount": "",
+            "invoice": {
+              "invoiceId": ""
+            },
+            "paymentId": "",
+            "status": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c40bcd5f-4e9b-5488-a976-34dbcb23f9de",
+      "input": {
+        "invoiceId": "invalid"
+      },
+      "name": "recordPayment-defect",
+      "operation": "recordPayment"
+    }
+  ],
+  "schemaVersion": 1
+}
