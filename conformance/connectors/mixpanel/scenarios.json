@@ -1,0 +1,1157 @@
+{
+  "connector": "mixpanel",
+  "scenarios": [
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "{\"code\":200,\"num_records_imported\":1,\"status\":\"OK\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "imported",
+        "failureKind": "",
+        "output": {
+          "imported": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-success",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "imported": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-unauthorized",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "imported": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-forbidden",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "imported": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-provider-rejected",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "imported": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-invalid-response",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-rate-limited",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-server-unavailable",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-transport-before-send",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/import",
+          "query": {
+            "project_id": [
+              "12345"
+            ],
+            "strict": [
+              "1"
+            ]
+          },
+          "requestBody": [
+            {
+              "event": "Signed Up",
+              "properties": {
+                "$insert_id": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+                "distinct_id": "member-1",
+                "ip": 0,
+                "source": "landing",
+                "time": 1793232000
+              }
+            }
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-transport-after-send",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "b97abf85-49b4-550d-99ba-ad88769f0b7e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "imported": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bf368e3d-bc8a-306a-4d7c-d5f35cd3b8f3",
+      "input": {
+        "distinctID": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "ip": "1"
+        },
+        "time": 1793232000
+      },
+      "name": "trackEvent-reserved-property",
+      "operation": "trackEvent"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"event\":\"Signed Up\",\"properties\":{\"time\":1793232000,\"distinct_id\":\"member-1\",\"$insert_id\":\"stable-id\",\"password\":\"SENTINEL\"}}\n",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "exported",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "distinctID": "member-1",
+              "event": "Signed Up",
+              "insertID": "stable-id",
+              "time": 1793232000
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-success",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-unauthorized",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-forbidden",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-provider-rejected",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-invalid-response",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-rate-limited",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-server-unavailable",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-transport-before-send",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "10"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-transport-after-send",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "events": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-02-30",
+        "limit": 10,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-invalid-date",
+      "operation": "exportEvents"
+    },
+    {
+      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "exchanges": [
+        {
+          "body": "{\"event\":\"Signed Up\",\"properties\":{\"time\":1793232000,\"distinct_id\":\"member-1\",\"$insert_id\":\"stable-id\",\"password\":\"SENTINEL\"}}\n{\"event\":\"Signed Up\",\"properties\":{\"time\":1793232000,\"distinct_id\":\"member-1\",\"$insert_id\":\"stable-id\",\"password\":\"SENTINEL\"}}\n",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2.0/export",
+          "query": {
+            "from_date": [
+              "2026-10-28"
+            ],
+            "limit": [
+              "1"
+            ],
+            "project_id": [
+              "12345"
+            ],
+            "to_date": [
+              "2026-10-28"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "text/plain"
+            ],
+            "Authorization": [
+              "Basic c2VydmljZS11c2VyOnNlcnZpY2Utc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fromDate": "2026-10-28",
+        "limit": 1,
+        "toDate": "2026-10-28"
+      },
+      "name": "exportEvents-too-many-events",
+      "operation": "exportEvents"
+    }
+  ],
+  "schemaVersion": 1
+}

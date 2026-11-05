@@ -312,3 +312,7 @@ one Idempotency-Key; whether a 5xx response is cached under a key; the
 `X-Idempotency-Lookup` header casing; safe-update comparison precision; audit
 metadata storage for API-token requests; rate-limit headers; and the Admin
 Center paths in the setup guidance.
+
+## TypeScript package
+
+`@superdurable/connector-zendesk-support@0.1.0` implements all four ticket operations with generated operation-specific Step factories. See the runnable [TypeScript customer-issue Flow](typescript/examples/customer-issue/flow.ts) and its [setup instructions](typescript/examples/customer-issue/README.md). The TypeScript conformance suite replays Go-recorded provider requests and outcomes; the example's integration check runs through a real Dex Worker and Client. Live Zendesk authorization and API behavior are unverified.

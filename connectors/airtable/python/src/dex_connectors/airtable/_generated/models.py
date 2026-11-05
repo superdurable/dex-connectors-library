@@ -17,7 +17,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
 # FieldEqualityFilter matches records whose field equals one typed value.
 # Exactly one of Text, Number, and Checkbox is set; prefer the constructors
 # TextFieldEquals, NumberFieldEquals, and CheckboxFieldEquals.
-# 
+#
 # The connector writes the filter as an Airtable formula such as
 # {Policy Key} = "refund-standard", so it follows Airtable's formula
 # comparison rules. A linked record, lookup, or multiple select field compares
@@ -56,7 +56,7 @@ setattr(RecordSort, '__module__', 'dex_connectors.airtable.models')
 
 
 # ListRecordsInput selects one page of a table's records.
-# 
+#
 # Filters and Formula combine with AND into Airtable's filterByFormula: typed
 # equality filters are escaped by the connector, and Formula is passed through
 # as written, so it should come from application code rather than end users.
@@ -148,7 +148,7 @@ setattr(RecordUpsert, '__module__', 'dex_connectors.airtable.models')
 
 
 # UpsertRecordsInput creates or updates up to 10 records in one table.
-# 
+#
 # Airtable matches each record to an existing record whose merge fields equal
 # the record's values for them: no match creates a record, one match updates
 # it, leaving fields the write does not name unchanged, and several matches
@@ -227,7 +227,7 @@ setattr(RecordUpdate, '__module__', 'dex_connectors.airtable.models')
 
 
 # UpdateRecordsInput updates up to 10 records in one table by record ID.
-# 
+#
 # Each value replaces the field's whole value, including every link of a
 # linked record field, so repeating the same update leaves the records
 # unchanged.
