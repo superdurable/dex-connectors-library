@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -108,6 +110,10 @@ class PlaylistTrack:
     track_number: int = _dataclass_field(default=0, metadata={'dex_json_name': 'trackNumber'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.added_at, str):
+            object.__setattr__(self, 'added_at', parse_go_datetime(self.added_at, 'added_at'))
+        elif self.added_at is not None:
+            validate_go_datetime(self.added_at, 'added_at')
         object.__setattr__(self, 'artists', _replace_nil_slices(self.artists, 1))
 
 
