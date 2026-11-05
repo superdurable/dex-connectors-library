@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: hubspot
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-hubspot
+      operations: [searchObjects, getObject, upsertObject, updateObject]
+      triggers: []
   codegen:
     go:
       package: hubspot
@@ -95,6 +101,8 @@ spec:
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+            requiredScopes: [crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.companies.read, crm.objects.companies.write, crm.objects.deals.read, crm.objects.deals.write, crm.objects.owners.read]
+            scopeSeparators: whitespaceAndComma
   studio:
     setup:
       entrypoint: index.html

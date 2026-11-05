@@ -1,0 +1,2120 @@
+{
+  "connector": "hubspot",
+  "scenarios": [
+    {
+      "callId": "584f1d5b-a812-54f2-a819-919030978614",
+      "exchanges": [
+        {
+          "body": "{\"total\": 1, \"results\": [{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\"}], \"paging\": {\"next\": {\"after\": \"3\"}}}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "nextAfter": "3",
+          "objectType": "contacts",
+          "objects": [
+            {
+              "archived": false,
+              "createdAt": "2026-01-17T19:55:04.281Z",
+              "id": "501",
+              "objectType": "contacts",
+              "properties": {
+                "email": "ada@example.com",
+                "firstname": "Ada"
+              },
+              "updatedAt": "2026-09-11T13:27:39.356Z",
+              "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
+            }
+          ],
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-success",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "8909f4d5-fdc1-52a4-9e3e-0bafd5c15049",
+      "exchanges": [
+        {
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectType": "",
+          "objects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-provider-rejected",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "1d70a578-4191-5592-9586-9459231526fa",
+      "exchanges": [
+        {
+          "body": "{broken",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objectType": "",
+          "objects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-invalid-response",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "ba53d988-76c8-5813-8c63-0cfeb9ea3362",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectType": "",
+          "objects": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "tickets",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-defect",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "824fe990-f49c-57d7-a37c-f60e4f6530b7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-rate-limit",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "caee7e74-cb59-5416-859c-30a8c8e61ad3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-server-failure",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "4de4b6fb-fbfa-5326-9600-baaf11a89cd2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-transport-before-send",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "cbc9041f-dc9b-596c-9ceb-d5eb3a3da778",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\"}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "archived": false,
+          "createdAt": "2026-01-17T19:55:04.281Z",
+          "id": "501",
+          "objectType": "contacts",
+          "properties": {
+            "email": "ada@example.com",
+            "firstname": "Ada"
+          },
+          "updatedAt": "2026-09-11T13:27:39.356Z",
+          "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-success",
+      "operation": "getObject"
+    },
+    {
+      "callId": "5faefd71-77e6-51b9-aa37-f213e996699c",
+      "exchanges": [
+        {
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-provider-rejected",
+      "operation": "getObject"
+    },
+    {
+      "callId": "8489350d-c502-54b0-9c14-902e9f1d3a46",
+      "exchanges": [
+        {
+          "body": "{broken",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-invalid-response",
+      "operation": "getObject"
+    },
+    {
+      "callId": "f0dd22cc-d2bc-5081-9e54-669f5c8a9424",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "tickets",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-defect",
+      "operation": "getObject"
+    },
+    {
+      "callId": "cb2731f7-d999-5aa1-bf2c-6e1c976d360b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-rate-limit",
+      "operation": "getObject"
+    },
+    {
+      "callId": "4bfc1fc7-1932-5273-aa0e-d831d699be65",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-server-failure",
+      "operation": "getObject"
+    },
+    {
+      "callId": "8b568ee4-ec1f-51e1-8111-ef891ed761ca",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-transport-before-send",
+      "operation": "getObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{\"results\": [{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\", \"new\": true}]}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "created": true,
+          "object": {
+            "archived": false,
+            "createdAt": "2026-01-17T19:55:04.281Z",
+            "id": "501",
+            "objectType": "contacts",
+            "properties": {
+              "email": "ada@example.com",
+              "firstname": "Ada"
+            },
+            "updatedAt": "2026-09-11T13:27:39.356Z",
+            "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-success",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "created": false,
+          "object": {
+            "archived": false,
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-provider-rejected",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{broken",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": false,
+          "object": {
+            "archived": false,
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-invalid-response",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": false,
+          "object": {
+            "archived": false,
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "tickets",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-defect",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-rate-limit",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-server-failure",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-transport-before-send",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\"}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "archived": false,
+          "createdAt": "2026-01-17T19:55:04.281Z",
+          "id": "501",
+          "objectType": "contacts",
+          "properties": {
+            "email": "ada@example.com",
+            "firstname": "Ada"
+          },
+          "updatedAt": "2026-09-11T13:27:39.356Z",
+          "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-success",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-provider-rejected",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{broken",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-invalid-response",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "tickets",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-defect",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-rate-limit",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-server-failure",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-transport-before-send",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "5abec72a-eef4-5746-a10e-3d4a3bf5dfe0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-not-found",
+      "operation": "getObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-not-found",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-conflict",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "created": false,
+          "object": {
+            "archived": false,
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-conflict",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{\"errors\": [{\"status\": \"400\", \"category\": \"VALIDATION_ERROR\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": false,
+          "object": {
+            "archived": false,
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-batch-rejected",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"results\": [{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\", \"new\": true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "created": true,
+          "object": {
+            "archived": false,
+            "createdAt": "2026-01-17T19:55:04.281Z",
+            "id": "501",
+            "objectType": "contacts",
+            "properties": {
+              "email": "ada@example.com",
+              "firstname": "Ada"
+            },
+            "updatedAt": "2026-09-11T13:27:39.356Z",
+            "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-conflict-then-success",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "06719d48-8d2b-56c8-a395-2446f10efac4",
+      "exchanges": [
+        {
+          "body": "{\"total\":0,\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals/search",
+          "requestBody": {
+            "limit": 10
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "objectType": "deals",
+          "objects": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "deals"
+      },
+      "name": "searchObjects-empty-page",
+      "operation": "searchObjects"
+    }
+  ],
+  "schemaVersion": 1
+}
