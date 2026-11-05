@@ -109,6 +109,7 @@ spec:
             - {credential: primary_email, endpoint: https://openidconnect.googleapis.com/v1/userinfo, source: email, verifiedBy: email_verified}
           pkce: true
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             scopeSeparators: whitespace
             requiredScopes: [https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/gmail.send]
@@ -148,6 +149,7 @@ spec:
             - Enter one managed Workspace mailbox as delegated_user; personal @gmail.com accounts and Workspace users without administrator-approved delegation cannot use this method.
         serviceAccount:
           jwtBearer:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             keyCredential: service_account_key
             privateKey: {fromKey: private_key}

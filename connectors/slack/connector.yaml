@@ -99,6 +99,7 @@ spec:
       pkce: false
       tokenEndpointAuthMethod: client_secret_basic
       refresh:
+        missingExpiry: reject
         scopeSeparators: whitespaceAndComma
         terminalErrorCodes: [invalid_refresh_token, bad_client_secret, invalid_client_id, invalid_auth, token_revoked, account_inactive, access_denied]
         grants:
