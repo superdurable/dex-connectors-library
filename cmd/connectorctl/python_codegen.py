@@ -37,6 +37,8 @@ operations = [
     operations_by_name[name] for name in spec["languages"]["python"]["operations"]
 ]
 connector_id = metadata["name"]
+connection_provider = "PROVIDER" if spec["provider"] != connector_id else "CONNECTOR_ID"
+connection_definitions = "CONNECTOR_ID, PROVIDER" if connection_provider == "PROVIDER" else "CONNECTOR_ID"
 package_name = payload["packageName"]
 mock_package_name = payload["mockPackageName"]
 model_aliases = payload.get("modelAliases") or {}
@@ -498,7 +500,12 @@ def render_config():
         for field_info in credential_fields:
             field_type = {"secretString": "SecretString", "integer": "int", "duration": "int", "boolean": "bool", "stringList": "list[str]", "stringMap": "dict[str, str]"}.get(field_info["type"], "str")
             if auth_methods:
-                lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
+                if not field_info["required"] and field_info["type"] == "secretString":
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} = SecretString('')")
+                elif not field_info["required"] and field_info["type"] in ("string", "enum", "url"):
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} = ''")
+                else:
+                    lines.append(f"    {snake(field_info['name'])}: {field_type} | None = None")
             else:
                 lines.append(f"    {snake(field_info['name'])}: {field_type}")
         lines += [
@@ -679,7 +686,7 @@ def render_connection():
         "",
         "from ..client import Client, Config"
         + (", Credentials" if auth_fields() else ""),
-        "from .definitions import CONNECTOR_ID, " + ", ".join(definition_names),
+        "from .definitions import " + connection_definitions + ", " + ", ".join(definition_names),
         *(["from .refresh import AUTHORIZATION, CREDENTIAL_FIELDS"] if has_refresh else []),
         "from ..models import " + ", ".join(model_names),
         "",
@@ -715,7 +722,7 @@ def render_connection():
         "    ) -> None:",
         "        reference.validate()",
     ]
-    checks = ["reference.provider != CONNECTOR_ID"] + [
+    checks = [f"reference.provider != {connection_provider}"] + [
         name + " is None" for name in order
     ]
     lines.append("        if " + " or ".join(checks) + ":")
@@ -865,6 +872,13 @@ def render_connection():
                         f"[item or '' for item in {name}]" if field_info["type"] == "stringList" else
                         f"{{key: item or '' for key, item in {name}.items()}}" if field_info["type"] == "stringMap" else name
                     )
+                    if not field_info["required"] and field_info["type"] == "secretString":
+                        expression = f"SecretString({name} or '')"
+                        lines.append(f"            values[{quoted(name)}] = {expression}")
+                        continue
+                    if not field_info["required"] and field_info["type"] in ("string", "enum", "url"):
+                        lines.append(f"            values[{quoted(name)}] = {name} or ''")
+                        continue
                     lines.append(f"            if {name}:")
                     lines.append(f"                values[{quoted(name)}] = {expression}")
             lines += [
@@ -932,7 +946,10 @@ def render_connection():
                     lines.append(("    if" if index == 0 else "    elif") + f" method == {quoted(method['id'])}:")
                     for field_info in method["fields"]:
                         name = snake(field_info["name"])
-                        expression = f"credentials.{name}.reveal()" if field_info["type"] == "secretString" else f"credentials.{name}"
+                        expression = (
+                            f"(credentials.{name}.reveal() if credentials.{name} is not None else '')"
+                            if field_info["type"] == "secretString" else f"credentials.{name}"
+                        )
                         lines += [f"        if {expression}:", f"            material[{quoted(field_info['name'])}] = {expression}"]
                 lines += [
                     "    else:",
@@ -972,7 +989,7 @@ def render_connection():
         ") -> Connection:",
         "    if project is None:",
         f"        raise ValueError({quoted(connection_label + ' connection requires loaded project configuration')})",
-        "    reference = ConnectionRef(CONNECTOR_ID, connection_name)",
+        f"    reference = ConnectionRef({connection_provider}, connection_name)",
         "    reference.validate()",
     ]
     if credential_fields:
@@ -985,7 +1002,7 @@ def render_connection():
         "    ]",
         "    if len(matching) != 1:",
         f"        raise ValueError({quoted(connection_label + ' project connection is missing or duplicated')})",
-        "    if matching[0].provider != CONNECTOR_ID:",
+        f"    if matching[0].provider != {connection_provider}:",
         f"        raise ValueError({quoted(connection_label + ' project connection provider differs')})",
         "    config = _decode_config(matching[0].configuration)",
     ]
@@ -1209,7 +1226,7 @@ def render_mock():
         "",
         "from ..connection import Connection, new_connection_with_operations",
         "from ..models import " + ", ".join(model_names),
-        "from .definitions import CONNECTOR_ID, "
+        "from .definitions import " + connection_definitions + ", "
         + ", ".join(
             sorted(
                 {
@@ -1364,7 +1381,7 @@ def render_mock():
         operation_name = snake(operation["name"])
         lines.append(f"            {operation_name}=self.{operation_name}_script,")
     lines += [
-        "            reference=ConnectionRef(CONNECTOR_ID, connection_name),",
+        f"            reference=ConnectionRef({connection_provider}, connection_name),",
         "        )",
         "",
         "    def connection(self) -> Connection:",

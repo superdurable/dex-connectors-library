@@ -84,6 +84,8 @@ spec:
       pkce: false
       tokenRequestEncoding: json
       refresh:
+        missingExpiry: reject
+        storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma
         acceptsMissingTokenType: true
         requiredScopes: [search:confluence, read:page:confluence, write:page:confluence, read:space:confluence, read:comment:confluence, write:comment:confluence]

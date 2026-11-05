@@ -82,8 +82,8 @@ export function decodeCredentials(value: unknown): Credentials {
     if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
     if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
-    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["primary_email"]) credentials.primaryEmail = fields["primary_email"] as string;
+    credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
+    credentials.primaryEmail = (fields["primary_email"] ?? '') as string;
   } else {
     throw new TypeError('credential auth_method is invalid');
   }
@@ -121,8 +121,8 @@ export function decodeSharedCredentials(value: unknown): Credentials {
     if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
-    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["primary_email"]) credentials.primaryEmail = fields["primary_email"] as string;
+    credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
+    credentials.primaryEmail = (fields["primary_email"] ?? '') as string;
   } else {
     throw new TypeError('credential auth_method is invalid');
   }

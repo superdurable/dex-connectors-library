@@ -89,6 +89,7 @@ spec:
           pkce: true
           tokenRequestEncoding: json
           refresh:
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, invalid_token]
             missingExpiry: keep
   operations:
