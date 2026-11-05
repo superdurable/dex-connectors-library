@@ -70,11 +70,11 @@ class ScriptedOpenAI:
 @pytest.mark.asyncio
 async def test_summarize_text_real_dex_worker(tmp_path: Path) -> None:
     """Exercise streamed completion, a fenced 503 resend, and an unresent uncertain 500."""
-    server_address = os.environ.get("DEX_FLOW_SERVICE_ADDRESS", "localhost:8801")
+    server_address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
     provider = ScriptedOpenAI()
     reference = ConnectionRef(CONNECTOR_ID, CONNECTION_NAME)
     openai_client = Client(
-        Config(endpoint="http://127.0.0.1:9/v1"),
+        Config(endpoint="http://127.0.0.1:34788/v1"),
         StaticCredentialProvider({reference: Credentials(SecretString("sk-integration"))}),
         httpx.AsyncClient(transport=httpx.MockTransport(provider.handle)),
     )
