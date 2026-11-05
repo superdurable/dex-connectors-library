@@ -1,0 +1,110 @@
+{
+  "connectorId": "snowflake",
+  "releaseTag": "connectors/snowflake/go/v0.23.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-snowflake",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_submit_statement_step",
+      "kind": "mutation",
+      "operationId": "submitStatement",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "submitted",
+          "field": "submitted",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_get_statement_result_step",
+      "kind": "query",
+      "operationId": "getStatementResult",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "running",
+          "field": "running",
+          "optional": true
+        },
+        {
+          "id": "truncated",
+          "field": "truncated",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_cancel_statement_step",
+      "kind": "mutation",
+      "operationId": "cancelStatement",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "canceled",
+          "field": "canceled",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
