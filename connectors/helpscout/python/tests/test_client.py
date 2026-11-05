@@ -10,9 +10,9 @@ import httpx
 import pytest
 
 from dex_connectors.helpscout import Client, Config, Credentials
-from dex_connectors.helpscout.client import _query_escape
 from dex_connectors.helpscout.decode import canonical_timestamp, parse_timestamp
 from dex_connectors.helpscout.operations import _bare_email
+from dex_connectors.helpscout.query_values import encode_query_values
 
 
 class _FailingCredentials:
@@ -65,9 +65,9 @@ def test_go_timestamp_accepts_comma_fraction_and_wide_offset() -> None:
     )
 
 
-def test_go_query_escape_encodes_tilde_and_spaces() -> None:
+def test_go_query_escape_keeps_tilde_and_encodes_spaces() -> None:
     """Use Go QueryEscape for arbitrary tag and email filter characters."""
-    assert _query_escape("x~ *+") == "x%7E+%2A%2B"
+    assert encode_query_values({"key": "x~ *+"}) == "key=x~+%2A%2B"
 
 
 @pytest.mark.parametrize(
@@ -93,3 +93,11 @@ def test_zero_config_uses_manifest_defaults() -> None:
     )
     assert client.config.max_response_bytes == Config().max_response_bytes
     assert client.config.webhook_max_body_bytes == Config().webhook_max_body_bytes
+
+
+def test_provider_numeric_identifiers_require_ascii_digits() -> None:
+    from dex_connectors.helpscout.client import _is_ascii_decimal
+
+    assert _is_ascii_decimal("123")
+    assert not _is_ascii_decimal("١٢٣")
+    assert not _is_ascii_decimal("１２３")

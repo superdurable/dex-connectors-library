@@ -28,7 +28,7 @@ def test_bare_addresses_match_directory_rules(address: str, accepted: bool) -> N
 def test_path_and_query_use_go_escape_sets() -> None:
     """Preserve Go's distinct path and query escaping for reserved characters."""
     assert path_escape("a!b/c~d$&+=:@") == "a%21b%2Fc~d$&+=:@"
-    assert query_string({"z": "a b~*", "a": "x/y"}) == "a=x%2Fy&z=a+b%7E%2A"
+    assert query_string({"z": "a b~*", "a": "x/y"}) == "a=x%2Fy&z=a+b~%2A"
 
 
 @pytest.mark.parametrize("field", ["id", "primaryEmail", "suspended", "aliases"])

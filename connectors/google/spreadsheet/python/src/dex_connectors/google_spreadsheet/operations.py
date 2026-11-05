@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Google Sheets operation invocations and Go-compatible outcome classification."""
 
-import json
 import math
 import re
 from datetime import datetime
@@ -31,6 +30,7 @@ from dex_connectors.sdk.singledispatch import (
 
 from ._generated.definitions import FIND_ROW_DEFINITION, GET_VALUES_DEFINITION, UPSERT_ROW_DEFINITION
 from .client import Client, Credentials, ProviderResponse, RequestError, escape_path, failure
+from .json_values import strict_json_loads
 from .models import (
     FindRowInput,
     FindRowOutput,
@@ -88,9 +88,6 @@ def _convert_cell(value: object) -> str:
     return str(value)
 
 
-def _reject_nonfinite_json(value: str) -> None:
-    raise ValueError(f"non-finite JSON number: {value}")
-
 
 def _decode_values(
     response: ProviderResponse, max_rows: int
@@ -98,7 +95,7 @@ def _decode_values(
     if response.too_large:
         return None, FailureKind.RESPONSE_TOO_LARGE
     try:
-        document = json.loads(response.body, parse_constant=_reject_nonfinite_json)
+        document = strict_json_loads(response.body)
         if not isinstance(document, dict):
             raise ValueError("response must be object")
         value_range = document.get("range", "")
@@ -705,7 +702,7 @@ class UpsertRowOperation:
         updated = _upsert_output("updated", number, input.sheet_name, len(row)).updated_range
         if not response.too_large:
             try:
-                body = json.loads(response.body)
+                body = strict_json_loads(response.body)
                 if (
                     isinstance(body, dict)
                     and isinstance(body.get("updatedRange"), str)
@@ -766,7 +763,7 @@ class UpsertRowOperation:
             )
         if not response.too_large:
             try:
-                body = json.loads(response.body)
+                body = strict_json_loads(response.body)
                 updates = body.get("updates") if isinstance(body, dict) else None
                 updated = updates.get("updatedRange") if isinstance(updates, dict) else None
                 if isinstance(updated, str) and updated and _first_row(updated):

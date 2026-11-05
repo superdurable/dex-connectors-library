@@ -32,6 +32,7 @@ from .client import (
     status_kind,
 )
 from .document import validate_write_text
+from .json_values import strict_json_loads
 from .models import CreatedDocument, CreateDocumentInput, CreateDocumentOutput
 from .operations import _read_result
 
@@ -89,7 +90,7 @@ def _created(resource: Any) -> CreatedDocument:
 
 
 def _lookup_result(body: bytes) -> tuple[CreatedDocument | None, bool]:
-    value: Any = json.loads(body)
+    value: Any = strict_json_loads(body)
     if (
         not isinstance(value, dict)
         or not isinstance(value.get("files", []), list)
@@ -276,7 +277,7 @@ async def create_document(
             return MutationAttempt.retry(problem, delay)
         if branch == "success":
             try:
-                document = _created(json.loads(direct.body))
+                document = _created(strict_json_loads(direct.body))
                 if document.document_id == provider_id:
                     return MutationAttempt.branch_result(
                         "created",
@@ -379,7 +380,7 @@ async def _after_create(
     tokens = google_error_tokens(response.body)
     if 200 <= response.status < 300 and not response.error:
         try:
-            document = _created(json.loads(response.body))
+            document = _created(strict_json_loads(response.body))
             try:
                 await fence.record_provider_id(document.document_id)
             except Exception:
@@ -464,6 +465,11 @@ async def _after_create(
                 FailureKind.AUTHENTICATION,
                 "provider rejected the create credential; refreshed for the next attempt",
             )
+        )
+    if 200 <= response.status < 300 and response.error:
+        return await _reconcile(
+            client, call, fence, credential, key, response, FailureKind.PROTOCOL,
+            "provider returned an unusable accepted create response",
         )
     if response.error == "beforeSend":
         try:

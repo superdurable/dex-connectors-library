@@ -2,12 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Bounded Google Docs and Drive HTTP client."""
 
-import json
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
@@ -24,6 +23,8 @@ from dex_connectors.sdk.providerhttp import (
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
+from .json_values import strict_json_loads
+from .query_values import encode_query_values
 
 if TYPE_CHECKING:
     from .operations import (
@@ -217,13 +218,13 @@ def _request_id(headers: httpx.Headers) -> str:
 
 def go_query(values: dict[str, str]) -> str:
     """Encode sorted query keys like Go url.Values.Encode."""
-    return urlencode(sorted(values.items()), safe="")
+    return encode_query_values(values)
 
 
 def google_error_tokens(body: bytes) -> tuple[str, ...]:
     """Extract Google machine error tokens from a bounded body."""
     try:
-        value: Any = json.loads(body)
+        value: Any = strict_json_loads(body)
         error = value.get("error", {})
         tokens = [error.get("status", "")]
         tokens.extend(item.get("reason", "") for item in error.get("errors", [])[:1])

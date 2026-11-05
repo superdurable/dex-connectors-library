@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 """Google Forms read operations and Go-compatible branch classification."""
 
-import json
 import re
 from datetime import UTC, datetime
 from typing import TypeVar
@@ -34,7 +33,9 @@ from ._generated.definitions import (
 )
 from .client import Client, is_google_id
 from .conversion import decode_form, decode_page, decode_response
+from .json_values import strict_json_loads
 from .models import Form, FormResponse, GetFormInput, GetResponseInput, ListResponsesInput, ResponsePage
+from .query_values import encode_query_values
 
 Output = TypeVar("Output", Form, FormResponse, ResponsePage)
 
@@ -55,14 +56,8 @@ def _path_escape(value: str) -> str:
     return quote(value, safe="-._~$&+=:@")
 
 
-def _query_escape(value: str) -> str:
-    # Go url.QueryEscape escapes '~' and uses '+' for spaces.
-    return quote(value, safe="").replace("%20", "+").replace("~", "%7E")
-
-
 def _query_string(fields: dict[str, str]) -> str:
-    return "&".join(f"{_query_escape(key)}={_query_escape(fields[key])}" for key in sorted(fields))
-
+    return encode_query_values(fields)
 
 def _utc_timestamp(value: str) -> str:
     timestamp = RFC3339NanoTimestamp.from_wire(value)
@@ -230,7 +225,7 @@ class GetFormOperation:
             return outcome
         assert body is not None
         try:
-            value = decode_form(json.loads(body), input.form_id)
+            value = decode_form(strict_json_loads(body), input.form_id)
         except (ValueError, TypeError, UnicodeDecodeError):
             return QueryAttempt.branch_result(
                 "invalidResponse",
@@ -301,7 +296,7 @@ class ListResponsesOperation:
             return outcome
         assert body is not None
         try:
-            value = decode_page(json.loads(body), input.form_id, page_size)
+            value = decode_page(strict_json_loads(body), input.form_id, page_size)
         except (ValueError, TypeError, UnicodeDecodeError):
             return QueryAttempt.branch_result(
                 "invalidResponse",
@@ -349,7 +344,7 @@ class GetResponseOperation:
             return outcome
         assert body is not None
         try:
-            value = decode_response(json.loads(body), input.form_id)
+            value = decode_response(strict_json_loads(body), input.form_id)
             if value.response_id != input.response_id:
                 raise ValueError("response identity differs")
         except (ValueError, TypeError, UnicodeDecodeError):

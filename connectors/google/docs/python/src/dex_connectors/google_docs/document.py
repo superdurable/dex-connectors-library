@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Validate and render the first Google Docs tab."""
 
-import json
 import re
 from typing import Any, cast
 
 from .client import DRIVE_ID, TAB_ID
+from .json_values import strict_json_loads
 
 HEADING_LEVELS = {"TITLE": 1, "SUBTITLE": 2, **{f"HEADING_{level}": level for level in range(1, 7)}}
 ORDERED_GLYPHS = {"DECIMAL", "ZERO_DECIMAL", "UPPER_ALPHA", "ALPHA", "UPPER_ROMAN", "ROMAN"}
@@ -19,7 +19,7 @@ ORDERED_START = re.compile(r"^(\d{1,9})([.)])(\s|$)")
 def decode_document(body: bytes) -> dict[str, Any]:
     """Reject a document without a valid ID, first tab, and final paragraph."""
     try:
-        document: Any = json.loads(body)
+        document: Any = strict_json_loads(body)
         if (
             not isinstance(document, dict)
             or not isinstance(document.get("documentId"), str)

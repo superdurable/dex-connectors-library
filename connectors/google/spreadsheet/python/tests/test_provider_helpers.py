@@ -12,7 +12,7 @@ from dex_connectors.google_spreadsheet.operations import _decode_values, _retry_
 def test_path_and_query_encoding_match_go_url_package() -> None:
     """Preserve Go's distinct PathEscape and url.Values.Encode safe sets."""
     assert escape_path("a! '()*+,;?/~$&+=:@") == "a%21%20%27%28%29%2A+%2C%3B%3F%2F~$&+=:@"
-    assert encode_query({"z~": "a b*~", "a": "+"}) == "a=%2B&z%7E=a+b%2A%7E"
+    assert encode_query({"z~": "a b*~", "a": "+"}) == "a=%2B&z~=a+b%2A~"
 
 
 def test_values_decoder_rejects_wrong_types_and_keeps_null_collections() -> None:

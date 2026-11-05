@@ -32,6 +32,7 @@ from .document import (
     utf16_length,
     validate_write_text,
 )
+from .json_values import strict_json_loads
 from .models import (
     AppendTextInput,
     AppendTextOutput,
@@ -497,7 +498,7 @@ class _GuardedWrite:
         tokens = google_error_tokens(exchange.body)
         if 200 <= exchange.status < 300:
             try:
-                value = json.loads(exchange.body)
+                value = strict_json_loads(exchange.body)
                 if not isinstance(value, dict):
                     raise ValueError("invalid update")
                 revision = value.get("writeControl", {}).get("requiredRevisionId", "")

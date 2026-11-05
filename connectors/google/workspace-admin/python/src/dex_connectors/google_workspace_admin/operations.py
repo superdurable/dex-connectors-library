@@ -3,7 +3,6 @@
 """Go-compatible Dex invocations for Google Workspace Directory operations."""
 
 import base64
-import json
 import re
 import secrets
 import unicodedata
@@ -48,6 +47,7 @@ from ._generated.models import (
     UserName,
 )
 from .client import Client, Exchange, path_escape
+from .json_values import strict_json_loads
 
 _USER_ID = re.compile(r"[0-9]{1,64}\Z")
 _GROUP_ID = re.compile(r"[0-9a-z]{1,64}\Z")
@@ -112,7 +112,7 @@ def _boolean(resource: dict[str, Any], name: str) -> bool:
 
 def _object(body: bytes) -> dict[str, Any]:
     try:
-        value = json.loads(body)
+        value = strict_json_loads(body)
     except (ValueError, UnicodeDecodeError) as error:
         raise ValueError("not valid JSON") from error
     if not isinstance(value, dict):
@@ -424,10 +424,17 @@ class CreateUserOperation(_Operation):
             recovery_phone = input.recovery_phone.strip()
             if recovery_phone and not _PHONE.fullmatch(recovery_phone):
                 raise ValueError("recoveryPhone must be an E.164 number such as +16506661212")
+            try:
+                initial_password = base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode()
+            except Exception:
+                return MutationAttempt.branch_result(
+                    "defect", CreateUserOutput(), Receipt(),
+                    _failure(operation, FailureKind.LOCAL_DEFECT, "initial password could not be generated"),
+                )
             payload: dict[str, Any] = {
                 "primaryEmail": email,
                 "name": {"givenName": given, "familyName": family},
-                "password": base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode(),
+                "password": initial_password,
                 "changePasswordAtNextLogin": True,
                 "orgUnitPath": org_unit,
                 "externalIds": [{"type": "custom", "customType": "dexIdempotencyKey", "value": key}],

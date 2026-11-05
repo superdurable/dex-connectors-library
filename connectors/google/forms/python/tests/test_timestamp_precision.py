@@ -32,3 +32,22 @@ def test_provider_and_filter_timestamps_keep_nanoseconds_in_utc() -> None:
     assert ListResponsesInput(submitted_after=datetime(2026, 9, 30, 9, 15, tzinfo=UTC)).submitted_after == (
         "2026-09-30T09:15:00Z"
     )
+
+
+def test_provider_timestamp_truncates_extra_fractional_digits_like_go() -> None:
+    assert _time("2026-01-01T00:00:00.123456789123Z") == "2026-01-01T00:00:00.123456789Z"
+    assert _time("2026-01-01T00:00:00+24:00") == "2025-12-31T00:00:00Z"
+
+
+def test_grade_score_rejects_a_falsey_non_number() -> None:
+    import pytest
+
+    from dex_connectors.google_forms.conversion import decode_response
+
+    response = {
+        "responseId": "response-1",
+        "lastSubmittedTime": "2026-01-01T00:00:00Z",
+        "answers": {"question-1": {"questionId": "question-1", "grade": {"score": ""}}},
+    }
+    with pytest.raises(ValueError):
+        decode_response(response, "form-1")

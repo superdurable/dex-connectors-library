@@ -9,7 +9,6 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, TypeVar, overload
-from urllib.parse import urlencode
 
 import httpx
 from dex_connectors.sdk import (
@@ -54,6 +53,7 @@ from ._generated.definitions import (
     SEARCH_VIDEOS_DEFINITION,
     SEARCHED,
 )
+from .json_values import strict_json_loads
 from .models import (
     AddedPlaylistItem,
     AddPlaylistItemInput,
@@ -68,6 +68,7 @@ from .models import (
     VideoSearchPage,
     VideoSearchResult,
 )
+from .query_values import encode_query_values
 
 _VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{11}\Z")
 _CHANNEL_ID = re.compile(r"UC[A-Za-z0-9_-]{22}\Z")
@@ -200,7 +201,7 @@ def _items(value: dict[str, Any], *, required: bool) -> list[Any]:
 
 def _decode(body: bytes) -> dict[str, Any]:
     try:
-        return _as_object(json.loads(body))
+        return _as_object(strict_json_loads(body))
     except (UnicodeError, json.JSONDecodeError, TypeError) as error:
         raise ValueError("YouTube returned a malformed response") from error
 
@@ -367,7 +368,7 @@ class Client:
             return b"", receipt, _Outcome("rejected", failure, receipt)
         url = self.endpoint + path
         if query:
-            url += "?" + urlencode(sorted(query.items())).replace("~", "%7E")
+            url += "?" + encode_query_values(query)
         for request_attempt in range(2):
             try:
                 headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
@@ -396,6 +397,11 @@ class Client:
                     token = credential.access_token.reveal() if credential.access_token is not None else ""
                     if is_header_safe_credential(token):
                         continue
+                    failure = _failure(
+                        operation, FailureKind.AUTHENTICATION,
+                        "YouTube connection credentials are unavailable or invalid",
+                    )
+                    return b"", _empty_receipt(), _Outcome("defect", failure, _empty_receipt())
                 except Exception as error:
                     from dex_connectors.sdk import ReauthorizationRequiredError
 

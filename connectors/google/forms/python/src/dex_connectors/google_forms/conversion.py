@@ -76,9 +76,9 @@ def _time(value: Any) -> str:
     if not match:
         raise ValueError("provider time has an invalid format")
     year, month, day, hour, minute, second = (int(part) for part in match.groups()[:6])
-    fraction = match.group(7) or ""
+    fraction = (match.group(7) or "")[:9]
     offset = match.group(8)
-    if hour > 23 or minute > 59 or second > 59 or len(fraction) > 9:
+    if hour > 23 or minute > 59 or second > 59 or (offset != "Z" and int(offset[1:3]) > 24):
         raise ValueError("provider time is invalid")
     try:
         parsed = datetime(year, month, day, hour, minute, second, int((fraction + "000000")[:6]), UTC)
@@ -293,7 +293,10 @@ def decode_response(value: Any, form_id: str) -> FormResponse:
             else ()
         )
         grade_value = (
-            FormAnswerGrade(_number(_object(grade).get("score") or 0), _bool(_object(grade).get("correct")))
+            FormAnswerGrade(
+                _number(0 if _object(grade).get("score") is None else _object(grade)["score"]),
+                _bool(_object(grade).get("correct")),
+            )
             if grade is not None
             else None
         )

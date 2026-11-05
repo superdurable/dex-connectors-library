@@ -30,12 +30,12 @@ from dex_connectors.sdk.providerhttp import (
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
+from .query_values import encode_query_values
 
 if TYPE_CHECKING:
     from .operations import FindRowOperation, GetValuesOperation, UpsertRowOperation
 
 _PATH_SAFE = "-._~$&+=:@"
-_QUERY_SAFE = ""
 
 
 def escape_path(value: str) -> str:
@@ -44,13 +44,8 @@ def escape_path(value: str) -> str:
 
 
 def encode_query(values: dict[str, str]) -> str:
-    """Encode sorted Go url.Values with QueryEscape's handling of tilde."""
-    return "&".join(
-        f"{quote(key, safe=_QUERY_SAFE).replace('%20', '+').replace('~', '%7E')}="
-        f"{quote(values[key], safe=_QUERY_SAFE).replace('%20', '+').replace('~', '%7E')}"
-        for key in sorted(values)
-    )
-
+    """Encode sorted query values like Go url.Values.Encode."""
+    return encode_query_values(values)
 
 @dataclass(frozen=True, slots=True)
 class ProviderResponse:

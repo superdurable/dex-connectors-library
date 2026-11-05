@@ -8,7 +8,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
-from urllib.parse import quote_plus
 
 import httpx
 from dex_connectors.sdk import (
@@ -32,6 +31,8 @@ from dex_connectors.sdk.providerhttp import (
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
+from .json_values import strict_json_loads
+from .query_values import encode_query_values
 
 if TYPE_CHECKING:
     from .operations import (
@@ -43,6 +44,10 @@ if TYPE_CHECKING:
     )
 
 _API_BASE = "https://api.helpscout.net"
+
+
+def _is_ascii_decimal(value: str) -> bool:
+    return value.isascii() and value.isdecimal()
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,9 +145,7 @@ class Client:
         """Send once, refreshing a rejected token once when the source supports it."""
         target = _API_BASE + path
         if query:
-            target += "?" + "&".join(
-                _query_escape(key) + "=" + _query_escape(value) for key, value in sorted(query.items())
-            )
+            target += "?" + encode_query_values(query)
         body: bytes | None = None
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         if payload is not None:
@@ -226,7 +229,7 @@ class Client:
             value = exchange.headers.get("X-RateLimit-Retry-After", "").strip()
             delay = (
                 min(int(value), 3600)
-                if value.isdecimal() and int(value) > 0
+                if _is_ascii_decimal(value) and int(value) > 0
                 else parse_retry_after(exchange.headers.get("Retry-After", ""), datetime.now(UTC))
             )
         elif status == 408 or status >= 500:
@@ -281,7 +284,7 @@ class Client:
 def _error_summary(body: bytes, token: str) -> tuple[str, list[str]]:
     """Keep only validated log references and field/code identifiers."""
     try:
-        document: Any = json.loads(body)
+        document: Any = strict_json_loads(body)
         if not isinstance(document, dict):
             return "", []
         log_ref = document.get("logRef", "")
@@ -323,8 +326,3 @@ def _error_summary(body: bytes, token: str) -> tuple[str, list[str]]:
         return log_ref, fields
     except (ValueError, UnicodeError):
         return "", []
-
-
-def _query_escape(value: str) -> str:
-    """Encode query values as Go url.Values.Encode does."""
-    return quote_plus(value, safe="").replace("~", "%7E")

@@ -34,6 +34,8 @@ from dex_connectors.sdk.providerhttp import (
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from ._generated.refresh import AUTHORIZATION, CREDENTIAL_FIELDS
+from .json_values import strict_json_loads
+from .query_values import encode_query_values
 
 if TYPE_CHECKING:
     from .operations import (
@@ -70,23 +72,9 @@ _REPORTABLE = frozenset(
 _RATE_REASONS = frozenset(("userRateLimitExceeded", "rateLimitExceeded", "quotaExceeded"))
 
 
-def _query_escape(value: str) -> str:
-    """Encode one query component with Go url.QueryEscape's exact safe set."""
-    result = []
-    for byte in value.encode("utf-8"):
-        if (65 <= byte <= 90) or (97 <= byte <= 122) or (48 <= byte <= 57) or byte in (45, 46, 95):
-            result.append(chr(byte))
-        elif byte == 32:
-            result.append("+")
-        else:
-            result.append(f"%{byte:02X}")
-    return "".join(result)
-
-
 def query_string(values: dict[str, str]) -> str:
-    """Sort keys and encode one value per key like Go url.Values.Encode."""
-    return "&".join(f"{_query_escape(key)}={_query_escape(values[key])}" for key in sorted(values))
-
+    """Sort keys and encode values like Go url.Values.Encode."""
+    return encode_query_values(values)
 
 def path_escape(value: str) -> str:
     """Encode one path segment like Go url.PathEscape."""
@@ -121,7 +109,7 @@ class Exchange:
 
 def _reason(body: bytes) -> tuple[str, bool]:
     try:
-        envelope = json.loads(body)
+        envelope = strict_json_loads(body)
         if not isinstance(envelope, dict) or not isinstance(envelope.get("error"), dict):
             return "", False
         error = envelope["error"]

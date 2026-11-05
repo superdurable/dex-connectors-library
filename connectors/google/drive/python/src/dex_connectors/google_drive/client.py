@@ -2,12 +2,10 @@
 # SPDX-License-Identifier: MIT
 """Authenticated, bounded Google Drive HTTP requests."""
 
-import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
-from urllib.parse import quote_plus
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
@@ -25,6 +23,8 @@ from dex_connectors.sdk.providerhttp import (
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
+from .json_values import strict_json_loads
+from .query_values import encode_query_values
 
 if TYPE_CHECKING:
     from .operations import (
@@ -61,11 +61,7 @@ class Exchange:
 
 def query_string(values: dict[str, str]) -> str:
     """Encode sorted parameters with Go url.Values.Encode semantics."""
-    def escape(value: str) -> str:
-        return quote_plus(value, safe="").replace("~", "%7E")
-
-    return "&".join(f"{escape(key)}={escape(value)}" for key, value in sorted(values.items()))
-
+    return encode_query_values(values)
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     """Construct a secret-safe Drive failure."""
@@ -188,7 +184,7 @@ class Client:
                         response.status_code, response.headers, is_body_too_large=True, was_sent=True
                     )
                 content = b""
-            except (httpx.HTTPError, OSError):
+            except (ProviderTransportError, httpx.HTTPError, OSError):
                 return Exchange(response.status_code, response.headers, error="bodyRead", was_sent=True)
             if is_success and len(content) > response_limit:
                 return Exchange(response.status_code, response.headers, is_body_too_large=True, was_sent=True)
@@ -278,7 +274,7 @@ class Client:
 def error_reasons(exchange: Exchange) -> list[str]:
     """Read Google's machine-readable reason and status from an error body."""
     try:
-        parsed = json.loads(exchange.body)
+        parsed = strict_json_loads(exchange.body)
     except (ValueError, UnicodeDecodeError):
         return []
     if not isinstance(parsed, dict) or not isinstance(parsed.get("error"), dict):

@@ -45,6 +45,7 @@ from .client import (
     query_string,
     status_failure_kind,
 )
+from .json_values import strict_json_loads
 from .models import (
     File,
     FileSummary,
@@ -231,7 +232,7 @@ def _file(value: object) -> File:
 
 
 def _json_object(exchange: Exchange) -> dict[str, Any]:
-    value = json.loads(exchange.body)
+    value = strict_json_loads(exchange.body)
     return _resource(value)
 
 

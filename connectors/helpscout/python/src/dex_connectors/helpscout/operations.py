@@ -31,7 +31,7 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated import definitions
-from .client import Client, Exchange
+from .client import Client, Exchange, _is_ascii_decimal
 from .decode import (
     array_value,
     conversation,
@@ -450,7 +450,7 @@ def _merged(
     identifier = parsed.path.removeprefix("/v2/conversations/")
     if (
         (parsed.netloc and (parsed.scheme != "https" or parsed.netloc != "api.helpscout.net"))
-        or not identifier.isdecimal()
+        or not _is_ascii_decimal(identifier)
         or not parsed.path.startswith("/v2/conversations/")
         or int(identifier) < 1
         or int(identifier) == conversation_id
@@ -810,7 +810,7 @@ class ReplyToConversationOperation:
             return self._uncertain(call, output, "the thread may exist because Help Scout's answer was lost")
         if 200 <= exchange.status < 300:
             raw_id = exchange.headers.get("Resource-Id", "").strip()
-            thread_id = int(raw_id) if raw_id.isdecimal() else 0
+            thread_id = int(raw_id) if _is_ascii_decimal(raw_id) else 0
             if thread_id < 1:
                 return self._uncertain(
                     call,
@@ -915,7 +915,11 @@ class ReplyToConversationOperation:
     async def _read_back(
         self, call: Call, output: ConversationReply, marker: Any
     ) -> MutationAttempt[ConversationReply]:
-        thread_id = int(marker.provider_id) if marker is not None and marker.provider_id.isdecimal() else 0
+        thread_id = (
+            int(marker.provider_id)
+            if marker is not None and _is_ascii_decimal(marker.provider_id)
+            else 0
+        )
         if marker is None or marker.call_id != call.id or thread_id < 1:
             return self._uncertain(
                 call, output, "an earlier attempt may have sent the thread without a confirmable ID"

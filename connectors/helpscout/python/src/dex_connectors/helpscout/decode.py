@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: MIT
 """Decode the Help Scout wire subset used by operation results."""
 
-import json
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
+from .json_values import strict_json_loads
 from .models import Conversation, Customer, Person, Thread
 
 _TIMESTAMP = re.compile(r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:[.,](\d+))?(Z|[+-]\d\d:\d\d)$")
@@ -52,7 +52,7 @@ def parse_json(body: bytes) -> dict[str, Any]:
     """Parse a nonempty provider JSON object."""
     if not body:
         raise ValueError("provider response is empty")
-    return object_value(json.loads(body))
+    return object_value(strict_json_loads(body))
 
 
 def parse_timestamp(value: str, optional: bool = False) -> datetime:
