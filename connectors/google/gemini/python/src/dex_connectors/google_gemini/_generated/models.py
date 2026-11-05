@@ -42,7 +42,7 @@ setattr(Content, '__module__', 'dex_connectors.google_gemini.models')
 
 
 # GenerateContentRequest is the provider input for GenerateContent.
-# 
+#
 # Model accepts a model ID such as "gemini-3.5-flash-lite" or
 # "models/gemini-3.5-flash-lite"; empty uses the connection's configured model.
 # ResponseJSONSchema maps to generationConfig.responseJsonSchema and defaults
@@ -108,7 +108,7 @@ setattr(Usage, '__module__', 'dex_connectors.google_gemini.models')
 
 
 # GenerateContentResponse is the bounded result of one generateContent call.
-# 
+#
 # Text concatenates the non-thought text parts of the first candidate. Only the
 # generated and truncated branches carry Text; blocked and invalidResponse
 # results keep identity, finish or block reason, and usage without content.
