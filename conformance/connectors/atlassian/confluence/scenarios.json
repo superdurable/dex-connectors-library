@@ -1,0 +1,2490 @@
+{
+  "connector": "atlassian/confluence",
+  "scenarios": [
+    {
+      "callId": "f1c5f0ec-9fe0-52c7-9897-2b9c2ca28f95",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":\"600002\",\"type\":\"page\",\"status\":\"current\",\"title\":\"Remote work policy\",\"space\":{\"id\":98306,\"key\":\"OPS\"},\"version\":{\"number\":1,\"when\":\"2026-10-25T09:00:00Z\"},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\"}}],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\",\"next\":\"/wiki/rest/api/content/search?cursor=next-page-2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+          "query": {
+            "cql": [
+              "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "expand": [
+              "space,version"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "cql": "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC",
+          "nextCursor": "next-page-2",
+          "pages": [
+            {
+              "id": "600002",
+              "lastModifiedAt": "2026-10-25T09:00:00Z",
+              "spaceId": "98306",
+              "spaceKey": "OPS",
+              "status": "current",
+              "title": "Remote work policy",
+              "versionNumber": 1,
+              "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "filter": {
+          "additionalCql": "ancestor = 65537",
+          "labels": [
+            "policy"
+          ],
+          "modifiedSince": "2026-10-20T00:00:00Z",
+          "order": "createdDescending",
+          "spaceKeys": [
+            "OPS"
+          ],
+          "titlePhrase": "Remote work policy"
+        },
+        "pageSize": 10
+      },
+      "name": "searchPages-success",
+      "operation": "searchPages"
+    },
+    {
+      "callId": "a2f65868-15fb-51aa-8879-720a64b11720",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+          "query": {
+            "cql": [
+              "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "expand": [
+              "space,version"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "filter": {
+          "additionalCql": "ancestor = 65537",
+          "labels": [
+            "policy"
+          ],
+          "modifiedSince": "2026-10-20T00:00:00Z",
+          "order": "createdDescending",
+          "spaceKeys": [
+            "OPS"
+          ],
+          "titlePhrase": "Remote work policy"
+        },
+        "pageSize": 10
+      },
+      "name": "searchPages-rate-limit",
+      "operation": "searchPages"
+    },
+    {
+      "callId": "0a5259f3-c33a-531a-b10b-68e52f9a992e",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+          "query": {
+            "cql": [
+              "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "expand": [
+              "space,version"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "filter": {
+          "additionalCql": "ancestor = 65537",
+          "labels": [
+            "policy"
+          ],
+          "modifiedSince": "2026-10-20T00:00:00Z",
+          "order": "createdDescending",
+          "spaceKeys": [
+            "OPS"
+          ],
+          "titlePhrase": "Remote work policy"
+        },
+        "pageSize": 10
+      },
+      "name": "searchPages-server-error",
+      "operation": "searchPages"
+    },
+    {
+      "callId": "9f7ec77c-9e8b-5202-8e25-83d3bd90b6e7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+          "query": {
+            "cql": [
+              "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "expand": [
+              "space,version"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "filter": {
+          "additionalCql": "ancestor = 65537",
+          "labels": [
+            "policy"
+          ],
+          "modifiedSince": "2026-10-20T00:00:00Z",
+          "order": "createdDescending",
+          "spaceKeys": [
+            "OPS"
+          ],
+          "titlePhrase": "Remote work policy"
+        },
+        "pageSize": 10
+      },
+      "name": "searchPages-transport",
+      "operation": "searchPages"
+    },
+    {
+      "callId": "ce42ad8e-f891-526d-806a-c8f1abb5bf19",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cql": "",
+          "pages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": {
+          "order": "bad"
+        }
+      },
+      "name": "searchPages-defect",
+      "operation": "searchPages"
+    },
+    {
+      "callId": "e90bfae8-5bd9-50e4-a912-19cc676a4a5c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003ch1\u003eRemote work\u003c/h1\u003e\u003cp\u003eHello\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "authorAccountId": "5b10ac8d82e05b22cc7d4ef5",
+          "body": "# Remote work\n\nHello",
+          "bodyFormat": "markdown",
+          "createdAt": "2026-10-25T09:00:00Z",
+          "id": "600002",
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "status": "current",
+          "title": "Remote work policy",
+          "version": {
+            "authorAccountId": "5b10ac8d82e05b22cc7d4ef5",
+            "createdAt": "2026-10-25T09:00:00Z",
+            "number": 1
+          },
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "markdown",
+        "bodyRepresentation": "storage",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-success",
+      "operation": "getPage"
+    },
+    {
+      "callId": "8d9b5087-1049-5fb9-96f8-6bf5175bbf84",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "markdown",
+        "bodyRepresentation": "storage",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-rate-limit",
+      "operation": "getPage"
+    },
+    {
+      "callId": "495a4b94-dfdc-5700-98d4-854cb40ea6c1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "markdown",
+        "bodyRepresentation": "storage",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-server-error",
+      "operation": "getPage"
+    },
+    {
+      "callId": "8dfc03f3-cc03-58fe-ae7e-fe4fc9faf67a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "markdown",
+        "bodyRepresentation": "storage",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-transport",
+      "operation": "getPage"
+    },
+    {
+      "callId": "ca15869c-46eb-5167-8817-1b1021107960",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "body": "",
+          "bodyFormat": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "spaceId": "",
+          "status": "",
+          "title": "",
+          "version": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "number": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageId": "bad"
+      },
+      "name": "getPage-defect",
+      "operation": "getPage"
+    },
+    {
+      "callId": "91c374b1-4c9b-509e-b5ef-7adfa8b5cf35",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eHello\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "pageId": "600002",
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "title": "Remote work policy",
+          "versionNumber": 1,
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "91c374b1-4c9b-509e-b5ef-7adfa8b5cf35",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-success",
+      "operation": "createPage"
+    },
+    {
+      "callId": "1c082501-da20-5dca-afea-173f9201fc49",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "cleared": true
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "1c082501-da20-5dca-afea-173f9201fc49",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-rate-limit",
+      "operation": "createPage"
+    },
+    {
+      "callId": "c7c1f508-3cfb-51b6-88b5-0afc7cf6b944",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"results\":[],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "5"
+            ],
+            "space-id": [
+              "98306"
+            ],
+            "title": [
+              "Remote work policy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "c7c1f508-3cfb-51b6-88b5-0afc7cf6b944",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-server-error",
+      "operation": "createPage"
+    },
+    {
+      "callId": "81a88bf7-9fa4-5a37-967e-3f839bd82549",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "cleared": true
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "81a88bf7-9fa4-5a37-967e-3f839bd82549",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-transport",
+      "operation": "createPage"
+    },
+    {
+      "callId": "519c4e46-6ecf-5068-a43b-0286be62086c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "spaceId": "bad",
+          "title": "Bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "519c4e46-6ecf-5068-a43b-0286be62086c",
+      "input": {
+        "body": "text",
+        "spaceId": "bad",
+        "title": "Bad"
+      },
+      "name": "createPage-defect",
+      "operation": "createPage"
+    },
+    {
+      "callId": "beb41906-8e6f-52a8-810b-b6993901b44f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":2,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eHello updated\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello updated\u003c/p\u003e"
+            },
+            "id": "600002",
+            "status": "current",
+            "title": "Remote work policy",
+            "version": {
+              "message": "Updated policy [dex:7ec3621d2ff38a3f]",
+              "number": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "pageId": "600002",
+          "title": "Remote work policy",
+          "versionNumber": 2,
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "beb41906-8e6f-52a8-810b-b6993901b44f",
+      "input": {
+        "body": "Hello updated",
+        "bodyFormat": "plainText",
+        "nextVersionNumber": 2,
+        "pageId": "600002",
+        "title": "Remote work policy",
+        "versionMessage": "Updated policy"
+      },
+      "name": "updatePage-success",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "804f4fab-1f98-5d1c-8199-971f3ff3aedd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello updated\u003c/p\u003e"
+            },
+            "id": "600002",
+            "status": "current",
+            "title": "Remote work policy",
+            "version": {
+              "message": "Updated policy [dex:f034e5cacac3f15e]",
+              "number": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "804f4fab-1f98-5d1c-8199-971f3ff3aedd",
+      "input": {
+        "body": "Hello updated",
+        "bodyFormat": "plainText",
+        "nextVersionNumber": 2,
+        "pageId": "600002",
+        "title": "Remote work policy",
+        "versionMessage": "Updated policy"
+      },
+      "name": "updatePage-rate-limit",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "5bc43eb9-c8d1-5a72-890a-246697000df2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello updated\u003c/p\u003e"
+            },
+            "id": "600002",
+            "status": "current",
+            "title": "Remote work policy",
+            "version": {
+              "message": "Updated policy [dex:75b44dbca6a47163]",
+              "number": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003ePrevious\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "5bc43eb9-c8d1-5a72-890a-246697000df2",
+      "input": {
+        "body": "Hello updated",
+        "bodyFormat": "plainText",
+        "nextVersionNumber": 2,
+        "pageId": "600002",
+        "title": "Remote work policy",
+        "versionMessage": "Updated policy"
+      },
+      "name": "updatePage-server-error",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "640db2b6-a206-5bbd-939f-20167ba8009a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello updated\u003c/p\u003e"
+            },
+            "id": "600002",
+            "status": "current",
+            "title": "Remote work policy",
+            "version": {
+              "message": "Updated policy [dex:07029f29d3629685]",
+              "number": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "640db2b6-a206-5bbd-939f-20167ba8009a",
+      "input": {
+        "body": "Hello updated",
+        "bodyFormat": "plainText",
+        "nextVersionNumber": 2,
+        "pageId": "600002",
+        "title": "Remote work policy",
+        "versionMessage": "Updated policy"
+      },
+      "name": "updatePage-transport",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "272b9343-ea90-5377-9316-56da6d7068b7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "pageId": "bad",
+          "title": "Bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "272b9343-ea90-5377-9316-56da6d7068b7",
+      "input": {
+        "body": "text",
+        "nextVersionNumber": 2,
+        "pageId": "bad",
+        "title": "Bad"
+      },
+      "name": "updatePage-defect",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "337ce5ab-5af4-5790-98f8-9def5ed59b32",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"700001\",\"pageId\":\"600002\",\"version\":{\"number\":1,\"createdAt\":\"2026-10-25T09:00:00Z\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eApproved\u003c/p\u003e\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "commentId": "700001",
+          "createdAt": "2026-10-25T09:00:00Z",
+          "pageId": "600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "337ce5ab-5af4-5790-98f8-9def5ed59b32",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-success",
+      "operation": "addComment"
+    },
+    {
+      "callId": "84974bad-a648-5bc0-92e9-42068ae0f2c5",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limit\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "cleared": true
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "84974bad-a648-5bc0-92e9-42068ae0f2c5",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-rate-limit",
+      "operation": "addComment"
+    },
+    {
+      "callId": "16847211-0fef-5a2d-9a47-b392c4c3f176",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "idempotencyKey": "16847211-0fef-5a2d-9a47-b392c4c3f176",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-server-error",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2decee69-70a6-503b-a3df-a5dd4f16e7af",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "cleared": true
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2decee69-70a6-503b-a3df-a5dd4f16e7af",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-transport",
+      "operation": "addComment"
+    },
+    {
+      "callId": "ca6ec21f-105a-5c76-97ae-4cd70c36e580",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "pageId": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ca6ec21f-105a-5c76-97ae-4cd70c36e580",
+      "input": {
+        "body": "text",
+        "pageId": "bad"
+      },
+      "name": "addComment-defect",
+      "operation": "addComment"
+    },
+    {
+      "callId": "b389a639-8652-5551-961a-90762f47e5f4",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+          "query": {
+            "cql": [
+              "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "expand": [
+              "space,version"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cql": "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC",
+          "pages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "filter": {
+          "additionalCql": "ancestor = 65537",
+          "labels": [
+            "policy"
+          ],
+          "modifiedSince": "2026-10-20T00:00:00Z",
+          "order": "createdDescending",
+          "spaceKeys": [
+            "OPS"
+          ],
+          "titlePhrase": "Remote work policy"
+        },
+        "pageSize": 10
+      },
+      "name": "searchPages-provider-rejected",
+      "operation": "searchPages"
+    },
+    {
+      "callId": "8dfb763c-f7d9-575c-82dc-f6a0c4831d72",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/rest/api/content/search",
+          "query": {
+            "cql": [
+              "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "expand": [
+              "space,version"
+            ],
+            "limit": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cql": "type = page AND space in (\"OPS\") AND label in (\"policy\") AND title ~ \"\\\"Remote work policy\\\"\" AND lastmodified \u003e= \"2026-10-19\" AND (ancestor = 65537) ORDER BY created DESC",
+          "pages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next-page",
+        "filter": {
+          "additionalCql": "ancestor = 65537",
+          "labels": [
+            "policy"
+          ],
+          "modifiedSince": "2026-10-20T00:00:00Z",
+          "order": "createdDescending",
+          "spaceKeys": [
+            "OPS"
+          ],
+          "titlePhrase": "Remote work policy"
+        },
+        "pageSize": 10
+      },
+      "name": "searchPages-invalid-response",
+      "operation": "searchPages"
+    },
+    {
+      "callId": "e6e02909-ea8e-5600-a2bc-b7915f5fd497",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "body": "",
+          "bodyFormat": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "spaceId": "",
+          "status": "",
+          "title": "",
+          "version": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "number": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "markdown",
+        "bodyRepresentation": "storage",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-not-found",
+      "operation": "getPage"
+    },
+    {
+      "callId": "26f28715-49a0-5549-a834-4573c496aaa8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "body": "",
+          "bodyFormat": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "spaceId": "",
+          "status": "",
+          "title": "",
+          "version": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "number": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "markdown",
+        "bodyRepresentation": "storage",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-provider-rejected",
+      "operation": "getPage"
+    },
+    {
+      "callId": "067b10ab-9f64-548c-ab9c-28afe5e31d2d",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "body": "",
+          "bodyFormat": "",
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "spaceId": "",
+          "status": "",
+          "title": "",
+          "version": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "number": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "markdown",
+        "bodyRepresentation": "storage",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-invalid-response",
+      "operation": "getPage"
+    },
+    {
+      "callId": "e7cf5233-0612-52bf-92b9-226c1ab68d4a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "title": "Remote work policy"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7cf5233-0612-52bf-92b9-226c1ab68d4a",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-not-found",
+      "operation": "createPage"
+    },
+    {
+      "callId": "ebba9e94-983a-5f52-95c5-2343823b94bb",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "title": "Remote work policy"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ebba9e94-983a-5f52-95c5-2343823b94bb",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-provider-rejected",
+      "operation": "createPage"
+    },
+    {
+      "callId": "b9c015d1-75f2-5316-a3d8-f03515a6f649",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"duplicate\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"results\":[{\"id\":\"600003\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eDifferent\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600003\",\"base\":\"https://ops.atlassian.net/wiki\"}}],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "5"
+            ],
+            "space-id": [
+              "98306"
+            ],
+            "title": [
+              "Remote work policy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "titleConflict",
+        "failureKind": "CONFLICT",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "pageId": "600003",
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "title": "Remote work policy",
+          "versionNumber": 1,
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600003"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b9c015d1-75f2-5316-a3d8-f03515a6f649",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-title-conflict",
+      "operation": "createPage"
+    },
+    {
+      "callId": "0bef53b7-bcd7-5ce1-9a28-8b55f03b56db",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":\"98306\",\"key\":\"OPS\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/spaces",
+          "query": {
+            "keys": [
+              "OPS"
+            ],
+            "limit": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eHello\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello\u003c/p\u003e"
+            },
+            "parentId": "65537",
+            "spaceId": "98306",
+            "status": "current",
+            "title": "Remote work policy"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "pageId": "600002",
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "spaceKey": "OPS",
+          "title": "Remote work policy",
+          "versionNumber": 1,
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0bef53b7-bcd7-5ce1-9a28-8b55f03b56db",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceKey": "OPS",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-space-key",
+      "operation": "createPage"
+    },
+    {
+      "callId": "d2d1905f-4543-5b8f-b301-1782fda97a16",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello updated\u003c/p\u003e"
+            },
+            "id": "600002",
+            "status": "current",
+            "title": "Remote work policy",
+            "version": {
+              "message": "Updated policy [dex:f14ef6569225c7a8]",
+              "number": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "pageId": "600002",
+          "title": "Remote work policy"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2d1905f-4543-5b8f-b301-1782fda97a16",
+      "input": {
+        "body": "Hello updated",
+        "bodyFormat": "plainText",
+        "nextVersionNumber": 2,
+        "pageId": "600002",
+        "title": "Remote work policy",
+        "versionMessage": "Updated policy"
+      },
+      "name": "updatePage-not-found",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "3370209e-64d0-5409-882e-8c547282cf83",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello updated\u003c/p\u003e"
+            },
+            "id": "600002",
+            "status": "current",
+            "title": "Remote work policy",
+            "version": {
+              "message": "Updated policy [dex:1a24f4e59841cc71]",
+              "number": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "pageId": "600002",
+          "title": "Remote work policy"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3370209e-64d0-5409-882e-8c547282cf83",
+      "input": {
+        "body": "Hello updated",
+        "bodyFormat": "plainText",
+        "nextVersionNumber": 2,
+        "pageId": "600002",
+        "title": "Remote work policy",
+        "versionMessage": "Updated policy"
+      },
+      "name": "updatePage-provider-rejected",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "1b115a27-7563-5692-9249-7e906a1434c0",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"conflict\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eHello updated\u003c/p\u003e"
+            },
+            "id": "600002",
+            "status": "current",
+            "title": "Remote work policy",
+            "version": {
+              "message": "Updated policy [dex:4c37858ceea6ffad]",
+              "number": 2
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":3,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eOther edit\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "storage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"number\":2,\"message\":\"another edit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/versions/2",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "versionConflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "pageId": "600002",
+          "title": "Remote work policy",
+          "versionNumber": 3,
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1b115a27-7563-5692-9249-7e906a1434c0",
+      "input": {
+        "body": "Hello updated",
+        "bodyFormat": "plainText",
+        "nextVersionNumber": 2,
+        "pageId": "600002",
+        "title": "Remote work policy",
+        "versionMessage": "Updated policy"
+      },
+      "name": "updatePage-version-conflict",
+      "operation": "updatePage"
+    },
+    {
+      "callId": "00e666fc-0525-540f-8952-5aa361baebaf",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "pageId": "600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "00e666fc-0525-540f-8952-5aa361baebaf",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-not-found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "8fc3f6d1-5cc3-5bd9-864b-7cab54b151b7",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "pageId": "600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "8fc3f6d1-5cc3-5bd9-864b-7cab54b151b7",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-provider-rejected",
+      "operation": "addComment"
+    },
+    {
+      "attempts": 2,
+      "callId": "1d4a9b66-087a-52c9-aee1-005513d3b6ac",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/footer-comments",
+          "requestBody": {
+            "body": {
+              "representation": "storage",
+              "value": "\u003cp\u003eApproved\u003c/p\u003e"
+            },
+            "pageId": "600002"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/footer-comments",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "25"
+            ],
+            "sort": [
+              "-created-date"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "pageId": "600002"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1d4a9b66-087a-52c9-aee1-005513d3b6ac",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "dispatchedAtUnixMilli": 1792918800000
+          },
+          "retryAfterMs": 5000
+        }
+      ],
+      "name": "addComment-uncertain",
+      "operation": "addComment"
+    },
+    {
+      "callId": "b279b6ee-d442-5f65-b7c7-74727246d6f7",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"atlas_doc_format\":{\"representation\":\"atlas_doc_format\",\"value\":\"{\\\"type\\\":\\\"doc\\\",\\\"content\\\":[{\\\"type\\\":\\\"paragraph\\\",\\\"content\\\":[{\\\"type\\\":\\\"text\\\",\\\"text\\\":\\\"Hello ADF\\\"}]}]}\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002",
+          "query": {
+            "body-format": [
+              "atlas_doc_format"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "authorAccountId": "5b10ac8d82e05b22cc7d4ef5",
+          "body": "Hello ADF",
+          "bodyFormat": "plainText",
+          "createdAt": "2026-10-25T09:00:00Z",
+          "id": "600002",
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "status": "current",
+          "title": "Remote work policy",
+          "version": {
+            "authorAccountId": "5b10ac8d82e05b22cc7d4ef5",
+            "createdAt": "2026-10-25T09:00:00Z",
+            "number": 1
+          },
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bodyFormat": "plainText",
+        "bodyRepresentation": "atlas_doc_format",
+        "maxBodyCharacters": 200,
+        "pageId": "600002"
+      },
+      "name": "getPage-adf",
+      "operation": "getPage"
+    },
+    {
+      "callId": "a76cd8a9-b65e-5934-9ff7-83c694363a87",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eHello\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\",\"base\":\"https://ops.atlassian.net/wiki\"}}],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "5"
+            ],
+            "space-id": [
+              "98306"
+            ],
+            "title": [
+              "Remote work policy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "isConfirmedByTitleLookup": true,
+          "pageId": "600002",
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "title": "Remote work policy",
+          "versionNumber": 1,
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a76cd8a9-b65e-5934-9ff7-83c694363a87",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-confirmed-prior-send",
+      "operation": "createPage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "dispatchedAtUnixMilli": 1792918800000
+        }
+      }
+    },
+    {
+      "attempts": 1,
+      "callId": "9a94169e-c193-5974-b142-e8e5583feaab",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":\"700001\",\"pageId\":\"600002\",\"version\":{\"number\":1,\"createdAt\":\"2026-10-25T09:00:00Z\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eApproved\u003c/p\u003e\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/footer-comments",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "25"
+            ],
+            "sort": [
+              "-created-date"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "700001",
+          "createdAt": "2026-10-25T09:00:00Z",
+          "isConfirmedByReadBack": true,
+          "pageId": "600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9a94169e-c193-5974-b142-e8e5583feaab",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-confirmed-prior-send",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "dispatchedAtUnixMilli": 1792918800000
+        }
+      }
+    }
+  ],
+  "schemaVersion": 1
+}
