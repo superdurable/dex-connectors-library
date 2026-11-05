@@ -33,9 +33,10 @@ def credential_values(credentials: Any) -> dict[str, str]:
     return result
 
 
-def credentials_for(case: dict[str, Any], private_key_pem: str) -> Any:
+def credentials_for(case: dict[str, Any], private_key_pem: str, overrides: dict[str, str] | None = None) -> Any:
     """Construct the smallest frozen credential accepted by the manifest driver."""
     material = dict(case["credentials"])
+    material.update(overrides or {})
     if case.get("keyCredential"):
         key_members = dict(case["keyMembers"])
         key_members[case["privateKeyMember"]] = private_key_pem
@@ -126,8 +127,21 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             "Agreement", AUTHORIZATION, CREDENTIAL_FIELDS, client, settings=case.get("settings", {})
         )
         state = CredentialRefreshState(credentials, datetime(2000, 1, 1, tzinfo=UTC), datetime.now(UTC))
-        undated_state = CredentialRefreshState(credentials, None, state.now)
-        assert driver.refresh_required(undated_state) == (case["storedMissingExpiry"] == "refresh")
+        for refresh_case in case["refreshRequiredCases"]:
+            expires_at = {
+                "fresh": state.now + timedelta(hours=1),
+                "expired": state.now - timedelta(hours=1),
+                "missing": None,
+            }[refresh_case["expiresAt"]]
+            overrides = dict(refresh_case.get("credentials", {}))
+            if field := refresh_case.get("jwtAccessTokenCredential"):
+                expiry = state.now + (timedelta(hours=1) if refresh_case["jwtExpiry"] == "fresh" else -timedelta(hours=1))
+                payload = base64.urlsafe_b64encode(json.dumps({"exp": int(expiry.timestamp())}).encode()).rstrip(b"=").decode()
+                overrides[field] = f"e30.{payload}.signature"
+            stored_credentials = credentials_for(case, private_key_pem, overrides)
+            stored_state = CredentialRefreshState(stored_credentials, expires_at, state.now)
+            assert driver.refresh_required(stored_state) == refresh_case["expected"], refresh_case["name"]
+            assert not requests
         started_at = datetime.now(UTC)
         try:
             result = await driver.refresh(state)

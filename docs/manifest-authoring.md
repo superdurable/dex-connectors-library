@@ -589,6 +589,8 @@ The scopes of a refresh response follow RFC 6749 section 5.1:
 
 `refresh.requiredScopes` replaces the authorization scope set checked on a
 refresh response when a provider reports only API scopes, as Gmail does.
+Match this list to the Go driver's required set; authorization can request
+optional picker scopes that a refreshed token need not retain.
 `refresh.acceptedScopeSets` replaces that single required set with alternatives:
 the returned scopes must contain every member of at least one listed set. For
 example, YouTube read-only refresh accepts either `youtube.readonly` or the
@@ -605,7 +607,8 @@ decision.
 Use `scopeSeparators: whitespaceAndComma` on that grant when its Go driver
 accepts comma-separated scope responses.
 `refresh.responseScopeField: scopesArray` checks a provider's `scopes` JSON
-array, as HubSpot does. `scopeResourcePrefix` removes a declared resource URI
+array, as HubSpot does. Each array element is one scope name; a comma inside
+an element is not a separator. `scopeResourcePrefix` removes a declared resource URI
 from each returned scope, and `caseInsensitiveScopes` compares names without
 case for Microsoft Graph. `scopeResourcePrefixCaseInsensitive` also removes
 an uppercase prefix when the Go driver accepts it. `clientCredentials.scopeSeparators` applies the same
@@ -636,6 +639,8 @@ client secret for a provider that supports public-client refresh; otherwise a
 blank secret requires reauthorization before any token request.
 The generated Go agreement tests replay changed scope responses when a refresh
 explicitly declares `requiredScopes`, `exactScopes`, or `scopeSeparators`.
+Every checked grant also replays a comma-separated response and a response
+missing each required scope, including the default whitespace policy.
 Authorization scopes alone do not establish that a provider reports scopes on
 refresh or that an existing Go driver checks them.
 

@@ -25,7 +25,7 @@ func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	require.NoError(t, err)
 	var cases []codegen.RefreshAgreementCase
 	require.NoError(t, json.Unmarshal(encoded, &cases))
-	require.Len(t, cases, 11)
+	require.Len(t, cases, 17)
 	require.Equal(t, "google-oauth refresh", cases[0].Name)
 	require.Equal(t, "https://oauth2.googleapis.com/token", cases[0].Endpoint)
 	require.Equal(t, "manifest-client-id", cases[0].Parameters["client_id"])
@@ -33,10 +33,10 @@ func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	require.Equal(t, "manifest-refresh-token-2", cases[0].Updates["refresh_token"])
 	require.Equal(t, "retryable", cases[1].ExpectedError)
 	require.Equal(t, "reauthorization", cases[3].ExpectedError)
-	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[6].Name)
-	require.Equal(t, "private_key", cases[6].PrivateKeyMember)
-	require.Equal(t, "manifest-issuer@example.com", cases[6].Assertion.Issuer)
-	require.Equal(t, int64(3600), cases[6].Assertion.LifetimeSeconds)
+	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[9].Name)
+	require.Equal(t, "private_key", cases[9].PrivateKeyMember)
+	require.Equal(t, "manifest-issuer@example.com", cases[9].Assertion.Issuer)
+	require.Equal(t, int64(3600), cases[9].Assertion.LifetimeSeconds)
 }
 
 func TestGenerateRefreshAgreementCasesEncodeTerminalCodesAsArrays(t *testing.T) {

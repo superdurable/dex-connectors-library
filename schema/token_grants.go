@@ -525,6 +525,11 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 	if refresh.RefreshWhenCredentialBlank != "" && !grantContext.isCredential(refresh.RefreshWhenCredentialBlank) {
 		problems = append(problems, label+" refreshWhenCredentialBlank must name a credential field")
 	}
+	if refresh.RefreshWhenCredentialBlank != "" && !slices.ContainsFunc(oauth.CredentialMappings, func(mapping OAuthCredentialMapping) bool {
+		return mapping.Credential == refresh.RefreshWhenCredentialBlank
+	}) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a mapped credential field")
+	}
 	if refresh.ExpiryCap != "" {
 		if duration, err := time.ParseDuration(refresh.ExpiryCap); err != nil || duration <= 0 {
 			problems = append(problems, label+" expiryCap must be a positive duration")
@@ -542,6 +547,9 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 		problems = append(problems, label+" cannot combine requiredScopes and acceptedScopeSets")
 	}
 	problems = append(problems, validateResponseScopes(label, refresh.ResponseScopes)...)
+	if refresh.ResponseScopes == ResponseScopesIgnore && (len(refresh.RequiredScopes) > 0 || refresh.ExactScopes || refresh.ScopeSeparators != "") {
+		problems = append(problems, label+" responseScopes ignore cannot declare requiredScopes, exactScopes, or scopeSeparators")
+	}
 	if refresh.ScopeSeparators != "" && refresh.ScopeSeparators != ScopeSeparatorsWhitespace && refresh.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
 		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
 	}
@@ -581,8 +589,14 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	problems = append(problems, grantContext.validateCredentialMappings(label, grant.CredentialMappings)...)
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, grant.AdditionalParameters)...)
 	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
+	if grant.StoredMissingExpiry == StoredMissingExpiryRefreshIfPossible {
+		problems = append(problems, label+" refreshIfRefreshTokenPresent requires a refresh-token grant")
+	}
 	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
 	problems = append(problems, validateResponseScopes(label, grant.ResponseScopes)...)
+	if grant.ResponseScopes == ResponseScopesIgnore && grant.ScopeSeparators != "" {
+		problems = append(problems, label+" responseScopes ignore cannot declare scopeSeparators")
+	}
 	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
 		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
 	}
@@ -622,6 +636,9 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", grant.AcceptedScopeSets)...)
 	problems = append(problems, validateResponseScopes(label, grant.ResponseScopes)...)
+	if grant.ResponseScopes == ResponseScopesIgnore && grant.ScopeSeparators != "" {
+		problems = append(problems, label+" responseScopes ignore cannot declare scopeSeparators")
+	}
 	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
 		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
 	}
@@ -639,9 +656,17 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, nil)...)
 	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
+	if grant.StoredMissingExpiry == StoredMissingExpiryRefreshIfPossible {
+		problems = append(problems, label+" refreshIfRefreshTokenPresent requires a refresh-token grant")
+	}
 	problems = append(problems, grantContext.validateResponseURL(label, grant.ResponseURLValidation, grant.CredentialMappings)...)
 	if grant.RefreshWhenCredentialBlank != "" && !grantContext.isCredential(grant.RefreshWhenCredentialBlank) {
 		problems = append(problems, label+" refreshWhenCredentialBlank must name a credential field")
+	}
+	if grant.RefreshWhenCredentialBlank != "" && !slices.ContainsFunc(grant.CredentialMappings, func(mapping OAuthCredentialMapping) bool {
+		return mapping.Credential == grant.RefreshWhenCredentialBlank
+	}) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a mapped credential field")
 	}
 	return problems
 }
@@ -709,6 +734,9 @@ func (grantContext tokenGrantContext) validateResponseURL(label string, rule *Re
 	}
 	if !rule.AllowAnyHTTPS && len(rule.AllowedHosts) == 0 && rule.AllowedHostSuffix == "" && !rule.AllowLoopback {
 		problems = append(problems, label+" responseURLValidation requires an allowed host policy")
+	}
+	if rule.AllowAnyHTTPS && len(rule.AllowedHosts) > 0 {
+		problems = append(problems, label+" responseURLValidation cannot combine allowAnyHTTPS and allowedHosts")
 	}
 	seen := map[string]bool{}
 	for _, host := range rule.AllowedHosts {

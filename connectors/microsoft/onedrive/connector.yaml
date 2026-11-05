@@ -94,6 +94,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            requiredScopes: [Files.ReadWrite.All]
             scopeResourcePrefix: https://graph.microsoft.com/
             caseInsensitiveScopes: true
             missingExpiry: reject

@@ -107,7 +107,7 @@ func TestResponseScopePolicyAndScopeSetValidation(t *testing.T) {
 	require.NoError(t, err)
 	refresh := manifest.Spec.Auth.Methods[0].OAuth2.Refresh
 	refresh.ResponseScopes = schema.ResponseScopesIgnore
-	require.NoError(t, manifest.Validate())
+	require.ErrorContains(t, manifest.Validate(), "responseScopes ignore cannot declare requiredScopes, exactScopes, or scopeSeparators")
 	refresh.ResponseScopes = "unknown"
 	require.ErrorContains(t, manifest.Validate(), "responseScopes must be ignore")
 	refresh.ResponseScopes = ""
@@ -144,6 +144,14 @@ func TestNewRefreshDeclarationsRejectInvalidValues(t *testing.T) {
 	refresh.ScopeResourcePrefixCaseInsensitive = false
 	refresh.ResponseURLValidation = &schema.ResponseURLValidation{Credential: "access_token", AllowedHosts: []string{"example.com"}}
 	require.ErrorContains(t, manifest.Validate(), "responseURLValidation credential must name a URL or string credential")
+	refresh.ResponseURLValidation = &schema.ResponseURLValidation{Credential: "instance_url", AllowedHosts: []string{"example.com"}, AllowAnyHTTPS: true}
+	require.ErrorContains(t, manifest.Validate(), "cannot combine allowAnyHTTPS and allowedHosts")
+	refresh.ResponseURLValidation = nil
+	refresh.RefreshWhenCredentialBlank = "oauth_client_id"
+	require.ErrorContains(t, manifest.Validate(), "refreshWhenCredentialBlank must name a mapped credential field")
+	refresh.RefreshWhenCredentialBlank = ""
+	refresh.ExpiryCap = "30m"
+	require.NoError(t, manifest.Validate())
 }
 
 func TestDecodeTokenGrantDeclarations(t *testing.T) {

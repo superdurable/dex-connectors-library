@@ -24,7 +24,8 @@ interface AgreementCase {
   response: Record<string, unknown>;
   updates: Record<string, string>;
   terminalErrorCodes?: string[] | null;
-  storedMissingExpiry: 'keep' | 'refresh';
+  storedMissingExpiry: 'keep' | 'refresh' | 'refreshIfRefreshTokenPresent';
+  refreshRequiredCases: Array<{ name: string; credentials?: Record<string, string>; expiresAt: 'fresh' | 'expired' | 'missing'; expected: boolean; jwtAccessTokenCredential?: string; jwtExpiry?: 'fresh' | 'expired' }>;
   expectedExpiryMilliseconds?: number;
   keyCredential?: string;
   privateKeyCredential?: string;
@@ -36,8 +37,8 @@ interface AgreementCase {
 
 const cases = JSON.parse(readFileSync(new URL('./fixtures/refresh-agreement-cases.json', import.meta.url), 'utf8')) as AgreementCase[];
 
-function credentialsFor(agreement: AgreementCase, privateKeyPEM: string): Record<string, unknown> {
-  const material = { ...agreement.credentials };
+function credentialsFor(agreement: AgreementCase, privateKeyPEM: string, overrides: Record<string, string> = {}): Record<string, unknown> {
+  const material = { ...agreement.credentials, ...overrides };
   if (agreement.keyCredential && agreement.privateKeyMember) {
     material[agreement.keyCredential] = JSON.stringify({ ...agreement.keyMembers, [agreement.privateKeyMember]: privateKeyPEM });
   }
@@ -110,7 +111,19 @@ describe('generated Go manifest refresh agreement', () => {
       settings: agreement.settings ?? {}, fetch: transport,
     });
     const state = { credentials, expiresAt: new Date(0), now: new Date() };
-    expect(driver.refreshRequired({ credentials, now: state.now })).toBe(agreement.storedMissingExpiry === 'refresh');
+    for (const refreshCase of agreement.refreshRequiredCases) {
+      const expiresAt = refreshCase.expiresAt === 'fresh' ? new Date(state.now.getTime() + 3600000)
+        : refreshCase.expiresAt === 'expired' ? new Date(state.now.getTime() - 3600000) : undefined;
+      const overrides = { ...refreshCase.credentials };
+      if (refreshCase.jwtAccessTokenCredential) {
+        const expiry = state.now.getTime() + (refreshCase.jwtExpiry === 'fresh' ? 3600000 : -3600000);
+        const payload = Buffer.from(JSON.stringify({ exp: Math.floor(expiry / 1000) })).toString('base64url');
+        overrides[refreshCase.jwtAccessTokenCredential] = `e30.${payload}.signature`;
+      }
+      const storedCredentials = credentialsFor(agreement, privateKeyPEM, overrides);
+      expect(driver.refreshRequired({ credentials: storedCredentials, expiresAt, now: state.now }), refreshCase.name).toBe(refreshCase.expected);
+      expect(requests).toHaveLength(0);
+    }
     let result: Awaited<ReturnType<typeof driver.refresh>> | undefined;
     const startedAt = Date.now();
     try { result = await driver.refresh(state, new AbortController().signal); }

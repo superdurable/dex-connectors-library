@@ -556,6 +556,10 @@
     },
     "responseURLValidation": {
       "type": "object", "additionalProperties": false, "required": ["credential"],
+      "allOf": [
+        { "anyOf": [{ "required": ["allowedHosts"] }, { "required": ["allowedHostSuffix"] }, { "properties": { "allowAnyHTTPS": { "const": true } }, "required": ["allowAnyHTTPS"] }, { "properties": { "allowLoopback": { "const": true } }, "required": ["allowLoopback"] }] },
+        { "not": { "properties": { "allowAnyHTTPS": { "const": true } }, "required": ["allowAnyHTTPS", "allowedHosts"] } }
+      ],
       "properties": {
         "credential": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
         "allowedHosts": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
@@ -569,6 +573,11 @@
       "description": "How a host refreshes the access token. tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, the client credentials, and credentialMappings apply to refresh requests and responses too; a value that a refresh response omits keeps the stored one.",
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        { "not": { "required": ["requiredScopes", "acceptedScopeSets"] } },
+        { "if": { "properties": { "scopeResourcePrefixCaseInsensitive": { "const": true } }, "required": ["scopeResourcePrefixCaseInsensitive"] }, "then": { "required": ["scopeResourcePrefix"] } },
+        { "if": { "required": ["responseScopes"] }, "then": { "not": { "anyOf": [{ "required": ["requiredScopes"] }, { "required": ["exactScopes"] }, { "required": ["scopeSeparators"] }] } } }
+      ],
       "properties": {
         "responseURLValidation": { "$ref": "#/$defs/responseURLValidation" },
         "acceptsMissingTokenType": { "type": "boolean", "description": "Accept a successful token response without token_type." },
@@ -579,8 +588,8 @@
         "scopeResourcePrefixCaseInsensitive": { "type": "boolean", "description": "Remove the resource prefix without case." },
         "caseInsensitiveScopes": { "type": "boolean", "description": "Compare scope names without case." },
         "refreshWhenCredentialBlank": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$", "description": "Refresh when this credential is blank." },
-        "expiryCap": { "type": "string", "pattern": "^[1-9][0-9]*h$", "description": "Maximum token lifetime." },
-        "accessTokenJWTExpiryFallback": { "type": "string", "pattern": "^[1-9][0-9]*h$", "description": "Use the access-token JWT exp claim, falling back to this lifetime." },
+        "expiryCap": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "description": "Maximum token lifetime." },
+        "accessTokenJWTExpiryFallback": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "description": "Use the access-token JWT exp claim, falling back to this lifetime." },
         "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
         "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
         "requiredScopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Override authorization scopes checked in a refresh response, when a provider reports only API scopes." },
@@ -615,6 +624,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["tokenEndpoint", "clientIDCredential", "clientSecretCredential", "credentialMappings"],
+      "allOf": [{ "if": { "required": ["responseScopes"] }, "then": { "not": { "required": ["scopeSeparators"] } } }, { "not": { "properties": { "storedMissingExpiry": { "const": "refreshIfRefreshTokenPresent" } }, "required": ["storedMissingExpiry"] } }],
       "properties": {
         "acceptsMissingTokenType": { "type": "boolean" },
         "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
@@ -643,6 +653,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["privateKey", "issuer", "audience", "tokenEndpoint", "lifetime", "credentialMappings"],
+          "allOf": [{ "if": { "required": ["responseScopes"] }, "then": { "not": { "required": ["scopeSeparators"] } } }, { "not": { "properties": { "storedMissingExpiry": { "const": "refreshIfRefreshTokenPresent" } }, "required": ["storedMissingExpiry"] } }],
           "properties": {
             "acceptsMissingTokenType": { "type": "boolean" },
             "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
