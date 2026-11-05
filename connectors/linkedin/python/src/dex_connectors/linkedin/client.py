@@ -5,6 +5,7 @@
 import ipaddress
 import json
 import re
+from datetime import UTC, datetime
 from email.utils import parseaddr
 from urllib.parse import urlsplit
 
@@ -22,6 +23,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -168,12 +170,7 @@ class GetAuthenticatedProfileOperation:
             break
         status = response.status_code
         if status == 429:
-            retry_after = response.headers.get("Retry-After", "")
-            delay = (
-                int(retry_after)
-                if retry_after.isascii() and retry_after.isdigit() and int(retry_after) > 0
-                else 60
-            )
+            delay = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC)) or 60.0
             return QueryAttempt.retry(
                 _failure(FailureKind.RATE_LIMIT, "LinkedIn rate limit was reached"), float(delay)
             )

@@ -211,7 +211,7 @@ def issue_summary(value: Any) -> IssueSummary:
         and _UUID.fullmatch(state_id)
     ):
         raise ValueError("Linear returned a malformed issue")
-    if type(raw_priority) not in (int, float) or not 0 <= raw_priority <= 4:
+    if type(raw_priority) is not int or not 0 <= raw_priority <= 4:
         raise ValueError("Linear returned a malformed issue")
     labels = wire.get("labelIds")
     if labels is None:
@@ -247,7 +247,7 @@ def issue(value: Any) -> Issue:
     number = wire.get("number", 0)
     if number is None:
         number = 0
-    if type(number) not in (int, float) or not 0 <= number <= 2147483647:
+    if type(number) is not int or not 0 <= number <= 2147483647:
         raise ValueError("Linear returned a malformed issue")
     description = _optional_string(wire.get("description"))
     estimate = wire.get("estimate")
@@ -321,7 +321,7 @@ def _cycle(value: Any) -> CycleReference | None:
     number = data.get("number", 0)
     if number is None:
         number = 0
-    if type(number) not in (int, float):
+    if type(number) is not int:
         raise ValueError("Linear returned a malformed issue")
     return CycleReference(
         id=_string(data.get("id", "")), number=int(number), name=_optional_string(data.get("name"))

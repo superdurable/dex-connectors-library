@@ -8,7 +8,7 @@ import json
 import math
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from dex_connectors.sdk import (
@@ -23,6 +23,7 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
+from dex_connectors.sdk.providerhttp import parse_retry_after
 
 from ._generated.definitions import (
     APPEND_TABLE_ROWS_DEFINITION,
@@ -323,16 +324,7 @@ def _status_kind(status: int, tokens: list[str]) -> FailureKind:
 
 
 def _retry_after(response: GraphResponse, now: datetime) -> float:
-    value = response.headers.get("Retry-After", "").strip()
-    if re.fullmatch(r"[0-9]+", value):
-        return float(min(int(value), 3600))
-    try:
-        from email.utils import parsedate_to_datetime
-
-        target = parsedate_to_datetime(value).astimezone(UTC)
-        return min(3600.0, max(0.0, (target - now.astimezone(UTC)).total_seconds()))
-    except (ValueError, TypeError, OverflowError):
-        return 0.0
+    return parse_retry_after(response.headers.get("Retry-After", ""), now)
 
 
 def _read_result(

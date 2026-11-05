@@ -5,7 +5,7 @@
 import pytest
 from dex_connectors.sdk import OperationRef, derive_call_id
 
-from dex_connectors.linear.wire import client_entity_id, due_date, email, issue_summary, linear_time
+from dex_connectors.linear.wire import client_entity_id, due_date, email, issue, issue_summary, linear_time
 
 
 def test_client_entity_id_uses_stable_call_identity() -> None:
@@ -59,3 +59,22 @@ def test_issue_summary_rejects_wrong_typed_provider_field() -> None:
     }
     with pytest.raises(ValueError):
         issue_summary(node)
+    for malformed_priority in (5.0, 1e3):
+        with pytest.raises(ValueError):
+            issue_summary({**node, "priority": malformed_priority})
+
+
+@pytest.mark.parametrize("malformed_number", [5.0, 1e3])
+def test_issue_rejects_non_integer_number(malformed_number: float) -> None:
+    """Keep JSON floating literals out of Go integer fields."""
+    node = {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "identifier": "ENG-210",
+        "team": {"id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"},
+        "state": {"id": "22222222-2222-4222-8222-222222222222"},
+        "createdAt": "2026-10-26T09:00:00Z",
+        "updatedAt": "2026-10-26T09:00:00Z",
+        "number": malformed_number,
+    }
+    with pytest.raises(ValueError):
+        issue(node)

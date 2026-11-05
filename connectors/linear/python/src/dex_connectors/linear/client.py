@@ -25,6 +25,7 @@ from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -326,7 +327,13 @@ class Client:
             body = await read_bounded_body(response, self.config.max_response_bytes)
         except BodyTooLargeError:
             if not is_success:
-                return _classify_failure(operation, status, request_id, {}, 0)
+                return _classify_failure(
+                    operation,
+                    status,
+                    request_id,
+                    {},
+                    parse_retry_after(response.headers.get("Retry-After", ""), self.now()),
+                )
             return Exchange(
                 "invalid",
                 status=status,
@@ -353,7 +360,7 @@ class Client:
                     operation, FailureKind.PROTOCOL, "Linear response reflected the connection credential"
                 ),
             )
-        retry_after = _retry_after(response.headers.get("Retry-After"), self.now())
+        retry_after = parse_retry_after(response.headers.get("Retry-After", ""), self.now())
         try:
             envelope = json.loads(body)
         except (ValueError, UnicodeDecodeError):
@@ -391,20 +398,6 @@ class Client:
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "linear", operation, message)
-
-
-def _retry_after(value: str | None, now: datetime) -> float:
-    if not value:
-        return 0
-    try:
-        return max(0.0, float(int(value)))
-    except ValueError:
-        try:
-            from email.utils import parsedate_to_datetime
-
-            return max(0.0, (parsedate_to_datetime(value) - now).total_seconds())
-        except (ValueError, TypeError, OverflowError):
-            return 0
 
 
 def _classify_failure(

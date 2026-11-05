@@ -69,7 +69,7 @@ def path_escape(value: str) -> str:
 
 def query_escape(value: str) -> str:
     """Escape a query value like Go QueryEscape, with spaces retained as %20."""
-    return quote(value, safe="", encoding="utf-8", errors="strict").replace("~", "%7E")
+    return quote(value, safe="", encoding="utf-8", errors="strict")
 
 
 def odata_query(values: dict[str, str]) -> str:

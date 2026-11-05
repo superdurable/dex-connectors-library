@@ -26,7 +26,7 @@ CREDENTIALS = StaticCredentialProvider({CONNECTION: Credentials(access_token=Sec
 def test_path_and_query_escape_match_go() -> None:
     """Keep Graph IDs and OData values byte-for-byte compatible with Go."""
     assert path_escape("$a!b'c()*+,;?/@example.com") == "$a%21b%27c%28%29%2A+%2C%3B%3F%2F@example.com"
-    assert query_escape("a b~*+") == "a%20b%7E%2A%2B"
+    assert query_escape("a b~*+") == "a%20b~%2A%2B"
 
 
 def test_graph_user_wrong_typed_fields_are_not_coerced() -> None:

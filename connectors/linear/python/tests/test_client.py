@@ -28,10 +28,13 @@ class _UnavailableRefresh:
 
 
 @pytest.mark.asyncio
-async def test_large_429_remains_rate_limit_retry() -> None:
+@pytest.mark.parametrize("header, delay", [("7200", 3600.0), ("1_0", 0.0)])
+async def test_large_429_remains_rate_limit_retry(header: str, delay: float) -> None:
     """Classify a large error by status even when its body exceeds the success limit."""
     async with httpx.AsyncClient(
-        transport=httpx.MockTransport(lambda _: httpx.Response(429, content=b"x" * 100))
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(429, headers={"Retry-After": header}, content=b"x" * 100)
+        )
     ) as transport:
         client = Client(
             Config(max_response_bytes=10), _Credentials(), transport, api_url="http://127.0.0.1/graphql"
@@ -39,6 +42,7 @@ async def test_large_429_remains_rate_limit_retry() -> None:
         attempt = await client.list_workflow_states().invoke(CALL, ListWorkflowStatesInput(TEAM_ID))
     assert attempt.kind == "retry"
     assert attempt.failure is not None and attempt.failure.kind == FailureKind.RATE_LIMIT
+    assert attempt.retry_after_seconds == delay
 
 
 def test_graphql_error_code_precedes_http_status() -> None:

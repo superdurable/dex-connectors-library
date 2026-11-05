@@ -26,6 +26,7 @@ from dex_connectors.sdk.projectconfig.provider import RefreshFailedError
 from dex_connectors.sdk.providerhttp import (
     MAX_ERROR_BODY_BYTES,
     BodyTooLargeError,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -116,20 +117,7 @@ def _classify(
 
     if not 200 <= status < 300:
         if status == 429:
-            delay = 60.0
-            retry_value = headers.get("Retry-After", "")
-            if re.fullmatch(r"[+-]?[0-9]+", retry_value):
-                seconds = int(retry_value)
-                if 0 < seconds <= (2**63 - 1) // 1_000_000_000:
-                    delay = float(seconds)
-            else:
-                try:
-                    from email.utils import parsedate_to_datetime
-
-                    parsed = parsedate_to_datetime(retry_value)
-                    delay = max(0.0, (parsed.astimezone(UTC) - now).total_seconds()) or 60.0
-                except (TypeError, ValueError, OverflowError):
-                    pass
+            delay = parse_retry_after(headers.get("Retry-After", ""), now) or 60.0
             return result("retry", FailureKind.RATE_LIMIT, "QuickBooks throttled the request", delay)
         if status == 501:
             return result(
@@ -428,7 +416,7 @@ class Client:
                     ),
                 )
             parameters["requestid"] = str(call.idempotency_key)
-        query_string = urlencode(sorted(parameters.items())).replace("~", "%7E")
+        query_string = urlencode(sorted(parameters.items()))
         target = f"{self.endpoint}/{realm}{path}?{query_string}"
         headers = {
             "Accept": "application/json",
@@ -459,6 +447,14 @@ class Client:
                             FailureKind.RESPONSE_TOO_LARGE,
                             "QuickBooks response exceeds the configured maxResponseBytes limit",
                         ),
+                        response.status_code,
+                        request_id=response.headers.get("intuit_tid", ""),
+                        metadata={"realmId": realm, "environment": self.config.environment},
+                    )
+                except (httpx.HTTPError, OSError):
+                    return Exchange(
+                        "interrupted",
+                        _failure(operation, FailureKind.TRANSPORT, "QuickBooks response was interrupted"),
                         response.status_code,
                         request_id=response.headers.get("intuit_tid", ""),
                         metadata={"realmId": realm, "environment": self.config.environment},
@@ -504,6 +500,17 @@ class Client:
                                         operation,
                                         FailureKind.RESPONSE_TOO_LARGE,
                                         "QuickBooks response exceeds the configured maxResponseBytes limit",
+                                    ),
+                                    response.status_code,
+                                    request_id=response.headers.get("intuit_tid", ""),
+                                )
+                            except (httpx.HTTPError, OSError):
+                                result = Exchange(
+                                    "interrupted",
+                                    _failure(
+                                        operation,
+                                        FailureKind.TRANSPORT,
+                                        "QuickBooks response was interrupted",
                                     ),
                                     response.status_code,
                                     request_id=response.headers.get("intuit_tid", ""),

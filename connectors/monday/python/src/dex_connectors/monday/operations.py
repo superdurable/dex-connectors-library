@@ -223,19 +223,34 @@ async def _checkpointed_exchange(
     repetition = asyncio.create_task(repeat_checkpoint())
     try:
         result = await client._send(call, operation, document, variables, credentials, True)
+        if result.status == 401 and credentials.auth_method_id == "monday-oauth":
+            refresh = getattr(client.credentials, "resolve_after_rejection", None)
+            if refresh is not None:
+                try:
+                    replacement = await refresh(call)
+                    token = replacement.access_token
+                    if token is not None and token.reveal():
+                        if (
+                            context.deadline is not None
+                            and context.deadline - datetime.now(UTC) < timedelta(seconds=6)
+                        ):
+                            result = Exchange(
+                                "retry",
+                                problem=failure(
+                                    operation,
+                                    FailureKind.AVAILABILITY,
+                                    "not enough time remains to resend the mutation",
+                                ),
+                            )
+                        else:
+                            result = await client._send(
+                                call, operation, document, variables, replacement, True
+                            )
+                except (ValueError, LookupError, OSError):
+                    pass  # The original 401 remains the provider's terminal rejection.
     finally:
         stop_repetition.set()
         await repetition
-    if result.status == 401 and credentials.auth_method_id == "monday-oauth":
-        refresh = getattr(client.credentials, "resolve_after_rejection", None)
-        if refresh is not None:
-            try:
-                replacement = await refresh(call)
-                token = replacement.access_token
-                if token is not None and token.reveal():
-                    result = await client._send(call, operation, document, variables, replacement, True)
-            except (ValueError, LookupError, OSError):
-                pass  # The original 401 remains the provider's terminal rejection.
     if result.outcome == "retry":
         if 200 <= result.status < 300 and (not result.confirmed_not_processed or result.data is not None):
             result = replace(result, outcome="uncertain")

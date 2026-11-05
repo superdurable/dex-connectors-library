@@ -8,9 +8,17 @@ from datetime import UTC, datetime
 
 import httpx
 import pytest
-from dex_connectors.sdk import SecretString
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    ConnectionRef,
+    IdempotencyKey,
+    OperationRef,
+    SecretString,
+    StaticCredentialProvider,
+)
 
-from dex_connectors.intuit_quickbooks import Credentials
+from dex_connectors.intuit_quickbooks import Client, Config, Credentials
 from dex_connectors.intuit_quickbooks.client import _classify, _resolve_realm
 from dex_connectors.intuit_quickbooks.provider import (
     decode_invoice,
@@ -44,6 +52,63 @@ def test_large_error_body_still_classifies_by_status() -> None:
     """Ignore the success-response size limit when QuickBooks returns a 503."""
     result = _classify("getInvoice", 503, httpx.Headers(), b"x" * 1000, 5, "", datetime.now(UTC))
     assert result.outcome == "retry"
+
+
+@pytest.mark.parametrize("value, expected", [("+5", 60.0), ("-5", 60.0), ("7200", 3600.0)])
+def test_retry_after_uses_bounded_sdk_parser(value: str, expected: float) -> None:
+    """Use Go's throttle fallback after invalid values and cap long delays."""
+    result = _classify(
+        "getInvoice", 429, httpx.Headers({"Retry-After": value}), b"", 100, "", datetime.now(UTC)
+    )
+    assert result.retry_after == expected
+
+
+@pytest.mark.asyncio
+async def test_success_body_interruption_preserves_accepted_response() -> None:
+    """Keep a 2xx read failure eligible for mutation read-back."""
+
+    class InterruptedBody(httpx.AsyncByteStream):
+        async def __aiter__(self):  # type: ignore[no-untyped-def]
+            raise httpx.ReadError("body interrupted")
+            yield b""  # pragma: no cover
+
+    requests: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, stream=InterruptedBody())
+
+    connection = ConnectionRef("quickbooks", "quickbooks-test")
+    credentials = Credentials(
+        "ABtestQuickBooksClientID0123456789",
+        SecretString("client-secret"),
+        SecretString("access-token"),
+        SecretString("refresh-token"),
+        SecretString(""),
+    )
+    call = Call(
+        CallID("33333333-3333-4333-8333-333333333333"),
+        connection,
+        OperationRef("quickbooks", "createInvoice"),
+        IdempotencyKey("33333333-3333-4333-8333-333333333333"),
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(answer)
+    ) as transport:
+        client = Client(
+            Config(realm_id="9341453050298464"),
+            StaticCredentialProvider({connection: credentials}),
+            transport,
+            local_provider_url="http://127.0.0.1:40150",
+        )
+        result = await client.exchange(
+            call, "createInvoice", "POST", "/invoice", query={"probe": "a b~*"}, payload=b"{}", mutation=True
+        )
+    assert result.outcome == "interrupted"
+    assert result.status == 200
+    assert requests[0].url.query == (
+        b"minorversion=75&probe=a+b~%2A&requestid=33333333-3333-4333-8333-333333333333"
+    )
 
 
 def test_wire_exponent_preserves_decimal_value() -> None:
