@@ -259,6 +259,11 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
+  The string mode preserves every supplied fractional digit; the default
+  `datetime` mode names the field when a Go-valid value cannot be represented
+  exactly.
+
 - `0.6.0`: Manifest refresh follows Go scope and credential URL policies,
   including HubSpot scope arrays, Microsoft Graph scope prefixes, Zoho expiry
   caps, monday.com JWT expiry, and private-network token endpoints. Retryable
