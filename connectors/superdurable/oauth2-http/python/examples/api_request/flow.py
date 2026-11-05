@@ -48,7 +48,7 @@ class APIRequestFlow(dex.Flow[SendRequestInput]):
         )
 
     def get_flow_type(self) -> str:
-        return FLOW_TYPE
+        return "OAuth2HTTPPythonAPIRequest"
 
     def get_steps(self) -> dex.StepList[SendRequestInput]:
         return dex.StepList.start_step(self.send_request).other_steps(self.complete)

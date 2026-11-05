@@ -12,5 +12,12 @@ uv run python -m examples.api_request.worker
 uv run python -m examples.api_request.start oauth2-http-python-1 examples/api_request/input.example.json
 ```
 
+Generate and lint the strict Flow Definition Graph 2.0 with the package's
+Python interpreter:
+
+```sh
+dexcli visualize examples/api_request/flow.py --language python --schema-version 2.0 --lint app --json --out - --open=false --python .venv/bin/python
+```
+
 The integration test exercises a fake provider through a real Dex Worker and
 Client. Live provider authorization remains unverified.
