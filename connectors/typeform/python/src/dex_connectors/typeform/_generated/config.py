@@ -22,6 +22,6 @@ class Credentials:
 
     auth_method_id: str = "personal-access-token"
     access_token: SecretString | None = None
-    webhook_secret: SecretString | None = None
+    webhook_secret: SecretString = SecretString('')
 
 setattr(Credentials, '__module__', 'dex_connectors.typeform.client')
