@@ -260,7 +260,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
-- `0.8.0`: Manifest OAuth refresh honors `refresh.tokenExchangeTimeout` independently of the caller's deadline; timeout is retryable. Interrupted body reads preserve response status and headers, and `encode_query_values` provides Go-compatible query serialization for connector ports. These additions are not breaking; existing ports keep their current encoding until migrated.
+- `0.8.0`: Manifest OAuth refresh and client-credentials minting honor `tokenExchangeTimeout` independently of the caller's deadline; timeout is retryable. Interrupted body reads preserve response status and headers, and `encode_query_values` provides Go-compatible query serialization for connector ports. These additions are not breaking; existing ports keep their current encoding until migrated.
 
 - `0.7.0`: Manifest token endpoint templates apply declared
   `templateValueRules` before path escaping. Rules trim Go Unicode whitespace,

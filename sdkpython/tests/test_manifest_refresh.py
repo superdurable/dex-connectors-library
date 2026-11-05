@@ -82,15 +82,29 @@ FIELDS = {
 
 
 @pytest.mark.asyncio
-async def test_manifest_refresh_token_exchange_timeout_is_retryable() -> None:
+@pytest.mark.parametrize("grant_kind", ["refresh", "client_credentials"])
+async def test_manifest_refresh_token_exchange_timeout_is_retryable(grant_kind: str) -> None:
     """The declared exchange deadline aborts the request and remains retryable."""
     auth: dict[str, Any] = deepcopy(AUTH)
-    auth["methods"][0]["oauth2"]["refresh"]["tokenExchangeTimeout"] = "10ms"
+    method = auth["methods"][0]
+    if grant_kind == "client_credentials":
+        method.pop("oauth2")
+        method["type"] = "apiKey"
+        method["clientCredentials"] = {
+            "tokenEndpoint": "https://oauth.example.test/token",
+            "clientIDCredential": "client_id", "clientSecretCredential": "client_secret",
+            "scopes": ["files.read"],
+            "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        }
+        grant = method["clientCredentials"]
+    else:
+        grant = method["oauth2"]["refresh"]
+    grant["tokenExchangeTimeout"] = "10ms"
 
     class SlowStream(httpx.AsyncByteStream):
         async def __aiter__(self) -> AsyncIterator[bytes]:
             await asyncio.sleep(0.1)
-            yield b"{}"
+            yield b'{"access_token":"new","expires_in":3600,"token_type":"Bearer","scope":"files.read"}'
 
         async def aclose(self) -> None:
             pass
@@ -104,7 +118,7 @@ async def test_manifest_refresh_token_exchange_timeout_is_retryable() -> None:
         )
         with pytest.raises(RetryError):
             await driver.refresh(state)
-    auth["methods"][0]["oauth2"]["refresh"]["tokenExchangeTimeout"] = "-1s"
+    grant["tokenExchangeTimeout"] = "-1s"
     async with httpx.AsyncClient() as client:
         with pytest.raises(ValueError, match="tokenExchangeTimeout"):
             ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)

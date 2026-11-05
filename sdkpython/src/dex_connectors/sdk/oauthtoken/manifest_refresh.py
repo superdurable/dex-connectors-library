@@ -394,6 +394,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "scope_resource_prefix_case_insensitive": False,
                     "refresh_when_credential_blank": "",
                     "expiry_cap": "",
+                    "token_exchange_timeout": client.get("tokenExchangeTimeout", ""),
                     "access_token_jwt_expiry_fallback": "",
                     "declares_accepted_scope_sets": "acceptedScopeSets" in client,
                     "terminal_codes": client.get("terminalErrorCodes") or ["invalid_client"],
@@ -561,22 +562,19 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             SecretString(secret),
             ClientAuthenticationMethod(method),
         )
-        if grant["kind"] == "refresh":
-            if grant["token_exchange_timeout"]:
-                try:
-                    timeout_seconds = _parse_duration(grant["token_exchange_timeout"]).total_seconds()
-                    async with asyncio.timeout(timeout_seconds):
-                        return await endpoint.exchange_refresh_token(
-                            client, SecretString(self._credential_value(credentials, grant["refresh_field"]))
-                        ), []
-                except TimeoutError:
-                    raise OSError("token endpoint is unavailable") from None
-            return await endpoint.exchange_refresh_token(
-                client, SecretString(self._credential_value(credentials, grant["refresh_field"]))
-            ), []
-        return await endpoint.exchange_client_credentials(
-            client, tuple(self._scopes(grant["request_scopes"]))
-        ), []
+        timeout = grant.get("token_exchange_timeout", "")
+        timeout_seconds = _parse_duration(timeout).total_seconds() if timeout else None
+        try:
+            async with asyncio.timeout(timeout_seconds):
+                if grant["kind"] == "refresh":
+                    return await endpoint.exchange_refresh_token(
+                        client, SecretString(self._credential_value(credentials, grant["refresh_field"]))
+                    ), []
+                return await endpoint.exchange_client_credentials(
+                    client, tuple(self._scopes(grant["request_scopes"]))
+                ), []
+        except TimeoutError:
+            raise OSError("token endpoint is unavailable") from None
 
     def _resolve_assertion_source(
         self, source: Any, assertion: Mapping[str, Any], credentials: Credential, key: Mapping[str, Any]
