@@ -9,6 +9,8 @@ This Dex connector exposes `listCollectionItems`, `getCollectionItem`. The runna
 The Python package is [`dex-connector-webflow`](python/README.md), imported as
 `dex_connectors.webflow`.
 
+The TypeScript package is [`@superdurable/connector-webflow`](typescript/README.md) with a [runnable Dex Flow](typescript/examples/list-items/flow.ts) using the same static `webflow` connection.
+
 ## Provider contract
 
 Both operations read staged CMS items with `CMS:read` scope. A site token is scoped to one site. The `collectionId` and `itemId` are 24-character hexadecimal IDs.
