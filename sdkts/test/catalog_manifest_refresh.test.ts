@@ -86,4 +86,5 @@ describe('catalog manifest refresh declarations', () => {
     expect((result.credentials.access_token as SecretString).reveal()).toBe('minted');
     expect(result.credentials.instance_url).toBe('https://example.my.salesforce.com');
   });
+
 });

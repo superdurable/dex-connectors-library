@@ -4,6 +4,7 @@
 import { ReauthorizationRequiredError, RetryError } from '../errors.js';
 import { isIP } from 'node:net';
 import { isLoopbackIPAddressLiteral } from '../netpolicy.js';
+import { AddressRefusal } from '../providerhttp/index.js';
 import { SecretString, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '../credentials.js';
 import {
   isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
@@ -126,7 +127,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       let token: TokenResponse;
       try { token = await this.#exchange(grant, credentials, method, signal); }
       catch (error) {
-        if (error instanceof ReauthorizationRequiredError) throw error;
+        if (error instanceof ReauthorizationRequiredError || error instanceof AddressRefusal) throw error;
         throw new RetryError({ kind: 'PROTOCOL', provider: this.#providerName, operation: 'refreshCredentials',
           message: error instanceof Error ? error.message : 'token endpoint failed' });
       }
@@ -378,6 +379,12 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 
   #validateNewDeclarations(grant: Grant): void {
+    const endpoint = manifestObject(grant.endpoint);
+    if (Object.hasOwn(endpoint, 'templateValueRules')) {
+      if (!endpoint.templateValueRules || typeof endpoint.templateValueRules !== 'object' || Array.isArray(endpoint.templateValueRules))
+        throw new TypeError('manifest template value rules are invalid');
+      for (const rule of Object.values(endpoint.templateValueRules)) validateTemplateValueRule(rule);
+    }
     const urlRule = grant.responseURLValidation;
     const allowedURLKeys = new Set(['credential', 'allowedHosts', 'allowedHostSuffix', 'allowAnyHTTPS', 'allowLoopback', 'forbidPort', 'requireResponse', 'refreshWhenInvalid', 'defaultURL']);
     if (Object.keys(urlRule).some(key => !allowedURLKeys.has(key))) throw new TypeError('manifest responseURLValidation field is invalid');
@@ -509,19 +516,37 @@ function pathEscape(value: string): string {
     .replace(/%(?:2B|26|3D|3A|40|24)/g, escaped => ({ '%2B': '+', '%26': '&', '%3D': '=', '%3A': ':', '%40': '@', '%24': '$' })[escaped] ?? escaped);
 }
 function applyTemplateValueRule(raw: string, rule: ManifestObject): string {
+  validateTemplateValueRule(rule);
   let value = rule.trimSpace === true ? trimGoSpace(raw) : raw;
   if (typeof rule.maxBytes === 'number' && Buffer.byteLength(value, 'utf8') > rule.maxBytes)
     throw new ReauthorizationRequiredError();
-  if (manifestList(rule.reject).some(rejected => typeof rejected === 'string' && rejected.toLowerCase() === value.toLowerCase()))
+  if (manifestList(rule.reject).some(rejected => (rejected as string).toLowerCase() === value.toLowerCase()))
     throw new ReauthorizationRequiredError();
   const patterns = manifestList(rule.patterns);
   if (patterns.length && !patterns.some(pattern => {
-    if (typeof pattern !== 'string') throw new TypeError('manifest template value pattern is invalid');
-    const matched = new RegExp(pattern).exec(value);
-    return matched?.index === 0 && matched[0].length === value.length;
-  })) throw new ReauthorizationRequiredError();
+    const match = new RegExp(`^(?:${String(pattern)})$`).exec(value);
+    return match?.[0].length === value.length;
+  }))
+    throw new ReauthorizationRequiredError();
   if (rule.lowercase === true) value = value.toLowerCase();
   return value;
+}
+function validateTemplateValueRule(declaration: unknown): void {
+  if (!declaration || typeof declaration !== 'object' || Array.isArray(declaration))
+    throw new TypeError('manifest template value rule is invalid');
+  const rule = declaration as ManifestObject;
+  const allowed = new Set(['trimSpace', 'maxBytes', 'patterns', 'reject', 'lowercase']);
+  if (Object.keys(rule).some(key => !allowed.has(key)) ||
+    (rule.trimSpace !== undefined && typeof rule.trimSpace !== 'boolean') ||
+    (rule.lowercase !== undefined && typeof rule.lowercase !== 'boolean') ||
+    (rule.maxBytes !== undefined && (!Number.isSafeInteger(rule.maxBytes) || Number(rule.maxBytes) < 0)) ||
+    (rule.reject !== undefined && (!Array.isArray(rule.reject) || rule.reject.some(value => typeof value !== 'string'))) ||
+    (rule.patterns !== undefined && (!Array.isArray(rule.patterns) || rule.patterns.some(value => typeof value !== 'string'))))
+    throw new TypeError('manifest template value rule is invalid');
+  for (const pattern of manifestList(rule.patterns)) {
+    try { new RegExp(`^(?:${String(pattern)})$`); }
+    catch { throw new TypeError('manifest template value pattern is invalid'); }
+  }
 }
 function parseDurationMs(value: string): number {
   if (!value) return 0;

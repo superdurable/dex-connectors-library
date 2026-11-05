@@ -287,6 +287,7 @@ Manifest token endpoint templates now apply declared `templateValueRules` to eac
 `trimClientID` on refresh or client-credentials declarations trims the client ID sent in the token request when the Go driver does so.
 JWT-bearer grants accept a PEM private key directly from a credential field, as Salesforce declares, without requiring a JSON key credential.
 Private-network HTTP token endpoints also reject fragments and non-printable or non-ASCII URL text before transport, matching the configurable Go connector.
+Migration: `TokenEndpoint` accepts uppercase ASCII `HTTP://` and `HTTPS://` schemes; leading whitespace remains invalid. An address-policy refusal retains its `AddressRefusal` type so a connector can classify it as a terminal validation defect.
 
 ### 0.6.0
 
