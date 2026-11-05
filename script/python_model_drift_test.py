@@ -15,6 +15,7 @@ COMPATIBILITY_MODELS = {
     "brevo": {"ContactWriteResult"},
     "cloudflare": {"CachePurge"},
     "datadog": {"QueryMetricsInput"},
+    "google_gemini": {"Content", "GenerateContentRequest", "GenerateContentResponse", "Part", "Usage"},
     "google_gmail": {
         "GetMessageInput",
         "Message",

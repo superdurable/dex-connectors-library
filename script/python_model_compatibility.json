@@ -5,6 +5,24 @@
     "publicDefault": "('default', ())",
     "publicType": "('map', 'str', 'str')"
   },
+  "google_gemini.Content.parts": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', ('record', (('text', 'str'),))))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', ('record', (('text', 'str'),)))"
+  },
+  "google_gemini.GenerateContentRequest.contents": {
+    "generatedDefault": "('default', ('tuple', ()))",
+    "generatedType": "('optional', ('sequence', ('record', (('parts', ('optional', ('sequence', ('record', (('text', 'str'),))))), ('role', 'str')))))",
+    "publicDefault": "('default', ('tuple', ()))",
+    "publicType": "('sequence', ('record', (('parts', ('sequence', ('record', (('text', 'str'),)))), ('role', 'str'))))"
+  },
+  "google_gemini.GenerateContentRequest.responseJsonSchema": {
+    "generatedDefault": "('default', ())",
+    "generatedType": "('map', 'str', 'any')",
+    "publicDefault": "('default', None)",
+    "publicType": "('optional', ('map', 'str', 'any'))"
+  },
   "google_gmail.GetMessageInput.messageId": {
     "generatedDefault": "('default', '')",
     "generatedType": "'str'",

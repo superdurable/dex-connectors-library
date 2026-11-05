@@ -9,6 +9,10 @@ metadata:
 spec:
   provider: google
   languages:
+    python:
+      version: v0.1.0
+      operations: [generateContent]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-google-gemini'
