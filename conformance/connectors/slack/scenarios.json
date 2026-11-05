@@ -738,6 +738,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "providerId": "2.0",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "C123",
@@ -787,6 +793,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -835,6 +846,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -876,6 +892,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -922,6 +943,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -961,6 +987,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -1009,6 +1040,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -1058,6 +1094,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "providerId": "2.0",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "C123",
@@ -1109,6 +1151,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -1159,6 +1206,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1202,6 +1254,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -1250,6 +1307,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1291,6 +1353,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -1341,6 +1408,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -1390,6 +1462,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1499,6 +1576,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1909,6 +1991,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "providerId": "2.0",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "C123",
@@ -1931,6 +2019,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2167,6 +2260,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "providerId": "2.0",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "C123",
@@ -2190,6 +2289,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2257,6 +2361,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "providerId": "1710000002.000300",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "C123",
@@ -2341,6 +2451,12 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "providerId": "1710000002.000300",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "C123",
@@ -2392,6 +2508,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -2440,6 +2561,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -2489,6 +2615,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",
@@ -2539,6 +2670,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+          "state": "claimed"
+        },
         "output": {
           "message": {
             "channelId": "",

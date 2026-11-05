@@ -45,7 +45,7 @@
     "example:meeting-list:start": "npm run build && tsx examples/meeting-list/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.6.0",
+    "@superdurable/connectors-sdk": "0.7.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
