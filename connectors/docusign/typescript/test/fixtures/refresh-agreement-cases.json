@@ -67,7 +67,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "docusign-oauth refresh without token type",
@@ -99,7 +99,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "docusign-oauth refresh without expires_in",
@@ -131,7 +131,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "docusign-developer-oauth refresh",
@@ -201,7 +201,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "docusign-developer-oauth refresh without token type",
@@ -233,7 +233,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "docusign-developer-oauth refresh without expires_in",
@@ -265,6 +265,6 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   }
 ]
