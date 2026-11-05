@@ -137,7 +137,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     for scope_set in accepted_scope_sets
                 )
             )
-            if has_wrong_scopes:
+            if grant["response_scopes"] != "ignore" and has_wrong_scopes:
                 raise ReauthorizationRequiredError()
             updates: dict[str, str | SecretString] = {}
             for mapping in grant["mappings"]:
@@ -216,6 +216,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     if grant.get("grantedScopes") == "userScopes"
                     else refresh.get("requiredScopes", oauth.get("scopes", []))),
                     "accepted_scope_sets": refresh.get("acceptedScopeSets"),
+                    "response_scopes": refresh.get("responseScopes", "check"),
                     "declares_accepted_scope_sets": "acceptedScopeSets" in refresh,
                     "terminal_codes": refresh.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": grant.get("acceptedTokenTypes")
@@ -253,6 +254,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "scopes": client.get("scopes", []),
                     "request_scopes": client.get("scopes", []),
                     "accepted_scope_sets": client.get("acceptedScopeSets"),
+                    "response_scopes": client.get("responseScopes", "check"),
                     "declares_accepted_scope_sets": "acceptedScopeSets" in client,
                     "terminal_codes": client.get("terminalErrorCodes") or ["invalid_client"],
                     "accepted_token_types": client.get("acceptedTokenTypes") or ["Bearer"],
@@ -285,6 +287,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "copies": bearer.get("credentialCopies", []),
                     "scopes": bearer.get("scopes", []),
                     "accepted_scope_sets": bearer.get("acceptedScopeSets"),
+                    "response_scopes": bearer.get("responseScopes", "check"),
                     "declares_accepted_scope_sets": "acceptedScopeSets" in bearer,
                     "terminal_codes": bearer.get("terminalErrorCodes") or ["invalid_grant"],
                     "accepted_token_types": bearer.get("acceptedTokenTypes") or ["Bearer"],
@@ -416,6 +419,8 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             raise ValueError("manifest storedMissingExpiry must be refresh or keep")
 
     def _validate_new_declarations(self, grant: Mapping[str, Any]) -> None:
+        if grant["response_scopes"] not in ("check", "ignore"):
+            raise ValueError("manifest responseScopes must be check or ignore")
         policy = grant.get("missing_expiry_policy")
         if grant["declares_missing_expiry"] and policy not in ("reject", "keep") and not (
             isinstance(policy, dict) and set(policy) == {"lifetime"}

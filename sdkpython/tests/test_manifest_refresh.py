@@ -147,6 +147,24 @@ async def test_declared_scope_separators_apply_to_all_and_exact_checks() -> None
 
 
 @pytest.mark.asyncio
+async def test_manifest_can_ignore_reported_scope_when_go_driver_does() -> None:
+    """An explicit policy accepts a different reported scope."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    response = {"access_token": "next", "expires_in": 3600, "token_type": "Bearer", "scope": "other"}
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, json=response))
+    async with httpx.AsyncClient(transport=transport) as client:
+        credentials = Credentials(SecretString("old"), SecretString("prior"))
+        state = CredentialRefreshState(credentials, None, datetime.now(UTC))
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        refresh["responseScopes"] = "ignore"
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        assert (await driver.refresh(state)).credentials.access_token.reveal() == "next"
+
+
+@pytest.mark.asyncio
 async def test_schema_decoded_provider_auth_refresh_with_declared_fields() -> None:
     """Real decoded declarations accept Jira's omitted type and Slack's bot/user types."""
     # schema.Decode(connector.yaml) JSON-encodes Spec.Auth; add planned token-type fields.
@@ -1029,7 +1047,7 @@ async def test_client_credentials_rejects_missing_positive_expiry_without_reauth
 
 
 @pytest.mark.parametrize("declaration", [
-    {"missingExpiry": "unknown"}, {"acceptedScopeSets": []},
+    {"missingExpiry": "unknown"}, {"acceptedScopeSets": []}, {"responseScopes": "unknown"},
     {"acceptedScopeSets": [["read"], []]}, {"scopeSeparators": "comma"},
     {"missingExpiry": None}, {"acceptedScopeSets": None}, {"scopeSeparators": None},
     {"missingExpiry": {"lifetime": "0s"}}, {"missingExpiry": {"lifetime": "nonsense"}},

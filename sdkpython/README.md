@@ -259,6 +259,9 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.6.0`: Manifest token grants accept `responseScopes: ignore` when the Go
+  credential driver does not inspect reported scope values. The default checks
+  returned scopes against declared requirements.
 - `0.5.0`: Manifest refresh accepts alternative scope sets and validates
   declared delegated JWT subjects using Go `mail.ParseAddress` address equality
   before token requests. `missingExpiry: reject` requires a positive
