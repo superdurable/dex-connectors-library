@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import quote_plus
 
 import httpx
@@ -23,7 +23,8 @@ from dex_connectors.sdk.providerhttp import (
     validate_base_url,
 )
 
-from ._generated.config import Config, Credentials
+from ._generated.config import Config as Config
+from ._generated.config import Credentials as Credentials
 
 if TYPE_CHECKING:
     from .operations import (
@@ -55,7 +56,7 @@ class Exchange:
     @property
     def request_id(self) -> str:
         """Return Google's request identifier without echoing response content."""
-        return self.headers.get("X-Goog-Request-Id") or self.headers.get("X-Request-Id", "")
+        return cast(str, self.headers.get("X-Goog-Request-Id") or self.headers.get("X-Request-Id", ""))
 
 
 def query_string(values: dict[str, str]) -> str:
@@ -163,6 +164,7 @@ class Client:
     ) -> Exchange:
         """Send a Drive request, refreshing once after a rejected bearer token."""
         response_limit = self.max_response_bytes if limit is None else limit
+        assert credentials.access_token is not None
         for attempt in range(2):
             headers = {"Authorization": f"Bearer {credentials.access_token.reveal()}"}
             if content_type:

@@ -2,10 +2,13 @@
 # SPDX-License-Identifier: MIT
 """Bounded Google Sheets HTTP client; OAuth refresh is manifest-generated."""
 
+from __future__ import annotations
+
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from urllib.parse import quote, urlsplit
 
 import httpx
@@ -27,6 +30,9 @@ from dex_connectors.sdk.providerhttp import (
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
+
+if TYPE_CHECKING:
+    from .operations import FindRowOperation, GetValuesOperation, UpsertRowOperation
 
 _PATH_SAFE = "-._~$&+=:@"
 _QUERY_SAFE = ""
@@ -95,19 +101,19 @@ class Client:
         self.http_client = http_client or new_provider_http_client(25)
         self.now = now or (lambda: datetime.now(UTC))
 
-    def get_values(self):
+    def get_values(self) -> GetValuesOperation:
         """Return the bounded range Query."""
         from .operations import GetValuesOperation
 
         return GetValuesOperation(self)
 
-    def find_row(self):
+    def find_row(self) -> FindRowOperation:
         """Return the stable-key row Query."""
         from .operations import FindRowOperation
 
         return FindRowOperation(self)
 
-    def upsert_row(self):
+    def upsert_row(self) -> UpsertRowOperation:
         """Return the fenced row Mutation."""
         from .operations import UpsertRowOperation
 

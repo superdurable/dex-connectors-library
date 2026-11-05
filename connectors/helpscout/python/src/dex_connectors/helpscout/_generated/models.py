@@ -6,7 +6,9 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
-from dex_connectors.sdk import RFC3339NanoTimestamp, format_rfc3339_nano
+from dex_connectors.sdk import format_rfc3339_nano
+
+from .timestamps import canonical_go_timestamp
 
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
@@ -110,23 +112,19 @@ class Conversation:
     def __post_init__(self) -> None:
         if self.created_at is not None:
             timestamp = self.created_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
             object.__setattr__(self, 'created_at', canonical)
         if self.closed_at is not None:
             timestamp = self.closed_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'closed_at'))
             object.__setattr__(self, 'closed_at', canonical)
         if self.user_updated_at is not None:
             timestamp = self.user_updated_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'user_updated_at'))
             object.__setattr__(self, 'user_updated_at', canonical)
         if self.customer_waiting_since is not None:
             timestamp = self.customer_waiting_since
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'customer_waiting_since'))
             object.__setattr__(self, 'customer_waiting_since', canonical)
         object.__setattr__(self, 'tags', _replace_nil_slices(self.tags, 1))
 
@@ -200,8 +198,7 @@ class Thread:
     def __post_init__(self) -> None:
         if self.created_at is not None:
             timestamp = self.created_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
             object.__setattr__(self, 'created_at', canonical)
 
 
@@ -335,13 +332,11 @@ class Customer:
     def __post_init__(self) -> None:
         if self.created_at is not None:
             timestamp = self.created_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
             object.__setattr__(self, 'created_at', canonical)
         if self.updated_at is not None:
             timestamp = self.updated_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'updated_at'))
             object.__setattr__(self, 'updated_at', canonical)
         object.__setattr__(self, 'emails', _replace_nil_slices(self.emails, 1))
 

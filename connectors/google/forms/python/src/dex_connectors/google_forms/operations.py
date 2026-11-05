@@ -66,7 +66,13 @@ def _query_string(fields: dict[str, str]) -> str:
 
 def _utc_timestamp(value: str) -> str:
     timestamp = RFC3339NanoTimestamp.from_wire(value)
-    second = timestamp.parsed.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    # Datetime supplies the UTC offset while the original fraction retains nanoseconds.
+    second = (
+        datetime.fromisoformat(timestamp.wire.replace("Z", "+00:00"))
+        .astimezone(UTC)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
     fraction = re.match(r"\.\d+", timestamp.wire[19:])
     return second[:-1] + (fraction.group() if fraction else "") + "Z"
 

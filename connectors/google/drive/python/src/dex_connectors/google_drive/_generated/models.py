@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -53,6 +55,12 @@ class FileSummary:
     modified_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'modifiedTime', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # WebViewLink opens the file in a browser for a user who can access it.
     web_view_link: str = _dataclass_field(default='', metadata={'dex_json_name': 'webViewLink', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.modified_time, str):
+            object.__setattr__(self, 'modified_time', parse_go_datetime(self.modified_time, 'modified_time'))
+        elif self.modified_time is not None:
+            validate_go_datetime(self.modified_time, 'modified_time')
 
 
 setattr(FileSummary, '__module__', 'dex_connectors.google_drive.models')
@@ -148,6 +156,16 @@ class File:
     last_modifying_user: FileUser | None = _dataclass_field(default=None, metadata={'dex_json_name': 'lastModifyingUser', 'dex_json_omit_default': True})
     # Shortcut identifies the target of a Drive shortcut file; nil for other files.
     shortcut: ShortcutTarget | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_time, str):
+            object.__setattr__(self, 'created_time', parse_go_datetime(self.created_time, 'created_time'))
+        elif self.created_time is not None:
+            validate_go_datetime(self.created_time, 'created_time')
+        if isinstance(self.modified_time, str):
+            object.__setattr__(self, 'modified_time', parse_go_datetime(self.modified_time, 'modified_time'))
+        elif self.modified_time is not None:
+            validate_go_datetime(self.modified_time, 'modified_time')
 
 
 setattr(File, '__module__', 'dex_connectors.google_drive.models')

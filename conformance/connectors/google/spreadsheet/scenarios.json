@@ -824,6 +824,12 @@
       "expected": {
         "branch": "upserted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "providerId": "'Contacts'!A2:C2",
+          "state": "claimed"
+        },
         "output": {
           "action": "inserted",
           "rowNumber": 2,
@@ -1151,6 +1157,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1199,6 +1210,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1245,6 +1261,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1352,6 +1373,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "claimed"
+        },
         "output": {
           "action": "",
           "rowNumber": 0,
@@ -1443,6 +1469,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -1529,6 +1560,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -1613,6 +1649,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1718,6 +1759,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "claimed"
+        },
         "output": {
           "action": "",
           "rowNumber": 0,
@@ -1830,6 +1876,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "claimed"
+        },
         "requestCount": 3,
         "retry": true,
         "retryAfterMs": 0,
@@ -1937,6 +1988,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "claimed"
+        },
         "requestCount": 3,
         "retry": true,
         "retryAfterMs": 0,
@@ -2042,6 +2098,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "claimed"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -2125,6 +2186,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "notSent"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -2208,6 +2274,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "notSent"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -2289,6 +2360,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2491,6 +2567,12 @@
       "expected": {
         "branch": "upserted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "providerId": "'Contacts'!A2:C2",
+          "state": "claimed"
+        },
         "output": {
           "action": "inserted",
           "rowNumber": 2,
@@ -2647,6 +2729,12 @@
       "expected": {
         "branch": "upserted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+          "providerId": "'Contacts'!A2:C2",
+          "state": "claimed"
+        },
         "output": {
           "action": "inserted",
           "rowNumber": 2,
@@ -2673,6 +2761,11 @@
         {
           "exchangeCount": 2,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -2793,6 +2886,11 @@
         {
           "exchangeCount": 2,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9975cc31-7411-5b09-805b-efa1f3d91fad",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],

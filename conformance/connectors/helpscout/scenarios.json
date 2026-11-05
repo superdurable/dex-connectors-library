@@ -538,6 +538,12 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "providerId": "567",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": 501,
           "customerId": 238604,
@@ -589,6 +595,12 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "providerId": "568",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": 501,
           "isInternalNote": true,
@@ -641,6 +653,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": 501,
           "customerId": 238604
@@ -693,6 +710,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": 501,
           "customerId": 238604
@@ -745,6 +767,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": 501,
           "customerId": 238604
@@ -1715,6 +1742,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1763,6 +1795,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1809,6 +1846,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2323,6 +2365,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2491,6 +2538,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2655,6 +2707,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2792,6 +2849,12 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "providerId": "569",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": 501,
           "customerId": 238604,
@@ -3170,6 +3233,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "3f9f4c0b-1d7f-5034-a855-40824c3de676",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": 501,
           "isInternalNote": true

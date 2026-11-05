@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -31,6 +33,12 @@ class SearchVideosInput:
     # PageToken continues from the previous page's NextPageToken; blank starts at the first page.
     page_token: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageToken', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.published_after, str):
+            object.__setattr__(self, 'published_after', parse_go_datetime(self.published_after, 'published_after'))
+        elif self.published_after is not None:
+            validate_go_datetime(self.published_after, 'published_after')
+
 
 setattr(SearchVideosInput, '__module__', 'dex_connectors.google_youtube.models')
 
@@ -50,6 +58,12 @@ class VideoSearchResult:
     description: str = ''
     # PublishedAt is when the video was published, in UTC.
     published_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'publishedAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.published_at, str):
+            object.__setattr__(self, 'published_at', parse_go_datetime(self.published_at, 'published_at'))
+        elif self.published_at is not None:
+            validate_go_datetime(self.published_at, 'published_at')
 
 
 setattr(VideoSearchResult, '__module__', 'dex_connectors.google_youtube.models')
@@ -111,6 +125,12 @@ class Video:
     # CommentCount is the comment count, or nil when comments are disabled.
     comment_count: int | None = _dataclass_field(default=None, metadata={'dex_json_name': 'commentCount', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.published_at, str):
+            object.__setattr__(self, 'published_at', parse_go_datetime(self.published_at, 'published_at'))
+        elif self.published_at is not None:
+            validate_go_datetime(self.published_at, 'published_at')
+
 
 setattr(Video, '__module__', 'dex_connectors.google_youtube.models')
 
@@ -151,6 +171,12 @@ class Channel:
     # ViewCount is the channel's total views, or nil when YouTube does not report it.
     view_count: int | None = _dataclass_field(default=None, metadata={'dex_json_name': 'viewCount', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.published_at, str):
+            object.__setattr__(self, 'published_at', parse_go_datetime(self.published_at, 'published_at'))
+        elif self.published_at is not None:
+            validate_go_datetime(self.published_at, 'published_at')
+
 
 setattr(Channel, '__module__', 'dex_connectors.google_youtube.models')
 
@@ -188,6 +214,16 @@ class PlaylistItem:
     added_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'addedAt', 'dex_json_format': 'rfc3339'})
     # VideoPublishedAt is when the video was published, or nil when it is private or deleted.
     video_published_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'videoPublishedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.added_at, str):
+            object.__setattr__(self, 'added_at', parse_go_datetime(self.added_at, 'added_at'))
+        elif self.added_at is not None:
+            validate_go_datetime(self.added_at, 'added_at')
+        if isinstance(self.video_published_at, str):
+            object.__setattr__(self, 'video_published_at', parse_go_datetime(self.video_published_at, 'video_published_at'))
+        elif self.video_published_at is not None:
+            validate_go_datetime(self.video_published_at, 'video_published_at')
 
 
 setattr(PlaylistItem, '__module__', 'dex_connectors.google_youtube.models')

@@ -21,3 +21,25 @@ from .operations import UpsertRowOperation as UpsertRowOperation
 from .steps import new_find_row_step as new_find_row_step
 from .steps import new_get_values_step as new_get_values_step
 from .steps import new_upsert_row_step as new_upsert_row_step
+
+__all__ = [
+    "Client",
+    "Config",
+    "Credentials",
+    "Connection",
+    "FindRowInput",
+    "FindRowOperation",
+    "FindRowOutput",
+    "GetValuesInput",
+    "GetValuesOperation",
+    "GetValuesOutput",
+    "UpsertRowInput",
+    "UpsertRowOperation",
+    "UpsertRowOutput",
+    "new_connection",
+    "new_connection_with_operations",
+    "new_find_row_step",
+    "new_get_values_step",
+    "new_project_connection",
+    "new_upsert_row_step",
+]

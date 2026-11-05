@@ -6,7 +6,9 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
-from dex_connectors.sdk import RFC3339NanoTimestamp, format_rfc3339_nano
+from dex_connectors.sdk import format_rfc3339_nano
+
+from .timestamps import canonical_go_timestamp
 
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
@@ -178,13 +180,11 @@ class ListResponsesInput:
     def __post_init__(self) -> None:
         if self.submitted_after is not None:
             timestamp = self.submitted_after
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'submitted_after'))
             object.__setattr__(self, 'submitted_after', canonical)
         if self.submitted_at_or_after is not None:
             timestamp = self.submitted_at_or_after
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'submitted_at_or_after'))
             object.__setattr__(self, 'submitted_at_or_after', canonical)
 
 
@@ -257,13 +257,11 @@ class FormResponse:
     def __post_init__(self) -> None:
         if self.created_at is not None:
             timestamp = self.created_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
             object.__setattr__(self, 'created_at', canonical)
         if self.last_submitted_at is not None:
             timestamp = self.last_submitted_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'last_submitted_at'))
             object.__setattr__(self, 'last_submitted_at', canonical)
         object.__setattr__(self, 'answers', _replace_nil_slices(self.answers, 1))
 

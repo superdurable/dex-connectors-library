@@ -3,6 +3,7 @@
 """Google Drive operation invocation and Go-compatible response classification."""
 
 import base64
+import binascii
 import json
 import re
 import secrets
@@ -92,6 +93,8 @@ class _DriveTimestamp(datetime):
     """Preserve Go's offset and nanoseconds in Dex's datetime JSON codec."""
 
     __slots__ = ("_wire_seconds", "_nanoseconds")
+    _wire_seconds: str
+    _nanoseconds: int
 
     @property
     def microsecond(self) -> int:
@@ -575,7 +578,7 @@ def _upload_content(input: UploadFileInput, max_bytes: int) -> bytes:
         raise ValueError("mimeType cannot be a Google Workspace type")
     try:
         content = base64.b64decode(input.byte_content, validate=True) if input.byte_content else b""
-    except (ValueError, base64.binascii.Error):
+    except (ValueError, binascii.Error):
         raise ValueError("byteContent must be base64") from None
     if input.text_content and content:
         raise ValueError("set textContent or byteContent, not both")
