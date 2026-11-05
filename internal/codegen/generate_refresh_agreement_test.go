@@ -4,8 +4,10 @@
 package codegen_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,6 +16,33 @@ import (
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
+
+func TestTypeScriptRefreshAgreementCompilesWithExactOptionalProperties(t *testing.T) {
+	if os.Getenv("TS_CODEGEN_COMPILE") != "1" {
+		t.Skip("set TS_CODEGEN_COMPILE=1 after npm ci in connectors/google/gmail/typescript")
+	}
+	packageDirectory, err := filepath.Abs(filepath.Join("..", "..", "connectors", "google", "gmail", "typescript"))
+	require.NoError(t, err)
+	generatedTest, err := os.ReadFile(filepath.Join(packageDirectory, "test", "refresh_agreement.test.ts"))
+	require.NoError(t, err)
+	require.True(t, bytes.Equal(codegen.GenerateTypeScriptRefreshAgreementTest(), generatedTest), "Gmail refresh agreement test differs from generated output")
+	compiler := filepath.Join(packageDirectory, "node_modules", ".bin", "tsc")
+	configuration, err := json.Marshal(map[string]any{
+		"extends":         filepath.Join(packageDirectory, "tsconfig.json"),
+		"files":           []string{filepath.Join(packageDirectory, "test", "refresh_agreement.test.ts")},
+		"include":         []string{},
+		"compilerOptions": map[string]any{"exactOptionalPropertyTypes": true},
+	})
+	require.NoError(t, err)
+	configurationDirectory, err := os.MkdirTemp(packageDirectory, ".refresh-agreement-compile-")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(configurationDirectory)) })
+	configurationPath := filepath.Join(configurationDirectory, "tsconfig.json")
+	require.NoError(t, os.WriteFile(configurationPath, configuration, 0o644))
+	command := exec.Command(compiler, "--noEmit", "-p", configurationPath)
+	output, err := command.CombinedOutput()
+	require.NoError(t, err, "generated TypeScript refresh agreement does not typecheck: %s", output)
+}
 
 func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml"))

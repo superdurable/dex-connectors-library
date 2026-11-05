@@ -121,7 +121,7 @@ describe('generated Go manifest refresh agreement', () => {
         overrides[refreshCase.jwtAccessTokenCredential] = `e30.${payload}.signature`;
       }
       const storedCredentials = credentialsFor(agreement, privateKeyPEM, overrides);
-      expect(driver.refreshRequired({ credentials: storedCredentials, expiresAt, now: state.now }), refreshCase.name).toBe(refreshCase.expected);
+      expect(driver.refreshRequired({ credentials: storedCredentials, ...(expiresAt === undefined ? {} : { expiresAt }), now: state.now }), refreshCase.name).toBe(refreshCase.expected);
       expect(requests).toHaveLength(0);
     }
     let result: Awaited<ReturnType<typeof driver.refresh>> | undefined;
