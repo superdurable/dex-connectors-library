@@ -45,6 +45,19 @@ describe('OAuth token exchange', () => {
     expect((requests[1]?.headers as Record<string, string>).Authorization).toBeUndefined();
   });
 
+  it('keeps mapped token fields private and reveals only a declared mapping', async () => {
+    const fetcher: typeof fetch = async () => Response.json({
+      ...success, id_token: 'private-id-token', account: { token: 'private-nested-token' },
+    });
+    const result = await endpoint(fetcher, { credentialMappingPaths: ['id_token', 'account.token'] })
+      .exchangeRefreshToken(client, new SecretString('old'));
+    expect(result.mappedCredentialValue('id_token')).toBe('private-id-token');
+    expect(result.mappedCredentialValue('account.token')).toBe('private-nested-token');
+    expect(result.mappedCredentialValue('account.other')).toBeUndefined();
+    expect(Object.keys(result).join(' ')).not.toContain('private-id-token');
+    expect(Object.keys(result).join(' ')).not.toContain('account');
+  });
+
   it('exchanges client credentials and a JWT assertion without leaking material', async () => {
     const requests: RequestInit[] = [];
     const fetcher: typeof fetch = async (_input, init) => { requests.push(init ?? {}); return Response.json(success); };

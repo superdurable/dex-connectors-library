@@ -1,0 +1,39 @@
+{
+  "connectorId": "webhook",
+  "releaseTag": "connectors/superdurable/webhook/go/v0.24.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-superdurable-webhook",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newSendEventStep",
+      "kind": "mutation",
+      "operationId": "sendEvent",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "delivered",
+          "field": "delivered",
+          "optional": false
+        },
+        {
+          "id": "rejected",
+          "field": "rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

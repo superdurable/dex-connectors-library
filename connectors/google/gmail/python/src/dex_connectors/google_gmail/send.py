@@ -184,7 +184,6 @@ class SendService:
             async with asyncio.timeout_at(budget.attempt_end):
                 credential = await self._provider.resolve_credentials(execution.call)
         except Exception:
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _SEND,
@@ -205,7 +204,6 @@ class SendService:
             if _raw_message_size(payload) > self._provider.max_message_bytes:
                 raise ValueError("message exceeds configured size limit")
         except ValueError as error:
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _SEND,
@@ -236,7 +234,6 @@ class SendService:
             async with asyncio.timeout_at(budget.attempt_end):
                 credential = await self._provider.resolve_credentials(execution.call)
         except Exception:
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _REPLY,
@@ -245,7 +242,6 @@ class SendService:
                 "connection credentials are unavailable",
             )
         if not input.message_id.strip() or not input.text_body.strip():
-            await self._record_not_sent(execution)
             return _branch(
                 execution, _REPLY, "defect", FailureKind.VALIDATION, "message ID and text body are required"
             )
@@ -298,7 +294,6 @@ class SendService:
                     "Gmail source message is temporarily unavailable",
                 )
             if 200 <= status < 300:
-                await self._record_not_sent(execution)
                 return _branch(
                     execution,
                     _REPLY,
@@ -307,7 +302,6 @@ class SendService:
                     "Gmail returned an invalid source message response",
                     _receipt(execution, headers, input.message_id),
                 )
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _REPLY,
@@ -319,7 +313,6 @@ class SendService:
         try:
             source_resource = json.loads(source_response.body)
         except (ValueError, UnicodeDecodeError):
-            await self._record_not_sent(execution)
             return _branch(
                 execution, _REPLY, "invalidResponse", FailureKind.PROTOCOL,
                 "Gmail returned an invalid source message response",
@@ -328,7 +321,6 @@ class SendService:
         try:
             message = decode_message(source_resource)
         except (ValueError, UnicodeDecodeError, KeyError, TypeError):
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _REPLY,
@@ -338,7 +330,6 @@ class SendService:
                 _receipt(execution, headers, input.message_id),
             )
         if not message.thread_id or not message.rfc_message_id:
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _REPLY,
@@ -350,7 +341,6 @@ class SendService:
         try:
             recipient = _format_go_mailbox(parse_mailbox(message.reply_to or message.from_address))
         except ValueError:
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _REPLY,
@@ -362,7 +352,6 @@ class SendService:
         if "\r" in message.subject + message.rfc_message_id + message.references or "\n" in (
             message.subject + message.rfc_message_id + message.references
         ):
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _REPLY,
@@ -384,7 +373,6 @@ class SendService:
             if _raw_message_size(payload) > self._provider.max_message_bytes:
                 raise ValueError("reply exceeds configured size limit")
         except ValueError:
-            await self._record_not_sent(execution)
             return _branch(
                 execution,
                 _REPLY,

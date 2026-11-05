@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-amazon-s3",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Amazon S3 object operations for Dex",
   "repository": {
     "type": "git",
@@ -43,7 +43,7 @@
     "check": "npm test && npm run typecheck && npm run lint"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.1.1",
     "@superdurable/dex": ">=1.28.0",
     "fast-xml-parser": "^5.11.2",
     "zod": "^4.1.0"

@@ -149,7 +149,7 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             initial[CREDENTIAL_FIELDS[name]] = value
         assert credential_values(result.credentials) == initial
         assert result.expires_at > state.now
-        for terminal_code in case.get("terminalErrorCodes", []):
+        for terminal_code in case.get("terminalErrorCodes") or []:
             requests.clear()
             response_body = {"error": terminal_code}
             response_status = 400
