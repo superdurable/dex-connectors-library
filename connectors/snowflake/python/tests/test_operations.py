@@ -116,9 +116,8 @@ def test_key_pair_jwt_has_snowflake_claims_and_valid_signature() -> None:
         ({"type": "timestamp_tz"}, "1616173619.000000000 1500", "2021-03-19T18:06:59+01:00"),
         ({"type": "timestamp_tz"}, "1616173619.000000000 1440", "2021-03-19T17:06:59Z"),
         ({"type": "timestamp_tz"}, "1616173619.000000000 1380", "2021-03-19T16:06:59-01:00"),
-        ({"type": "variant"}, '{"amount":12345678901234567890}', {"amount": 12345678901234567000}),
+        ({"type": "variant"}, '{"amount":12345678901234567890}', {"amount": 12345678901234567890}),
         ({"type": "variant"}, '{"amount":1.0}', {"amount": 1.0}),
-        ({"type": "variant"}, '{"amount":1.50}', {"amount": 1.5}),
     ],
 )
 def test_jsonv2_value_conversion(column: dict[str, object], text: str, expected: object) -> None:
@@ -135,14 +134,30 @@ def test_jsonv2_value_conversion(column: dict[str, object], text: str, expected:
 
 @pytest.mark.parametrize(
     "text",
-    ['{"price":1,"price":2}', '{"price":1e400}'],
+    ['{"price":12345678901234567890.123}', '{"fraction":0.1234567890123456789}',
+     '{"price":1E5}', '{"price":-0}', '{"price":1,"price":2}'],
 )
-def test_variant_rejects_invalid_json_numbers_or_duplicate_keys(text: str) -> None:
+def test_variant_rejects_json_that_python_codec_cannot_preserve(text: str) -> None:
     from dex_connectors.snowflake import Column
     from dex_connectors.snowflake.operations import _decode_value
 
-    with pytest.raises(ValueError, match="range|duplicate"):
+    with pytest.raises(ValueError, match="precision|text|duplicate"):
         _decode_value(Column(name="VALUE", type="variant"), text)
+
+
+def test_variant_decode_error_names_the_column() -> None:
+    """A non-lossy VARIANT rejection identifies the affected result field."""
+    from dex_connectors.snowflake import GetStatementResultInput
+    from dex_connectors.snowflake.operations import _decode_result
+
+    client = Client(Config(account_identifier="myorg-analytics"), StaticCredentialProvider({}))
+    document = {
+        "resultSetMetaData": {"format": "jsonv2", "rowType": [{"name": "VARIANT", "type": "variant"}]},
+        "data": [['{"decimal":1.50}']],
+    }
+    input = GetStatementResultInput(statement_handle="00000000-0000-4000-8000-000000000003")
+    with pytest.raises(ValueError, match='column "VARIANT"'):
+        _decode_result(document, input, client)
 
 
 def test_result_byte_limit_counts_go_json_string_escapes() -> None:
