@@ -100,6 +100,7 @@ export const Authorization = {
           "refreshTokenCredential": "user_refresh_token"
         }
       ],
+      "missingExpiry": "reject",
       "scopeSeparators": "whitespaceAndComma",
       "terminalErrorCodes": [
         "invalid_refresh_token",

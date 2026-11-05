@@ -2195,6 +2195,532 @@
       ],
       "name": "postThreadReply-retry-503-then-sent",
       "operation": "postThreadReply"
+    },
+    {
+      "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"ts\":\"1710000002.000300\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+            "text": "hello Slack"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":\"1710000002.000300\",\"thread_ts\":\"1710000000.000100\",\"user\":\"U1\",\"text\":\"confirmed\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000002.000300"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "1710000002.000300"
+            ],
+            "ts": [
+              "1710000002.000300"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "confirmed",
+            "threadTimestamp": "1710000000.000100",
+            "timestamp": "1710000002.000300",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "input": {
+        "channelId": "C123",
+        "text": "hello Slack"
+      },
+      "name": "postChannelMessage-partial-then-readback",
+      "operation": "postChannelMessage"
+    },
+    {
+      "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"ts\":\"1710000002.000300\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+            "text": "reply Slack",
+            "thread_ts": "1710000000.000100"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":\"1710000002.000300\",\"thread_ts\":\"1710000000.000100\",\"user\":\"U1\",\"text\":\"confirmed\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000002.000300"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "1710000002.000300"
+            ],
+            "ts": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "message": {
+            "channelId": "C123",
+            "text": "confirmed",
+            "threadTimestamp": "1710000000.000100",
+            "timestamp": "1710000002.000300",
+            "userId": "U1"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+      "input": {
+        "channelId": "C123",
+        "text": "reply Slack",
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "postThreadReply-partial-then-readback",
+      "operation": "postThreadReply"
+    },
+    {
+      "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"invalid_auth\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+            "text": "hello Slack"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "input": {
+        "channelId": "C123",
+        "text": "hello Slack"
+      },
+      "name": "postChannelMessage-unauthorized",
+      "operation": "postChannelMessage"
+    },
+    {
+      "callId": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "exchanges": [
+        {
+          "body": "not JSON",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+            "text": "hello Slack"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "74390522-858d-5ed6-bdf7-04e979ba9e4f",
+      "input": {
+        "channelId": "C123",
+        "text": "hello Slack"
+      },
+      "name": "postChannelMessage-invalid-response",
+      "operation": "postChannelMessage"
+    },
+    {
+      "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error\":\"invalid_auth\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+            "text": "reply Slack",
+            "thread_ts": "1710000000.000100"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+      "input": {
+        "channelId": "C123",
+        "text": "reply Slack",
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "postThreadReply-unauthorized",
+      "operation": "postThreadReply"
+    },
+    {
+      "callId": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+      "exchanges": [
+        {
+          "body": "not JSON",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/chat.postMessage",
+          "requestBody": {
+            "channel": "C123",
+            "client_msg_id": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+            "text": "reply Slack",
+            "thread_ts": "1710000000.000100"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer bot-token"
+            ],
+            "Content-Type": [
+              "application/json; charset=utf-8"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "c29c8674-7e62-5d94-9c79-ff7172e3f4d5",
+      "input": {
+        "channelId": "C123",
+        "text": "reply Slack",
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "postThreadReply-invalid-response",
+      "operation": "postThreadReply"
+    },
+    {
+      "callId": "7e327e25-7e56-5ddd-8be8-3df0838a289c",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":42}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "15"
+            ],
+            "ts": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "next-page",
+        "pageSize": 15,
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "listThreadMessages-wrong-type",
+      "operation": "listThreadMessages"
+    },
+    {
+      "callId": "e96e3d32-62fd-5f3c-985f-e93213c15c64",
+      "exchanges": [
+        {
+          "body": "{\"ok\":true,\"messages\":[{\"ts\":42}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "inclusive": [
+              "true"
+            ],
+            "latest": [
+              "1710000001.000200"
+            ],
+            "limit": [
+              "1"
+            ],
+            "oldest": [
+              "1710000001.000200"
+            ],
+            "ts": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "message": {
+            "channelId": "",
+            "text": "",
+            "timestamp": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "replyTimestamp": "1710000001.000200",
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "getThreadReply-wrong-type",
+      "operation": "getThreadReply"
+    },
+    {
+      "callId": "7e327e25-7e56-5ddd-8be8-3df0838a289c",
+      "exchanges": [
+        {
+          "body": "{\"messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/conversations.replies",
+          "query": {
+            "channel": [
+              "C123"
+            ],
+            "cursor": [
+              "next-page"
+            ],
+            "limit": [
+              "15"
+            ],
+            "ts": [
+              "1710000000.000100"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer user-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "C123",
+        "cursor": "next-page",
+        "pageSize": 15,
+        "threadTimestamp": "1710000000.000100"
+      },
+      "name": "listThreadMessages-missing-ok",
+      "operation": "listThreadMessages"
     }
   ],
   "schemaVersion": 1
