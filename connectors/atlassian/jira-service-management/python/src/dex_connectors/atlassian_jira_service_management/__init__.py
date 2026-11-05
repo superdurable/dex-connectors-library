@@ -1,0 +1,50 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+"""Jira Service Management connector for Dex Python applications."""
+
+from .client import Client as Client
+from .client import Config as Config
+from .client import Credentials as Credentials
+from .connection import (
+    Connection as Connection,
+)
+from .connection import (
+    new_connection as new_connection,
+)
+from .connection import (
+    new_connection_with_operations as new_connection_with_operations,
+)
+from .connection import (
+    new_project_connection as new_project_connection,
+)
+from .models import AccountReference as AccountReference
+from .models import AddCommentInput as AddCommentInput
+from .models import AddCommentOutput as AddCommentOutput
+from .models import CreateTicketInput as CreateTicketInput
+from .models import CreateTicketOutput as CreateTicketOutput
+from .models import Customer as Customer
+from .models import CustomerMatches as CustomerMatches
+from .models import FindCustomerByEmailInput as FindCustomerByEmailInput
+from .models import GetTicketInput as GetTicketInput
+from .models import PriorityReference as PriorityReference
+from .models import RequestStatus as RequestStatus
+from .models import SearchTicketsInput as SearchTicketsInput
+from .models import SearchTicketsOutput as SearchTicketsOutput
+from .models import SLACycle as SLACycle
+from .models import Ticket as Ticket
+from .models import TicketComment as TicketComment
+from .models import TicketDetails as TicketDetails
+from .models import TicketSLA as TicketSLA
+from .models import TicketStatus as TicketStatus
+from .models import TransitionReference as TransitionReference
+from .models import TransitionTicketInput as TransitionTicketInput
+from .models import TransitionTicketOutput as TransitionTicketOutput
+from .models import UpdateTicketInput as UpdateTicketInput
+from .models import UpdateTicketOutput as UpdateTicketOutput
+from .steps import new_add_comment_step as new_add_comment_step
+from .steps import new_create_ticket_step as new_create_ticket_step
+from .steps import new_find_customer_by_email_step as new_find_customer_by_email_step
+from .steps import new_get_ticket_step as new_get_ticket_step
+from .steps import new_search_tickets_step as new_search_tickets_step
+from .steps import new_transition_ticket_step as new_transition_ticket_step
+from .steps import new_update_ticket_step as new_update_ticket_step

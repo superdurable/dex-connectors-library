@@ -1,0 +1,3088 @@
+{
+  "connector": "jira-service-management",
+  "scenarios": [
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [
+        {
+          "body": "{\"values\":[{\"accountId\":\"jane-1\",\"displayName\":\"Jane\",\"emailAddress\":\"jane@example.com\",\"active\":true}],\"isLastPage\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/servicedesk/10/customer",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "query": [
+              "jane@example.com"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "X-Experimentalapi": [
+              "opt-in"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "customers": [
+            {
+              "accountId": "jane-1",
+              "displayName": "Jane",
+              "isActive": true
+            }
+          ],
+          "email": "jane@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com",
+        "serviceDeskId": "10"
+      },
+      "name": "findCustomerByEmail_success",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/servicedesk/10/customer",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "query": [
+              "jane@example.com"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "X-Experimentalapi": [
+              "opt-in"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com",
+        "serviceDeskId": "10"
+      },
+      "name": "findCustomerByEmail_rate_limit",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/servicedesk/10/customer",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "query": [
+              "jane@example.com"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "X-Experimentalapi": [
+              "opt-in"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com",
+        "serviceDeskId": "10"
+      },
+      "name": "findCustomerByEmail_service_unavailable",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/servicedesk/10/customer",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "query": [
+              "jane@example.com"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "X-Experimentalapi": [
+              "opt-in"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com",
+        "serviceDeskId": "10"
+      },
+      "name": "findCustomerByEmail_transport_failure",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/servicedesk/10/customer",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "query": [
+              "jane@example.com"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "X-Experimentalapi": [
+              "opt-in"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "customers": [],
+          "email": "jane@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com",
+        "serviceDeskId": "10"
+      },
+      "name": "findCustomerByEmail_provider_rejected",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customers": [],
+          "email": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "findCustomerByEmail_defect",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [
+        {
+          "body": "{\"bad\":\"response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/servicedesk/10/customer",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "query": [
+              "jane@example.com"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "X-Experimentalapi": [
+              "opt-in"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customers": [],
+          "email": "jane@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com",
+        "serviceDeskId": "10"
+      },
+      "name": "findCustomerByEmail_invalid_response",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "1ea44084-db10-5595-9880-a322b70ebd23",
+      "exchanges": [
+        {
+          "body": "{\"issues\":[{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"summary\":\"Laptop will not boot\",\"status\":{\"id\":\"10001\",\"name\":\"Waiting for support\",\"statusCategory\":{\"key\":\"new\"}},\"project\":{\"key\":\"ITH\"},\"labels\":[\"hardware\"],\"created\":\"2026-09-30T09:15:00.000-0700\",\"updated\":\"2026-09-30T10:00:00.000-0700\"}}],\"nextPageToken\":\"page-3\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+            "maxResults": 25,
+            "nextPageToken": "page-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+          "nextPageToken": "page-3",
+          "tickets": [
+            {
+              "createdAt": "2026-09-30T16:15:00Z",
+              "id": "10042",
+              "key": "ITH-42",
+              "labels": [
+                "hardware"
+              ],
+              "projectKey": "ITH",
+              "status": {
+                "categoryKey": "new",
+                "id": "10001",
+                "name": "Waiting for support"
+              },
+              "summary": "Laptop will not boot",
+              "updatedAt": "2026-09-30T17:00:00Z"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labels": [
+          "hardware"
+        ],
+        "nextPageToken": "page-2",
+        "order": "updatedDescending",
+        "pageSize": 25,
+        "projectKey": "ITH",
+        "reporterAccountIds": [
+          "jane-1"
+        ],
+        "statusCategories": [
+          "new"
+        ],
+        "statusNames": [
+          "Waiting for support"
+        ],
+        "summaryPhrase": "Laptop",
+        "updatedSinceDate": "2026-09-01"
+      },
+      "name": "searchTickets_success",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "1ea44084-db10-5595-9880-a322b70ebd23",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+            "maxResults": 25,
+            "nextPageToken": "page-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labels": [
+          "hardware"
+        ],
+        "nextPageToken": "page-2",
+        "order": "updatedDescending",
+        "pageSize": 25,
+        "projectKey": "ITH",
+        "reporterAccountIds": [
+          "jane-1"
+        ],
+        "statusCategories": [
+          "new"
+        ],
+        "statusNames": [
+          "Waiting for support"
+        ],
+        "summaryPhrase": "Laptop",
+        "updatedSinceDate": "2026-09-01"
+      },
+      "name": "searchTickets_rate_limit",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "1ea44084-db10-5595-9880-a322b70ebd23",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+            "maxResults": 25,
+            "nextPageToken": "page-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labels": [
+          "hardware"
+        ],
+        "nextPageToken": "page-2",
+        "order": "updatedDescending",
+        "pageSize": 25,
+        "projectKey": "ITH",
+        "reporterAccountIds": [
+          "jane-1"
+        ],
+        "statusCategories": [
+          "new"
+        ],
+        "statusNames": [
+          "Waiting for support"
+        ],
+        "summaryPhrase": "Laptop",
+        "updatedSinceDate": "2026-09-01"
+      },
+      "name": "searchTickets_service_unavailable",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "1ea44084-db10-5595-9880-a322b70ebd23",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+            "maxResults": 25,
+            "nextPageToken": "page-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labels": [
+          "hardware"
+        ],
+        "nextPageToken": "page-2",
+        "order": "updatedDescending",
+        "pageSize": 25,
+        "projectKey": "ITH",
+        "reporterAccountIds": [
+          "jane-1"
+        ],
+        "statusCategories": [
+          "new"
+        ],
+        "statusNames": [
+          "Waiting for support"
+        ],
+        "summaryPhrase": "Laptop",
+        "updatedSinceDate": "2026-09-01"
+      },
+      "name": "searchTickets_transport_failure",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "1ea44084-db10-5595-9880-a322b70ebd23",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+            "maxResults": 25,
+            "nextPageToken": "page-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+          "tickets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labels": [
+          "hardware"
+        ],
+        "nextPageToken": "page-2",
+        "order": "updatedDescending",
+        "pageSize": 25,
+        "projectKey": "ITH",
+        "reporterAccountIds": [
+          "jane-1"
+        ],
+        "statusCategories": [
+          "new"
+        ],
+        "statusNames": [
+          "Waiting for support"
+        ],
+        "summaryPhrase": "Laptop",
+        "updatedSinceDate": "2026-09-01"
+      },
+      "name": "searchTickets_provider_rejected",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "1ea44084-db10-5595-9880-a322b70ebd23",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "jql": "",
+          "tickets": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchTickets_defect",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "1ea44084-db10-5595-9880-a322b70ebd23",
+      "exchanges": [
+        {
+          "body": "{\"issues\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/search/jql",
+          "requestBody": {
+            "fields": [
+              "summary",
+              "status",
+              "project",
+              "assignee",
+              "reporter",
+              "priority",
+              "labels",
+              "created",
+              "updated"
+            ],
+            "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+            "maxResults": 25,
+            "nextPageToken": "page-2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "jql": "project = \"ITH\" AND statusCategory in (2) AND status in (\"Waiting for support\") AND labels in (\"hardware\") AND reporter in (\"jane-1\") AND summary ~ \"\\\"Laptop\\\"\" AND updated \u003e= \"2026-09-01\" ORDER BY updated DESC",
+          "tickets": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "labels": [
+          "hardware"
+        ],
+        "nextPageToken": "page-2",
+        "order": "updatedDescending",
+        "pageSize": 25,
+        "projectKey": "ITH",
+        "reporterAccountIds": [
+          "jane-1"
+        ],
+        "statusCategories": [
+          "new"
+        ],
+        "statusNames": [
+          "Waiting for support"
+        ],
+        "summaryPhrase": "Laptop",
+        "updatedSinceDate": "2026-09-01"
+      },
+      "name": "searchTickets_invalid_response",
+      "operation": "searchTickets"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"summary\":\"Laptop will not boot\",\"status\":{\"id\":\"10001\",\"name\":\"Waiting for support\",\"statusCategory\":{\"key\":\"new\"}},\"project\":{\"key\":\"ITH\"},\"assignee\":{\"accountId\":\"ada-1\",\"displayName\":\"Ada\"},\"reporter\":{\"accountId\":\"jane-1\",\"displayName\":\"Jane\"},\"priority\":{\"id\":\"3\",\"name\":\"Medium\"},\"labels\":[\"hardware\"],\"created\":\"2026-09-30T09:15:00.000-0700\",\"updated\":\"2026-09-30T10:00:00.000-0700\",\"description\":\"My laptop will not boot.\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "summary,status,project,assignee,reporter,priority,labels,created,updated,description"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"values\":[{\"id\":\"1000\",\"body\":\"Can you try safe mode?\",\"public\":true,\"created\":{\"epochMillis\":1790000000000}}],\"isLastPage\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "query": {
+            "internal": [
+              "true"
+            ],
+            "limit": [
+              "1"
+            ],
+            "public": [
+              "true"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"values\":[{\"id\":\"1\",\"name\":\"First response\",\"ongoingCycle\":{\"startTime\":{\"epochMillis\":1790000000000},\"goalDuration\":{\"millis\":3600000}}}],\"isLastPage\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/sla",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "comments": [
+            {
+              "body": "Can you try safe mode?",
+              "createdAt": "2026-09-21T14:13:20Z",
+              "id": "1000",
+              "isPublic": true
+            }
+          ],
+          "slas": [
+            {
+              "id": "1",
+              "name": "First response",
+              "ongoingCycle": {
+                "elapsedMillis": 0,
+                "goalDurationMillis": 3600000,
+                "isBreached": false,
+                "remainingMillis": 0,
+                "startedAt": "2026-09-21T14:13:20Z"
+              }
+            }
+          ],
+          "ticket": {
+            "assignee": {
+              "accountId": "ada-1",
+              "displayName": "Ada"
+            },
+            "createdAt": "2026-09-30T16:15:00Z",
+            "description": "My laptop will not boot.",
+            "id": "10042",
+            "key": "ITH-42",
+            "labels": [
+              "hardware"
+            ],
+            "priority": {
+              "id": "3",
+              "name": "Medium"
+            },
+            "projectKey": "ITH",
+            "reporter": {
+              "accountId": "jane-1",
+              "displayName": "Jane"
+            },
+            "status": {
+              "categoryKey": "new",
+              "id": "10001",
+              "name": "Waiting for support"
+            },
+            "summary": "Laptop will not boot",
+            "updatedAt": "2026-09-30T17:00:00Z"
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "getTicket_success",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "summary,status,project,assignee,reporter,priority,labels,created,updated,description"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "getTicket_rate_limit",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "summary,status,project,assignee,reporter,priority,labels,created,updated,description"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "getTicket_service_unavailable",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "summary,status,project,assignee,reporter,priority,labels,created,updated,description"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "getTicket_transport_failure",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "summary,status,project,assignee,reporter,priority,labels,created,updated,description"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "comments": [],
+          "slas": [],
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "key": "",
+            "status": {
+              "id": "",
+              "name": ""
+            },
+            "summary": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "getTicket_provider_rejected",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "comments": [],
+          "slas": [],
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "key": "",
+            "status": {
+              "id": "",
+              "name": ""
+            },
+            "summary": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getTicket_defect",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [
+        {
+          "body": "{\"bad\":\"response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "summary,status,project,assignee,reporter,priority,labels,created,updated,description"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "comments": [],
+          "slas": [],
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "key": "",
+            "status": {
+              "id": "",
+              "name": ""
+            },
+            "summary": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "getTicket_invalid_response",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [
+        {
+          "body": "{\"issueId\":\"10042\",\"issueKey\":\"ITH-42\",\"serviceDeskId\":\"10\",\"requestTypeId\":\"25\",\"summary\":\"Laptop will not boot\",\"createdDate\":{\"epochMillis\":1790000000000}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request",
+          "requestBody": {
+            "raiseOnBehalfOf": "jane-1",
+            "requestFieldValues": {
+              "customfield_10050": {
+                "value": "urgent"
+              },
+              "description": "My laptop will not boot.",
+              "summary": "Laptop will not boot"
+            },
+            "requestTypeId": "25",
+            "serviceDeskId": "10"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-09-21T14:13:20Z",
+          "issueId": "10042",
+          "issueKey": "ITH-42",
+          "raiseOnBehalfOfAccountId": "jane-1",
+          "requestTypeId": "25",
+          "serviceDeskId": "10",
+          "summary": "Laptop will not boot"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "urgent"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "jane-1",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket_success",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request",
+          "requestBody": {
+            "raiseOnBehalfOf": "jane-1",
+            "requestFieldValues": {
+              "customfield_10050": {
+                "value": "urgent"
+              },
+              "description": "My laptop will not boot.",
+              "summary": "Laptop will not boot"
+            },
+            "requestTypeId": "25",
+            "serviceDeskId": "10"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "urgent"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "jane-1",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket_rate_limit",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request",
+          "requestBody": {
+            "raiseOnBehalfOf": "jane-1",
+            "requestFieldValues": {
+              "customfield_10050": {
+                "value": "urgent"
+              },
+              "description": "My laptop will not boot.",
+              "summary": "Laptop will not boot"
+            },
+            "requestTypeId": "25",
+            "serviceDeskId": "10"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "urgent"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "jane-1",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket_service_unavailable",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request",
+          "requestBody": {
+            "raiseOnBehalfOf": "jane-1",
+            "requestFieldValues": {
+              "customfield_10050": {
+                "value": "urgent"
+              },
+              "description": "My laptop will not boot.",
+              "summary": "Laptop will not boot"
+            },
+            "requestTypeId": "25",
+            "serviceDeskId": "10"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "urgent"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "jane-1",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket_transport_failure",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request",
+          "requestBody": {
+            "raiseOnBehalfOf": "jane-1",
+            "requestFieldValues": {
+              "customfield_10050": {
+                "value": "urgent"
+              },
+              "description": "My laptop will not boot.",
+              "summary": "Laptop will not boot"
+            },
+            "requestTypeId": "25",
+            "serviceDeskId": "10"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "raiseOnBehalfOfAccountId": "jane-1",
+          "requestTypeId": "25",
+          "serviceDeskId": "10",
+          "summary": "Laptop will not boot"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "urgent"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "jane-1",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket_provider_rejected",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "requestTypeId": "",
+          "serviceDeskId": "",
+          "summary": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {},
+      "name": "createTicket_defect",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [
+        {
+          "body": "{\"bad\":\"response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request",
+          "requestBody": {
+            "raiseOnBehalfOf": "jane-1",
+            "requestFieldValues": {
+              "customfield_10050": {
+                "value": "urgent"
+              },
+              "description": "My laptop will not boot.",
+              "summary": "Laptop will not boot"
+            },
+            "requestTypeId": "25",
+            "serviceDeskId": "10"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "raiseOnBehalfOfAccountId": "jane-1",
+          "requestTypeId": "25",
+          "serviceDeskId": "10",
+          "summary": "Laptop will not boot"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "urgent"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "jane-1",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket_invalid_response",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"labels\":[\"hardware\",\"triage\"],\"priority\":{\"id\":\"3\",\"name\":\"Medium\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "labels,priority"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "requestBody": {
+            "fields": {
+              "priority": {
+                "name": "High"
+              }
+            },
+            "update": {
+              "labels": [
+                {
+                  "remove": "triage"
+                },
+                {
+                  "add": "vip"
+                }
+              ]
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "issueId": "10042",
+          "issueKey": "ITH-42",
+          "labels": [
+            "hardware",
+            "vip"
+          ],
+          "priority": {
+            "id": "",
+            "name": "High"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {
+        "addLabels": [
+          "vip"
+        ],
+        "issueIdOrKey": "ITH-42",
+        "priorityName": "High",
+        "removeLabels": [
+          "triage"
+        ]
+      },
+      "name": "updateTicket_success",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "labels,priority"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {
+        "addLabels": [
+          "vip"
+        ],
+        "issueIdOrKey": "ITH-42",
+        "priorityName": "High",
+        "removeLabels": [
+          "triage"
+        ]
+      },
+      "name": "updateTicket_rate_limit",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "labels,priority"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {
+        "addLabels": [
+          "vip"
+        ],
+        "issueIdOrKey": "ITH-42",
+        "priorityName": "High",
+        "removeLabels": [
+          "triage"
+        ]
+      },
+      "name": "updateTicket_service_unavailable",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "labels,priority"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {
+        "addLabels": [
+          "vip"
+        ],
+        "issueIdOrKey": "ITH-42",
+        "priorityName": "High",
+        "removeLabels": [
+          "triage"
+        ]
+      },
+      "name": "updateTicket_transport_failure",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "labels,priority"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "labels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {
+        "addLabels": [
+          "vip"
+        ],
+        "issueIdOrKey": "ITH-42",
+        "priorityName": "High",
+        "removeLabels": [
+          "triage"
+        ]
+      },
+      "name": "updateTicket_provider_rejected",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "labels": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {},
+      "name": "updateTicket_defect",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [
+        {
+          "body": "{\"bad\":\"response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "labels,priority"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "labels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {
+        "addLabels": [
+          "vip"
+        ],
+        "issueIdOrKey": "ITH-42",
+        "priorityName": "High",
+        "removeLabels": [
+          "triage"
+        ]
+      },
+      "name": "updateTicket_invalid_response",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"Waiting for support\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[{\"id\":\"31\",\"name\":\"Start Progress\",\"to\":{\"id\":\"3\",\"name\":\"In progress\",\"statusCategory\":{\"key\":\"indeterminate\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42/transitions",
+          "requestBody": {
+            "fields": {
+              "resolution": {
+                "name": "Done"
+              }
+            },
+            "transition": {
+              "id": "31"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "transitioned",
+        "failureKind": "",
+        "output": {
+          "issueId": "10042",
+          "issueKey": "ITH-42",
+          "previousStatus": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "Waiting for support"
+          },
+          "status": {
+            "categoryKey": "indeterminate",
+            "id": "3",
+            "name": "In progress"
+          },
+          "transition": {
+            "destinationStatus": {
+              "categoryKey": "indeterminate",
+              "id": "3",
+              "name": "In progress"
+            },
+            "id": "31",
+            "name": "Start Progress"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_success",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_rate_limit",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_service_unavailable",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_transport_failure",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "issueId": "",
+          "issueKey": "",
+          "previousStatus": {
+            "id": "",
+            "name": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_provider_rejected",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issueId": "",
+          "issueKey": "",
+          "previousStatus": {
+            "id": "",
+            "name": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {},
+      "name": "transitionTicket_defect",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"bad\":\"response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "issueId": "",
+          "issueKey": "",
+          "previousStatus": {
+            "id": "",
+            "name": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_invalid_response",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"1000\",\"body\":\"Please try safe mode.\",\"public\":true,\"created\":{\"epochMillis\":1790000000000}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "1000",
+          "createdAt": "2026-09-21T14:13:20Z",
+          "isPublic": true,
+          "issueIdOrKey": "ITH-42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_success",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_rate_limit",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_service_unavailable",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_transport_failure",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "isPublic": true,
+          "issueIdOrKey": "ITH-42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_provider_rejected",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "isPublic": false,
+          "issueIdOrKey": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {},
+      "name": "addComment_defect",
+      "operation": "addComment"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "body": "{\"bad\":\"response\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isPublic": true,
+          "issueIdOrKey": "ITH-42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_invalid_response",
+      "operation": "addComment"
+    },
+    {
+      "callId": "1e9a4105-8167-5d68-ac86-d346805452b2",
+      "exchanges": [
+        {
+          "body": "{\"values\":[],\"isLastPage\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/servicedesk/10/customer",
+          "query": {
+            "limit": [
+              "50"
+            ],
+            "query": [
+              "jane@example.com"
+            ],
+            "start": [
+              "0"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "X-Experimentalapi": [
+              "opt-in"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "customers": [],
+          "email": "jane@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "jane@example.com",
+        "serviceDeskId": "10"
+      },
+      "name": "findCustomerByEmail_not_found",
+      "operation": "findCustomerByEmail"
+    },
+    {
+      "callId": "10835c70-ce8d-5ec0-8ac3-95106ce15460",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "summary,status,project,assignee,reporter,priority,labels,created,updated,description"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "comments": [],
+          "slas": [],
+          "ticket": {
+            "createdAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "key": "",
+            "status": {
+              "id": "",
+              "name": ""
+            },
+            "summary": "",
+            "updatedAt": "0001-01-01T00:00:00Z"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "commentLimit": 1,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "getTicket_not_found",
+      "operation": "getTicket"
+    },
+    {
+      "callId": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "fields": [
+              "labels,priority"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "labels": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ea77eab4-cc5d-55c8-b358-e2cd2855e7d9",
+      "input": {
+        "addLabels": [
+          "vip"
+        ],
+        "issueIdOrKey": "ITH-42",
+        "priorityName": "High",
+        "removeLabels": [
+          "triage"
+        ]
+      },
+      "name": "updateTicket_not_found",
+      "operation": "updateTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issueId": "",
+          "issueKey": "",
+          "previousStatus": {
+            "id": "",
+            "name": ""
+          },
+          "status": {
+            "id": "",
+            "name": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_not_found",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"10042\",\"key\":\"ITH-42\",\"fields\":{\"status\":{\"id\":\"1\",\"name\":\"Waiting for support\",\"statusCategory\":{\"key\":\"new\"}}},\"transitions\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/api/3/issue/ITH-42",
+          "query": {
+            "expand": [
+              "transitions"
+            ],
+            "fields": [
+              "status"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "transitionUnavailable",
+        "failureKind": "CONFLICT",
+        "output": {
+          "issueId": "10042",
+          "issueKey": "ITH-42",
+          "previousStatus": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "Waiting for support"
+          },
+          "status": {
+            "categoryKey": "new",
+            "id": "1",
+            "name": "Waiting for support"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "042aa168-40da-5426-80a1-01a4c21e9a63",
+      "input": {
+        "destinationStatusName": "In progress",
+        "issueIdOrKey": "ITH-42",
+        "resolutionName": "Done",
+        "transitionId": "31",
+        "transitionName": "Start Progress"
+      },
+      "name": "transitionTicket_transition_unavailable",
+      "operation": "transitionTicket"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "isPublic": true,
+          "issueIdOrKey": "ITH-42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_not_found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "exchanges": [
+        {
+          "body": "{\"issueId\":\"10042\",\"issueKey\":\"bad key\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request",
+          "requestBody": {
+            "raiseOnBehalfOf": "jane-1",
+            "requestFieldValues": {
+              "customfield_10050": {
+                "value": "urgent"
+              },
+              "description": "My laptop will not boot.",
+              "summary": "Laptop will not boot"
+            },
+            "requestTypeId": "25",
+            "serviceDeskId": "10"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/10042",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "raiseOnBehalfOfAccountId": "jane-1",
+          "requestTypeId": "25",
+          "serviceDeskId": "10",
+          "summary": "Laptop will not boot"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "ab66bfde-d934-5d47-9e00-bdf172b83392",
+      "input": {
+        "additionalFieldValues": {
+          "customfield_10050": {
+            "value": "urgent"
+          }
+        },
+        "description": "My laptop will not boot.",
+        "raiseOnBehalfOfAccountId": "jane-1",
+        "requestTypeId": "25",
+        "serviceDeskId": "10",
+        "summary": "Laptop will not boot"
+      },
+      "name": "createTicket_uncertain",
+      "operation": "createTicket"
+    },
+    {
+      "callId": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/ex/jira/11223344-a1b2-4b33-8c44-def123456789/rest/servicedeskapi/request/ITH-42/comment",
+          "requestBody": {
+            "body": "Please try safe mode.",
+            "public": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer jsm-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isPublic": true,
+          "issueIdOrKey": "ITH-42"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "2e2149f9-d0ce-5ccc-a111-f5db6724b3fa",
+      "input": {
+        "body": "Please try safe mode.",
+        "isPublic": true,
+        "issueIdOrKey": "ITH-42"
+      },
+      "name": "addComment_uncertain",
+      "operation": "addComment"
+    }
+  ],
+  "schemaVersion": 1
+}

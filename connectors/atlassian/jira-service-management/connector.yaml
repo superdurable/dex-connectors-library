@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: atlassian
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-atlassian-jira-service-management
+      operations: [findCustomerByEmail, searchTickets, getTicket, createTicket, updateTicket, transitionTicket, addComment]
+      triggers: []
   codegen:
     go:
       package: jiraservicemanagement
@@ -81,6 +87,7 @@ spec:
       refresh:
         missingExpiry: reject
         storedMissingExpiry: refresh
+        acceptedScopeSets: [[read:servicedesk-request, write:servicedesk-request, manage:servicedesk-customer, read:jira-work, write:jira-work]]
         scopeSeparators: whitespaceAndComma
         acceptsMissingTokenType: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
