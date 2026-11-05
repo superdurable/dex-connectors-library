@@ -1,0 +1,490 @@
+[
+  {
+    "name": "spec.auth refresh bot_refresh_token",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "manifest-refresh-token",
+      "bot_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "",
+      "user_token": "manifest-user_token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history channels:read groups:read users:read chat:write",
+      "token_type": "bot"
+    },
+    "updates": {
+      "bot_refresh_token": "manifest-refresh-token-2",
+      "bot_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_refresh_token",
+      "bad_client_secret",
+      "invalid_client_id",
+      "invalid_auth",
+      "token_revoked",
+      "account_inactive",
+      "access_denied"
+    ]
+  },
+  {
+    "name": "spec.auth refresh bot_refresh_token with unaccepted token type",
+    "expectedError": "retryable",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "manifest-refresh-token",
+      "bot_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "",
+      "user_token": "manifest-user_token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history channels:read groups:read users:read chat:write",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "bot_refresh_token": "manifest-refresh-token-2",
+      "bot_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh bot_refresh_token without token type",
+    "expectedError": "retryable",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "manifest-refresh-token",
+      "bot_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "",
+      "user_token": "manifest-user_token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history channels:read groups:read users:read chat:write"
+    },
+    "updates": {
+      "bot_refresh_token": "manifest-refresh-token-2",
+      "bot_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh bot_refresh_token with partial scopes",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "manifest-refresh-token",
+      "bot_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "",
+      "user_token": "manifest-user_token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "bot"
+    },
+    "updates": {
+      "bot_refresh_token": "manifest-refresh-token-2",
+      "bot_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh bot_refresh_token with extra scopes",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "manifest-refresh-token",
+      "bot_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "",
+      "user_token": "manifest-user_token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history channels:read groups:read users:read chat:write manifest-extra-scope",
+      "token_type": "bot"
+    },
+    "updates": {
+      "bot_refresh_token": "manifest-refresh-token-2",
+      "bot_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh bot_refresh_token without expires_in",
+    "expectedError": "retryable",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "manifest-refresh-token",
+      "bot_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "",
+      "user_token": "manifest-user_token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history channels:read groups:read users:read chat:write",
+      "token_type": "bot"
+    },
+    "updates": {
+      "bot_refresh_token": "manifest-refresh-token-2",
+      "bot_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh bot_refresh_token without a client secret",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "manifest-refresh-token",
+      "bot_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "",
+      "user_refresh_token": "",
+      "user_token": "manifest-user_token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "public",
+    "clientId": "manifest-client-id",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history channels:read groups:read users:read chat:write",
+      "token_type": "bot"
+    },
+    "updates": {
+      "bot_refresh_token": "manifest-refresh-token-2",
+      "bot_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "spec.auth refresh user_refresh_token",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "",
+      "bot_token": "manifest-bot_token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "manifest-refresh-token",
+      "user_token": "manifest-access-token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history",
+      "token_type": "user"
+    },
+    "updates": {
+      "user_refresh_token": "manifest-refresh-token-2",
+      "user_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_refresh_token",
+      "bad_client_secret",
+      "invalid_client_id",
+      "invalid_auth",
+      "token_revoked",
+      "account_inactive",
+      "access_denied"
+    ]
+  },
+  {
+    "name": "spec.auth refresh user_refresh_token with unaccepted token type",
+    "expectedError": "retryable",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "",
+      "bot_token": "manifest-bot_token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "manifest-refresh-token",
+      "user_token": "manifest-access-token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "user_refresh_token": "manifest-refresh-token-2",
+      "user_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh user_refresh_token without token type",
+    "expectedError": "retryable",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "",
+      "bot_token": "manifest-bot_token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "manifest-refresh-token",
+      "user_token": "manifest-access-token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history"
+    },
+    "updates": {
+      "user_refresh_token": "manifest-refresh-token-2",
+      "user_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh user_refresh_token with partial scopes",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "",
+      "bot_token": "manifest-bot_token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "manifest-refresh-token",
+      "user_token": "manifest-access-token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "user"
+    },
+    "updates": {
+      "user_refresh_token": "manifest-refresh-token-2",
+      "user_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh user_refresh_token with extra scopes",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "",
+      "bot_token": "manifest-bot_token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "manifest-refresh-token",
+      "user_token": "manifest-access-token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history manifest-extra-scope",
+      "token_type": "user"
+    },
+    "updates": {
+      "user_refresh_token": "manifest-refresh-token-2",
+      "user_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh user_refresh_token without expires_in",
+    "expectedError": "retryable",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "",
+      "bot_token": "manifest-bot_token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "user_refresh_token": "manifest-refresh-token",
+      "user_token": "manifest-access-token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history",
+      "token_type": "user"
+    },
+    "updates": {
+      "user_refresh_token": "manifest-refresh-token-2",
+      "user_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "spec.auth refresh user_refresh_token without a client secret",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "app_token": "manifest-app_token",
+      "bot_refresh_token": "",
+      "bot_token": "manifest-bot_token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "",
+      "user_refresh_token": "manifest-refresh-token",
+      "user_token": "manifest-access-token"
+    },
+    "endpoint": "https://slack.com/api/oauth.v2.access",
+    "encoding": "form",
+    "clientAuth": "public",
+    "clientId": "manifest-client-id",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "channels:history groups:history",
+      "token_type": "user"
+    },
+    "updates": {
+      "user_refresh_token": "manifest-refresh-token-2",
+      "user_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "mayRefuseWithoutCall": true
+  }
+]
