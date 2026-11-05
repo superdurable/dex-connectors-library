@@ -58,7 +58,7 @@ export class YouTubeClient {
     }
     if (!credentials.accessToken || !isHeaderSafeCredential(credentials.accessToken.reveal())) throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid');
     if (requiresManage && credentials.authMethodId !== 'google-oauth-manage') throw new YouTubeExchangeError('providerRejected', 'AUTHORIZATION', 'addPlaylistItem requires a YouTube connection authorized with the google-oauth-manage method and its youtube scope');
-    const encoded = Object.keys(query).sort().map(key => `${goQueryEscape(key)}=${goQueryEscape(query[key]!)}`).join('&');
+    const encoded = Object.keys(query).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(key => `${goQueryEscape(key)}=${goQueryEscape(query[key]!)}`).join('&');
     const url = `${this.endpoint}${path}${encoded ? `?${encoded}` : ''}`;
     let response = await this.request(call, url, credentials.accessToken.reveal(), body);
     if (response.status === 401 && 'resolveAfterRejection' in this.credentials) {
@@ -90,7 +90,7 @@ export class YouTubeClient {
 }
 
 /** Encode one query component exactly as Go url.QueryEscape. */
-export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*~]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
+export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 
 function header(response: YouTubeResponse, name: string): string {
   const value = response.headers[name.toLowerCase()];

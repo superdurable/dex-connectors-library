@@ -140,13 +140,14 @@ export class QuickBooksClient {
     const deadline = Math.min(call.context.deadline?.getTime() ?? Infinity, request.mutation ? budget.deadline : Infinity);
     if (deadline !== Infinity && deadline - now <= 500) return this.localFailure(call, 'retry', 'TRANSPORT', operation, 'QuickBooks attempt has no time left for a request; no request was sent', objectID);
     const timeoutMs = Math.min(20_000, deadline === Infinity ? 20_000 : deadline - now - 500);
-    const query = new URLSearchParams({ ...(request.query ?? {}), minorversion: '75', ...(request.mutation ? { requestid: call.idempotencyKey! } : {}) });
-    query.sort();
-    const url = `${this.endpoint}/v3/company/${realmID}${request.path}?${query.toString()}`;
+    const query = goQueryEncode({ ...(request.query ?? {}), minorversion: '75', ...(request.mutation ? { requestid: call.idempotencyKey! } : {}) });
+    const url = `${this.endpoint}/v3/company/${realmID}${request.path}?${query}`;
     const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(request.body ? { 'Content-Type': 'application/json' } : request.method === 'POST' ? { 'Content-Type': 'application/octet-stream' } : {}) };
     let response: ProviderResponse;
+    let observedStatus = 0;
+    let observedHeaders: ProviderResponse['headers'] = {};
     try {
-      response = await this.send({ url, method: request.method, headers, ...(request.body ? { body: request.body } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: 65_536, ignoreErrorBodyReadFailure: true, addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, signal: call.context.cancellationSignal });
+      response = await this.send({ url, method: request.method, headers, ...(request.body ? { body: request.body } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: 65_536, ignoreErrorBodyReadFailure: true, addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs, signal: call.context.cancellationSignal, onResponseChunk: (_chunk, status, responseHeaders) => { observedStatus = status; observedHeaders = responseHeaders; } });
     } catch (error) {
       if (error instanceof BodyTooLargeError) {
         const transaction = error.headers?.intuit_tid;
@@ -154,7 +155,11 @@ export class QuickBooksClient {
         if (transactionID && transactionPattern.test(transactionID)) receipt.providerRequestId = transactionID;
         return { disposition: 'invalid', status: error.status ?? 0, failure: this.failure('RESPONSE_TOO_LARGE', operation, 'QuickBooks response exceeds the configured maxResponseBytes limit'), receipt, retryAfterMs: 0 };
       }
-      return { disposition: 'retry', status: 0, failure: this.failure('TRANSPORT', operation, 'QuickBooks request failed before a response arrived'), receipt, retryAfterMs: 0 };
+      const transaction = observedHeaders.intuit_tid;
+      const transactionID = Array.isArray(transaction) ? transaction[0] : transaction;
+      if (transactionID && transactionPattern.test(transactionID)) receipt.providerRequestId = transactionID;
+      if (observedStatus >= 200 && observedStatus < 300) return { disposition: 'interrupted', status: observedStatus, failure: this.failure('TRANSPORT', operation, 'QuickBooks response was interrupted'), receipt, retryAfterMs: 0 };
+      return { disposition: 'retry', status: observedStatus, failure: this.failure('TRANSPORT', operation, 'QuickBooks request failed before a response arrived'), receipt, retryAfterMs: 0 };
     }
     const transactionID = response.headers.intuit_tid;
     const reportedID = Array.isArray(transactionID) ? transactionID[0] : transactionID;
@@ -232,3 +237,7 @@ function resolveRealmID(credentials: Credentials, configured: string): string {
   if (configured && configured !== realm) throw new TypeError('the realmId setting names another company than the one Intuit authorized: clear it or authorize that company');
   return realm;
 }
+
+/** Encode query keys and values like Go url.Values.Encode. */
+export function goQueryEncode(values: Readonly<Record<string, string | readonly string[]>>): string { return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).flatMap(key => { const entry = values[key]!; return (typeof entry === 'string' ? [entry] : entry).map(value => `${goQueryEscape(key)}=${goQueryEscape(value)}`); }).join('&'); }
+function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }

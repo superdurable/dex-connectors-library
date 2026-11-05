@@ -89,8 +89,8 @@ export class SpreadsheetClient {
   }
 
   /** Make one request, refreshing once on 401 for reads. */
-  async request(call: Call, credential: Credentials, method: string, spreadsheetId: string, suffix: string, query: Record<string, string>, body?: unknown, write = false, signal?: AbortSignal): Promise<{ exchange: SpreadsheetExchange; credential: Credentials }> {
-    const url = `${this.endpoint}/spreadsheets/${goPathEscape(spreadsheetId)}${suffix}?${new URLSearchParams(Object.entries(query).sort(([a], [b]) => a.localeCompare(b))).toString()}`;
+  async request(call: Call, credential: Credentials, method: string, spreadsheetId: string, suffix: string, query: Record<string, string>, body?: unknown, write = false, signal?: AbortSignal, timeoutMs = 25_000): Promise<{ exchange: SpreadsheetExchange; credential: Credentials }> {
+    const url = `${this.endpoint}/spreadsheets/${goPathEscape(spreadsheetId)}${suffix}?${goQueryEncode(query)}`;
     const payload = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
     for (let attempt = 0; attempt < (write ? 1 : 2); attempt++) {
       const headers: Record<string, string> = { Authorization: `Bearer ${credential.accessToken.reveal()}` };
@@ -99,10 +99,13 @@ export class SpreadsheetClient {
       const request: ProviderRequest = {
         url, method, headers, ...(payload ? { body: payload } : {}),
         maxResponseBytes: this.maxResponseBytes,
-        addressPolicy: 'unrestricted', timeoutMs: 25_000,
+        addressPolicy: 'unrestricted', timeoutMs,
         signal: signal ?? call.context.cancellationSignal,
       };
       let exchange: SpreadsheetExchange;
+      let observedStatus = 0;
+      let observedHeaders: ProviderResponse['headers'] = {};
+      request.onResponseChunk = (_chunk, status, headers) => { observedStatus = status; observedHeaders = headers; };
       try {
         const response = await this.send(request);
         exchange = { status: response.status, headers: response.headers, body: response.body, requestId: header(response.headers, 'x-goog-request-id') || header(response.headers, 'x-request-id'), isTooLarge: false, isProvablyNotSent: false };
@@ -111,7 +114,7 @@ export class SpreadsheetClient {
           const headers = error.headers ?? {};
           exchange = { status: error.status ?? 0, headers, body: new Uint8Array(), requestId: header(headers, 'x-goog-request-id') || header(headers, 'x-request-id'), isTooLarge: true, isProvablyNotSent: false, error };
         } else {
-          exchange = { status: 0, headers: {}, body: new Uint8Array(), requestId: '', isTooLarge: false, isProvablyNotSent: error instanceof ProviderTransportError && error.isProvablyNotSent, error };
+          exchange = { status: observedStatus, headers: observedHeaders, body: new Uint8Array(), requestId: header(observedHeaders, 'x-goog-request-id') || header(observedHeaders, 'x-request-id'), isTooLarge: false, isProvablyNotSent: error instanceof ProviderTransportError && error.isProvablyNotSent, error };
         }
       }
       if (write || exchange.status !== 401 || attempt !== 0 || !('resolveAfterRejection' in this.credentials)) return { exchange, credential };
@@ -155,3 +158,7 @@ function goFormatValue(value: unknown): string {
   if (typeof value === 'object') return `map[${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, field]) => `${key}:${goFormatValue(field)}`).join(' ')}]`;
   return '<nil>';
 }
+
+/** Encode query keys in Go byte order and values in insertion order. */
+export function goQueryEncode(values: Readonly<Record<string, string | readonly string[]>>): string { return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).flatMap(key => { const entry = values[key]!; return (typeof entry === 'string' ? [entry] : entry).map(value => `${goQueryEscape(key)}=${goQueryEscape(value)}`); }).join('&'); }
+function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }

@@ -137,11 +137,14 @@ export class UpsertRowOperation {
   private async replace(call: Call, credential: Credentials, input: UpsertRowInput, row: string[], rowNumber: number, fence: Fence, decision: string): Promise<MutationAttempt<UpsertRowOutput>> {
     const targetRange = `${quoteSheet(input.sheetName)}!A${rowNumber}`;
     const payload = { range: targetRange, majorDimension: 'ROWS', values: [row] };
-    let response = await this.client.request(call, credential, 'PUT', input.spreadsheetId, `/values/${goPathEscape(targetRange)}`, { valueInputOption: 'RAW' }, payload, true);
+    const executeTimeout = UpsertRowDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000;
+    const requestDeadline = Math.min(Date.now() + executeTimeout - executeTimeout / 6, (call.context.deadline?.getTime() ?? Infinity) - executeTimeout / 10);
+    if (requestDeadline - Date.now() < executeTimeout / 10) return this.retryBeforeWrite(fence, decision, this.client.failure('upsertRow', 'AVAILABILITY', 'insufficient attempt time for row replacement'));
+    let response = await this.client.request(call, credential, 'PUT', input.spreadsheetId, `/values/${goPathEscape(targetRange)}`, { valueInputOption: 'RAW' }, payload, true, undefined, Math.max(1, Math.min(25_000, requestDeadline - Date.now())));
     let needsReauthorization = true;
     if (response.exchange.status === 401) {
       const refreshed = await this.client.refreshAfterRejection(call, credential);
-      if (refreshed.credential) response = await this.client.request(call, refreshed.credential, 'PUT', input.spreadsheetId, `/values/${goPathEscape(targetRange)}`, { valueInputOption: 'RAW' }, payload, true);
+      if (refreshed.credential) response = await this.client.request(call, refreshed.credential, 'PUT', input.spreadsheetId, `/values/${goPathEscape(targetRange)}`, { valueInputOption: 'RAW' }, payload, true, undefined, Math.max(1, Math.min(25_000, requestDeadline - Date.now())));
       else needsReauthorization = refreshed.reauthorization;
     }
     const exchange = response.exchange;

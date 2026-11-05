@@ -10,7 +10,7 @@ const credentials = { resolve: async () => ({ accessToken: new SecretString('tok
 describe('Directory client inputs', () => {
   it('escapes paths and sorted queries like Go', () => {
     expect(goPathEscape("a!$&+,:;=@/?'()*~")).toBe('a%21$&+%2C:%3B=@%2F%3F%27%28%29%2A~');
-    expect(goQueryEncode({ z: 'a b~*', a: 'x+y' })).toBe('a=x%2By&z=a+b%7E%2A');
+    expect(goQueryEncode({ z: 'a b~*', a: 'x+y' })).toBe('a=x%2By&z=a+b~%2A');
   });
   it('rejects invalid limits before a provider call', () => {
     expect(() => new WorkspaceAdminClient({ maxResponseBytes: -1 }, credentials)).toThrow();

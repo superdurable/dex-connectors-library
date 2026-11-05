@@ -28,3 +28,16 @@ describe('Google Sheets client', () => {
     expect(client.receipt(call).provider).toBe('google-sheets');
   });
 });
+
+describe('Interrupted provider response', () => {
+  it('retains a rejected append status after a body read error', async () => {
+    const client = new SpreadsheetClient({}, { resolve: async () => credential, resolveWithRefresh: async () => credential }, {
+      send: async request => {
+        request.onResponseChunk?.(Buffer.from('{'), 503, { 'x-goog-request-id': 'safe-request-id' });
+        throw new Error('body interrupted');
+      },
+    });
+    const result = await client.request(call, credential, 'POST', 'sheet', '/values/append', {}, {}, true);
+    expect(result.exchange).toMatchObject({ status: 503, requestId: 'safe-request-id' });
+  });
+});

@@ -75,3 +75,18 @@ describe('QuickBooks provider boundaries', () => {
     expect(new URL(urls[0]!).searchParams.get('requestid')).toBe(call.idempotencyKey);
   });
 });
+
+it('encodes the QuickBooks query wildcard as Go does', async () => {
+  let url = '';
+  await client(async request => { url = request.url; return response(200, { QueryResponse: {} }); }).findCustomer().invoke(call, { displayName: 'Ada' });
+  expect(url).toContain('select+%2A+from+Customer');
+});
+
+it('treats an interrupted successful mutation body as an uncertain write', async () => {
+  const sender = async (request: ProviderRequest): Promise<ProviderResponse> => {
+    request.onResponseChunk?.(Buffer.from('{'), 200, { intuit_tid: 'safe-request-id' });
+    throw new Error('body interrupted');
+  };
+  const result = await client(sender).createInvoice().invoke(call, { customerId: '58', lines: [{ itemId: '1', amount: '1.00' }] });
+  expect(result).toMatchObject({ kind: 'uncertain', failure: { kind: 'PROTOCOL' }, receipt: { providerRequestId: 'safe-request-id' } });
+});

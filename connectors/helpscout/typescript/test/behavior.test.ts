@@ -67,3 +67,52 @@ describe('generated Help Scout client credentials declaration', () => {
     await expect(driver.refresh(state, new AbortController().signal)).rejects.not.toBeInstanceOf(ReauthorizationRequiredError);
   });
 });
+
+describe('Interrupted replies and strict rate limits', () => {
+  it('keeps a successful response header after the reply body fails', async () => {
+    const client = new HelpScoutClient({}, new StaticCredentialProvider([[connection, credentials]]), {
+      send: async request => {
+        request.onResponseChunk?.(Buffer.from('{'), 201, { 'resource-id': '568' });
+        throw new Error('body interrupted');
+      },
+    });
+    const call = { id: '72c79694-b3a3-4ca8-b75c-b8e46b929d15', connection,
+      operation: { connectorId: 'helpscout', operationId: 'replyToConversation' },
+      context: { cancellationSignal: new AbortController().signal } } as Call;
+    const result = await client.exchangeWithToken(call, 'inert-access-token', 'POST', '/v2/conversations/501/reply');
+    expect(result).toMatchObject({ status: 201, headers: { 'resource-id': '568' } });
+  });
+
+  it('rejects fractional rate limit seconds', () => {
+    const client = new HelpScoutClient({}, new StaticCredentialProvider([[connection, credentials]]));
+    const result = client.classifyFailure('replyToConversation', { status: 429, headers: { 'x-ratelimit-retry-after': '2.5' }, body: new Uint8Array() }, 'inert-access-token');
+    expect(result.retryAfterMs).toBe(0);
+  });
+});
+
+describe('Reply outcome classification', () => {
+  const makeCall = (): Call => ({ id: '72c79694-b3a3-4ca8-b75c-b8e46b929d15', connection,
+    operation: { connectorId: 'helpscout', operationId: 'replyToConversation' },
+    context: { attempt: 1, cancellationSignal: new AbortController().signal,
+      hasLastHeartbeatValue: () => false, recordHeartbeat: async () => {} },
+    reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as unknown as Call;
+
+  it('uses Resource-Id after a successful reply body is interrupted', async () => {
+    const client = new HelpScoutClient({}, new StaticCredentialProvider([[connection, credentials]]), {
+      send: async request => {
+        request.onResponseChunk?.(Buffer.from('{'), 201, { 'resource-id': '568' });
+        throw new Error('body interrupted');
+      },
+    });
+    const attempt = await client.replyToConversation().invoke(makeCall(), { conversationId: 501, customerId: 238604, text: 'Reply' });
+    expect(attempt).toMatchObject({ kind: 'branch', branch: 'replied', value: { threadId: 568 } });
+  });
+
+  it('names the target of a merged conversation', async () => {
+    const client = new HelpScoutClient({}, new StaticCredentialProvider([[connection, credentials]]), {
+      send: async () => ({ status: 301, headers: { location: '/v2/conversations/777' }, body: new Uint8Array() }),
+    });
+    const attempt = await client.replyToConversation().invoke(makeCall(), { conversationId: 501, text: 'Reply' });
+    expect(attempt).toMatchObject({ kind: 'branch', branch: 'notFound', failure: { message: 'the conversation was merged into conversation 777; reply to that conversation' } });
+  });
+});

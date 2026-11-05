@@ -132,7 +132,7 @@ export class DriveClient {
 
   /** Build the same sorted query encoding as Go url.Values.Encode. */
   query(values: Record<string, string>): string {
-    return Object.keys(values).sort().map(key => `${goQueryEscape(key)}=${goQueryEscape(values[key]!)}`).join('&');
+    return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(key => `${goQueryEscape(key)}=${goQueryEscape(values[key]!)}`).join('&');
   }
 
   /** Build a Drive files.list URL across visible drives. */
@@ -166,8 +166,8 @@ export function header(headers: Record<string, unknown>, name: string): string {
 }
 /** Match Go's PathEscape safe characters, including reserved subdelimiters. */
 export function goPathEscape(value: string): string { return encodeURIComponent(value).replace(/%24/g, '$').replace(/%26/g, '&').replace(/%2B/g, '+').replace(/%3D/g, '=').replace(/%3A/g, ':').replace(/%40/g, '@').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
-/** Match Go's QueryEscape, including escaped tilde. */
-export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*~]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
+/** Match Go's QueryEscape safe set. */
+export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`); }
 /** Validate a Drive ID or root alias. */
 export function isDriveId(value: string): boolean { return /^[A-Za-z0-9_-]{1,256}$/.test(value); }
 /** Validate a lowercase media type without parameters. */

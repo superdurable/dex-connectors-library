@@ -143,7 +143,7 @@ export class HubSpotClient {
 function header(response: ProviderResponse, name: string): string {
   const value = response.headers[name]; return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }
-function rateLimitDelay(value: string): number { const milliseconds = Number(value); return Number.isSafeInteger(milliseconds) && milliseconds > 0 ? Math.min(milliseconds, 10_000) : 0; }
+function rateLimitDelay(value: string): number { if (!/^[+-]?[0-9]+$/.test(value)) return 0; const milliseconds = BigInt(value); return milliseconds > 0n && milliseconds <= 9_223_372_036_854_775_807n ? Number(milliseconds > 10_000n ? 10_000n : milliseconds) : 0; }
 function decodeErrorBody(body: Uint8Array): { category?: string; policyName?: string; errors?: Array<{ code?: string }> } {
   if (body.length > 65_536) return {};
   try { const parsed: unknown = JSON.parse(Buffer.from(body).toString()); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}; }

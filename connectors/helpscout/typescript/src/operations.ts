@@ -161,8 +161,16 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
       return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', credentials.message));
     }
     if (!input.isInternalNote && !input.customerId) {
-      const read = await this.client.exchangeWithToken(call, credentials.token, 'GET', conversationPath(input.conversationId));
-      if ('response' in read && read.response.status === 301) return mutationFailure('replyToConversation', 'notFound', 'NOT_FOUND', output, receipt);
+      const readTimeoutMs = this.client.replyReadTimeoutMs(call);
+      if (!readTimeoutMs) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'too little attempt time remains to read the conversation'));
+      const read = await this.client.exchangeWithToken(call, credentials.token, 'GET', conversationPath(input.conversationId), undefined, undefined, true, readTimeoutMs);
+      if ('response' in read && read.response.status === 301) {
+        const location = String(read.response.headers.location ?? '');
+        const matched = /^(?:https:\/\/api\.helpscout\.net)?\/v2\/conversations\/([1-9]\d*)$/.exec(location);
+        const mergedId = matched ? Number(matched[1]) : 0;
+        const message = positiveId(mergedId) ? `the conversation was merged into conversation ${mergedId}; reply to that conversation` : 'the conversation was merged into another; reply to that conversation';
+        return newMutationBranch('notFound', output, receipt, failure('replyToConversation', 'NOT_FOUND', message));
+      }
       const terminal = classifyMutation(this.client, call, 'replyToConversation', read, output, input.conversationId, 'providerRejected', 'notFound');
       if (terminal) { if (terminal.kind === 'retry') { try { await fence.recordNotSent(); } catch { /* A failed checkpoint remains fail closed. */ } } return terminal; }
       try {
@@ -180,14 +188,14 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
       if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'the thread was not sent before the Execute dispatch deadline'));
       return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', "the thread may exist because Help Scout's answer was lost"), receipt);
     }
-    if ('error' in exchange) {
+    if ('error' in exchange && !(exchange.status !== undefined && exchange.status >= 200 && exchange.status < 300)) {
       if (isProvablyUnsent(exchange.error)) {
         try { await fence.recordCanResend(); } catch { /* A failed checkpoint remains fail closed. */ }
         return newMutationRetry(failure('replyToConversation', 'TRANSPORT', 'Help Scout could not be reached, so no thread was sent'));
       }
       return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', "the thread may exist because Help Scout's answer was lost"), receipt);
     }
-    const response = exchange.response;
+    const response = 'response' in exchange ? exchange.response : { status: exchange.status!, headers: exchange.headers ?? {}, body: new Uint8Array() };
     if (response.status >= 200 && response.status < 300) {
       const raw = String(response.headers['resource-id'] ?? '').trim();
       const threadId = /^[1-9]\d*$/.test(raw) ? Number(raw) : 0;
@@ -215,7 +223,9 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
     if (credential.kind === 'retry') return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', credential.message));
     if (credential.kind === 'terminal') return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', 'the accepted thread could not be confirmed because authorization failed'), receipt);
     for (let page = 1; page <= 10; page++) {
-      const exchange = await this.client.exchangeWithToken(call, credential.token, 'GET', `${conversationPath(output.conversationId)}/threads`, { page: String(page) });
+      const readTimeoutMs = this.client.replyReadTimeoutMs(call);
+      if (!readTimeoutMs) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'too little attempt time remains to confirm the accepted thread'));
+      const exchange = await this.client.exchangeWithToken(call, credential.token, 'GET', `${conversationPath(output.conversationId)}/threads`, { page: String(page) }, undefined, true, readTimeoutMs);
       if ('error' in exchange) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'Help Scout thread read-back is temporarily unavailable'));
       if (exchange.isTooLarge || exchange.isMalformed) return newMutationUncertain(output, failure('replyToConversation', 'TRANSPORT', 'Help Scout returned an unusable thread read-back'), receipt);
       if ([429, 408].includes(exchange.response.status) || exchange.response.status >= 500) return newMutationRetry(failure('replyToConversation', 'AVAILABILITY', 'Help Scout thread read-back is temporarily unavailable'));
@@ -231,7 +241,9 @@ export class ReplyToConversationOperation implements Mutation<ReplyToConversatio
             const customer = found.customer;
             if (customer && wireInteger(asObject(customer).id) > 0) output.customerId = wireInteger(asObject(customer).id);
             else {
-              const primary = await this.client.exchangeWithToken(call, credential.token, 'GET', conversationPath(output.conversationId));
+              const customerReadTimeoutMs = this.client.replyReadTimeoutMs(call);
+              if (!customerReadTimeoutMs) return newMutationBranch('replied', output, this.client.receipt(call, threadId));
+              const primary = await this.client.exchangeWithToken(call, credential.token, 'GET', conversationPath(output.conversationId), undefined, undefined, true, customerReadTimeoutMs);
               if ('response' in primary && primary.response.status === 200 && !primary.isTooLarge && !primary.isMalformed) {
                 try {
                   const customerId = decodeConversation(parseObject(primary.response.body), output.conversationId).primaryCustomer?.id;

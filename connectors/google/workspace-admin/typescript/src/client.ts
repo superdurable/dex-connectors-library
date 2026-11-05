@@ -157,4 +157,5 @@ function hasCreationIncompleteMessage(body: Uint8Array): boolean {
 /** Encode a path segment exactly as Go url.PathEscape. */
 export function goPathEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase()).replace(/%(24|26|2B|3D|3A|40)/g, (_, code: string) => String.fromCharCode(parseInt(code, 16))); }
 /** Encode a query exactly as Go url.Values.Encode. */
-export function goQueryEncode(values: Record<string, string>): string { const query = new URLSearchParams(); for (const key of Object.keys(values).sort()) query.set(key, values[key]!); return query.toString().replace(/\*/g, '%2A'); }
+export function goQueryEncode(values: Readonly<Record<string, string | readonly string[]>>): string { return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).flatMap(key => { const entry = values[key]!; return (typeof entry === 'string' ? [entry] : entry).map(value => `${goQueryEscape(key)}=${goQueryEscape(value)}`); }).join('&'); }
+function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }

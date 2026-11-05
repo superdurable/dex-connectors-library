@@ -4,7 +4,7 @@
 import { newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Query, type QueryAttempt, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { GetFormDefinition, GetResponseDefinition, ListResponsesDefinition } from './generated/definitions.js';
 import type { Form, FormAnswer, FormChoice, FormItem, FormQuestion, FormResponse, GetFormInput, GetResponseInput, ListResponsesInput, ResponsePage } from './generated/models.js';
-import type { GoogleFormsClient, ReadFailure } from './client.js';
+import { goQueryEncode, type GoogleFormsClient, type ReadFailure } from './client.js';
 
 const idPattern = /^[A-Za-z0-9_-]{1,256}$/;
 const emptyForm: Form = { formId: '', title: '', items: [] };
@@ -133,12 +133,12 @@ export class ListResponsesOperation implements Query<ListResponsesInput, Respons
     if (Buffer.byteLength(input.pageToken ?? '', 'utf8') > 4096 || Array.from(input.pageToken ?? '').some(character => character.codePointAt(0)! <= 32 || character.codePointAt(0) === 127)) return defect('listResponses', emptyPage, 'pageToken is not a Google Forms page token');
     const pageSize = input.pageSize || this.client.responsePageSize;
     if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 1000) return defect('listResponses', emptyPage, 'pageSize must be from 1 to 1000, or 0 for the connection default');
-    const query = new URLSearchParams();
-    try { if (input.submittedAfter || input.submittedAtOrAfter) query.set('filter', `timestamp ${input.submittedAfter ? '>' : '>='} ${goTimestamp(input.submittedAfter || input.submittedAtOrAfter)}`); }
+    const query: Record<string, string> = {};
+    try { if (input.submittedAfter || input.submittedAtOrAfter) query.filter = `timestamp ${input.submittedAfter ? '>' : '>='} ${goTimestamp(input.submittedAfter || input.submittedAtOrAfter)}`; }
     catch { return defect('listResponses', emptyPage, 'submission time filters must be between years 1 and 9999'); }
-    query.set('pageSize', String(pageSize));
-    if (input.pageToken) query.set('pageToken', input.pageToken);
-    const result = await this.client.read(call, 'listResponses', `/forms/${input.formId}/responses?${query.toString()}`);
+    query.pageSize = String(pageSize);
+    if (input.pageToken) query.pageToken = input.pageToken;
+    const result = await this.client.read(call, 'listResponses', `/forms/${input.formId}/responses?${goQueryEncode(query)}`);
     if ('outcome' in result) return outcome(result.outcome, emptyPage);
     const receipt = this.client.receipt(call, requestId(result.response), input.formId);
     try { const body = parseBody(result.response.body), values = array(body.responses); if (values.length > pageSize) throw new TypeError('oversized page'); const responses = values.map(value => response(value, input.formId)); const ids = responses.map(value => value.responseId); if (new Set(ids).size !== ids.length) throw new TypeError('duplicate response'); const page: ResponsePage = { formId: input.formId, responses }; const nextPageToken = optionalString(body.nextPageToken); if (nextPageToken) page.nextPageToken = nextPageToken; return newQueryBranch('listed', page, receipt); }

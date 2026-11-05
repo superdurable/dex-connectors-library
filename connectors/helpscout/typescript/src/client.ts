@@ -20,7 +20,7 @@ export interface HelpScoutClientOptions {
 /** One response or sanitized transport failure from the Help Scout API. */
 export type HelpScoutExchange =
   | { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean }
-  | { error: unknown };
+  | { error: unknown; status?: number; headers?: ProviderResponse['headers'] };
 
 /** Resolve the renewable credential before a provider request. */
 export type CredentialResolution =
@@ -74,8 +74,8 @@ export class HelpScoutClient {
   }
 
   /** Send with a token already resolved for a multi-request operation. */
-  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true): Promise<HelpScoutExchange> {
-    const encodedQuery = query ? Object.entries(query).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0).map(([name, value]) => `${goQueryEscape(name)}=${goQueryEscape(value)}`).join('&') : '';
+  async exchangeWithToken(call: Call, accessToken: string, method: string, path: string, query?: Readonly<Record<string, string>>, payload?: unknown, allowRefresh = true, requestTimeoutMs = 25_000): Promise<HelpScoutExchange> {
+    const encodedQuery = query ? Object.entries(query).sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([name, value]) => `${goQueryEscape(name)}=${goQueryEscape(value)}`).join('&') : '';
     const url = `${apiBaseURL}${path}${encodedQuery ? `?${encodedQuery}` : ''}`;
     let body: Uint8Array | undefined;
     try { if (payload !== undefined) body = Buffer.from(JSON.stringify(payload)); }
@@ -85,14 +85,17 @@ export class HelpScoutClient {
       const request: ProviderRequest = {
         url, method, headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}) },
         ...(body ? { body } : {}), maxResponseBytes: this.#maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
-        ignoreErrorBodyReadFailure: true, addressPolicy: 'publicHTTPS', timeoutMs: 25_000,
+        ignoreErrorBodyReadFailure: true, addressPolicy: 'publicHTTPS', timeoutMs: requestTimeoutMs,
         signal: call.context.cancellationSignal,
       };
       let exchange: { response: ProviderResponse; accessToken: string; isTooLarge?: boolean; isMalformed?: boolean };
+      let observedStatus = 0;
+      let observedHeaders: ProviderResponse['headers'] = {};
+      request.onResponseChunk = (_chunk, status, headers) => { observedStatus = status; observedHeaders = headers; };
       try { exchange = { response: await this.#send(request), accessToken: token }; }
       catch (error) {
         if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers) exchange = { response: { status: error.status, headers: error.headers, body: new Uint8Array() }, accessToken: token, ...(error.status >= 200 && error.status < 300 ? { isTooLarge: true as const } : {}) };
-        else return { error };
+        else return { error, status: observedStatus, headers: observedHeaders };
       }
       if (exchange.response.status >= 200 && exchange.response.status < 300 && token && Buffer.from(exchange.response.body).includes(Buffer.from(token))) return { ...exchange, isMalformed: true };
       if (exchange.response.status !== 401 || !allowRefresh || attempt > 0 || !('resolveAfterRejection' in this.#credentials)) return exchange;
@@ -103,6 +106,12 @@ export class HelpScoutClient {
       } catch { return exchange; }
     }
     return { error: new TypeError('Help Scout authenticated request retry was exhausted') };
+  }
+
+  /** Reserve one second of the attempt deadline for a reply read. */
+  replyReadTimeoutMs(call: Call): number {
+    const remaining = (call.context.deadline?.getTime() ?? Infinity) - Date.now() - 1_000;
+    return remaining < 1_000 ? 0 : Math.min(25_000, remaining);
   }
 
   /** Capture a provider object ID without retaining response or credential bodies. */
@@ -120,8 +129,9 @@ export class HelpScoutClient {
     let retryAfterMs = 0;
     if (status === 429) {
       kind = 'RATE_LIMIT'; message = 'Help Scout rate limited the request (HTTP 429)'; isRetry = true;
-      const seconds = Number(response.headers['x-ratelimit-retry-after']);
-      retryAfterMs = Number.isSafeInteger(seconds) && seconds > 0 ? Math.min(seconds * 1000, 3_600_000) : parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.#now());
+      const secondsText = String(response.headers['x-ratelimit-retry-after'] ?? '').trim();
+      const seconds = /^[+-]?[0-9]+$/.test(secondsText) ? BigInt(secondsText) : 0n;
+      retryAfterMs = seconds > 0n && seconds <= 9_223_372_036_854_775_807n ? Number(seconds > 3_600n ? 3_600n : seconds) * 1000 : parseRetryAfter(String(response.headers['retry-after'] ?? ''), this.#now());
     } else if (status === 408 || status >= 500) {
       kind = 'AVAILABILITY'; message = `Help Scout could not complete the request yet (HTTP ${status})`; isRetry = true;
     } else if (status === 401) {
@@ -167,6 +177,6 @@ function summarizeError(body: Uint8Array, accessToken: string): { logRef: string
 /** Detect a provably unsent transport failure for a fenced reply. */
 export function isProvablyUnsent(error: unknown): boolean { return error instanceof ProviderTransportError && error.isProvablyNotSent; }
 
-function goQueryEscape(value: string): string {
-  return encodeURIComponent(value).replace(/[!'()*~]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
+export function goQueryEscape(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
 }

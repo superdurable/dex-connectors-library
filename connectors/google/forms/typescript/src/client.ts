@@ -133,3 +133,7 @@ function header(response: ProviderResponse, name: string): string {
   const value = response.headers[name];
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
 }
+
+/** Encode query keys and values like Go url.Values.Encode. */
+export function goQueryEncode(values: Readonly<Record<string, string | readonly string[]>>): string { return Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).flatMap(key => { const entry = values[key]!; return (typeof entry === 'string' ? [entry] : entry).map(value => `${goQueryEscape(key)}=${goQueryEscape(value)}`); }).join('&'); }
+function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }

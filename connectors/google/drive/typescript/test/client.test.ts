@@ -11,7 +11,7 @@ const credentials = new StaticCredentialProvider([[reference, { accessToken: new
 describe('Go-compatible request values', () => {
   it('uses Go PathEscape and QueryEscape for reserved characters', () => {
     expect(goPathEscape("a/b!$&'+=:@,;?~*")).toBe('a%2Fb%21$&%27+=:@%2C%3B%3F~%2A');
-    expect(goQueryEscape('a b*~+$')).toBe('a+b%2A%7E%2B%24');
+    expect(goQueryEscape('a b*~+$')).toBe('a+b%2A~%2B%24');
   });
   it('rejects calendar rollover and accepts Go time offsets and comma fractions', () => {
     expect(() => goRFC3339('2026-02-30T00:00:00Z')).toThrow();

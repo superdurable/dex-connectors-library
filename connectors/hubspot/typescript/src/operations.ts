@@ -86,7 +86,7 @@ export class UpsertObjectOperation implements Mutation<UpsertObjectInput, Upsert
           if (errors.length) {
             const first = requireObject(errors[0]);
             const statusText = stringField(first, 'status');
-            let status = Number(statusText);
+            let status = /^[+-]?[0-9]+$/.test(statusText) && BigInt(statusText) <= 9_223_372_036_854_775_807n && BigInt(statusText) >= -9_223_372_036_854_775_808n ? Number(statusText) : 400;
             if (!Number.isInteger(status) || status < 400) status = 400;
             const category = stringField(first, 'category');
             const syntheticBody = Buffer.from(JSON.stringify({ category }));
@@ -145,7 +145,7 @@ function validateRecordId(value: string): void { if (!recordId.test(value)) thro
 function uniqueProperties(values: string[]): string[] { if (values.length > 100) throw new Error('at most 100 properties can be requested'); const unique = [...new Set(values)]; if (unique.some(value => !propertyName.test(value))) throw new Error('requested property name is invalid'); return unique; }
 function validateValues(properties: Record<string, string> | undefined, required: boolean): void { if (required && !Object.keys(properties ?? {}).length) throw new Error('at least one property value is required'); if (Object.keys(properties ?? {}).length > 100) throw new Error('at most 100 property values can be written'); for (const [name, value] of Object.entries(properties ?? {})) { if (!propertyName.test(name)) throw new Error('written property name is invalid'); if ([...value].length > 65_536) throw new Error('property values cannot exceed 65536 characters'); } }
 function objectsPath(objectType: ObjectType, suffix: string): string { return `crm/objects/2026-09/${objectType}/${suffix}`; }
-function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*~]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
+export function goQueryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+'); }
 function searchBody(input: SearchObjectsInput): Record<string, unknown> {
   validateObjectType(input.objectType);
   const groups = input.filterGroups ?? [];
@@ -161,7 +161,7 @@ function searchBody(input: SearchObjectsInput): Record<string, unknown> {
   const body: Record<string, unknown> = { ...(groups.length ? { filterGroups: groups.map(group => ({ filters: group.filters })) } : {}), ...(input.query ? { query: input.query } : {}),
     ...(input.sort ? { sorts: [input.sort] } : {}), ...(properties.length ? { properties } : {}), limit, ...(input.after ? { after: input.after } : {}) };
   if (input.sort && (!propertyName.test(input.sort.propertyName) || !['ASCENDING', 'DESCENDING'].includes(input.sort.direction))) throw new Error('sort property or direction is invalid');
-  if (Buffer.byteLength(JSON.stringify(body)) > 3_000) throw new Error("search request exceeds HubSpot's 3000-character body limit");
+  if (Buffer.byteLength(JSON.stringify(body).replace(/[<>&]/g, character => ({ '<': '\\u003c', '>': '\\u003e', '&': '\\u0026' })[character]!).replace(/[\u2028\u2029]/g, character => character === '\u2028' ? '\\u2028' : '\\u2029')) > 3_000) throw new Error("search request exceeds HubSpot's 3000-character body limit");
   return body;
 }
 function validateFilter(filter: SearchFilter): void {

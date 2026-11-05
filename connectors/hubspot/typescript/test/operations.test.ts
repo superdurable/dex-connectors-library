@@ -52,3 +52,23 @@ it('refreshes a rejected OAuth access token once through the host credential sou
   if (attempt.kind === 'branch') expect(attempt.branch).toBe('searched');
   expect(tokens).toEqual(['Bearer old-token', 'Bearer new-token']);
 });
+
+it('treats a fractional batch status as Go HTTP 400', async () => {
+  const hubspot = client(async () => ({ status: 207, headers: {}, body: Buffer.from('{"results":[],"errors":[{"status":"500.0","category":"VALIDATION_ERROR"}]}') }));
+  const attempt = await hubspot.upsertObject().invoke(callFor('upsertObject'), { objectType: 'deals', idProperty: 'external_id', idValue: 'item-1', properties: {} });
+  expect(attempt).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'VALIDATION' } });
+});
+
+it('counts Go JSON HTML escaping against the 3000-byte search limit', async () => {
+  let requests = 0;
+  const hubspot = client(async () => { requests++; throw new Error('unexpected request'); });
+  const attempt = await hubspot.searchObjects().invoke(callFor('searchObjects'), { objectType: 'deals', query: '<'.repeat(550) });
+  expect(attempt).toMatchObject({ kind: 'branch', branch: 'defect' });
+  expect(requests).toBe(0);
+});
+
+it('rejects fractional rate interval milliseconds', async () => {
+  const hubspot = client(async () => ({ status: 429, headers: { 'x-hubspot-ratelimit-interval-milliseconds': '2000.5' }, body: Buffer.from('{}') }));
+  const attempt = await hubspot.searchObjects().invoke(callFor('searchObjects'), { objectType: 'deals' });
+  expect(attempt).toMatchObject({ kind: 'retry', retryAfterMs: 0 });
+});
