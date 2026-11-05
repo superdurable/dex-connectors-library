@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: MIT
 """Check local DocuSign validation and Go-compatible encoding boundaries."""
 
+import json
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,8 +17,14 @@ from dex_connectors.docusign import (
     EnvelopeCustomField,
     TemplateRole,
 )
-from dex_connectors.docusign.client import path_escape, query_escape
-from dex_connectors.docusign.operations import _create_body, _time
+from dex_connectors.docusign.client import ProviderResponse, failure, path_escape, query_escape
+from dex_connectors.docusign.operations import (
+    CreateEnvelopeFromTemplateOperation,
+    _create_body,
+    _CreateDispatchCheckpoint,
+    _go_timestamp,
+    _time,
+)
 
 
 @pytest.mark.parametrize(
@@ -96,3 +104,129 @@ async def test_zero_limits_use_manifest_defaults() -> None:
         assert client.config == Config()
     finally:
         await client.aclose()
+
+
+def test_checkpoint_timestamp_trims_fractional_zeros() -> None:
+    assert _go_timestamp(datetime(2026, 10, 4, 12, tzinfo=UTC)) == "2026-10-04T12:00:00Z"
+    assert _go_timestamp(datetime(2026, 10, 4, 12, 0, 0, 120000, UTC)) == "2026-10-04T12:00:00.12Z"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stored",
+    [
+        None,
+        _CreateDispatchCheckpoint(False, "2026-10-04T10:00:00Z"),
+        _CreateDispatchCheckpoint(True, "2026-10-04T11:00:00Z"),
+    ],
+)
+async def test_checkpoint_controls_retry_send(
+    stored: _CreateDispatchCheckpoint | None,
+) -> None:
+    """Cleared and false heartbeats permit resends; a dispatched one only reads back."""
+
+    class Context:
+        attempt = 2
+        first_attempt_at = datetime(2026, 10, 4, 12, tzinfo=UTC)
+        deadline = None
+
+        def __init__(self) -> None:
+            self.value = _CreateDispatchCheckpoint(True, "2026-10-04T11:00:00Z")
+
+        def has_last_heartbeat_value(self) -> bool:
+            return True
+
+        def get_last_heartbeat_value(self, _type: object) -> _CreateDispatchCheckpoint | None:
+            return self.value
+
+        async def heartbeat(self, value: _CreateDispatchCheckpoint | None = None) -> None:
+            self.value = value
+
+    class ClientStub:
+        def __init__(self) -> None:
+            self.methods: list[str] = []
+            self.queries: list[dict[str, str] | None] = []
+
+        async def open_session(self, _call: object, _operation: str) -> object:
+            return object()
+
+        async def request(
+            self,
+            _call: object,
+            _session: object,
+            method: str,
+            _path: str,
+            query: dict[str, str] | None = None,
+            **_kwargs: object,
+        ) -> ProviderResponse:
+            self.methods.append(method)
+            self.queries.append(query)
+            body = (
+                b'{"envelopes":[]}'
+                if method == "GET"
+                else json.dumps(
+                    {"envelopeId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a", "status": "sent"}
+                ).encode()
+            )
+            return ProviderResponse(200 if method == "GET" else 201, {}, body)
+
+        def now(self) -> datetime:
+            return datetime(2026, 10, 4, 12, tzinfo=UTC)
+
+        def receipt(self, _envelope_id: str = "") -> sdk.Receipt:
+            return sdk.Receipt()
+
+    context = Context()
+    await context.heartbeat()
+    if stored is not None:
+        await context.heartbeat(stored)
+    client = ClientStub()
+    call = SimpleNamespace(id="call-1", idempotency_key="call-1", context=context)
+    input = CreateEnvelopeFromTemplateInput(
+        template_id="8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        template_roles=(TemplateRole("Customer", "Priya Raman", "priya@example.com"),),
+    )
+    result = await CreateEnvelopeFromTemplateOperation(client).invoke(call, input)
+    if stored is not None and stored.is_dispatched:
+        assert result.kind == "uncertain"
+        assert client.methods == ["GET"]
+        assert client.queries[0]["from_date"] == "2026-10-04T10:00:00Z"
+    else:
+        assert result.branch == "created"
+        assert client.methods == ["GET", "POST"]
+        assert client.queries[0]["from_date"] == "2026-10-04T11:00:00Z"
+
+
+@pytest.mark.asyncio
+async def test_after_send_multiple_matches_preserves_original_failure() -> None:
+    """Ambiguous read-back keeps the failure that triggered recovery."""
+
+    class ClientStub:
+        def now(self) -> datetime:
+            return datetime(2026, 10, 4, 12, tzinfo=UTC)
+
+        def receipt(self, _envelope_id: str = "") -> sdk.Receipt:
+            return sdk.Receipt()
+
+        async def request(
+            self, _call: object, _session: object, _method: str, _path: str, _query: object, **_kwargs: object
+        ) -> ProviderResponse:
+            envelope = {
+                "envelopeId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+                "status": "sent",
+                "customFields": {"textCustomFields": [{"name": "dexIdempotencyKey", "value": "call-1"}]},
+            }
+            return ProviderResponse(200, {}, json.dumps({"envelopes": [envelope, envelope]}).encode())
+
+    context = SimpleNamespace(
+        deadline=None,
+        first_attempt_at=datetime(2026, 10, 4, 12, tzinfo=UTC),
+        has_last_heartbeat_value=lambda: False,
+    )
+    call = SimpleNamespace(context=context)
+    unknown = failure("createEnvelopeFromTemplate", sdk.FailureKind.AVAILABILITY, "original create failure")
+    result = await CreateEnvelopeFromTemplateOperation(ClientStub())._recover_or_uncertain(
+        call, object(), "call-1", unknown
+    )
+    assert result.kind == "uncertain"
+    assert result.failure == unknown

@@ -62,7 +62,12 @@ class _CreateDispatchCheckpoint:
 
 
 def _go_timestamp(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    timestamp = value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    if "." not in timestamp:
+        return timestamp
+    seconds, fraction = timestamp[:-1].split(".", 1)
+    fraction = fraction.rstrip("0")
+    return seconds + ("." + fraction if fraction else "") + "Z"
 
 
 def _time(value: str) -> datetime | None:
@@ -73,6 +78,8 @@ def _time(value: str) -> datetime | None:
         raise ValueError("DocuSign returned a malformed response")
     date_part, clock_part, fraction, offset = match.groups()
     try:
+        if int(clock_part[:2]) > 23:
+            raise ValueError("invalid hour")
         base = datetime.fromisoformat(date_part + "T" + clock_part).replace(tzinfo=UTC)
         if fraction:
             base += timedelta(microseconds=int((fraction + "000000")[:6]))
@@ -723,7 +730,7 @@ class CreateEnvelopeFromTemplateOperation:
             try:
                 if context.has_last_heartbeat_value():
                     checkpoint = context.get_last_heartbeat_value(_CreateDispatchCheckpoint)
-                    prior = checkpoint is None or checkpoint.is_dispatched
+                    prior = checkpoint is not None and checkpoint.is_dispatched
             except Exception:
                 prior = True
         try:
@@ -731,14 +738,14 @@ class CreateEnvelopeFromTemplateOperation:
         except SessionFailure as error:
             if prior and context is not None:
                 fallback_checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at))
-                await _record_checkpoint(
-                    context, checkpoint or fallback_checkpoint
-                )
+                await _record_checkpoint(context, checkpoint or fallback_checkpoint)
             if prior and error.category != "retry":
                 return MutationAttempt.uncertain(zero, error.failure, self.client.receipt())
             return _session_attempt(error, zero, True)
         if prior or (context is not None and context.attempt > 1):
-            recovered = await self._read_back(call, session, marker_value, "prior" if prior else "before")
+            recovered = await self._read_back(
+                call, session, marker_value, "prior" if prior else "before", checkpoint
+            )
             if recovered is not None:
                 return recovered
             if prior:
@@ -808,26 +815,36 @@ class CreateEnvelopeFromTemplateOperation:
         session: Session,
         marker_value: str,
         mode: Literal["prior", "before", "after"],
+        checkpoint: _CreateDispatchCheckpoint | None = None,
     ) -> MutationAttempt[CreatedEnvelope] | None:
         context = call.context
-        first_attempt = (
-            context.first_attempt_at
-            if context is not None and hasattr(context, "first_attempt_at")
-            else self.client.now()
-        )
-        since = first_attempt - timedelta(hours=1)
+        timeout = 25.0
+        if context is not None and context.deadline is not None:
+            timeout = min(timeout, (context.deadline - datetime.now(UTC)).total_seconds() - 2)
+        if timeout < 2:
+            return None
+        if mode == "before" or checkpoint is None:
+            since = context.first_attempt_at if context is not None else self.client.now()
+        else:
+            try:
+                since = datetime.fromisoformat(checkpoint.dispatched_at.replace("Z", "+00:00"))
+                if since.tzinfo is None:
+                    raise ValueError("checkpoint timestamp has no timezone")
+            except ValueError:
+                since = context.first_attempt_at if context is not None else self.client.now()
+        since -= timedelta(hours=1)
         query = {
             "from_date": since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "custom_field": "dexIdempotencyKey=" + marker_value,
             "include": "custom_fields",
         }
         try:
-            response = await self.client.request(call, session, "GET", "/envelopes", query)
+            response = await self.client.request(call, session, "GET", "/envelopes", query, timeout=timeout)
         except BodyTooLargeError:
             return None
         except ProviderTransportError:
             if mode == "prior" and context is not None:
-                await _record_checkpoint(context, context.get_last_heartbeat_value(_CreateDispatchCheckpoint))
+                await _record_checkpoint(context, checkpoint)
             return (
                 MutationAttempt.retry(
                     failure(
@@ -844,8 +861,7 @@ class CreateEnvelopeFromTemplateOperation:
             outcome = self.client.classify("createEnvelopeFromTemplate", response)
             if outcome.retry and mode != "after":
                 if mode == "prior" and context is not None:
-                    prior_checkpoint = context.get_last_heartbeat_value(_CreateDispatchCheckpoint)
-                    await _record_checkpoint(context, prior_checkpoint)
+                    await _record_checkpoint(context, checkpoint)
                 return MutationAttempt.retry(outcome.failure, outcome.retry_after)
             return None
         try:
@@ -864,7 +880,7 @@ class CreateEnvelopeFromTemplateOperation:
                 ),
                 self.client.receipt(match.envelope_id),
             )
-        if len(matches) > 1:
+        if len(matches) > 1 and mode == "before":
             return MutationAttempt.uncertain(
                 CreatedEnvelope(status=""),
                 failure(
@@ -880,7 +896,16 @@ class CreateEnvelopeFromTemplateOperation:
     async def _recover_or_uncertain(
         self, call: Call, session: Session, marker_value: str, reason: Any = None
     ) -> MutationAttempt[CreatedEnvelope]:
-        recovered = await self._read_back(call, session, marker_value, "after")
+        checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(self.client.now()))
+        context = call.context
+        if context is not None and context.has_last_heartbeat_value():
+            try:
+                stored = context.get_last_heartbeat_value(_CreateDispatchCheckpoint)
+                if stored is not None:
+                    checkpoint = stored
+            except Exception:
+                checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at))
+        recovered = await self._read_back(call, session, marker_value, "after", checkpoint)
         if recovered is not None:
             return recovered
         return MutationAttempt.uncertain(
@@ -921,9 +946,7 @@ async def _clear_checkpoint(context: Any) -> None:
 async def _record_checkpoint(context: Any, checkpoint: _CreateDispatchCheckpoint | None) -> None:
     try:
         if checkpoint is None:
-            checkpoint = _CreateDispatchCheckpoint(
-                True, _go_timestamp(context.first_attempt_at)
-            )
+            checkpoint = _CreateDispatchCheckpoint(True, _go_timestamp(context.first_attempt_at))
         await context.heartbeat(checkpoint)
     except Exception:
         pass  # A failed re-record leaves the earlier checkpoint in place.

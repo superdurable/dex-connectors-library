@@ -332,3 +332,5 @@ the fallback status poll, and void at the signing deadline.
 ## TypeScript package
 
 The `typescript/` package publishes `@superdurable/connector-docusign` v0.1.0 with the five eSignature operations: create from template, read an envelope, list recipients, void an envelope, and digest a combined PDF. It uses the manifest's production and developer OAuth methods with generated refresh wiring. The Connect trigger is Go-only. See the [TypeScript package guide](typescript/README.md) and its [runnable envelope status Flow](typescript/examples/envelope-status/README.md).
+
+Python and TypeScript create retries use the checkpoint dispatch time for a one-hour read-back lookback. A cleared or explicitly undispatched checkpoint permits a resend after the retry-before-send lookup; a dispatched checkpoint only permits read-back and preserves uncertainty when the listing cannot identify exactly one envelope.

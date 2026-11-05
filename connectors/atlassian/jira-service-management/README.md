@@ -21,6 +21,8 @@ The `python/` package declares Python release `v0.1.0` independently of the Go c
 
 Provider conformance replays the Go-recorded scenarios under `conformance/connectors/atlassian/jira-service-management`. The Python integration test uses a local provider stand-in; live Atlassian OAuth and API behavior remain unverified.
 
+Python bounds each operation to 25 seconds or the Execute deadline minus five seconds. It retries before dispatch when fewer than three seconds remain, and rejects non-finite numbers in provider JSON.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `findCustomerByEmail` | Query | async | `found` | `notFound`, `providerRejected`, `invalidResponse`, `defect` |

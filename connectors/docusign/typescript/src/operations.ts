@@ -238,12 +238,14 @@ function errorMessage(error: unknown): string { return error instanceof Error ? 
 function isProvablyNotSent(error: unknown): boolean { return error instanceof AddressRefusal || error instanceof Error && 'isProvablyNotSent' in error && error.isProvablyNotSent === true; }
 async function clearCheckpoint(call: Call): Promise<void> { try { await call.context.recordHeartbeat(undefined); } catch { /* The previous marker keeps a later attempt from a duplicate POST. */ } }
 async function recordCheckpoint(call: Call, checkpoint: { isDispatched: boolean; dispatchedAt: string }): Promise<void> { try { await call.context.recordHeartbeat(checkpoint); } catch { /* The previous checkpoint remains available for recovery. */ } }
-function goTimestamp(value: Date): string { return value.toISOString().replace(/\.000Z$/, 'Z'); }
+function goTimestamp(value: Date): string { return value.toISOString().replace(/\.([0-9]*?)0*Z$/, (_match, fraction: string) => fraction ? `.${fraction}Z` : 'Z'); }
 function readCreateCheckpoint(call: Call): { isDispatched: boolean; dispatchedAt: string } | undefined {
   try {
     if (!call.context.hasLastHeartbeatValue()) return undefined;
     const marker: unknown = call.context.getLastHeartbeatValue();
-    if (marker && typeof marker === 'object' && 'isDispatched' in marker && marker.isDispatched === true && 'dispatchedAt' in marker && typeof marker.dispatchedAt === 'string') return marker as { isDispatched: boolean; dispatchedAt: string };
+    if (marker === undefined || marker === null) return undefined;
+    if (marker && typeof marker === 'object' && 'isDispatched' in marker && marker.isDispatched === false) return undefined;
+    if (marker && typeof marker === 'object' && 'isDispatched' in marker && marker.isDispatched === true && 'dispatchedAt' in marker && typeof marker.dispatchedAt === 'string' && !Number.isNaN(new Date(marker.dispatchedAt).getTime())) return marker as { isDispatched: boolean; dispatchedAt: string };
     return { isDispatched: true, dispatchedAt: goTimestamp(call.context.firstAttemptAt) };
   } catch { return { isDispatched: true, dispatchedAt: goTimestamp(call.context.firstAttemptAt) }; }
 }
@@ -347,9 +349,10 @@ function parseRoutingOrder(value: string): number { if (!value) return 0; if (!/
 function compareRecipientId(a: string, b: string): number { const number = /^[+-]?\d+$/.test(a); const other = /^[+-]?\d+$/.test(b); return number && other ? Number(a) - Number(b) : number ? -1 : other ? 1 : a < b ? -1 : a > b ? 1 : 0; }
 async function recoverCreated(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, checkpoint: { isDispatched: boolean; dispatchedAt: string }, retryable: boolean, unknown: Failure): Promise<MutationAttempt<CreatedEnvelope>> {
   const uncertain = newMutationUncertain(zeroCreated, unknown, client.receipt(''));
-  if (!canReadBack(call)) return uncertain;
+  const timeoutMs = recoveryRequestTimeout(call);
+  if (timeoutMs === undefined) return uncertain;
   let response: DocuSignResponse;
-  try { response = await listTagged(client, call, session, marker, checkpoint.dispatchedAt); }
+  try { response = await listTagged(client, call, session, marker, checkpoint.dispatchedAt, timeoutMs); }
   catch (error) { if (retryable && !(error instanceof ResponseTooLargeError)) { await recordCheckpoint(call, checkpoint); return newMutationRetry(failure('createEnvelopeFromTemplate', 'AVAILABILITY', 'DocuSign could not list envelopes to find the one an earlier attempt may have created')); } return uncertain; }
   if (response.status !== 200) { const outcome = client.classify('createEnvelopeFromTemplate', response); if (retryable && outcome.retry) { await recordCheckpoint(call, checkpoint); return newMutationRetry(outcome.failure, outcome.retryAfterMs); } return uncertain; }
   try {
@@ -360,9 +363,10 @@ async function recoverCreated(client: DocuSignClient, call: Call, session: DocuS
   } catch { return uncertain; }
 }
 async function findBeforeResend(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string): Promise<MutationAttempt<CreatedEnvelope> | undefined> {
-  if (!canReadBack(call)) return undefined;
+  const timeoutMs = recoveryRequestTimeout(call);
+  if (timeoutMs === undefined) return undefined;
   let response: DocuSignResponse;
-  try { response = await listTagged(client, call, session, marker, call.context.firstAttemptAt.toISOString()); }
+  try { response = await listTagged(client, call, session, marker, call.context.firstAttemptAt.toISOString(), timeoutMs); }
   catch (error) { return error instanceof ResponseTooLargeError ? undefined : newMutationRetry(failure('createEnvelopeFromTemplate', 'AVAILABILITY', 'DocuSign could not list envelopes to find the one an earlier attempt may have created')); }
   if (response.status !== 200) { const outcome = client.classify('createEnvelopeFromTemplate', response); return outcome.retry ? newMutationRetry(outcome.failure, outcome.retryAfterMs) : undefined; }
   try {
@@ -372,11 +376,14 @@ async function findBeforeResend(client: DocuSignClient, call: Call, session: Doc
   } catch { /* A malformed optional read-back permits the first POST attempt. */ }
   return undefined;
 }
-function listTagged(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, since: string): Promise<DocuSignResponse> {
+function listTagged(client: DocuSignClient, call: Call, session: DocuSignSession, marker: string, since: string, timeoutMs: number): Promise<DocuSignResponse> {
   const from = new Date(new Date(since).getTime() - 3_600_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
-  return client.requestAPI(call, session, 'GET', '/envelopes', { from_date: from, custom_field: `dexIdempotencyKey=${marker}`, include: 'custom_fields' });
+  return client.requestAPI(call, session, 'GET', '/envelopes', { from_date: from, custom_field: `dexIdempotencyKey=${marker}`, include: 'custom_fields' }, undefined, 'application/json', client.maxResponseBytes, timeoutMs);
 }
-function canReadBack(call: Call): boolean { return !call.context.deadline || call.context.deadline.getTime() - Date.now() >= 4_000; }
+function recoveryRequestTimeout(call: Call): number | undefined {
+  const timeoutMs = call.context.deadline ? Math.min(25_000, call.context.deadline.getTime() - Date.now() - 2_000) : 25_000;
+  return timeoutMs >= 2_000 ? timeoutMs : undefined;
+}
 function findTagged(body: Uint8Array, marker: string): CreatedEnvelope[] {
   const raw = parseObject(body); if (raw.envelopes != null && !Array.isArray(raw.envelopes)) throw new Error(malformed);
   return (raw.envelopes ?? []).map((entry: unknown) => decodeEnvelope(Buffer.from(JSON.stringify(entry)))).filter((envelope: Envelope) => envelope.customFields?.some(field => field.name === 'dexIdempotencyKey' && field.value === marker)).map((envelope: Envelope) => ({ envelopeId: envelope.envelopeId, status: envelope.status, ...(envelope.statusChangedAt ? { statusChangedAt: envelope.statusChangedAt } : {}) }));

@@ -118,7 +118,11 @@ def _int_field(value: dict[str, Any], key: str) -> int:
 
 
 def _json_object(body: bytes) -> dict[str, Any]:
-    return _object(json.loads(body))
+    return _object(json.loads(body, parse_constant=_reject_json_constant))
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError("non-finite JSON number: " + value)
 
 
 def _issue_id(value: str) -> str:

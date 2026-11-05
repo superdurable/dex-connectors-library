@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Authenticated, bounded Jira Service Management provider client."""
 
+import asyncio
 import json
 import re
+import time
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -40,6 +43,7 @@ _CLOUD_ID = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z"
 _FIELD_ID = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,63}\Z")
 _ERROR_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,127}\Z")
 _PATH_SAFE = "-._~$&+=:@"
+_operation_deadline: ContextVar[float] = ContextVar("jira_operation_deadline", default=float("inf"))
 
 
 def path_escape(value: str) -> str:
@@ -64,6 +68,7 @@ class ProviderResponse:
     is_dispatched: bool = False
     transport_error: bool = False
     request_not_built: bool = False
+    too_little_time: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,6 +206,21 @@ class Client:
 
     async def resolve(self, call: Call, operation: str) -> tuple[Credentials | None, Classification | None]:
         """Resolve credentials and the configured or provider-derived cloud ID."""
+        deadline = time.monotonic() + 25
+        if call.context is not None and call.context.deadline is not None:
+            deadline = min(
+                deadline, time.monotonic() + (call.context.deadline - datetime.now(UTC)).total_seconds() - 5
+            )
+        _operation_deadline.set(deadline)
+        if deadline - time.monotonic() < 3:
+            return None, Classification(
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the Step attempt has too little time left to start a provider request",
+                ),
+            )
         try:
             credentials = await self.credentials.resolve(call)
             token = credentials.access_token.reveal()
@@ -220,6 +240,15 @@ class Client:
             response = await self._exchange(
                 call, credentials, "GET", "gateway", "/oauth/token/accessible-resources"
             )
+            if response.too_little_time:
+                return None, Classification(
+                    "retry",
+                    failure(
+                        operation,
+                        FailureKind.AVAILABILITY,
+                        "the Step attempt has too little time left to start a provider request",
+                    ),
+                )
             if response.transport_error:
                 return None, Classification(
                     "retry",
@@ -364,6 +393,33 @@ class Client:
         payload: Any = None,
         experimental: bool = False,
     ) -> ProviderResponse:
+        remaining = _operation_deadline.get() - time.monotonic()
+        if remaining < 3 and method != "GET":
+            return ProviderResponse(too_little_time=True)
+        if remaining <= 0:
+            return ProviderResponse(too_little_time=True)
+        try:
+            async with asyncio.timeout(None if remaining == float("inf") else remaining):
+                return await self._exchange_once(
+                    call, credentials, method, family, path,
+                    query=query, payload=payload, experimental=experimental,
+                )
+        except TimeoutError:
+            return ProviderResponse(is_dispatched=method != "GET", transport_error=True)
+
+    async def _exchange_once(
+        self,
+        call: Call,
+        credentials: Credentials,
+        method: str,
+        family: str,
+        path: str,
+        *,
+        query: dict[str, str] | None = None,
+        payload: Any = None,
+        experimental: bool = False,
+    ) -> ProviderResponse:
+        remaining = _operation_deadline.get() - time.monotonic()
         target = self.endpoint
         if family != "gateway":
             prefix = "/rest/api/3" if family == "jira" else "/rest/servicedeskapi"
@@ -383,7 +439,7 @@ class Client:
             headers["Content-Type"] = "application/json"
         try:
             request = self.http_client.build_request(
-                method, target, json=payload, headers=headers, timeout=20
+                method, target, json=payload, headers=headers, timeout=min(20, remaining)
             )
             response, _ = await send_traced(self.http_client, request)
             limit = (
@@ -412,6 +468,15 @@ class Client:
 
     def classify_read(self, operation: str, subject: str, response: ProviderResponse) -> Classification:
         """Classify a read using Go's branch and retry boundaries."""
+        if response.too_little_time:
+            return Classification(
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "the Step attempt has too little time left to start a provider request",
+                ),
+            )
         if response.request_not_built:
             return Classification(
                 "defect",
@@ -499,6 +564,15 @@ class Client:
 
     def classify_write(self, operation: str, subject: str, response: ProviderResponse) -> Classification:
         """Classify an unkeyed write without assuming ambiguous delivery is safe to repeat."""
+        if response.too_little_time:
+            return Classification(
+                "retry",
+                failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    f"the Step attempt has too little time left to start the {subject} request",
+                ),
+            )
         if response.request_not_built:
             return Classification(
                 "defect",
