@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.3.0` supplies the models, provider operation contracts, credential
+Version `0.6.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
 checkpoint values below, plus opt-in provider address policies. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
@@ -258,6 +258,11 @@ reader closes it on success and failure.
 The core example sends through an in-process HTTP transport.
 
 ## Version history
+
+- `0.6.0`: Manifest refresh follows Go scope and credential URL policies,
+  including HubSpot scope arrays, Microsoft Graph scope prefixes, Zoho expiry
+  caps, monday.com JWT expiry, and private-network token endpoints. Retryable
+  token failures raise `RetryError`.
 
 - `0.6.0`: Manifest token grants accept `responseScopes: ignore` when the Go
   credential driver does not inspect reported scope values. The default checks

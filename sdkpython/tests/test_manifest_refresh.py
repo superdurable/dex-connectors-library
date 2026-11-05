@@ -1122,3 +1122,126 @@ async def test_go_agreement_scope_expiry_and_client_secret_decisions() -> None:
         with pytest.raises(ReauthorizationRequiredError):
             await driver.refresh(no_secret)
         assert len(requests) == 2
+
+@pytest.mark.asyncio
+async def test_go_scope_array_graph_prefix_url_origin_and_expiry_cap() -> None:
+    """Manifest response rules retain only a valid provider origin and cap Zoho-style expiry."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh.update(
+        {
+            "requiredScopes": ["files.read"],
+            "responseScopeField": "scopesArray",
+            "scopeResourcePrefix": "https://graph.microsoft.com/",
+            "caseInsensitiveScopes": True,
+            "scopeResourcePrefixCaseInsensitive": True,
+            "expiryCap": "1h",
+            "responseURLValidation": {
+                "credential": "instance_url",
+                "allowedHosts": ["example.test"],
+                "requireResponse": True,
+                "refreshWhenInvalid": True,
+            },
+        }
+    )
+    body: dict[str, Any] = {
+        "access_token": "next",
+        "token_type": "Bearer",
+        "expires_in": 7200,
+        "scopes": ["HTTPS://GRAPH.MICROSOFT.COM/FILES.READ"],
+        "instance_url": "https://example.test/",
+    }
+
+    def respond(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        assert driver.refresh_required(CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")),
+            datetime.now(UTC) + timedelta(hours=1), datetime.now(UTC),
+        ))
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        result = await driver.refresh(state)
+        assert result.credentials.instance_url == "https://example.test"
+        assert result.expires_at < datetime.now(UTC) + timedelta(seconds=3601)
+        body["scopes"] = ["other"]
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        body["scopes"] = []
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
+        body.update({"scopes": ["files.read"], "instance_url": "https://foreign.test"})
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
+
+
+@pytest.mark.asyncio
+async def test_jwt_expiry_and_undated_refresh_token_policy() -> None:
+    """A monday-style JWT exp schedules refresh; absent refresh material keeps an undated token."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh.update(
+        {
+            "missingExpiry": "keep",
+            "storedMissingExpiry": "refreshIfRefreshTokenPresent",
+            "accessTokenJWTExpiryFallback": "1h",
+        }
+    )
+    exp = int(datetime.now(UTC).timestamp()) + 7200
+    jwt = (
+        "e30."
+        + base64.urlsafe_b64encode(json.dumps({"exp": exp}).encode()).decode().rstrip("=")
+        + ".signature"
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(
+                200,
+                json={
+                    "access_token": jwt,
+                    "token_type": "Bearer",
+                    "scope": "files.read",
+                },
+            )
+        )
+    ) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        now = datetime.now(UTC)
+        assert not driver.refresh_required(
+            CredentialRefreshState(Credentials(SecretString(jwt), SecretString("prior")), None, now)
+        )
+        assert driver.refresh_required(
+            CredentialRefreshState(Credentials(SecretString("bad"), SecretString("prior")), None, now)
+        )
+        assert not driver.refresh_required(
+            CredentialRefreshState(Credentials(SecretString("bad"), SecretString("")), None, now)
+        )
+        result = await driver.refresh(
+            CredentialRefreshState(Credentials(SecretString("old"), SecretString("prior")), None, now)
+        )
+        assert result.expires_at > now + timedelta(seconds=7100)
+
+
+@pytest.mark.asyncio
+async def test_manifest_token_endpoint_policy_refuses_link_local_http() -> None:
+    """A configurable token endpoint cannot dial link-local metadata addresses."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    oauth = auth["methods"][0]["oauth2"]
+    oauth["tokenEndpoint"] = {"fromSetting": "tokenEndpoint"}
+    oauth["tokenEndpointNetworkPolicy"] = "privateNetworkHTTP"
+    async with httpx.AsyncClient() as client:
+        driver = ManifestCredentialRefreshDriver[Credentials](
+            "Example",
+            auth,
+            FIELDS,
+            client,
+            settings={"tokenEndpoint": "http://169.254.169.254/token"},
+        )
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
