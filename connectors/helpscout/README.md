@@ -365,3 +365,13 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 
 The integration run needs `dexcli dev` and exercises duplicate dispatch after
 Worker loss or a retry following an accepted provider write.
+
+## Python package
+
+The [`python/`](python/) package `dex-connector-helpscout` v0.1.0 implements
+`searchConversations`, `getConversation`, `replyToConversation`,
+`updateConversation`, and `findCustomerByEmail` with generated client-credentials
+refresh wiring. Its checked-in [conversation search Flow](python/examples/conversation_search/flow.py)
+provides Dex Worker and Client verification. The signed `conversationEvent`
+Trigger remains Go-only. See the [Python README](python/README.md) for
+installation, connection setup, and behavior.
