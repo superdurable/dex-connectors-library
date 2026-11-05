@@ -445,6 +445,17 @@ describe('manifest credential refresh', () => {
     await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
   });
 
+  it('ignores reported scope only when the manifest declares the Go driver policy', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const oauth = (configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>;
+    const refresh = oauth.refresh as Record<string, unknown>;
+    const makeDriver = () => new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields, fetch: async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: 'other' }) });
+    await expect(makeDriver().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    refresh.responseScopes = 'ignore';
+    await expect(makeDriver().refresh(state(), new AbortController().signal)).resolves.toBeDefined();
+  });
+
   it('never refreshes a method without a declared grant', async () => {
     const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth, credentialFields });
     expect(driver.refreshRequired({ ...state(), credentials: { ...credentials(), authMethodId: 'static' } })).toBe(false);
@@ -575,7 +586,7 @@ describe('manifest credential refresh', () => {
   });
 
   it('rejects unknown manifest response declarations', () => {
-    for (const declaration of [{ missingExpiry: 'unknown' }, { acceptedScopeSets: [] },
+    for (const declaration of [{ missingExpiry: 'unknown' }, { acceptedScopeSets: [] }, { responseScopes: 'unknown' },
       { acceptedScopeSets: [['read'], []] }, { scopeSeparators: 'comma' },
       { missingExpiry: null }, { acceptedScopeSets: null }, { scopeSeparators: null },
       { missingExpiry: { lifetime: '0s' } }, { missingExpiry: { lifetime: 'nonsense' } }]) {

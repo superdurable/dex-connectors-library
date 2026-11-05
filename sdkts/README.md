@@ -281,6 +281,10 @@ await fence.recordProviderId(result.providerId);
 
 ## Release notes
 
+### 0.6.0
+
+Manifest token grants accept `responseScopes: ignore` when the Go credential driver does not inspect reported scope values. The default checks returned scopes against declared requirements.
+
 ### 0.5.0
 
 Manifest refresh supports `acceptedScopeSets` for providers that grant equivalent scope alternatives; on OAuth refresh it applies to every grant under `refresh.grants` and excludes `offline_access` from response checks. JWT bearer grants may declare `subjectValidation: goMailAddress`; the driver then validates the trimmed delegated subject using Go `mail.ParseAddress` address equality before sending a token request. `missingExpiry: reject` requires a positive `expires_in` and treats a malformed successful response as retryable.

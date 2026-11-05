@@ -26,6 +26,7 @@ interface Grant {
   copies: ManifestObject[];
   scopes: unknown;
   acceptedScopeSets: unknown;
+  responseScopes: unknown;
   requestScopes: unknown;
   terminalCodes: string[];
   acceptedTokenTypes: string[];
@@ -109,8 +110,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         .map(set => set.filter((scope): scope is string => typeof scope === 'string')
           .filter(scope => grant.kind !== 'refresh' || scope !== 'offline_access'));
       const scopeSets = acceptedScopeSets.length ? acceptedScopeSets : [requiredScopes];
-      if (grant.exactScopes ? !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, true))
-        : token.scope.trim() !== '' && !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, false))) throw new ReauthorizationRequiredError();
+      if (grant.responseScopes !== 'ignore' && (grant.exactScopes ? !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, true))
+        : token.scope.trim() !== '' && !scopeSets.some(set => hasDeclaredScopes(token.scope, set, grant.scopeSeparators, false)))) throw new ReauthorizationRequiredError();
       const updates: Record<string, unknown> = {};
       for (const mapping of grant.mappings) {
         const destination = manifestText(mapping.credential);
@@ -161,6 +162,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         keyCredential: '', assertion: {}, mappings: manifestList(declaration.credentialMappings).map(manifestObject), copies: [],
         scopes: declaration.grantedScopes === 'userScopes' ? oauth.userScopes : (refresh?.requiredScopes ?? oauth.scopes), requestScopes: [],
         acceptedScopeSets: refresh?.acceptedScopeSets,
+        responseScopes: refresh?.responseScopes ?? 'check',
         terminalCodes: strings(refresh?.terminalErrorCodes, ['invalid_grant']),
         acceptedTokenTypes: strings(declaration.acceptedTokenTypes ?? refresh?.acceptedTokenTypes, ['Bearer']),
         exactScopes: declaration.exactScopes === true || (declaration.exactScopes === undefined && refresh?.exactScopes === true),
@@ -183,6 +185,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         clientSecret: manifestText(client.clientSecretCredential), refreshField: '', keyCredential: '', assertion: {},
         mappings: manifestList(client.credentialMappings).map(manifestObject), copies: [], scopes: client.scopes,
         requestScopes: client.scopes, acceptedScopeSets: client.acceptedScopeSets, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
+        responseScopes: client.responseScopes ?? 'check',
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
         exactScopes: false,
         scopeSeparators: 'whitespace', allowsPublicClient: false,
@@ -201,6 +204,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       clientID: '', clientSecret: '', refreshField: '', keyCredential: manifestText(bearer.keyCredential),
       assertion: bearer, mappings: manifestList(bearer.credentialMappings).map(manifestObject),
       copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [], acceptedScopeSets: bearer.acceptedScopeSets,
+      responseScopes: bearer.responseScopes ?? 'check',
       terminalCodes: strings(bearer.terminalErrorCodes, ['invalid_grant']),
       acceptedTokenTypes: strings(bearer.acceptedTokenTypes, ['Bearer']),
       exactScopes: false,
@@ -293,6 +297,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 
   #validateNewDeclarations(grant: Grant): void {
+    if (grant.responseScopes !== 'check' && grant.responseScopes !== 'ignore')
+      throw new TypeError('manifest responseScopes must be check or ignore');
     const policy = grant.missingExpiryPolicy;
     if (policy !== undefined && policy !== 'reject' && policy !== 'keep' &&
       !(Object.keys(manifestObject(policy)).length === 1 && typeof manifestObject(policy).lifetime === 'string'
