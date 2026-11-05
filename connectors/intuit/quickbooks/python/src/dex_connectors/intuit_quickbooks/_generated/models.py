@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -59,6 +61,16 @@ class Customer:
     created_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # UpdatedAt is when the customer last changed, in UTC.
     updated_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(Customer, '__module__', 'dex_connectors.intuit_quickbooks.models')
@@ -251,6 +263,18 @@ class Invoice:
     updated_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.delivered_at, str):
+            object.__setattr__(self, 'delivered_at', parse_go_datetime(self.delivered_at, 'delivered_at'))
+        elif self.delivered_at is not None:
+            validate_go_datetime(self.delivered_at, 'delivered_at')
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
         object.__setattr__(self, 'lines', _replace_nil_slices(self.lines, 1))
 
 
@@ -302,6 +326,12 @@ class ListInvoicesInput:
     start_position: int = _dataclass_field(default=0, metadata={'dex_json_name': 'startPosition', 'dex_json_omit_default': True})
     # MaxResults is 1 to 100 invoices; zero uses DefaultInvoicesPerPage.
     max_results: int = _dataclass_field(default=0, metadata={'dex_json_name': 'maxResults', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.updated_since, str):
+            object.__setattr__(self, 'updated_since', parse_go_datetime(self.updated_since, 'updated_since'))
+        elif self.updated_since is not None:
+            validate_go_datetime(self.updated_since, 'updated_since')
 
 
 setattr(ListInvoicesInput, '__module__', 'dex_connectors.intuit_quickbooks.models')
@@ -414,6 +444,16 @@ class Payment:
     created_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # UpdatedAt is when the payment last changed, in UTC.
     updated_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'updatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(Payment, '__module__', 'dex_connectors.intuit_quickbooks.models')

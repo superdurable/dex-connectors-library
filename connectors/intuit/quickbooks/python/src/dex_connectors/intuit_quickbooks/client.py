@@ -252,7 +252,7 @@ def _resolve_realm(credentials: Credentials, configured: str) -> str:
         audience == credentials.client_id or isinstance(audience, list) and credentials.client_id in audience
     ):
         raise ValueError("QuickBooks ID token was issued to another app")
-    realm = claims.get("realmid", "")
+    realm = claims.get("realmid", claims.get("realmId", ""))
     if not isinstance(realm, str):
         raise ValueError("QuickBooks ID token realmid is not a company ID")
     if not realm:

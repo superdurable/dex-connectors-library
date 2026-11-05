@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Typeform Responses Data Center that stores this account's responses; it picks the API host of every operation. us is https://api.typeform.com, eu is https://api.eu.typeform.com, and newEu is https://api.typeform.eu. Only Enterprise accounts with the EU Responses Data Center choose eu or newEu, and their Typeform Customer Success Manager confirms which; listing responses in the wrong data center returns none instead of an error. Blank uses the default. */
@@ -346,8 +380,8 @@ export const FormSummarySchema = z.strictObject({
   "title": z.string(),
   "isPublic": z.boolean(),
   "displayUrl": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "lastUpdatedAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeJSONSchema.optional(),
+  "lastUpdatedAt": GoTimeJSONSchema.optional(),
 }) satisfies z.ZodType<FormSummary>;
 
 /** Runtime validator for FormPage. */
@@ -396,8 +430,8 @@ export const FormSchema = z.strictObject({
 export const ListResponsesInputSchema = z.strictObject({
   "formId": z.string(),
   "pageSize": z.number().int().optional(),
-  "since": z.iso.datetime({ offset: true }).optional(),
-  "until": z.iso.datetime({ offset: true }).optional(),
+  "since": GoTimeJSONSchema.optional(),
+  "until": GoTimeJSONSchema.optional(),
   "before": z.string().optional(),
   "after": z.string().optional(),
 }) satisfies z.ZodType<ListResponsesInput>;
@@ -471,8 +505,8 @@ export const FormVariableSchema = z.strictObject({
 /** Runtime validator for FormResponse. */
 export const FormResponseSchema = z.strictObject({
   "token": z.string(),
-  "landedAt": z.iso.datetime({ offset: true }).optional(),
-  "submittedAt": z.iso.datetime({ offset: true }).optional(),
+  "landedAt": GoTimeJSONSchema.optional(),
+  "submittedAt": GoTimeJSONSchema.optional(),
   "answers": z.array(FormAnswerSchema).nullable(),
   "hiddenFields": z.record(z.string(), z.string()).optional(),
   "variables": z.array(FormVariableSchema).optional(),
@@ -505,6 +539,6 @@ export const WebhookSchema = z.strictObject({
   "url": z.string(),
   "isEnabled": z.boolean(),
   "eventTypes": z.array(z.string()).nullable(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeJSONSchema.optional(),
+  "updatedAt": GoTimeJSONSchema.optional(),
 }) satisfies z.ZodType<Webhook>;

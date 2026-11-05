@@ -12,7 +12,7 @@ import httpx
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError, SecretString
+from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError, RetryError, SecretString
 
 from dex_connectors.google_gmail import CredentialRefreshDriver, Credentials
 
@@ -102,7 +102,7 @@ async def test_oauth_refresh_retries_a_response_without_expiry() -> None:
     async with httpx.AsyncClient(transport=httpx.MockTransport(
         lambda _: httpx.Response(200, json={"access_token": "new-access", "token_type": "Bearer"})
     )) as client:
-        with pytest.raises(ValueError, match="required fields"):
+        with pytest.raises(RetryError, match="required fields"):
             await CredentialRefreshDriver(client, lambda: NOW).refresh(
                 CredentialRefreshState(oauth_credentials(), NOW, NOW)
             )

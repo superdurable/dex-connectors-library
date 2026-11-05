@@ -1,6 +1,6 @@
 # QuickBooks Online Python connector
 
-`dex-connector-intuit-quickbooks` v0.1.0 provides all seven QuickBooks Online operations for Dex Python through the generated operation-specific Step factories and OAuth project connection. It requires `dex-connectors-sdk==0.5.0`.
+`dex-connector-intuit-quickbooks` v0.1.0 provides all seven QuickBooks Online operations for Dex Python through the generated operation-specific Step factories and OAuth project connection. It requires `dex-connectors-sdk==0.6.0`.
 
 The [invoice lookup example](examples/get_invoice/) is a runnable Flow using the static `quickbooks-invoice-reader` connection. For authorization setup, exact decimal rules, retry and uncertainty behavior, and provider caveats, see the [connector README](../README.md).
 

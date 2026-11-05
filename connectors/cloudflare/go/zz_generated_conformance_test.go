@@ -6,11 +6,16 @@ package cloudflare
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -18,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -61,34 +67,85 @@ type conformanceIntermediate struct {
 }
 
 type conformanceScenario struct {
-	Raw            json.RawMessage           `json:"-"`
-	Name           string                    `json:"name"`
-	Operation      string                    `json:"operation"`
-	CallID         string                    `json:"callId"`
-	IdempotencyKey string                    `json:"idempotencyKey"`
-	Input          json.RawMessage           `json:"input"`
-	Exchanges      []conformanceExchange     `json:"exchanges"`
-	Attempts       int                       `json:"attempts"`
-	Intermediate   []conformanceIntermediate `json:"intermediate"`
-	PriorHeartbeat json.RawMessage           `json:"priorHeartbeat"`
-	Expected       conformanceDecision       `json:"expected"`
+	Raw                 json.RawMessage           `json:"-"`
+	Name                string                    `json:"name"`
+	Operation           string                    `json:"operation"`
+	CallID              string                    `json:"callId"`
+	RandomSeed          string                    `json:"randomSeed"`
+	RandomRequestFields []string                  `json:"randomRequestFields"`
+	IdempotencyKey      string                    `json:"idempotencyKey"`
+	Input               json.RawMessage           `json:"input"`
+	Exchanges           []conformanceExchange     `json:"exchanges"`
+	Attempts            int                       `json:"attempts"`
+	Intermediate        []conformanceIntermediate `json:"intermediate"`
+	PriorHeartbeat      json.RawMessage           `json:"priorHeartbeat"`
+	FixedClock          string                    `json:"fixedClock"`
+	Expected            conformanceDecision       `json:"expected"`
+}
+
+type conformanceSyntheticRandomReader struct {
+	seed    []byte
+	counter uint64
+	block   [sha256.Size]byte
+	offset  int
+}
+
+func newConformanceSyntheticRandomReader(seed string) io.Reader {
+	if !strings.HasPrefix(seed, "SYNTHETIC_CONFORMANCE_") || len(seed) > 128 {
+		panic("conformance random seed must be an obvious synthetic marker")
+	}
+	return &conformanceSyntheticRandomReader{seed: []byte(seed), offset: sha256.Size}
+}
+
+func (reader *conformanceSyntheticRandomReader) Read(destination []byte) (int, error) {
+	for index := range destination {
+		if reader.offset == sha256.Size {
+			source := make([]byte, len(reader.seed)+8)
+			copy(source, reader.seed)
+			binary.BigEndian.PutUint64(source[len(reader.seed):], reader.counter)
+			reader.block = sha256.Sum256(source)
+			reader.counter++
+			reader.offset = 0
+		}
+		destination[index] = reader.block[reader.offset]
+		reader.offset++
+	}
+	return len(destination), nil
+}
+
+func TestConformanceSyntheticRandomSource(t *testing.T) {
+	const seed = "SYNTHETIC_CONFORMANCE_PARITY_VECTOR"
+	source := newConformanceSyntheticRandomReader(seed)
+	observed := make([]byte, 64)
+	_, err := io.ReadFull(source, observed)
+	require.NoError(t, err)
+	require.Equal(t, "8340adfda3332f0d504929aa79cc566bfd436f83db3b60780dc6dd4c666b777d891789301f0e1cca5155d82b3cdea5a89baeb0cfc50cac2c00eb26ca6a40565f", hex.EncodeToString(observed))
+	source = newConformanceSyntheticRandomReader(seed)
+	for index, maximum := range []int64{26, 26, 10, 12, 74, 44, 43, 1, 256, 257} {
+		value, err := rand.Int(source, big.NewInt(maximum))
+		require.NoError(t, err)
+		require.Equal(t, []int64{3, 0, 3, 3, 47, 13, 16, 0, 73, 107}[index], value.Int64())
+	}
 }
 
 type conformanceMatcherCase struct {
-	Name               string              `json:"name"`
-	RequestPath        string              `json:"requestPath"`
-	RequestHeaders     map[string][]string `json:"requestHeaders"`
-	RequestBody        string              `json:"requestBody"`
-	Exchange           conformanceExchange `json:"exchange"`
-	ExpectedMismatches []string            `json:"expectedMismatches"`
+	Name                string              `json:"name"`
+	RequestPath         string              `json:"requestPath"`
+	RequestHeaders      map[string][]string `json:"requestHeaders"`
+	RequestBody         string              `json:"requestBody"`
+	Exchange            conformanceExchange `json:"exchange"`
+	ExpectedMismatches  []string            `json:"expectedMismatches"`
+	RandomRequestFields []string            `json:"randomRequestFields"`
 }
 
 type conformanceOutcome struct {
-	Branch         sdkgo.BranchID
-	Failure        *sdkgo.Failure
-	Value          any
-	Err            error
-	IdempotencyKey string
+	Branch           sdkgo.BranchID
+	Failure          *sdkgo.Failure
+	Value            any
+	Err              error
+	IdempotencyKey   string
+	Heartbeat        json.RawMessage
+	HeartbeatCleared bool
 }
 
 type conformanceInvoker interface {
@@ -145,21 +202,45 @@ func (invocation conformanceQueryInvocation[Input, Output]) InputFields() []stri
 type conformanceMutationInvocation[Input, Output any] struct {
 	t          *testing.T
 	raw        json.RawMessage
-	context    dex.Context
+	context    *conformanceHeartbeatContext
 	operation  sdkgo.Mutation[Input, Output]
 	connection sdkgo.ConnectionRef
 	callID     string
 }
 
 func newConformanceMutationInvocation[Input, Output any](t *testing.T, raw json.RawMessage, context dex.Context, operation sdkgo.Mutation[Input, Output], connection sdkgo.ConnectionRef, callID string) conformanceOperationInvocation {
-	return conformanceMutationInvocation[Input, Output]{t, raw, context, operation, connection, callID}
+	return conformanceMutationInvocation[Input, Output]{t, raw, &conformanceHeartbeatContext{Context: context}, operation, connection, callID}
 }
 
 func (invocation conformanceMutationInvocation[Input, Output]) Invoke() conformanceOutcome {
-	return invokeConformanceMutation(invocation.t, invocation.raw, invocation.context, invocation.operation, invocation.connection, invocation.callID)
+	invocation.context.lastHeartbeat = nil
+	invocation.context.lastHeartbeatCleared = false
+	outcome := invokeConformanceMutation(invocation.t, invocation.raw, invocation.context, invocation.operation, invocation.connection, invocation.callID)
+	outcome.Heartbeat = append(json.RawMessage(nil), invocation.context.lastHeartbeat...)
+	outcome.HeartbeatCleared = invocation.context.lastHeartbeatCleared
+	return outcome
 }
 func (invocation conformanceMutationInvocation[Input, Output]) InputFields() []string {
 	return conformanceInputFields[Input]()
+}
+
+type conformanceHeartbeatContext struct {
+	dex.Context
+	lastHeartbeat        json.RawMessage
+	lastHeartbeatCleared bool
+}
+
+func (context *conformanceHeartbeatContext) RecordHeartbeat(value any) error {
+	if err := context.Context.RecordHeartbeat(value); err != nil {
+		return err
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	context.lastHeartbeat = encoded
+	context.lastHeartbeatCleared = value == nil
+	return nil
 }
 
 func conformancePriorAttempt(t *testing.T, raw json.RawMessage, restore func([]byte)) int32 {
@@ -167,12 +248,27 @@ func conformancePriorAttempt(t *testing.T, raw json.RawMessage, restore func([]b
 	if len(raw) == 0 {
 		return 0
 	}
-	var marker struct {
-		Attempt int32 `json:"attempt"`
+	var prior struct {
+		Attempt int32           `json:"attempt"`
+		Value   json.RawMessage `json:"value"`
 	}
-	require.NoError(t, json.Unmarshal(raw, &marker))
-	restore(append([]byte(nil), raw...))
-	return marker.Attempt
+	require.NoError(t, json.Unmarshal(raw, &prior))
+	if len(prior.Value) > 0 {
+		restore(append([]byte(nil), prior.Value...))
+	} else {
+		restore(append([]byte(nil), raw...))
+	}
+	return prior.Attempt
+}
+
+func conformanceFixedClock(t *testing.T, scenario conformanceScenario) func() time.Time {
+	t.Helper()
+	if scenario.FixedClock == "" {
+		return func() time.Time { return time.Unix(1, 0).UTC() }
+	}
+	instant, err := time.Parse(time.RFC3339Nano, scenario.FixedClock)
+	require.NoError(t, err)
+	return func() time.Time { return instant }
 }
 
 func invokeConformanceQuery[Input, Output any](t *testing.T, raw json.RawMessage, context dex.Context, operation sdkgo.Query[Input, Output], connection sdkgo.ConnectionRef) conformanceOutcome {
@@ -250,11 +346,28 @@ func TestConnectorConformance(t *testing.T) {
 				outcome := invoker.Invoke(index + 1)
 				decision := conformanceRetryDecision(t, outcome)
 				decision["exchangeCount"] = recorder.requestCount
+				if outcome.HeartbeatCleared {
+					decision["heartbeat"] = map[string]any{"cleared": true}
+				} else if len(outcome.Heartbeat) > 0 {
+					var heartbeat any
+					require.NoError(t, json.Unmarshal(outcome.Heartbeat, &heartbeat))
+					decision["heartbeat"] = heartbeat
+				}
 				recordedIntermediate = append(recordedIntermediate, decision)
 			}
 			outcome := invoker.Invoke(scenario.Attempts)
 			require.Equal(t, len(scenario.Exchanges), recorder.requestCount)
 			require.Empty(t, recorder.observationErrors)
+			for _, pointer := range scenario.RandomRequestFields {
+				found := false
+				for _, exchange := range recorder.observed {
+					if conformanceHasRandomDigest(exchange["requestBody"], pointer) {
+						found = true
+						break
+					}
+				}
+				require.True(t, found, "random request field %s was never redacted", pointer)
+			}
 			if !recording {
 				require.Empty(t, recorder.mismatches)
 			}
@@ -352,6 +465,15 @@ func recordConformanceScenario(scenario conformanceScenario, recorder *conforman
 		delete(recorded, "idempotencyKey")
 	}
 	decision := map[string]any{"branch": string(outcome.Branch), "failureKind": "", "retry": false, "retryAfterMs": 0, "uncertain": outcome.Branch == sdkgo.UncertainBranchID, "requestCount": recorder.providerRequestCount}
+	if outcome.HeartbeatCleared {
+		decision["heartbeat"] = map[string]any{"cleared": true}
+	} else if len(outcome.Heartbeat) > 0 {
+		var heartbeat any
+		if err := json.Unmarshal(outcome.Heartbeat, &heartbeat); err != nil {
+			return nil, err
+		}
+		decision["heartbeat"] = heartbeat
+	}
 	if outcome.Err != nil {
 		var retry *sdkgo.RetryError
 		if !errors.As(outcome.Err, &retry) {
@@ -547,7 +669,7 @@ func TestConformanceMatcher(t *testing.T) {
 	require.NoError(t, decoder.Decode(&cases))
 	for _, test := range cases {
 		t.Run(test.Name, func(t *testing.T) {
-			recorder := &conformanceRecorder{scenario: conformanceScenario{CallID: "call", Exchanges: []conformanceExchange{test.Exchange}}}
+			recorder := &conformanceRecorder{scenario: conformanceScenario{CallID: "call", Exchanges: []conformanceExchange{test.Exchange}, RandomRequestFields: test.RandomRequestFields}}
 			request, err := http.NewRequest(test.Exchange.Method, "http://localhost"+conformanceFixturePathPrefix+test.RequestPath, strings.NewReader(test.RequestBody))
 			require.NoError(t, err)
 			for name, values := range test.RequestHeaders {
@@ -686,6 +808,9 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 				}
 			} else {
 				observed = string(body)
+			}
+			if err := conformanceRedactRandomFields(observed, recorder.scenario.RandomRequestFields); err != nil {
+				recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: invalid synthetic random body: %v", index, err))
 			}
 			if !reflect.DeepEqual(observed, expected) {
 				recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: body mismatch", index))
@@ -826,12 +951,66 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 					return observed, nil
 				}
 			}
+			if err := conformanceRedactRandomFields(value, recorder.scenario.RandomRequestFields); err != nil {
+				return observed, err
+			}
 			observed["requestBody"] = value
 		} else {
+			if len(recorder.scenario.RandomRequestFields) > 0 {
+				return observed, errors.New("synthetic random request body is not JSON")
+			}
 			observed["requestBody"] = string(body)
 		}
 	}
 	return observed, nil
+}
+
+func conformanceRedactRandomFields(body any, fields []string) error {
+	for _, pointer := range fields {
+		current := body
+		parts := strings.Split(strings.TrimPrefix(pointer, "/"), "/")
+		for _, part := range parts[:len(parts)-1] {
+			object, ok := current.(map[string]any)
+			if !ok {
+				current = nil
+				break
+			}
+			current = object[part]
+		}
+		object, ok := current.(map[string]any)
+		if !ok {
+			continue
+		}
+		field := parts[len(parts)-1]
+		value, exists := object[field]
+		if !exists {
+			continue
+		}
+		randomValue, ok := value.(string)
+		if !ok || randomValue == "" {
+			return fmt.Errorf("%s must contain a nonempty string", pointer)
+		}
+		digest := sha256.Sum256([]byte(randomValue))
+		object[field] = map[string]any{"$syntheticSha256": hex.EncodeToString(digest[:])}
+	}
+	return nil
+}
+
+func conformanceHasRandomDigest(body any, pointer string) bool {
+	current := body
+	for _, part := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		object, ok := current.(map[string]any)
+		if !ok {
+			return false
+		}
+		current = object[part]
+	}
+	descriptor, ok := current.(map[string]any)
+	if !ok {
+		return false
+	}
+	digest, ok := descriptor["$syntheticSha256"].(string)
+	return ok && len(descriptor) == 1 && len(digest) == 64
 }
 
 func conformanceIsMultipart(contentType string) bool {
@@ -942,7 +1121,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 	}
 	scenarios := make([]conformanceScenario, 0, len(rawScenarios))
 	for _, rawScenario := range rawScenarios {
-		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "expected"})
+		fields, err := conformanceObject(rawScenario, []string{"name", "operation", "callId", "input", "exchanges"}, []string{"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "expected", "fixedClock", "randomSeed", "randomRequestFields"})
 		if err != nil {
 			return nil, err
 		}
@@ -953,6 +1132,25 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 		scenario.Raw = rawScenario
 		if scenario.Name == "" || scenario.Operation == "" || scenario.CallID == "" {
 			return nil, errors.New("scenario identity is missing")
+		}
+		if scenario.RandomSeed != "" && (!strings.HasPrefix(scenario.RandomSeed, "SYNTHETIC_CONFORMANCE_") || len(scenario.RandomSeed) > 128) {
+			return nil, errors.New("random seed must be an obvious synthetic conformance marker")
+		}
+		if len(scenario.RandomRequestFields) > 0 && scenario.RandomSeed == "" {
+			return nil, errors.New("random request fields require a synthetic seed")
+		}
+		for _, field := range scenario.RandomRequestFields {
+			if !strings.HasPrefix(field, "/") || strings.Contains(field, "~") {
+				return nil, errors.New("random request field must be a simple JSON pointer")
+			}
+		}
+		if _, hasFixedClock := fields["fixedClock"]; hasFixedClock {
+			if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) {
+				return nil, errors.New("invalid fixed clock")
+			}
+			if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil {
+				return nil, fmt.Errorf("invalid fixed clock: %w", err)
+			}
 		}
 		var rawExchanges []json.RawMessage
 		if err := json.Unmarshal(fields["exchanges"], &rawExchanges); err != nil {
@@ -1073,7 +1271,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			}
 		}
 		if rawExpected, ok := fields["expected"]; ok {
-			if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output"}); err != nil {
+			if _, err := conformanceObject(rawExpected, []string{"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"}, []string{"output", "heartbeat"}); err != nil {
 				return nil, err
 			}
 		} else if os.Getenv("CONNECTOR_CONFORMANCE_MODE") != "record" {
@@ -1091,28 +1289,44 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 					required = required[:2]
 					optional = []string{"exchangeCount"}
 				}
+				optional = append(optional, "heartbeat")
 				if _, err := conformanceObject(value, required, optional); err != nil {
 					return nil, err
 				}
 			}
 		}
 		if prior, ok := fields["priorHeartbeat"]; ok {
-			if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"}); err != nil {
+			priorFields, err := conformanceObject(prior, []string{"attempt"}, []string{"value", "callId", "state", "providerId"})
+			if err != nil {
 				return nil, err
 			}
-			var marker struct {
-				CallID  string `json:"callId"`
-				Attempt int    `json:"attempt"`
-				State   string `json:"state"`
+			if rawValue, wrapped := priorFields["value"]; wrapped {
+				if len(priorFields) != 2 || bytes.Equal(bytes.TrimSpace(rawValue), []byte("null")) || !json.Valid(rawValue) {
+					return nil, errors.New("invalid prior heartbeat value")
+				}
+			} else {
+				if _, err := conformanceObject(prior, []string{"callId", "attempt", "state"}, []string{"providerId"}); err != nil {
+					return nil, err
+				}
+				var marker struct {
+					CallID string `json:"callId"`
+					State  string `json:"state"`
+				}
+				if err := json.Unmarshal(prior, &marker); err != nil {
+					return nil, err
+				}
+				if marker.CallID != scenario.CallID {
+					return nil, errors.New("prior heartbeat Call ID differs")
+				}
+				if marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend" {
+					return nil, errors.New("invalid prior heartbeat")
+				}
 			}
-			if err := json.Unmarshal(prior, &marker); err != nil {
-				return nil, err
+			var attempt struct {
+				Attempt int `json:"attempt"`
 			}
-			if marker.CallID != scenario.CallID {
-				return nil, errors.New("prior heartbeat Call ID differs")
-			}
-			if marker.Attempt < 1 || (marker.State != "notSent" && marker.State != "claimed" && marker.State != "canResend") {
-				return nil, errors.New("invalid prior heartbeat")
+			if err := json.Unmarshal(prior, &attempt); err != nil || attempt.Attempt < 1 {
+				return nil, errors.New("invalid prior heartbeat attempt")
 			}
 		}
 		for _, intermediate := range scenario.Intermediate {

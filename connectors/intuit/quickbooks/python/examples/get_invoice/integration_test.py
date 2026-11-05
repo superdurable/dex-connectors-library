@@ -51,7 +51,7 @@ async def test_get_invoice_and_unwired_not_found_in_real_dex() -> None:
     """Exercise provider I/O, success routing, and optional branch failure."""
     server_address = os.environ["DEX_FLOW_SERVICE_ADDRESS"]
     QuickBooksStandIn.requests = []
-    provider = ThreadingHTTPServer(("127.0.0.1", 0), QuickBooksStandIn)
+    provider = ThreadingHTTPServer(("127.0.0.1", 44502), QuickBooksStandIn)
     provider_thread = threading.Thread(target=provider.serve_forever, daemon=True)
     provider_thread.start()
     reference = ConnectionRef("quickbooks", CONNECTION_NAME)

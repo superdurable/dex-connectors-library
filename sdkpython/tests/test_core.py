@@ -36,7 +36,50 @@ from dex_connectors.sdk import (
 )
 from dex_connectors.sdk.credentials import CredentialRefreshResult, CredentialRefreshState
 from dex_connectors.sdk.projectconfig.models import Scope, SnapshotRef
-from dex_connectors.sdk.timestamps import RFC3339NanoTimestamp
+from dex_connectors.sdk.timestamps import RFC3339NanoTimestamp, parse_go_datetime_input
+
+
+@pytest.mark.parametrize(
+    ("wire", "accepted"),
+    [
+        ("2026-02-03T04:05:06Z", True),
+        ("2026-02-03T04:05:06,123456789Z", True),
+        ("2026-02-03T04:05:06.123456789123Z", True),
+        ("2026-02-03T04:05:06+24:00", True),
+        ("2026-02-03T04:05:06+23:60", True),
+        ("2026-02-03T04:05:06+24:60", True),
+        ("2026-02-03T4:05:06Z", True),
+        ("0000-02-29T00:00:00Z", True),
+        ("2026-02-03t04:05:06Z", False),
+        ("2026-02-03T04:05:06z", False),
+        ("2026-02-03T04:05:06+25:00", False),
+        ("2026-02-03T04:05:06+24:61", False),
+        ("2026-02-03T04:05:60Z", False),
+        ("2026-02-30T04:05:06Z", False),
+        ("2026-02-03T04:05:06.Z", False),
+        ("２０２６-02-03T04:05:06Z", False),
+    ],
+)
+def test_go_time_json_input_acceptance(wire: str, accepted: bool) -> None:
+    """Replay Go time.Time.UnmarshalJSON acceptance at the SDK boundary."""
+    if accepted:
+        assert RFC3339NanoTimestamp.from_wire(wire).wire
+    else:
+        with pytest.raises(ValueError):
+            RFC3339NanoTimestamp.from_wire(wire)
+
+
+def test_default_datetime_input_is_exact_and_names_field() -> None:
+    """Reject Go inputs that Python datetime would round or cannot represent."""
+    parsed = parse_go_datetime_input("2026-02-03T4:05:06,123456Z", "updated_since")
+    assert parsed.microsecond == 123456
+    for wire in (
+        "2026-02-03T04:05:06.123456789Z",
+        "2026-02-03T04:05:06+24:00",
+        "0000-02-29T00:00:00Z",
+    ):
+        with pytest.raises(ValueError, match="updated_since"):
+            parse_go_datetime_input(wire, "updated_since")
 
 
 def test_go_identity_and_results_round_trip(conformance_dir: Path) -> None:

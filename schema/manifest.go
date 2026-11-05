@@ -238,18 +238,20 @@ type AuthorizationGuide struct {
 }
 
 type OAuth2 struct {
-	AuthorizationEndpoint   ValueSource                 `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
-	TokenEndpoint           ValueSource                 `yaml:"tokenEndpoint" json:"tokenEndpoint"`
-	AuthorizationParameters map[string]string           `yaml:"authorizationParameters,omitempty" json:"authorizationParameters,omitempty"`
-	ClientIDCredential      string                      `yaml:"clientIDCredential,omitempty" json:"clientIDCredential,omitempty"`
-	ClientSecretCredential  string                      `yaml:"clientSecretCredential,omitempty" json:"clientSecretCredential,omitempty"`
-	Scopes                  ValueSource                 `yaml:"scopes" json:"scopes"`
-	UserScopes              []string                    `yaml:"userScopes,omitempty" json:"userScopes,omitempty"`
-	CredentialMappings      []OAuthCredentialMapping    `yaml:"credentialMappings,omitempty" json:"credentialMappings,omitempty"`
-	CredentialDerivations   []OAuthCredentialDerivation `yaml:"credentialDerivations,omitempty" json:"credentialDerivations,omitempty"`
-	PKCE                    bool                        `yaml:"pkce" json:"pkce"`
-	Protocol                string                      `yaml:"protocol,omitempty" json:"protocol,omitempty"`
-	OIDC                    *OIDC                       `yaml:"oidc,omitempty" json:"oidc,omitempty"`
+	AuthorizationEndpoint ValueSource `yaml:"authorizationEndpoint" json:"authorizationEndpoint"`
+	TokenEndpoint         ValueSource `yaml:"tokenEndpoint" json:"tokenEndpoint"`
+	// TokenEndpointNetworkPolicy restricts resolved token endpoint addresses for a configurable OAuth server.
+	TokenEndpointNetworkPolicy string                      `yaml:"tokenEndpointNetworkPolicy,omitempty" json:"tokenEndpointNetworkPolicy,omitempty"`
+	AuthorizationParameters    map[string]string           `yaml:"authorizationParameters,omitempty" json:"authorizationParameters,omitempty"`
+	ClientIDCredential         string                      `yaml:"clientIDCredential,omitempty" json:"clientIDCredential,omitempty"`
+	ClientSecretCredential     string                      `yaml:"clientSecretCredential,omitempty" json:"clientSecretCredential,omitempty"`
+	Scopes                     ValueSource                 `yaml:"scopes" json:"scopes"`
+	UserScopes                 []string                    `yaml:"userScopes,omitempty" json:"userScopes,omitempty"`
+	CredentialMappings         []OAuthCredentialMapping    `yaml:"credentialMappings,omitempty" json:"credentialMappings,omitempty"`
+	CredentialDerivations      []OAuthCredentialDerivation `yaml:"credentialDerivations,omitempty" json:"credentialDerivations,omitempty"`
+	PKCE                       bool                        `yaml:"pkce" json:"pkce"`
+	Protocol                   string                      `yaml:"protocol,omitempty" json:"protocol,omitempty"`
+	OIDC                       *OIDC                       `yaml:"oidc,omitempty" json:"oidc,omitempty"`
 	// TokenEndpointAuthMethod is how token requests present the client: client_secret_post when nil, or a value
 	// source that resolves to client_secret_post or client_secret_basic. A connection without a client secret
 	// sends only client_id, as a public client.
@@ -1105,6 +1107,9 @@ func validateAuthMethod(prefix string, method AuthMethod, specConfigurationField
 	settings := authMethodSettings(specConfigurationFields, method.Configuration)
 	problems = append(problems, validateOAuthEndpointSetting(prefix+" oauth2 authorizationEndpoint", oauth.AuthorizationEndpoint, settings)...)
 	problems = append(problems, validateOAuthEndpointSetting(prefix+" oauth2 tokenEndpoint", oauth.TokenEndpoint, settings)...)
+	if oauth.TokenEndpointNetworkPolicy != "" && (oauth.TokenEndpointNetworkPolicy != "privateNetworkHTTP" || oauth.TokenEndpoint.FromSetting == "") {
+		problems = append(problems, prefix+" oauth2 tokenEndpointNetworkPolicy requires privateNetworkHTTP and a setting endpoint")
+	}
 	problems = append(problems, validateOAuthScopesSetting(prefix+" oauth2 scopes", oauth.Scopes, settings)...)
 	if oauth.Protocol != "oauth2" && oauth.Protocol != "oidc" {
 		problems = append(problems, prefix+" oauth2 protocol must be oauth2 or oidc")

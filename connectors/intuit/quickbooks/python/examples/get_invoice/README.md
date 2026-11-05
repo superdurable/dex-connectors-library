@@ -4,7 +4,7 @@ This Flow reads one invoice through the `getInvoice` Query and returns it on the
 
 Configure a QuickBooks Online OAuth connection named `quickbooks-invoice-reader` in Dex Web. Use the Intuit authorization guide in the [connector README](../../../README.md); select the matching production or sandbox environment. Run `python -m examples.get_invoice.main` with `DEX_FLOW_SERVICE_ADDRESS` pointing to the Dex gRPC address, then start `QuickBooksGetInvoicePython` with `{"invoiceId":"130"}` through a Dex Client. The invoice ID is a QuickBooks decimal string.
 
-The integration test exercises this Flow against a real `dexcli dev` stack and a local HTTP stand-in; it does not contact Intuit. Start `dexcli dev --dex-port 42901 --web-port 42902 --open=false` and run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:42901 uv run pytest -q examples/get_invoice/integration_test.py` from `python/`. The test stand-in binds an OS-assigned free port.
+The integration test exercises this Flow against a real `dexcli dev` stack and a local HTTP stand-in; it does not contact Intuit. Start `dexcli dev -dex-port 44500 -web-port 44501 -open=false` and run `DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:44500 uv run pytest -q examples/get_invoice/integration_test.py` from `python/`. The test stand-in binds port 44502.
 
 ## Flow Definition Graph
 

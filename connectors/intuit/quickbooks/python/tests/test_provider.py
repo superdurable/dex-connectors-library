@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: MIT
 """Check provider input boundaries not covered by the wire recordings."""
 
+import base64
+import json
 from datetime import UTC, datetime
 
 import httpx
 import pytest
+from dex_connectors.sdk import SecretString
 
-from dex_connectors.intuit_quickbooks.client import _classify
+from dex_connectors.intuit_quickbooks import Credentials
+from dex_connectors.intuit_quickbooks.client import _classify, _resolve_realm
 from dex_connectors.intuit_quickbooks.provider import (
     decode_invoice,
     parse_timestamp,
@@ -52,3 +56,22 @@ def test_go_rfc3339_accepts_large_offset_and_comma_fraction() -> None:
     assert parse_timestamp("2026-10-01T12:30:00,5+99:59") == datetime(2026, 9, 27, 8, 31, 0, 500000, UTC)
     with pytest.raises(ValueError):
         parse_timestamp("2026-02-30T24:00:00Z")
+
+
+@pytest.mark.parametrize("claim_name", ["realmid", "realmId"])
+def test_id_token_realm_claim_spellings_match_go(claim_name: str) -> None:
+    """Accept both Intuit claim spellings used by the Go connector."""
+    claims = {
+        "iss": "https://oauth.platform.intuit.com/op/v1",
+        "aud": "test-client",
+        claim_name: "9341453050298464",
+    }
+    payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
+    credentials = Credentials(
+        "test-client",
+        SecretString("secret"),
+        SecretString("access"),
+        SecretString("refresh"),
+        SecretString(f"header.{payload}.signature"),
+    )
+    assert _resolve_realm(credentials, "") == "9341453050298464"

@@ -955,7 +955,7 @@ func TestPythonNanosecondTimestampFieldsKeepStringWireValues(t *testing.T) {
 	for _, want := range []string{
 		"submitted_at: str = _dataclass_field(default='0001-01-01T00:00:00Z'",
 		"updated_at: str | None = _dataclass_field(default=None",
-		"RFC3339NanoTimestamp.from_wire(timestamp)",
+		"canonical_go_timestamp(timestamp, 'submitted_at')",
 		"format_rfc3339_nano(timestamp)",
 	} {
 		if !strings.Contains(models, want) {
@@ -964,6 +964,37 @@ func TestPythonNanosecondTimestampFieldsKeepStringWireValues(t *testing.T) {
 	}
 	if strings.Contains(models, "dex_json_format") {
 		t.Error("Dex datetime codec would truncate a nine-digit timestamp")
+	}
+}
+
+func TestPythonTimestampInputMatchesGoJSONFixture(t *testing.T) {
+	command := exec.Command("python3", filepath.Join("..", "..", "script", "python_timestamp_parity_test.py"))
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Go timestamp fixture replay failed: %v\n%s", err, output)
+	}
+}
+
+func TestPythonDatetimeTimestampFieldsParseGoInputsBeforeInvoke(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{Name: "TimestampInput", Fields: []gomodel.Field{
+			{Name: "updatedSince", Type: gomodel.Type{Kind: gomodel.Time}},
+		}}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["models.py"], "parse_go_datetime(self.updated_since, 'updated_since')") {
+		t.Fatal("generated datetime input does not parse Go timestamp strings")
+	}
+	if !strings.Contains(generated["timestamps.py"], "cannot be represented exactly as datetime") {
+		t.Fatal("generated datetime parser does not reject lost precision")
 	}
 }
 

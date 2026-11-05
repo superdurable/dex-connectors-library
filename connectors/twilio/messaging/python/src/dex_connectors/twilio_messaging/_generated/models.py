@@ -5,6 +5,8 @@
 from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 # SendMessageInput describes one message to one recipient.
 @dataclass(frozen=True, slots=True)
 class SendMessageInput:
@@ -61,6 +63,20 @@ class Message:
     sent_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'sentAt', 'dex_json_format': 'rfc3339'})
     # UpdatedAt is when Twilio last changed the message; zero means unknown.
     updated_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'updatedAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.sent_at, str):
+            object.__setattr__(self, 'sent_at', parse_go_datetime(self.sent_at, 'sent_at'))
+        elif self.sent_at is not None:
+            validate_go_datetime(self.sent_at, 'sent_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
 
 
 setattr(Message, '__module__', 'dex_connectors.twilio_messaging.models')

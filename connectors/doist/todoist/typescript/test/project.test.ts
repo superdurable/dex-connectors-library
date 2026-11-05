@@ -43,7 +43,7 @@ it.each([
   ['1h2m3.5s', 25_000],
 ])('maps Go duration %s to %i milliseconds', async (duration, expectedTimeoutMs) => {
   let requestTimeout = 0;
-  const connection = newProjectConnection(project({ timeout: duration }), 'todoist', { send: async request => {
+  const connection = newProjectConnection(project({ timeout: duration }), 'todoist', { now: () => new Date('2026-01-01T00:00:00Z'), send: async request => {
     requestTimeout = request.timeoutMs ?? 0;
     return { status: 404, headers: {}, body: Buffer.from('') };
   } });

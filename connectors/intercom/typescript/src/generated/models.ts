@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Non-secret data hosting region of the Intercom workspace, which selects the API host every request uses: us sends to https://api.intercom.io, eu to https://api.eu.intercom.io, and au to https://api.au.intercom.io. Sign in at https://app.intercom.com/ and read the browser address bar: a workspace that opens on app.eu.intercom.com is eu, one on app.au.intercom.com is au, and one on app.intercom.com is us. An access token works only on its own region's host, so a wrong region makes every request fail with HTTP 401. Blank uses the displayed region. */
@@ -323,10 +357,10 @@ export const ConversationSchema = z.strictObject({
   "source": ConversationSourceSchema,
   "contacts": z.array(ConversationContactSchema).optional(),
   "tags": z.array(ConversationTagSchema).optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
-  "waitingSince": z.iso.datetime({ offset: true }).nullable().optional(),
-  "snoozedUntil": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema,
+  "updatedAt": GoTimeJSONSchema,
+  "waitingSince": GoTimeJSONSchema.nullable().optional(),
+  "snoozedUntil": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Conversation>;
 
 /** Runtime validator for SearchConversationsOutput. */
@@ -349,7 +383,7 @@ export const ConversationPartSchema = z.strictObject({
   "body": z.string().optional(),
   "isBodyTruncated": z.boolean().optional(),
   "author": ConversationAuthorSchema,
-  "createdAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<ConversationPart>;
 
 /** Runtime validator for ConversationDetails. */
@@ -403,8 +437,8 @@ export const ContactSchema = z.strictObject({
   "email": z.string().optional(),
   "name": z.string().optional(),
   "externalId": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeJSONSchema,
+  "updatedAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<Contact>;
 
 /** Runtime validator for FindContactByEmailOutput. */
