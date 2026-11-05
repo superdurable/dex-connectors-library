@@ -472,3 +472,11 @@ harness := startTestWorkerWithConnection(t, mock.Connection())
 ```
 
 Install this release with `go get github.com/superdurable/dex-connectors-library/connectors/mysql/go@v0.23.0`.
+
+## Python package
+
+The [Python package](python/README.md) provides the manifest's `query` and
+`execute` operations as typed Dex Steps. Its runnable refund Flow uses the
+static `mysql-ledger` connection. Native-driver database tests run in CI's
+MySQL service container; live provider behavior for this new package remains
+unverified locally.

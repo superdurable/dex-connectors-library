@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/sdk-go/dex"
 )
 
 func commentJSON(id string, isPublic bool, content string) map[string]any {
@@ -54,7 +56,7 @@ func TestAddCommentSendsPlainTextWithTheRequestedVisibilityOnce(t *testing.T) {
 	}
 }
 
-func TestAddCommentNeverResendsAndRetriesOnlyAProvableNonApplication(t *testing.T) {
+func TestAddCommentKeepsUncertainWritesAndRetries429(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		reply  func(http.ResponseWriter)
@@ -92,6 +94,32 @@ func TestAddCommentNeverResendsAndRetriesOnlyAProvableNonApplication(t *testing.
 	_, err := sdkgo.RunMutation(ctx, newDeskClient(t, limited.URL).AddComment(), deskConnection, desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."})
 	requireRetry(t, err, sdkgo.FailureRateLimit)
 	require.Nil(t, ctx.recordedHeartbeat, "a 429 clears the marker so the retry may send")
+}
+
+func TestAddCommentRetriesAfter503WithoutRetainingDispatchMarker(t *testing.T) {
+	provider := newRecordingDesk(t, func(response http.ResponseWriter, _ *http.Request, attempt int) {
+		if attempt == 0 {
+			response.Header().Set("Retry-After", "2")
+			writeJSON(t, response, http.StatusServiceUnavailable, `{"errorCode":"SERVICE_UNAVAILABLE"}`)
+			return
+		}
+		writeValue(t, response, http.StatusOK, commentJSON("4000000529001", false, "Triaged."))
+	})
+	ctx := newDeskDexContext("comment-service-unavailable")
+	client := newDeskClient(t, provider.URL)
+	input := desk.AddCommentInput{TicketID: testTicketID, Content: "Triaged."}
+	_, err := sdkgo.RunMutation(ctx, client.AddComment(), deskConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	var retryAfter *dex.RetryAfterError
+	require.ErrorAs(t, err, &retryAfter)
+	require.Equal(t, 2*time.Second, retryAfter.After)
+	require.Nil(t, ctx.recordedHeartbeat, "a 503 clears the dispatch marker before retry")
+	require.Equal(t, 1, provider.requestCount())
+
+	result, err := sdkgo.RunMutation(ctx.nextAttempt(), client.AddComment(), deskConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, desk.AddCommentBranchAdded, result.Branch)
+	require.Equal(t, 2, provider.requestCount())
 }
 
 func TestAddCommentRejectsInvalidInputBeforeAnyRequest(t *testing.T) {
