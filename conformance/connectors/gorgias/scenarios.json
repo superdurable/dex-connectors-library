@@ -3815,6 +3815,9 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "gorgiasDispatchedCallId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269"
+        },
         "output": {
           "ticket": {
             "channel": "email",
@@ -4036,6 +4039,9 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "gorgiasDispatchedCallId": "54e5d380-4f04-50c6-b51c-d82a8f243943"
+        },
         "output": {
           "message": {
             "body": "Follow up",
@@ -4131,6 +4137,9 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "gorgiasDispatchedCallId": "54e5d380-4f04-50c6-b51c-d82a8f243943"
+        },
         "output": {
           "message": {
             "body": "Follow up",
@@ -4473,6 +4482,9 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4562,6 +4574,9 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "gorgiasDispatchedCallId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -4714,6 +4729,9 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -4765,6 +4783,9 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "gorgiasDispatchedCallId": "54e5d380-4f04-50c6-b51c-d82a8f243943"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -4893,6 +4914,9 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
@@ -4968,6 +4992,9 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
@@ -5041,6 +5068,9 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "gorgiasDispatchedCallId": "3e3a7a5b-fac4-5d1b-a1bf-06bd4a3a9269"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,
@@ -5105,6 +5135,9 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "gorgiasDispatchedCallId": "54e5d380-4f04-50c6-b51c-d82a8f243943"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,

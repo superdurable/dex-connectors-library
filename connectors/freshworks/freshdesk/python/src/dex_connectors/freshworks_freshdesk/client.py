@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Authenticated, bounded Freshdesk HTTP client."""
 
+import asyncio
 import base64
 import json
 import re
@@ -169,34 +170,58 @@ class Client:
         path: str,
         query: dict[str, str] | None = None,
         payload: dict[str, Any] | None = None,
+        write_budget: float | None = None,
     ) -> Exchange:
         """Send one request and classify its observed provider result."""
-        url = self._endpoint + path
-        if query:
-            url += "?" + "&".join(
-                quote_plus(key, safe="").replace("~", "%7E")
-                + "="
-                + quote_plus(value, safe="").replace("~", "%7E")
-                for key, value in sorted(query.items())
-            )
-        headers = {
-            "Accept": "application/json",
-            "Authorization": "Basic " + base64.b64encode(f"{key}:X".encode()).decode(),
-        }
-        body = None
-        if payload is not None:
-            body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
-            headers["Content-Type"] = "application/json"
         try:
-            request = self._client.build_request(method, url, headers=headers, content=body)
-            response, trace = await send_traced(self._client, request)
-            try:
-                contents = await read_bounded_body(response, self.config.max_response_bytes)
-                exchange = Exchange(
-                    "succeeded", status=response.status_code, headers=response.headers, body=contents
+            url = self._endpoint + path
+            if query:
+                url += "?" + "&".join(
+                    quote_plus(query_key, safe="") + "=" + quote_plus(value, safe="")
+                    for query_key, value in sorted(query.items())
                 )
-            except BodyTooLargeError:
-                exchange = Exchange("invalid", status=response.status_code, headers=response.headers)
+            headers = {
+                "Accept": "application/json",
+                "Authorization": "Basic " + base64.b64encode(f"{key}:X".encode()).decode(),
+            }
+        except (TypeError, ValueError, UnicodeError):
+            return Exchange(
+                "defect",
+                self.failure(operation, FailureKind.LOCAL_DEFECT, "Freshdesk request could not be built"),
+            )
+        deadline = getattr(call.context, "deadline", None)
+        remaining = (deadline - datetime.now(UTC)).total_seconds() if deadline is not None else None
+        minimum_request_time = write_budget if write_budget is not None else 2.0
+        if remaining is not None and remaining <= 1 + minimum_request_time:
+            return Exchange(
+                "notSent",
+                self.failure(
+                    operation,
+                    FailureKind.AVAILABILITY,
+                    "too little attempt time remained, so the request was not sent",
+                ),
+            )
+        try:
+            body = None
+            if payload is not None:
+                body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
+                headers["Content-Type"] = "application/json"
+            request = self._client.build_request(method, url, headers=headers, content=body)
+        except (TypeError, ValueError, UnicodeError, httpx.HTTPError):
+            return Exchange(
+                "defect",
+                self.failure(operation, FailureKind.LOCAL_DEFECT, "Freshdesk request could not be built"),
+            )
+        try:
+            async with asyncio.timeout(remaining - 1 if remaining is not None else None):
+                response, trace = await send_traced(self._client, request)
+                try:
+                    contents = await read_bounded_body(response, self.config.max_response_bytes)
+                    exchange = Exchange(
+                        "succeeded", status=response.status_code, headers=response.headers, body=contents
+                    )
+                except BodyTooLargeError:
+                    exchange = Exchange("invalid", status=response.status_code, headers=response.headers)
             if 200 <= exchange.status < 300:
                 if exchange.outcome == "invalid":
                     return Exchange(

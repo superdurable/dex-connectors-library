@@ -41,7 +41,9 @@ from .models import (
 )
 
 _TAG = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9 _./+-]{0,62}[A-Za-z0-9_./+-])?$")
-_TIME = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:[.,]\d+)?(?:Z|[+-]\d\d:\d\d)$")
+_TIME = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:[.,][0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+)
 Output = TypeVar("Output")
 
 
@@ -64,11 +66,11 @@ def _zero_conversation() -> TicketConversation:
     return TicketConversation(source=0)
 
 
-def _integer(value: Any, default: int = 0) -> int:
+def _integer(value: Any, default: int = 0, field_name: str = "numeric field") -> int:
     if value is None:
         return default
-    if type(value) is not int:
-        raise ValueError("invalid Freshdesk numeric field")
+    if type(value) is not int or not -(1 << 63) <= value < (1 << 63):
+        raise ValueError(f"invalid Freshdesk {field_name}")
     return value
 
 
@@ -88,31 +90,39 @@ def _boolean(value: Any) -> bool:
     return value
 
 
-def _timestamp(value: Any) -> datetime:
+def _timestamp(value: Any, field_name: str = "timestamp") -> datetime:
     raw = _string(value)
     if not _TIME.fullmatch(raw):
-        raise ValueError("invalid Freshdesk timestamp")
+        raise ValueError(f"invalid Freshdesk {field_name} timestamp")
     date_part, time_part = raw.split("T", 1)
     year, month, day = (int(part) for part in date_part.split("-"))
     hour, minute, second = (int(part) for part in time_part[:8].split(":"))
     if hour > 23 or minute > 59 or second > 59:
-        raise ValueError("invalid Freshdesk timestamp")
+        raise ValueError(f"invalid Freshdesk {field_name} timestamp")
     zone = time_part[8:]
     fraction = ""
     if zone.startswith((".", ",")):
         fraction = zone[1:].split("+", 1)[0].split("-", 1)[0].rstrip("Z")
         zone = zone[1 + len(fraction) :]
-    microseconds = int((fraction + "000000")[:6]) if fraction else 0
+    nanoseconds = int((fraction + "000000000")[:9]) if fraction else 0
+    if nanoseconds % 1000 or any(digit != "0" for digit in fraction[9:]):
+        raise ValueError(
+            f"invalid Freshdesk {field_name} timestamp: nanoseconds cannot be represented exactly"
+        )
+    microseconds = nanoseconds // 1000
     try:
         parsed = datetime(year, month, day, hour, minute, second, microseconds, tzinfo=UTC)
     except ValueError as error:
-        raise ValueError("invalid Freshdesk timestamp") from error
+        raise ValueError(f"invalid Freshdesk {field_name} timestamp") from error
     if zone != "Z":
         sign = 1 if zone[0] == "+" else -1
         offset_hours, offset_minutes = (int(part) for part in zone[1:].split(":"))
-        if offset_minutes > 59:
-            raise ValueError("invalid Freshdesk timestamp")
-        parsed -= sign * timedelta(hours=offset_hours, minutes=offset_minutes)
+        if offset_hours > 24 or offset_minutes > 60:
+            raise ValueError(f"invalid Freshdesk {field_name} timestamp")
+        try:
+            parsed -= sign * timedelta(hours=offset_hours, minutes=offset_minutes)
+        except OverflowError as error:
+            raise ValueError(f"invalid Freshdesk {field_name} timestamp") from error
     return parsed
 
 
@@ -132,8 +142,8 @@ def _object(body: bytes | Any) -> dict[str, Any]:
 
 def _ticket(value: Any, expected_id: int = 0) -> Ticket:
     wire = _object(value)
-    identifier = _integer(wire.get("id"))
-    status = _integer(wire.get("status"))
+    identifier = _integer(wire.get("id"), field_name="id")
+    status = _integer(wire.get("status"), field_name="status")
     if identifier < 1 or status < 1 or (expected_id and identifier != expected_id):
         raise ValueError("ticket ID or status is invalid")
     tags = wire.get("tags")
@@ -143,43 +153,47 @@ def _ticket(value: Any, expected_id: int = 0) -> Ticket:
     return Ticket(
         id=identifier,
         status=status,
-        priority=_integer(wire.get("priority")),
+        priority=_integer(wire.get("priority"), field_name="priority"),
         subject=_string(wire.get("subject")),
         description=description,
         is_description_truncated=truncated,
-        source=_integer(wire.get("source")) or None,
+        source=_integer(wire.get("source"), field_name="source") or None,
         type=_string(wire.get("type")),
-        requester_id=_integer(wire.get("requester_id")),
-        responder_id=_integer(wire.get("responder_id")),
-        group_id=_integer(wire.get("group_id")),
-        company_id=_integer(wire.get("company_id")),
-        product_id=_integer(wire.get("product_id")),
+        requester_id=_integer(wire.get("requester_id"), field_name="requester_id"),
+        responder_id=_integer(wire.get("responder_id"), field_name="responder_id"),
+        group_id=_integer(wire.get("group_id"), field_name="group_id"),
+        company_id=_integer(wire.get("company_id"), field_name="company_id"),
+        product_id=_integer(wire.get("product_id"), field_name="product_id"),
         tags=tuple(tags or ()),
         is_escalated=_boolean(wire.get("is_escalated")),
         is_spam=_boolean(wire.get("spam")),
-        created_at=_timestamp(wire.get("created_at")),
-        updated_at=_timestamp(wire.get("updated_at")),
-        due_by=_timestamp(wire["due_by"]) if wire.get("due_by") else None,
-        first_response_due_by=_timestamp(wire["fr_due_by"]) if wire.get("fr_due_by") else None,
+        created_at=_timestamp(wire.get("created_at"), "created_at"),
+        updated_at=_timestamp(wire.get("updated_at"), "updated_at"),
+        due_by=_timestamp(wire["due_by"], "due_by")
+        if wire.get("due_by") is not None and wire.get("due_by") != ""
+        else None,
+        first_response_due_by=_timestamp(wire["fr_due_by"], "fr_due_by")
+        if wire.get("fr_due_by") is not None and wire.get("fr_due_by") != ""
+        else None,
     )
 
 
 def _conversation(value: Any) -> TicketConversation:
     wire = _object(value)
-    identifier = _integer(wire.get("id"))
+    identifier = _integer(wire.get("id"), field_name="id")
     if identifier < 1:
         raise ValueError("conversation ID is missing")
     body, truncated = _truncated(_string(wire.get("body_text")))
     return TicketConversation(
         id=identifier,
-        ticket_id=_integer(wire.get("ticket_id")),
-        user_id=_integer(wire.get("user_id")),
-        source=_integer(wire.get("source")),
+        ticket_id=_integer(wire.get("ticket_id"), field_name="ticket_id"),
+        user_id=_integer(wire.get("user_id"), field_name="user_id"),
+        source=_integer(wire.get("source"), field_name="source"),
         is_private=_boolean(wire.get("private")),
         is_incoming=_boolean(wire.get("incoming")),
         body=body,
         is_body_truncated=truncated,
-        created_at=_timestamp(wire.get("created_at")),
+        created_at=_timestamp(wire.get("created_at"), "created_at"),
     )
 
 
@@ -211,6 +225,10 @@ def _validate_tags(tags: tuple[str, ...]) -> None:
         if not _TAG.fullmatch(tag) or len(tag.encode()) > 64 or tag.lower() in seen:
             raise ValueError("Freshdesk tag is invalid or duplicated")
         seen.add(tag.lower())
+
+
+def _tags_equal_fold(left: str, right: str) -> bool:
+    return len(left) == len(right) and left.casefold() == right.casefold()
 
 
 def _filter(input: SearchTicketsInput) -> str:
@@ -247,8 +265,19 @@ def _filter(input: SearchTicketsInput) -> str:
 
 def _html(value: str) -> str:
     return (
-        html.escape(value.replace("\r\n", "\n"), quote=True).replace("&#x27;", "&#39;").replace("\n", "<br>")
+        html.escape(value.replace("\r\n", "\n"), quote=True)
+        .replace("&quot;", "&#34;")
+        .replace("&#x27;", "&#39;")
+        .replace("\n", "<br>")
     )
+
+
+def _write_budget(call: Call, execute_timeout_seconds: float) -> float:
+    deadline = getattr(call.context, "deadline", None)
+    available = execute_timeout_seconds
+    if deadline is not None:
+        available = min(available, (deadline - datetime.now(UTC)).total_seconds())
+    return max(available, 0) / 10
 
 
 def _query_terminal(
@@ -340,17 +369,20 @@ class SearchTicketsOperation:
                 requester_ids = set()
                 for row in rows:
                     item = _object(row)
-                    identifier = _integer(item.get("id"))
+                    identifier = _integer(item.get("id"), field_name="contact id")
                     if identifier < 1:
                         raise ValueError
+                    _string(item.get("name"))
                     if _string(item.get("email")).casefold() == input.requester_email.casefold():
                         requester_ids.add(identifier)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as error:
                 return QueryAttempt.branch_result(
                     "invalidResponse",
                     zero,
                     self.client.receipt(call, contact),
-                    self.client.failure(operation, "PROTOCOL", "Freshdesk returned an invalid contact list"),
+                    self.client.failure(
+                        operation, "PROTOCOL", f"Freshdesk returned an invalid contact list: {error}"
+                    ),
                 )
             if not requester_ids:
                 return QueryAttempt.branch_result("searched", zero, self.client.receipt(call, contact))
@@ -363,7 +395,7 @@ class SearchTicketsOperation:
             return terminal
         try:
             wire = _object(result.body)
-            total = _integer(wire.get("total"), -1)
+            total = _integer(wire.get("total"), -1, "total")
             rows = wire.get("results")
             if total < 0 or not isinstance(rows, list) or len(rows) > 30:
                 raise ValueError
@@ -375,12 +407,14 @@ class SearchTicketsOperation:
             output = SearchTicketsOutput(
                 tuple(tickets), total, page + 1 if page < 10 and page * 30 < total else 0
             )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as error:
             return QueryAttempt.branch_result(
                 "invalidResponse",
                 zero,
                 self.client.receipt(call, result),
-                self.client.failure(operation, "PROTOCOL", "Freshdesk returned an invalid search page"),
+                self.client.failure(
+                    operation, "PROTOCOL", f"Freshdesk returned an invalid search page: {error}"
+                ),
             )
         return QueryAttempt.branch_result("searched", output, self.client.receipt(call, result))
 
@@ -424,19 +458,19 @@ class GetTicketOperation:
             requester = None
             if wire.get("requester") is not None:
                 person = _object(wire["requester"])
-                identifier = _integer(person.get("id"))
+                identifier = _integer(person.get("id"), field_name="requester id")
                 if identifier > 0:
                     if identifier != ticket.requester_id:
                         raise ValueError
                     requester = TicketRequester(
                         identifier, _string(person.get("name")), _string(person.get("email"))
                     )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as error:
             return QueryAttempt.branch_result(
                 "invalidResponse",
                 zero,
                 self.client.receipt(call, first, input.ticket_id),
-                self.client.failure(operation, "PROTOCOL", "Freshdesk returned an invalid ticket"),
+                self.client.failure(operation, "PROTOCOL", f"Freshdesk returned an invalid ticket: {error}"),
             )
         limit = input.conversation_limit or 10
         second = await self.client.exchange(
@@ -463,12 +497,14 @@ class GetTicketOperation:
                 conversations,
                 bool(second.headers and 'rel="next"' in second.headers.get("Link", "")),
             )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as error:
             return QueryAttempt.branch_result(
                 "invalidResponse",
                 zero,
                 self.client.receipt(call, second, input.ticket_id),
-                self.client.failure(operation, "PROTOCOL", "Freshdesk returned an invalid conversation page"),
+                self.client.failure(
+                    operation, "PROTOCOL", f"Freshdesk returned an invalid conversation page: {error}"
+                ),
             )
         return QueryAttempt.branch_result(
             "found", details, self.client.receipt(call, second, input.ticket_id)
@@ -600,6 +636,9 @@ class CreateTicketOperation:
     async def invoke(self, call: Call, input: CreateTicketInput) -> MutationAttempt[CreateTicketOutput]:
         """Send the ticket once, retrying only proven safe outcomes."""
         operation, zero = "createTicket", CreateTicketOutput(_zero_ticket())
+        write_budget = _write_budget(
+            call, self.definition().step_defaults.execute_method_timeout.total_seconds()
+        )
         requester_email = (
             input.requester["email"] if isinstance(input.requester, dict) else input.requester.email
         )
@@ -650,17 +689,21 @@ class CreateTicketOperation:
         ):
             if value:
                 payload[name] = value
-        exchange = await self.client.exchange(call, operation, key, "POST", "/tickets", payload=payload)
+        exchange = await self.client.exchange(
+            call, operation, key, "POST", "/tickets", payload=payload, write_budget=write_budget
+        )
         terminal = await _single_dispatch_exchange(self.client, call, operation, exchange, zero)
         if terminal:
             return terminal
         try:
             ticket = _ticket(exchange.body)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as error:
             return MutationAttempt.uncertain(
                 zero,
                 self.client.failure(
-                    operation, "PROTOCOL", "Freshdesk accepted the ticket but returned an invalid ticket"
+                    operation,
+                    "PROTOCOL",
+                    f"Freshdesk accepted the ticket but returned an invalid ticket: {error}",
                 ),
                 self.client.receipt(call, exchange),
             )
@@ -694,8 +737,8 @@ class UpdateTicketOperation:
                 raise ValueError("ticket assignment ID is invalid")
             _validate_tags(input.add_tags)
             _validate_tags(input.remove_tags)
-            if set(tag.casefold() for tag in input.add_tags) & set(
-                tag.casefold() for tag in input.remove_tags
+            if any(
+                _tags_equal_fold(added, removed) for added in input.add_tags for removed in input.remove_tags
             ):
                 raise ValueError("tag appears in both addTags and removeTags")
             if not any(
@@ -727,12 +770,12 @@ class UpdateTicketOperation:
             return terminal
         try:
             current = _ticket(first.body, input.ticket_id)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as error:
             return MutationAttempt.branch_result(
                 "invalidResponse",
                 zero,
                 self.client.receipt(call, first, input.ticket_id),
-                self.client.failure(operation, "PROTOCOL", "Freshdesk returned an invalid ticket"),
+                self.client.failure(operation, "PROTOCOL", f"Freshdesk returned an invalid ticket: {error}"),
             )
         current_output = UpdateTicketOutput(current)
         payload: dict[str, Any] = {}
@@ -747,10 +790,10 @@ class UpdateTicketOperation:
         tags = [
             tag
             for tag in current.tags
-            if tag.casefold() not in {value.casefold() for value in input.remove_tags}
+            if not any(_tags_equal_fold(tag, removed) for removed in input.remove_tags)
         ]
         for tag in input.add_tags:
-            if tag.casefold() not in {value.casefold() for value in tags}:
+            if not any(_tags_equal_fold(tag, existing) for existing in tags):
                 tags.append(tag)
         if tuple(tags) != current.tags:
             payload["tags"] = tags
@@ -766,12 +809,14 @@ class UpdateTicketOperation:
             return terminal
         try:
             updated = _ticket(second.body, input.ticket_id)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as error:
             return MutationAttempt.branch_result(
                 "invalidResponse",
                 current_output,
                 self.client.receipt(call, second, input.ticket_id),
-                self.client.failure(operation, "PROTOCOL", "Freshdesk returned an invalid updated ticket"),
+                self.client.failure(
+                    operation, "PROTOCOL", f"Freshdesk returned an invalid updated ticket: {error}"
+                ),
             )
         return MutationAttempt.branch_result(
             "updated", UpdateTicketOutput(updated), self.client.receipt(call, second, input.ticket_id)
@@ -795,6 +840,9 @@ class AddNoteOperation:
     async def invoke(self, call: Call, input: AddNoteInput) -> MutationAttempt[AddNoteOutput]:
         """Dispatch one note or reply and map confirmed and uncertain outcomes."""
         operation, zero = "addNote", AddNoteOutput(_zero_conversation())
+        write_budget = _write_budget(
+            call, self.definition().step_defaults.execute_method_timeout.total_seconds()
+        )
         try:
             if input.ticket_id < 1:
                 raise ValueError("ticketId is invalid")
@@ -821,7 +869,9 @@ class AddNoteOperation:
             if input.is_public_reply
             else {"body": _html(input.body), "private": True}
         )
-        exchange = await self.client.exchange(call, operation, key, "POST", path, payload=payload)
+        exchange = await self.client.exchange(
+            call, operation, key, "POST", path, payload=payload, write_budget=write_budget
+        )
         terminal = await _single_dispatch_exchange(self.client, call, operation, exchange, zero, "notFound")
         if terminal:
             return terminal
@@ -837,11 +887,13 @@ class AddNoteOperation:
                 source=0 if input.is_public_reply else 2,
                 is_private=False if input.is_public_reply else private,
             )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as error:
             return MutationAttempt.uncertain(
                 zero,
                 self.client.failure(
-                    operation, "PROTOCOL", "Freshdesk accepted the note but returned an invalid conversation"
+                    operation,
+                    "PROTOCOL",
+                    f"Freshdesk accepted the note but returned an invalid conversation: {error}",
                 ),
                 self.client.receipt(call, exchange),
             )

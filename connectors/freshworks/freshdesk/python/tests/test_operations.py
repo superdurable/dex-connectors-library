@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: MIT
 """Local Freshdesk validation and credential classification tests."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
+import httpx
 import pytest
 from dex_connectors.sdk import (
     Call,
@@ -16,7 +18,14 @@ from dex_connectors.sdk import (
 
 from dex_connectors.freshworks_freshdesk import Client, Config, Credentials
 from dex_connectors.freshworks_freshdesk.models import SearchTicketsInput
-from dex_connectors.freshworks_freshdesk.operations import _filter, _timestamp, _validate_email
+from dex_connectors.freshworks_freshdesk.operations import (
+    _filter,
+    _html,
+    _integer,
+    _tags_equal_fold,
+    _timestamp,
+    _validate_email,
+)
 
 
 def test_client_rejects_invalid_helpdesk_domain() -> None:
@@ -46,12 +55,27 @@ def test_email_accepts_go_mail_address_forms() -> None:
         _validate_email(email)
 
 
-def test_timestamp_matches_go_calendar_and_large_offset_rules() -> None:
-    """Reject impossible dates and accept Go's extended RFC 3339 offset range."""
-    assert _timestamp("2026-03-01T12:00:00,5+99:59") == datetime(2026, 2, 25, 8, 1, 0, 500000, UTC)
-    for value in ("2026-02-30T12:00:00Z", "2025-02-29T12:00:00Z", "2026-03-01T24:00:00Z"):
+def test_timestamp_matches_go_calendar_and_offset_rules() -> None:
+    """Match Go's RFC 3339 parser and reject timestamps Python cannot represent exactly."""
+    assert _timestamp("2026-03-01T12:00:00,5+24:00") == datetime(2026, 2, 28, 12, 0, 0, 500000, UTC)
+    assert _timestamp("2026-01-01T00:00:00.123456000Z") == datetime(2026, 1, 1, 0, 0, 0, 123456, UTC)
+    for value in (
+        "2026-02-30T12:00:00Z",
+        "2025-02-29T12:00:00Z",
+        "2026-03-01T24:00:00Z",
+        "2026-03-01T12:00:00,5+99:59",
+        "2026-01-01T00:00:00.123456789Z",
+    ):
         with pytest.raises(ValueError):
             _timestamp(value)
+
+
+def test_go_number_html_and_tag_semantics() -> None:
+    """Reject int64 overflow and preserve Go's HTML and Unicode tag comparisons."""
+    with pytest.raises(ValueError):
+        _integer(9223372036854775808)
+    assert _html("\"'\n") == "&#34;&#39;<br>"
+    assert not _tags_equal_fold("ß", "ss")
 
 
 @pytest.mark.asyncio
@@ -74,3 +98,35 @@ async def test_unsafe_api_key_is_terminal() -> None:
         assert transient is False
     finally:
         await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_exchange_guards_deadline_and_classifies_request_build_failure() -> None:
+    """A guarded write is retryable, while malformed local JSON is a defect."""
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    transport = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    client = Client(Config(domain="acme"), StaticCredentialProvider({}), transport)
+    reference = ConnectionRef("freshdesk", "freshdesk-test")
+    call = Call(
+        CallID("703d7ec0-692e-50db-a914-86d5fecf7dcc"),
+        reference,
+        OperationRef("freshdesk", "createTicket"),
+        context=SimpleNamespace(deadline=datetime.now(UTC) + timedelta(seconds=1)),
+    )
+    guarded = await client.exchange(
+        call, "createTicket", "key", "POST", "/tickets", payload={}, write_budget=0.1
+    )
+    assert guarded.outcome == "notSent" and requests == []
+    call.context.deadline = datetime.now(UTC) + timedelta(seconds=30)
+    defective = await client.exchange(
+        call, "createTicket", "key", "POST", "/tickets", payload={"subject": "\ud800"}, write_budget=3
+    )
+    assert defective.outcome == "defect" and requests == []
+    escaped = await client.exchange(call, "searchTickets", "key", "GET", "/tickets", {"query": "~"})
+    assert escaped.outcome == "succeeded" and requests[0].url.query == b"query=~"
+    await transport.aclose()
