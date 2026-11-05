@@ -79,11 +79,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Algolia stored credential does not match the connector credential fields")
+        if set(material) - set(('application_id', 'api_key')):
+            raise ValueError("Algolia stored credential does not match the connector credential fields")
         application_id = material.get("application_id")
-        if not isinstance(application_id, str) or not application_id:
-            raise ValueError("Algolia credential application_id is required")
+        if application_id is not None and not (isinstance(application_id, str)):
+            raise ValueError("Algolia credential application_id has an invalid type")
         api_key = material.get("api_key")
-        if not isinstance(api_key, str) or not api_key:
+        if api_key is not None and not (isinstance(api_key, str)):
+            raise ValueError("Algolia credential api_key has an invalid type")
+        if not application_id:
+            raise ValueError("Algolia credential application_id is required")
+        if not api_key:
             raise ValueError("Algolia credential api_key is required")
         return Credentials(application_id, SecretString(api_key))
 

@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -26,6 +27,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret Cloudflare API token from My Profile > API Tokens at https://dash.cloudflare.com/profile/api-tokens. Create a custom token with Zone > Zone > Read and Zone > Cache Purge permissions for the intended zones, then copy it. Blank prevents requests. */
   apiToken: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+  credentials.apiToken = new SecretString((fields["api_token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

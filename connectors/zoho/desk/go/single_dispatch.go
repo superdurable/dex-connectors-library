@@ -4,6 +4,8 @@
 package desk
 
 import (
+	"net/http"
+
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
@@ -60,7 +62,7 @@ func singleDispatchAttemptForSession[OUT any](failure *sessionFailure, branches 
 	}
 }
 
-// singleDispatchAttemptForExchange maps a sent request: only a provable non-application is retried.
+// singleDispatchAttemptForExchange maps a sent request; 429 and 503 are safe to retry.
 func singleDispatchAttemptForExchange[OUT any](call sdkgo.Call, result deskExchange, receipt sdkgo.Receipt, branches singleDispatchBranches) (sdkgo.MutationAttempt[OUT], bool) {
 	var zero OUT
 	switch result.outcome {
@@ -69,7 +71,13 @@ func singleDispatchAttemptForExchange[OUT any](call sdkgo.Call, result deskExcha
 	case exchangeRateLimited, exchangeNotSent:
 		releaseSingleDispatch(call)
 		return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
-	case exchangeUnavailable, exchangeInvalid:
+	case exchangeUnavailable:
+		if result.response.statusCode == http.StatusServiceUnavailable {
+			releaseSingleDispatch(call)
+			return sdkgo.NewMutationRetry[OUT](result.failure, result.retryAfter), true
+		}
+		return sdkgo.NewMutationUncertain(zero, result.failure, receipt), true
+	case exchangeInvalid:
 		return sdkgo.NewMutationUncertain(zero, result.failure, receipt), true
 	case exchangeNotFound:
 		if branches.notFound != "" {

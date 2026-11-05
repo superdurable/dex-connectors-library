@@ -3,7 +3,42 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
+
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -20,6 +55,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret Front API token. Sign in at https://app.frontapp.com/ as a company admin, open Settings > Developers > API Tokens, choose Create API token, and after it is created open the token and choose Copy; it is a long JSON Web Token of three dot-separated segments that begins with eyJ. It is sent only as an Authorization bearer token to https://api2.frontapp.com and stored only in this credential field. Required. Front tokens do not expire; after deleting a token in Front, create a new one and paste it here, which takes effect without a restart. */
   apiToken: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+  credentials.apiToken = new SecretString((fields["api_token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
@@ -292,7 +340,7 @@ export const SearchConversationsInputSchema = z.strictObject({
   "statuses": z.array(z.string()).optional(),
   "recipientEmail": z.string().optional(),
   "assigneeId": z.string().optional(),
-  "activityAfter": z.iso.datetime({ offset: true }).nullable().optional(),
+  "activityAfter": GoTimeJSONSchema.nullable().optional(),
   "pageSize": z.number().int().optional(),
   "pageToken": z.string().optional(),
 }) satisfies z.ZodType<SearchConversationsInput>;
@@ -333,10 +381,10 @@ export const ConversationSchema = z.strictObject({
   "tags": z.array(TagSchema).optional(),
   "isPrivate": z.boolean().optional(),
   "isSnoozed": z.boolean().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "waitingSince": z.iso.datetime({ offset: true }).nullable().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema,
+  "updatedAt": GoTimeJSONSchema.nullable().optional(),
+  "waitingSince": GoTimeJSONSchema.nullable().optional(),
+  "dueAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Conversation>;
 
 /** Runtime validator for SearchConversationsOutput. */
@@ -366,7 +414,7 @@ export const MessageSchema = z.strictObject({
   "isBodyTruncated": z.boolean().optional(),
   "author": TeammateSchema.optional(),
   "recipients": z.array(RecipientSchema).optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<Message>;
 
 /** Runtime validator for Comment. */
@@ -376,7 +424,7 @@ export const CommentSchema = z.strictObject({
   "isBodyTruncated": z.boolean().optional(),
   "author": TeammateSchema.optional(),
   "isPinned": z.boolean().optional(),
-  "postedAt": z.iso.datetime({ offset: true }),
+  "postedAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<Comment>;
 
 /** Runtime validator for ConversationDetails. */
@@ -443,7 +491,7 @@ export const ContactSchema = z.strictObject({
   "handles": z.array(ContactHandleSchema).optional(),
   "listNames": z.array(z.string()).optional(),
   "isPrivate": z.boolean().optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "updatedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Contact>;
 
 /** Runtime validator for FindContactByEmailOutput. */
