@@ -14,6 +14,11 @@ spec:
       package: dex-connector-gorgias
       operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-gorgias"
+      operations: [searchTickets, getTicket, findCustomerByEmail, createTicket, updateTicket, addNote]
+      triggers: []
   codegen:
     go:
       package: gorgias

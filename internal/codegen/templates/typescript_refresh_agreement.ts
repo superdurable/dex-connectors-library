@@ -23,7 +23,7 @@ interface AgreementCase {
   parameters: Record<string, string>;
   response: Record<string, unknown>;
   updates: Record<string, string>;
-  terminalErrorCodes?: string[];
+  terminalErrorCodes?: string[] | null;
   keyCredential?: string;
   privateKeyCredential?: string;
   privateKeyMember?: string;

@@ -13,6 +13,11 @@ plain-text messages and threaded replies over SMTP, for mail providers other
 than Gmail and Microsoft 365. It exposes these operation-specific Dex Step
 factories:
 
+The [Python package](python/README.md) implements the same six operations at
+`v0.1.0`, with a [runnable mailbox search Flow](python/examples/mailbox_search/README.md).
+Its CI protocol integration test uses GreenMail; live mail-provider behavior
+remains unverified.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `email.NewSearchMessagesStep` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
@@ -354,6 +359,16 @@ addresses are not supported.
 latest message, reads it, sends one threaded reply that quotes it, marks it
 seen and answered, and archives it, or sends a new message to a customer
 without one.
+
+## TypeScript package
+
+The `typescript/` package implements all six operations with generated typed Step
+factories and a checked-in [send-message Flow](typescript/examples/send-message/README.md).
+It uses the same static `email` connection fields and verified TLS rules described
+above. Run its package suite with `npm ci --prefix typescript` and
+`npm run check --prefix typescript`. CI uses GreenMail for real IMAPS and SMTPS
+integration; local HTTP conformance replay is exempt for this wire protocol.
+Live provider authorization and delivery are still unverified for this port.
 
 ## Verification
 
