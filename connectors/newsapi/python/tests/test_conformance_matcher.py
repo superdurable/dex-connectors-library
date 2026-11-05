@@ -14,9 +14,22 @@ import pytest
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
-from connector_scenarios import ExchangeRecorder, assert_attempt  # noqa: E402
+from connector_scenarios import ExchangeRecorder, SyntheticRandomSource, assert_attempt  # noqa: E402
 
 CASES = json.loads((ROOT / "conformance/runners/matcher_cases.json").read_text())
+
+
+def test_synthetic_random_stream_matches_go() -> None:
+    """Match Go byte blocks and rejection sampling across block boundaries."""
+    seed = "SYNTHETIC_CONFORMANCE_PARITY_VECTOR"
+    assert SyntheticRandomSource(seed).read(64).hex() == (
+        "8340adfda3332f0d504929aa79cc566bfd436f83db3b60780dc6dd4c666b777d"
+        "891789301f0e1cca5155d82b3cdea5a89baeb0cfc50cac2c00eb26ca6a40565f"
+    )
+    source = SyntheticRandomSource(seed)
+    assert [source.go_random_int(maximum) for maximum in (26, 26, 10, 12, 74, 44, 43, 1, 256, 257)] == (
+        [3, 0, 3, 3, 47, 13, 16, 0, 73, 107]
+    )
 
 
 @dataclass

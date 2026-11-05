@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"sort"
@@ -29,20 +30,75 @@ const (
 const (
 	MethodScopes = "scopes"
 	UserScopes   = "userScopes"
+	// ScopeSeparatorsWhitespace splits reported scopes like Go strings.Fields.
+	ScopeSeparatorsWhitespace = "whitespace"
+	// ScopeSeparatorsWhitespaceAndComma splits reported scopes on ASCII spaces and commas.
+	ScopeSeparatorsWhitespaceAndComma = "whitespaceAndComma"
+	// ResponseScopesIgnore accepts reported token scopes without validation.
+	ResponseScopesIgnore = "ignore"
 )
 
-// keepMissingExpiry is the scalar form of MissingExpiry that keeps a token whose response has no expires_in.
-const keepMissingExpiry = "keep"
+const (
+	// keepMissingExpiry keeps a token whose response has no expires_in.
+	keepMissingExpiry = "keep"
+	// rejectMissingExpiry requires a positive expires_in.
+	rejectMissingExpiry = "reject"
+)
+
+const (
+	// StoredMissingExpiryKeep preserves a present access token without recorded expiry.
+	StoredMissingExpiryKeep = "keep"
+	// StoredMissingExpiryRefresh renews a present access token without recorded expiry.
+	StoredMissingExpiryRefresh = "refresh"
+	// StoredMissingExpiryRefreshIfPossible keeps an undated token when no refresh token exists.
+	StoredMissingExpiryRefreshIfPossible = "refreshIfRefreshTokenPresent"
+)
 
 // OAuthRefresh declares how a host refreshes an OAuth method's access token with the stored refresh token. The
 // method's tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, client credentials and credentialMappings
 // apply to the refresh request and response too.
 type OAuthRefresh struct {
+	// TrimClientID removes surrounding Go Unicode whitespace from the client ID before a refresh request.
+	TrimClientID bool `yaml:"trimClientID,omitempty" json:"trimClientID,omitempty"`
+	// ResponseURLValidation validates a mapped provider URL before it is stored.
+	ResponseURLValidation *ResponseURLValidation `yaml:"responseURLValidation,omitempty" json:"responseURLValidation,omitempty"`
+	// ResponseScopeField selects the provider's granted-scope response member; scopesArray is a JSON string array.
+	ResponseScopeField string `yaml:"responseScopeField,omitempty" json:"responseScopeField,omitempty"`
+	// ScopeResourcePrefix is removed from each returned scope before comparison.
+	ScopeResourcePrefix string `yaml:"scopeResourcePrefix,omitempty" json:"scopeResourcePrefix,omitempty"`
+	// ScopeResourcePrefixCaseInsensitive removes the prefix without case, when the Go driver does so.
+	ScopeResourcePrefixCaseInsensitive bool `yaml:"scopeResourcePrefixCaseInsensitive,omitempty" json:"scopeResourcePrefixCaseInsensitive,omitempty"`
+	// CaseInsensitiveScopes compares returned and required scopes without case.
+	CaseInsensitiveScopes bool `yaml:"caseInsensitiveScopes,omitempty" json:"caseInsensitiveScopes,omitempty"`
+	// RefreshWhenCredentialBlank refreshes when this mapped credential field is blank.
+	RefreshWhenCredentialBlank string `yaml:"refreshWhenCredentialBlank,omitempty" json:"refreshWhenCredentialBlank,omitempty"`
+	// ExpiryCap limits a reported token lifetime.
+	ExpiryCap string `yaml:"expiryCap,omitempty" json:"expiryCap,omitempty"`
+	// AccessTokenJWTExpiryFallback uses JWT exp for an undated token and this lifetime if exp is unreadable.
+	AccessTokenJWTExpiryFallback string `yaml:"accessTokenJWTExpiryFallback,omitempty" json:"accessTokenJWTExpiryFallback,omitempty"`
+	// AcceptsMissingTokenType permits a successful response without token_type.
+	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the default Bearer token type for all grants unless a grant overrides it.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
+	// ExactScopes requires the returned scope set to equal the declared scope set.
+	ExactScopes bool `yaml:"exactScopes,omitempty" json:"exactScopes,omitempty"`
+	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes; empty means whitespace.
+	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
+	// AllowsPublicClient permits refresh without a stored client secret.
+	AllowsPublicClient bool `yaml:"allowsPublicClient,omitempty" json:"allowsPublicClient,omitempty"`
+	// RequiredScopes overrides the authorization scopes checked on refresh responses.
+	RequiredScopes []string `yaml:"requiredScopes,omitempty" json:"requiredScopes,omitempty"`
+	// AcceptedScopeSets replaces the required scopes with any one of these complete accepted sets.
+	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
+	// ResponseScopes ignores reported scopes only when set to ignore; empty checks them.
+	ResponseScopes string `yaml:"responseScopes,omitempty" json:"responseScopes,omitempty"`
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the refresh token can
 	// never succeed again, so the connection needs reauthorization. Empty means invalid_grant.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
-	// MissingExpiry decides the expiry of a refreshed token whose response has no expires_in. Nil keeps it.
+	// MissingExpiry decides the expiry of a refreshed token whose response has no expires_in. Nil rejects it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 	// AdditionalParameters are fixed, non-secret parameters added to every refresh request, such as a scope that a
 	// provider expects again. They cannot replace a grant or client parameter.
 	AdditionalParameters map[string]string `yaml:"additionalParameters,omitempty" json:"additionalParameters,omitempty"`
@@ -53,6 +109,12 @@ type OAuthRefresh struct {
 
 // OAuthRefreshGrant is one stored refresh token and how its refresh response maps into credentials.
 type OAuthRefreshGrant struct {
+	// AcceptsMissingTokenType overrides the refresh-level rule for this grant.
+	AcceptsMissingTokenType *bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the refresh-level token types for this grant.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
+	// ExactScopes requires the returned scope set to equal this grant's declared scope set.
+	ExactScopes *bool `yaml:"exactScopes,omitempty" json:"exactScopes,omitempty"`
 	// RefreshTokenCredential is the secretString credential field that holds the refresh token. A connection
 	// whose field is blank skips this grant.
 	RefreshTokenCredential string `yaml:"refreshTokenCredential" json:"refreshTokenCredential"`
@@ -63,9 +125,11 @@ type OAuthRefreshGrant struct {
 	GrantedScopes string `yaml:"grantedScopes,omitempty" json:"grantedScopes,omitempty"`
 }
 
-// MissingExpiry decides the expiry of a token whose token response has no expires_in. In YAML and JSON it is the
-// string keep, which stores the token without an expiry, or {lifetime: <duration>}.
+// MissingExpiry decides whether a response without expires_in is rejected, kept without expiry, or assigned a
+// lifetime. Nil rejects a missing expiry, matching the default Go token endpoint.
 type MissingExpiry struct {
+	// Reject requires a positive expires_in and treats its absence as a retryable malformed response.
+	Reject bool `yaml:"-" json:"-"`
 	// Lifetime is how long such a token lasts, such as 2h. Empty keeps the token without an expiry, so a host
 	// replaces it only after the provider rejects it.
 	Lifetime string
@@ -74,6 +138,14 @@ type MissingExpiry struct {
 // ClientCredentialsGrant declares how a host mints an apiKey method's access token with the OAuth client
 // credentials grant (RFC 6749 section 4.4) from the stored client ID and secret.
 type ClientCredentialsGrant struct {
+	// TrimClientID removes surrounding Go Unicode whitespace from the client ID before a mint request.
+	TrimClientID bool `yaml:"trimClientID,omitempty" json:"trimClientID,omitempty"`
+	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes.
+	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
+	// AcceptsMissingTokenType permits a successful response without token_type.
+	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the default Bearer token type.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
 	// TokenEndpoint is the HTTPS token endpoint: a URL, or a value source such as a template that names a
 	// credential field or setting.
 	TokenEndpoint ValueSource `yaml:"tokenEndpoint" json:"tokenEndpoint"`
@@ -93,8 +165,12 @@ type ClientCredentialsGrant struct {
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the client can never
 	// mint again, so the connection needs new client credentials. Empty means invalid_client.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
-	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
+	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil rejects it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// ResponseScopes ignores reported scopes only when set to ignore; empty checks them.
+	ResponseScopes string `yaml:"responseScopes,omitempty" json:"responseScopes,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 	// AdditionalParameters are fixed, non-secret parameters added to every request.
 	AdditionalParameters map[string]string `yaml:"additionalParameters,omitempty" json:"additionalParameters,omitempty"`
 }
@@ -108,6 +184,16 @@ type ServiceAccount struct {
 // JWTBearerGrant declares how a host mints a serviceAccount method's access token: it signs an RS256 JWT bearer
 // assertion (RFC 7523) with the stored private key and exchanges it at the token endpoint.
 type JWTBearerGrant struct {
+	// TrimSpaceSources trims surrounding Unicode whitespace from these assertion credential sources.
+	TrimSpaceSources []string `yaml:"trimSpaceSources,omitempty" json:"trimSpaceSources,omitempty"`
+	// ResponseURLValidation validates a mapped provider URL before it is stored.
+	ResponseURLValidation *ResponseURLValidation `yaml:"responseURLValidation,omitempty" json:"responseURLValidation,omitempty"`
+	// RefreshWhenCredentialBlank refreshes when this mapped credential field is blank.
+	RefreshWhenCredentialBlank string `yaml:"refreshWhenCredentialBlank,omitempty" json:"refreshWhenCredentialBlank,omitempty"`
+	// AcceptsMissingTokenType permits a successful response without token_type.
+	AcceptsMissingTokenType bool `yaml:"acceptsMissingTokenType,omitempty" json:"acceptsMissingTokenType,omitempty"`
+	// AcceptedTokenTypes replaces the default Bearer token type.
+	AcceptedTokenTypes []string `yaml:"acceptedTokenTypes,omitempty" json:"acceptedTokenTypes,omitempty"`
 	// KeyCredential is the secretString credential field that holds a JSON key, such as a Google service account
 	// key, whose members fromKey sources read. Empty when no source reads a key.
 	KeyCredential string `yaml:"keyCredential,omitempty" json:"keyCredential,omitempty"`
@@ -117,12 +203,20 @@ type JWTBearerGrant struct {
 	Issuer ValueSource `yaml:"issuer" json:"issuer"`
 	// Subject is the sub claim. Nil omits it.
 	Subject *ValueSource `yaml:"subject,omitempty" json:"subject,omitempty"`
+	// SubjectValidation validates a delegated subject before signing; goMailAddress uses Go mail.ParseAddress equality.
+	SubjectValidation string `yaml:"subjectValidation,omitempty" json:"subjectValidation,omitempty"`
 	// Audience is the aud claim.
 	Audience ValueSource `yaml:"audience" json:"audience"`
 	// TokenEndpoint is the HTTPS endpoint that exchanges the assertion.
 	TokenEndpoint ValueSource `yaml:"tokenEndpoint" json:"tokenEndpoint"`
 	// Scopes are sent space-separated as the scope claim. Empty omits it.
 	Scopes []string `yaml:"scopes,omitempty" json:"scopes,omitempty"`
+	// AcceptedScopeSets replaces Scopes when checking a returned token's scope set.
+	AcceptedScopeSets [][]string `yaml:"acceptedScopeSets,omitempty" json:"acceptedScopeSets,omitempty"`
+	// ResponseScopes ignores reported scopes only when set to ignore; empty checks them.
+	ResponseScopes string `yaml:"responseScopes,omitempty" json:"responseScopes,omitempty"`
+	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes; empty means whitespace.
+	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// Lifetime sets the exp claim after iat, such as 1h.
 	Lifetime string `yaml:"lifetime" json:"lifetime"`
 	// CredentialMappings map the token response into credential fields.
@@ -132,8 +226,10 @@ type JWTBearerGrant struct {
 	// TerminalErrorCodes are the OAuth error codes, in a response below HTTP 500, after which the key can never
 	// mint again, so the connection needs new key material. Empty means invalid_grant.
 	TerminalErrorCodes []string `yaml:"terminalErrorCodes,omitempty" json:"terminalErrorCodes,omitempty"`
-	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil keeps it.
+	// MissingExpiry decides the expiry of a token whose response has no expires_in. Nil rejects it.
 	MissingExpiry *MissingExpiry `yaml:"missingExpiry,omitempty" json:"missingExpiry,omitempty"`
+	// StoredMissingExpiry refreshes an existing token without recorded expiry when set to refresh; empty keeps it.
+	StoredMissingExpiry string `yaml:"storedMissingExpiry,omitempty" json:"storedMissingExpiry,omitempty"`
 }
 
 // CredentialCopy sets one credential field to the value of another.
@@ -142,6 +238,28 @@ type CredentialCopy struct {
 	Credential string `yaml:"credential" json:"credential"`
 	// FromCredential is the credential field that supplies it.
 	FromCredential string `yaml:"fromCredential" json:"fromCredential"`
+}
+
+// ResponseURLValidation describes a provider API origin accepted from a token response or stored credential.
+type ResponseURLValidation struct {
+	// Credential is the URL credential mapped from the token response.
+	Credential string `yaml:"credential" json:"credential"`
+	// AllowedHosts lists exact HTTPS hosts, such as a Zoho data center's production and sandbox hosts.
+	AllowedHosts []string `yaml:"allowedHosts,omitempty" json:"allowedHosts,omitempty"`
+	// AllowedHostSuffix accepts the exact suffix host and its subdomains.
+	AllowedHostSuffix string `yaml:"allowedHostSuffix,omitempty" json:"allowedHostSuffix,omitempty"`
+	// AllowAnyHTTPS accepts any HTTPS origin, as Salesforce does.
+	AllowAnyHTTPS bool `yaml:"allowAnyHTTPS,omitempty" json:"allowAnyHTTPS,omitempty"`
+	// AllowLoopback accepts loopback origins, including HTTP.
+	AllowLoopback bool `yaml:"allowLoopback,omitempty" json:"allowLoopback,omitempty"`
+	// ForbidPort rejects any explicit port.
+	ForbidPort bool `yaml:"forbidPort,omitempty" json:"forbidPort,omitempty"`
+	// RequireResponse rejects a token response that omits the URL.
+	RequireResponse bool `yaml:"requireResponse,omitempty" json:"requireResponse,omitempty"`
+	// DefaultURL is used when both the response and stored credential omit the URL.
+	DefaultURL string `yaml:"defaultURL,omitempty" json:"defaultURL,omitempty"`
+	// RefreshWhenInvalid refreshes a fresh token whose stored URL fails this rule.
+	RefreshWhenInvalid bool `yaml:"refreshWhenInvalid,omitempty" json:"refreshWhenInvalid,omitempty"`
 }
 
 // ValueSource is a value that a host resolves from the connection: an OAuth endpoint or scope list, a token request
@@ -162,18 +280,45 @@ type ValueSource struct {
 	// Template is a literal whose {name} placeholders each name a credential field or setting of the method. A host
 	// inserts each value path-escaped, so a template can only fill a URL path segment.
 	Template string `yaml:"template,omitempty" json:"template,omitempty"`
+	// TemplateValueRules validate and canonicalize named template placeholders before path escaping.
+	TemplateValueRules map[string]TemplateValueRule `yaml:"templateValueRules,omitempty" json:"templateValueRules,omitempty"`
 	// Values translates the value of FromCredential, FromSetting or FromKey, such as an environment name into a
 	// URL. The key "" translates a blank value. A value missing from the map cannot be resolved.
 	Values map[string]string `yaml:"values,omitempty" json:"values,omitempty"`
 }
 
-// UnmarshalYAML reads keep or {lifetime: <duration>}.
+// TemplateValueRule applies provider-specific tenant or path-segment rules to one template placeholder.
+type TemplateValueRule struct {
+	// TrimSpace removes surrounding Go Unicode whitespace before validation.
+	TrimSpace bool `yaml:"trimSpace,omitempty" json:"trimSpace,omitempty"`
+	// Lowercase writes the accepted value in lowercase in the resolved endpoint.
+	Lowercase bool `yaml:"lowercase,omitempty" json:"lowercase,omitempty"`
+	// MaxBytes limits the UTF-8 byte length of the trimmed value.
+	MaxBytes int `yaml:"maxBytes,omitempty" json:"maxBytes,omitempty"`
+	// Patterns accept a value when any anchored regular expression matches the entire trimmed value.
+	Patterns []string `yaml:"patterns,omitempty" json:"patterns,omitempty"`
+	// Reject lists disallowed values compared without ASCII case after trimming.
+	Reject []string `yaml:"reject,omitempty" json:"reject,omitempty"`
+}
+
+// UnmarshalYAML rejects template rule fields that the connector cannot enforce.
+func (rule *TemplateValueRule) UnmarshalYAML(node *yaml.Node) error {
+	type templateValueRuleMapping TemplateValueRule
+	var mapping templateValueRuleMapping
+	if err := decodeKnownYAMLMapping(node, &mapping, "trimSpace", "lowercase", "maxBytes", "patterns", "reject"); err != nil {
+		return fmt.Errorf("line %d: template value rule: %w", node.Line, err)
+	}
+	*rule = TemplateValueRule(mapping)
+	return nil
+}
+
+// UnmarshalYAML reads reject, keep, or {lifetime: <duration>}.
 func (missingExpiry *MissingExpiry) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind == yaml.ScalarNode {
-		if node.Value != keepMissingExpiry {
-			return fmt.Errorf("missingExpiry must be keep or {lifetime: <duration>}, not %q", node.Value)
+		if node.Value != keepMissingExpiry && node.Value != rejectMissingExpiry {
+			return fmt.Errorf("missingExpiry must be reject, keep, or {lifetime: <duration>}, not %q", node.Value)
 		}
-		*missingExpiry = MissingExpiry{}
+		*missingExpiry = MissingExpiry{Reject: node.Value == rejectMissingExpiry}
 		return nil
 	}
 	var lifetime struct {
@@ -183,35 +328,38 @@ func (missingExpiry *MissingExpiry) UnmarshalYAML(node *yaml.Node) error {
 		return fmt.Errorf("missingExpiry: %w", err)
 	}
 	if lifetime.Lifetime == "" {
-		return errors.New("missingExpiry must be keep or {lifetime: <duration>}")
+		return errors.New("missingExpiry must be reject, keep, or {lifetime: <duration>}")
 	}
 	*missingExpiry = MissingExpiry{Lifetime: lifetime.Lifetime}
 	return nil
 }
 
-// MarshalJSON writes "keep" or {"lifetime": "<duration>"}.
+// MarshalJSON writes "reject", "keep", or {"lifetime": "<duration>"}.
 func (missingExpiry MissingExpiry) MarshalJSON() ([]byte, error) {
+	if missingExpiry.Reject {
+		return json.Marshal(rejectMissingExpiry)
+	}
 	if missingExpiry.Lifetime == "" {
 		return json.Marshal(keepMissingExpiry)
 	}
 	return json.Marshal(map[string]string{"lifetime": missingExpiry.Lifetime})
 }
 
-// UnmarshalJSON reads "keep" or {"lifetime": "<duration>"}.
+// UnmarshalJSON reads "reject", "keep", or {"lifetime": "<duration>"}.
 func (missingExpiry *MissingExpiry) UnmarshalJSON(contents []byte) error {
 	var scalar string
 	if json.Unmarshal(contents, &scalar) == nil {
-		if scalar != keepMissingExpiry {
-			return fmt.Errorf("missingExpiry must be keep or {lifetime: <duration>}, not %q", scalar)
+		if scalar != keepMissingExpiry && scalar != rejectMissingExpiry {
+			return fmt.Errorf("missingExpiry must be reject, keep, or {lifetime: <duration>}, not %q", scalar)
 		}
-		*missingExpiry = MissingExpiry{}
+		*missingExpiry = MissingExpiry{Reject: scalar == rejectMissingExpiry}
 		return nil
 	}
 	var lifetime struct {
 		Lifetime string `json:"lifetime"`
 	}
 	if err := json.Unmarshal(contents, &lifetime); err != nil || lifetime.Lifetime == "" {
-		return errors.New("missingExpiry must be keep or {lifetime: <duration>}")
+		return errors.New("missingExpiry must be reject, keep, or {lifetime: <duration>}")
 	}
 	*missingExpiry = MissingExpiry{Lifetime: lifetime.Lifetime}
 	return nil
@@ -233,7 +381,7 @@ func (source *ValueSource) UnmarshalYAML(node *yaml.Node) error {
 	}
 	type valueSourceMapping ValueSource
 	var mapping valueSourceMapping
-	if err := decodeKnownYAMLMapping(node, &mapping, "fromCredential", "fromSetting", "fromKey", "template", "values"); err != nil {
+	if err := decodeKnownYAMLMapping(node, &mapping, "fromCredential", "fromSetting", "fromKey", "template", "templateValueRules", "values"); err != nil {
 		return fmt.Errorf("line %d: value source: %w", node.Line, err)
 	}
 	*source = ValueSource(mapping)
@@ -394,6 +542,48 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 		return problems
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, refresh.TerminalErrorCodes, refresh.MissingExpiry, refresh.AdditionalParameters)...)
+	problems = append(problems, validateStoredMissingExpiry(label, refresh.StoredMissingExpiry)...)
+	problems = append(problems, grantContext.validateResponseURL(label, refresh.ResponseURLValidation, oauth.CredentialMappings)...)
+	if refresh.ResponseScopeField != "" && refresh.ResponseScopeField != "scope" && refresh.ResponseScopeField != "scopesArray" {
+		problems = append(problems, label+" responseScopeField must be scope or scopesArray")
+	}
+	if refresh.ScopeResourcePrefix != "" && refresh.ScopeResourcePrefix != "https://graph.microsoft.com/" {
+		problems = append(problems, label+" scopeResourcePrefix must be https://graph.microsoft.com/")
+	}
+	if refresh.ScopeResourcePrefixCaseInsensitive && refresh.ScopeResourcePrefix == "" {
+		problems = append(problems, label+" scopeResourcePrefixCaseInsensitive requires scopeResourcePrefix")
+	}
+	if refresh.RefreshWhenCredentialBlank != "" && !grantContext.isCredential(refresh.RefreshWhenCredentialBlank) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a credential field")
+	}
+	if refresh.RefreshWhenCredentialBlank != "" && !slices.ContainsFunc(oauth.CredentialMappings, func(mapping OAuthCredentialMapping) bool {
+		return mapping.Credential == refresh.RefreshWhenCredentialBlank
+	}) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a mapped credential field")
+	}
+	if refresh.ExpiryCap != "" {
+		if duration, err := time.ParseDuration(refresh.ExpiryCap); err != nil || duration <= 0 {
+			problems = append(problems, label+" expiryCap must be a positive duration")
+		}
+	}
+	if refresh.AccessTokenJWTExpiryFallback != "" {
+		if duration, err := time.ParseDuration(refresh.AccessTokenJWTExpiryFallback); err != nil || duration <= 0 {
+			problems = append(problems, label+" accessTokenJWTExpiryFallback must be a positive duration")
+		}
+	}
+	problems = append(problems, validateAcceptedTokenTypes(label, refresh.AcceptedTokenTypes)...)
+	problems = append(problems, validateScopeList(label+" requiredScopes", refresh.RequiredScopes)...)
+	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", refresh.AcceptedScopeSets)...)
+	if len(refresh.RequiredScopes) > 0 && len(refresh.AcceptedScopeSets) > 0 {
+		problems = append(problems, label+" cannot combine requiredScopes and acceptedScopeSets")
+	}
+	problems = append(problems, validateResponseScopes(label, refresh.ResponseScopes)...)
+	if refresh.ResponseScopes == ResponseScopesIgnore && (len(refresh.RequiredScopes) > 0 || refresh.ExactScopes || refresh.ScopeSeparators != "") {
+		problems = append(problems, label+" responseScopes ignore cannot declare requiredScopes, exactScopes, or scopeSeparators")
+	}
+	if refresh.ScopeSeparators != "" && refresh.ScopeSeparators != ScopeSeparatorsWhitespace && refresh.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
+		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
+	}
 	if len(refresh.Grants) == 0 {
 		if !mapsSource(oauth.CredentialMappings, "refresh_token") {
 			problems = append(problems, label+" requires a credential mapped from refresh_token or explicit grants")
@@ -407,6 +597,7 @@ func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) 
 		}
 		seenRefreshTokens[grant.RefreshTokenCredential] = true
 		problems = append(problems, grantContext.validateCredentialMappings(label+" grant "+grant.RefreshTokenCredential, grant.CredentialMappings)...)
+		problems = append(problems, validateAcceptedTokenTypes(label+" grant "+grant.RefreshTokenCredential, grant.AcceptedTokenTypes)...)
 		if grant.GrantedScopes != "" && grant.GrantedScopes != MethodScopes && grant.GrantedScopes != UserScopes {
 			problems = append(problems, label+" grant grantedScopes must be scopes or userScopes")
 		}
@@ -428,12 +619,25 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
 	problems = append(problems, grantContext.validateCredentialMappings(label, grant.CredentialMappings)...)
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, grant.AdditionalParameters)...)
+	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
+	if grant.StoredMissingExpiry == StoredMissingExpiryRefreshIfPossible {
+		problems = append(problems, label+" refreshIfRefreshTokenPresent requires a refresh-token grant")
+	}
+	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
+	problems = append(problems, validateResponseScopes(label, grant.ResponseScopes)...)
+	if grant.ResponseScopes == ResponseScopesIgnore && grant.ScopeSeparators != "" {
+		problems = append(problems, label+" responseScopes ignore cannot declare scopeSeparators")
+	}
+	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
+		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
+	}
 	return problems
 }
 
 func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) []string {
 	label := grantContext.prefix + " serviceAccount jwtBearer"
 	var problems []string
+	problems = append(problems, validateAcceptedTokenTypes(label, grant.AcceptedTokenTypes)...)
 	hasKey := grant.KeyCredential != ""
 	if hasKey && !grantContext.isCredentialOfType(grant.KeyCredential, "secretString") {
 		problems = append(problems, label+" keyCredential must be a secretString credential field")
@@ -449,8 +653,26 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 	if grant.Subject != nil {
 		problems = append(problems, grantContext.validateValueSource(label+" subject", *grant.Subject, hasKey)...)
 	}
+	if grant.SubjectValidation != "" && (grant.SubjectValidation != "goMailAddress" || grant.Subject == nil) {
+		problems = append(problems, label+" subjectValidation requires a subject and must be goMailAddress")
+	}
+	seenTrim := map[string]bool{}
+	for _, field := range grant.TrimSpaceSources {
+		if !grantContext.isCredential(field) || seenTrim[field] {
+			problems = append(problems, label+" trimSpaceSources must name unique credential fields")
+		}
+		seenTrim[field] = true
+	}
 	problems = append(problems, grantContext.validateEndpointSource(label+" tokenEndpoint", grant.TokenEndpoint, hasKey)...)
 	problems = append(problems, validateScopeList(label+" scopes", grant.Scopes)...)
+	problems = append(problems, validateAcceptedScopeSets(label+" acceptedScopeSets", grant.AcceptedScopeSets)...)
+	problems = append(problems, validateResponseScopes(label, grant.ResponseScopes)...)
+	if grant.ResponseScopes == ResponseScopesIgnore && grant.ScopeSeparators != "" {
+		problems = append(problems, label+" responseScopes ignore cannot declare scopeSeparators")
+	}
+	if grant.ScopeSeparators != "" && grant.ScopeSeparators != ScopeSeparatorsWhitespace && grant.ScopeSeparators != ScopeSeparatorsWhitespaceAndComma {
+		problems = append(problems, label+" scopeSeparators must be whitespace or whitespaceAndComma")
+	}
 	if lifetime, err := time.ParseDuration(grant.Lifetime); err != nil || lifetime <= 0 {
 		problems = append(problems, label+" lifetime must be a positive duration")
 	}
@@ -464,6 +686,19 @@ func (grantContext tokenGrantContext) validateJWTBearer(grant *JWTBearerGrant) [
 		}
 	}
 	problems = append(problems, grantContext.validateResponseRules(label, grant.TerminalErrorCodes, grant.MissingExpiry, nil)...)
+	problems = append(problems, validateStoredMissingExpiry(label, grant.StoredMissingExpiry)...)
+	if grant.StoredMissingExpiry == StoredMissingExpiryRefreshIfPossible {
+		problems = append(problems, label+" refreshIfRefreshTokenPresent requires a refresh-token grant")
+	}
+	problems = append(problems, grantContext.validateResponseURL(label, grant.ResponseURLValidation, grant.CredentialMappings)...)
+	if grant.RefreshWhenCredentialBlank != "" && !grantContext.isCredential(grant.RefreshWhenCredentialBlank) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a credential field")
+	}
+	if grant.RefreshWhenCredentialBlank != "" && !slices.ContainsFunc(grant.CredentialMappings, func(mapping OAuthCredentialMapping) bool {
+		return mapping.Credential == grant.RefreshWhenCredentialBlank
+	}) {
+		problems = append(problems, label+" refreshWhenCredentialBlank must name a mapped credential field")
+	}
 	return problems
 }
 
@@ -506,6 +741,53 @@ func (grantContext tokenGrantContext) validateClientAuthentication(label string,
 		if value != ClientSecretPostAuthMethod && value != ClientSecretBasicAuthMethod {
 			return append(problems, label+" must be client_secret_post or client_secret_basic")
 		}
+	}
+	return problems
+}
+
+func validateStoredMissingExpiry(label, policy string) []string {
+	if policy != "" && policy != StoredMissingExpiryKeep && policy != StoredMissingExpiryRefresh && policy != StoredMissingExpiryRefreshIfPossible {
+		return []string{label + " storedMissingExpiry must be keep, refresh, or refreshIfRefreshTokenPresent"}
+	}
+	return nil
+}
+
+func (grantContext tokenGrantContext) validateResponseURL(label string, rule *ResponseURLValidation, mappings []OAuthCredentialMapping) []string {
+	if rule == nil {
+		return nil
+	}
+	var problems []string
+	if !grantContext.isCredentialOfType(rule.Credential, "url") && !grantContext.isCredentialOfType(rule.Credential, "string") {
+		problems = append(problems, label+" responseURLValidation credential must name a URL or string credential")
+	}
+	if !slices.ContainsFunc(mappings, func(mapping OAuthCredentialMapping) bool { return mapping.Credential == rule.Credential }) {
+		problems = append(problems, label+" responseURLValidation credential must be mapped from the response")
+	}
+	if !rule.AllowAnyHTTPS && len(rule.AllowedHosts) == 0 && rule.AllowedHostSuffix == "" && !rule.AllowLoopback {
+		problems = append(problems, label+" responseURLValidation requires an allowed host policy")
+	}
+	if rule.AllowAnyHTTPS && len(rule.AllowedHosts) > 0 {
+		problems = append(problems, label+" responseURLValidation cannot combine allowAnyHTTPS and allowedHosts")
+	}
+	seen := map[string]bool{}
+	for _, host := range rule.AllowedHosts {
+		if host == "" || host != strings.ToLower(host) || strings.ContainsAny(host, "/:@?# ") || seen[host] {
+			problems = append(problems, label+" responseURLValidation allowedHosts must be unique lowercase hostnames")
+		}
+		seen[host] = true
+	}
+	if suffix := rule.AllowedHostSuffix; suffix != "" && (suffix != strings.ToLower(suffix) || strings.ContainsAny(suffix, "/:@?# ")) {
+		problems = append(problems, label+" responseURLValidation allowedHostSuffix must be a lowercase hostname")
+	}
+	if rule.DefaultURL != "" {
+		parsed, err := url.Parse(rule.DefaultURL)
+		if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
+			!slices.Contains(rule.AllowedHosts, parsed.Hostname()) {
+			problems = append(problems, label+" responseURLValidation defaultURL must be an allowed HTTPS host")
+		}
+	}
+	if rule.AllowLoopback && rule.ForbidPort && rule.AllowAnyHTTPS {
+		problems = append(problems, label+" responseURLValidation has conflicting loopback and port policy")
 	}
 	return problems
 }
@@ -592,14 +874,36 @@ func (grantContext tokenGrantContext) validateValueSource(label string, source V
 		problems = append(problems, label+" fromKey requires keyCredential")
 	case source.Template != "":
 		placeholders := templatePlaceholderPattern.FindAllStringSubmatch(source.Template, -1)
+		placeholderNames := map[string]bool{}
 		if len(placeholders) == 0 || strings.Count(source.Template, "{") != len(placeholders) || strings.Count(source.Template, "}") != len(placeholders) {
 			problems = append(problems, label+" template requires {name} placeholders")
 		}
 		for _, placeholder := range placeholders {
+			placeholderNames[placeholder[1]] = true
 			if !grantContext.isCredential(placeholder[1]) && grantContext.settings[placeholder[1]].Name == "" {
 				problems = append(problems, label+" template placeholder "+placeholder[1]+" must name a credential field or setting of the method")
 			}
 		}
+		for name, rule := range source.TemplateValueRules {
+			if !placeholderNames[name] {
+				problems = append(problems, label+" templateValueRules "+name+" must name a template placeholder")
+			}
+			if rule.MaxBytes < 0 {
+				problems = append(problems, label+" templateValueRules "+name+" maxBytes must be positive")
+			}
+			for _, pattern := range rule.Patterns {
+				if !hasSingleAnchoredTemplateGroup(pattern) {
+					problems = append(problems, label+" templateValueRules "+name+" patterns must use ^(?:...)$")
+				} else if !isPortableTemplatePattern(pattern) {
+					problems = append(problems, label+" templateValueRules "+name+" pattern uses non-portable syntax")
+				} else if _, err := regexp.Compile(pattern); err != nil {
+					problems = append(problems, label+" templateValueRules "+name+" pattern is invalid")
+				}
+			}
+		}
+	}
+	if source.Template == "" && len(source.TemplateValueRules) > 0 {
+		problems = append(problems, label+" templateValueRules require a template")
 	}
 	if len(source.Values) > 0 && source.FromCredential == "" && source.FromSetting == "" && source.FromKey == "" {
 		problems = append(problems, label+" values translate only fromCredential, fromSetting, or fromKey")
@@ -612,6 +916,54 @@ func (grantContext tokenGrantContext) validateValueSource(label string, source V
 	return problems
 }
 
+func isPortableTemplatePattern(pattern string) bool {
+	if strings.Contains(pattern, "[[:") {
+		return false
+	}
+	for index := 0; index < len(pattern); index++ {
+		if pattern[index] == '\\' && index+1 < len(pattern) {
+			index++
+			if !strings.ContainsRune(`dDsSwWbBfnrtvx.^$*+?{}[]()|\/-`, rune(pattern[index])) || pattern[index] == 'x' && index+1 < len(pattern) && pattern[index+1] == '{' {
+				return false
+			}
+			continue
+		}
+		if pattern[index] == '(' && index+1 < len(pattern) && pattern[index+1] == '?' && (index+2 >= len(pattern) || pattern[index+2] != ':') {
+			return false
+		}
+	}
+	return true
+}
+
+func hasSingleAnchoredTemplateGroup(pattern string) bool {
+	if !strings.HasPrefix(pattern, "^(?:") || !strings.HasSuffix(pattern, ")$") {
+		return false
+	}
+	depth := 1
+	isEscaped := false
+	isCharacterClass := false
+	for index := 4; index < len(pattern)-1; index++ {
+		switch character := pattern[index]; {
+		case isEscaped:
+			isEscaped = false
+		case character == '\\':
+			isEscaped = true
+		case character == '[' && !isCharacterClass:
+			isCharacterClass = true
+		case character == ']' && isCharacterClass:
+			isCharacterClass = false
+		case !isCharacterClass && character == '(':
+			depth++
+		case !isCharacterClass && character == ')':
+			depth--
+			if depth == 0 {
+				return index == len(pattern)-2
+			}
+		}
+	}
+	return false
+}
+
 func validateScopeList(label string, scopes []string) []string {
 	seen := map[string]bool{}
 	for _, scope := range scopes {
@@ -619,6 +971,42 @@ func validateScopeList(label string, scopes []string) []string {
 			return []string{label + " must be non-empty and unique"}
 		}
 		seen[scope] = true
+	}
+	return nil
+}
+
+func validateAcceptedScopeSets(label string, scopeSets [][]string) []string {
+	seen := map[string]bool{}
+	for _, scopeSet := range scopeSets {
+		if len(scopeSet) == 0 || len(validateScopeList(label, scopeSet)) > 0 {
+			return []string{label + " must contain non-empty sets of unique scopes"}
+		}
+		canonicalSet := slices.Clone(scopeSet)
+		sort.Strings(canonicalSet)
+		canonical := strings.Join(canonicalSet, "\x00")
+		if seen[canonical] {
+			return []string{label + " must not repeat a scope set"}
+		}
+		seen[canonical] = true
+	}
+	return nil
+}
+
+func validateResponseScopes(label, policy string) []string {
+	if policy != "" && policy != ResponseScopesIgnore {
+		return []string{label + " responseScopes must be ignore"}
+	}
+	return nil
+}
+
+func validateAcceptedTokenTypes(label string, tokenTypes []string) []string {
+	seen := map[string]bool{}
+	for _, tokenType := range tokenTypes {
+		canonical := strings.ToLower(tokenType)
+		if strings.TrimSpace(tokenType) != tokenType || tokenType == "" || seen[canonical] {
+			return []string{label + " acceptedTokenTypes must be non-empty and unique"}
+		}
+		seen[canonical] = true
 	}
 	return nil
 }

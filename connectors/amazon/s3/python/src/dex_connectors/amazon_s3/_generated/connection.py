@@ -95,18 +95,24 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Amazon S3 stored credential does not match the connector credential fields")
+        if set(material) - set(('access_key_id', 'secret_access_key', 'session_token')):
+            raise ValueError("Amazon S3 stored credential does not match the connector credential fields")
         access_key_id = material.get("access_key_id")
-        if not isinstance(access_key_id, str) or not access_key_id:
-            raise ValueError("Amazon S3 credential access_key_id is required")
+        if access_key_id is not None and not (isinstance(access_key_id, str)):
+            raise ValueError("Amazon S3 credential access_key_id has an invalid type")
         secret_access_key = material.get("secret_access_key")
-        if not isinstance(secret_access_key, str) or not secret_access_key:
-            raise ValueError("Amazon S3 credential secret_access_key is required")
+        if secret_access_key is not None and not (isinstance(secret_access_key, str)):
+            raise ValueError("Amazon S3 credential secret_access_key has an invalid type")
         session_token = material.get("session_token")
-        if session_token is None:
-            session_token = ''
-        if not isinstance(session_token, str):
+        if session_token is not None and not (isinstance(session_token, str)):
             raise ValueError("Amazon S3 credential session_token has an invalid type")
-        return Credentials(SecretString(access_key_id), SecretString(secret_access_key), SecretString(session_token))
+        if not access_key_id:
+            raise ValueError("Amazon S3 credential access_key_id is required")
+        if not secret_access_key:
+            raise ValueError("Amazon S3 credential secret_access_key is required")
+        return Credentials(SecretString(access_key_id), SecretString(secret_access_key), SecretString(session_token or ''))
 
 
 def new_project_connection(

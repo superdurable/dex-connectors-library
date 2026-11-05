@@ -20,8 +20,8 @@
         "uncertain": false
       },
       "input": {
-        "emailAddress": "Urist.McVankab@example.com",
-        "listId": "bad!"
+        "emailAddress": "not an email",
+        "listId": "57afe96172"
       },
       "name": "getMember-defect",
       "operation": "getMember"
@@ -669,7 +669,7 @@
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -697,7 +697,7 @@
         "uncertain": false
       },
       "input": {
-        "emailAddress": "Urist.McVankab@example.com",
+        "emailAddress": "ben@example.com",
         "listId": "57afe96172"
       },
       "name": "getMember-not-found",
@@ -807,11 +807,11 @@
       "callId": "76aa8474-c963-57bd-944d-8dbc845c462a",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"title\":\"Too Many Requests\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -832,7 +832,7 @@
         "uncertain": false
       },
       "input": {
-        "emailAddress": "Urist.McVankab@example.com",
+        "emailAddress": "ben@example.com",
         "listId": "57afe96172"
       },
       "name": "getMember-rate-limit",
@@ -1128,7 +1128,7 @@
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
           "requestHeaders": {
             "Accept": [
               "application/json"
@@ -1149,7 +1149,7 @@
         "uncertain": false
       },
       "input": {
-        "emailAddress": "Urist.McVankab@example.com",
+        "emailAddress": "ben@example.com",
         "listId": "57afe96172"
       },
       "name": "getMember-transport-before-send",
@@ -1348,12 +1348,7 @@
         "uncertain": false
       },
       "input": {
-        "changedSince": "2026-10-01T12:00:00Z",
-        "listId": "bad!",
-        "offset": 1,
-        "optedInSince": "2026-10-02T12:00:00Z",
-        "pageSize": 2,
-        "status": "unsubscribed"
+        "listId": "bad/id"
       },
       "name": "listMembers-defect",
       "operation": "listMembers"
@@ -1736,28 +1731,19 @@
           "path": "/lists/57afe96172/members",
           "query": {
             "count": [
-              "2"
+              "100"
             ],
             "fields": [
               "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
             ],
             "offset": [
-              "1"
-            ],
-            "since_last_changed": [
-              "2026-10-01T12:00:00+00:00"
-            ],
-            "since_timestamp_opt": [
-              "2026-10-02T12:00:00+00:00"
+              "0"
             ],
             "sort_dir": [
               "ASC"
             ],
             "sort_field": [
               "last_changed"
-            ],
-            "status": [
-              "unsubscribed"
             ]
           },
           "requestHeaders": {
@@ -1784,12 +1770,7 @@
         "uncertain": false
       },
       "input": {
-        "changedSince": "2026-10-01T12:00:00Z",
-        "listId": "57afe96172",
-        "offset": 1,
-        "optedInSince": "2026-10-02T12:00:00Z",
-        "pageSize": 2,
-        "status": "unsubscribed"
+        "listId": "57afe96172"
       },
       "name": "listMembers-not-found",
       "operation": "listMembers"
@@ -1853,35 +1834,26 @@
       "callId": "beda088e-96a5-560d-b1aa-14bbf925b979",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"title\":\"Too Many Requests\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
           "path": "/lists/57afe96172/members",
           "query": {
             "count": [
-              "2"
+              "100"
             ],
             "fields": [
               "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
             ],
             "offset": [
-              "1"
-            ],
-            "since_last_changed": [
-              "2026-10-01T12:00:00+00:00"
-            ],
-            "since_timestamp_opt": [
-              "2026-10-02T12:00:00+00:00"
+              "0"
             ],
             "sort_dir": [
               "ASC"
             ],
             "sort_field": [
               "last_changed"
-            ],
-            "status": [
-              "unsubscribed"
             ]
           },
           "requestHeaders": {
@@ -1904,12 +1876,7 @@
         "uncertain": false
       },
       "input": {
-        "changedSince": "2026-10-01T12:00:00Z",
-        "listId": "57afe96172",
-        "offset": 1,
-        "optedInSince": "2026-10-02T12:00:00Z",
-        "pageSize": 2,
-        "status": "unsubscribed"
+        "listId": "57afe96172"
       },
       "name": "listMembers-rate-limit",
       "operation": "listMembers"
@@ -2199,28 +2166,19 @@
           "path": "/lists/57afe96172/members",
           "query": {
             "count": [
-              "2"
+              "100"
             ],
             "fields": [
               "members.id,members.email_address,members.contact_id,members.full_name,members.web_id,members.email_type,members.status,members.merge_fields,members.vip,members.language,members.timestamp_signup,members.timestamp_opt,members.last_changed,members.tags_count,members.tags,members.list_id,list_id,total_items"
             ],
             "offset": [
-              "1"
-            ],
-            "since_last_changed": [
-              "2026-10-01T12:00:00+00:00"
-            ],
-            "since_timestamp_opt": [
-              "2026-10-02T12:00:00+00:00"
+              "0"
             ],
             "sort_dir": [
               "ASC"
             ],
             "sort_field": [
               "last_changed"
-            ],
-            "status": [
-              "unsubscribed"
             ]
           },
           "requestHeaders": {
@@ -2243,12 +2201,7 @@
         "uncertain": false
       },
       "input": {
-        "changedSince": "2026-10-01T12:00:00Z",
-        "listId": "57afe96172",
-        "offset": 1,
-        "optedInSince": "2026-10-02T12:00:00Z",
-        "pageSize": 2,
-        "status": "unsubscribed"
+        "listId": "57afe96172"
       },
       "name": "listMembers-transport-before-send",
       "operation": "listMembers"
@@ -2348,7 +2301,7 @@
       "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "exchanges": [
         {
-          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"sent\", \"emails_sent\": 100, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"2026-10-26T10:00:00Z\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"sent\",\"emails_sent\":3,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3},\"send_time\":\"2026-10-25T11:00:00Z\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2374,18 +2327,18 @@
         "failureKind": "",
         "output": {
           "campaign": {
-            "createdAt": "2026-10-25T10:00:00Z",
-            "emailsSent": 100,
+            "createdAt": "2026-10-24T10:00:00Z",
+            "emailsSent": 3,
             "id": "42694e9e57",
             "listId": "57afe96172",
-            "listName": "Audience",
-            "recipientCount": 100,
-            "sentAt": "2026-10-26T10:00:00Z",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "sentAt": "2026-10-25T11:00:00Z",
             "status": "sent",
-            "subjectLine": "Hello",
-            "title": "Spring Launch",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
             "type": "regular",
-            "webId": 42
+            "webId": 53
           }
         },
         "requestCount": 1,
@@ -2423,8 +2376,7 @@
       },
       "idempotencyKey": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "input": {
-        "campaignId": "bad!",
-        "expectedListId": "57afe96172"
+        "campaignId": "bad/id"
       },
       "name": "sendCampaign-defect",
       "operation": "sendCampaign"
@@ -2733,7 +2685,7 @@
       "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "exchanges": [
         {
-          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"paused\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"schedule\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2759,17 +2711,17 @@
         "failureKind": "CONFLICT",
         "output": {
           "campaign": {
-            "createdAt": "2026-10-25T10:00:00Z",
+            "createdAt": "2026-10-24T10:00:00Z",
             "emailsSent": 0,
             "id": "42694e9e57",
             "listId": "57afe96172",
-            "listName": "Audience",
-            "recipientCount": 100,
-            "status": "paused",
-            "subjectLine": "Hello",
-            "title": "Spring Launch",
+            "listName": "Spring audience",
+            "recipientCount": 3,
+            "status": "schedule",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
             "type": "regular",
-            "webId": 42
+            "webId": 53
           }
         },
         "requestCount": 1,
@@ -2869,6 +2821,9 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-25T10:00:00Z",
@@ -2898,6 +2853,9 @@
         {
           "exchangeCount": 2,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 3000
         }
       ],
@@ -2946,6 +2904,9 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-25T10:00:00Z",
@@ -3054,6 +3015,9 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-25T10:00:00Z",
@@ -3083,6 +3047,9 @@
         {
           "exchangeCount": 2,
           "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3558,7 +3525,7 @@
       "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"title\":\"Too Many Requests\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -3711,6 +3678,9 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -3788,6 +3758,9 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -3858,6 +3831,9 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -3953,6 +3929,9 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -3982,6 +3961,9 @@
         {
           "exchangeCount": 2,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "cleared": true
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3992,7 +3974,7 @@
       "callId": "0bab1200-a794-5487-a44d-9955f9eab18d",
       "exchanges": [
         {
-          "body": "{\"id\": \"42694e9e57\", \"web_id\": 42, \"type\": \"regular\", \"status\": \"save\", \"emails_sent\": 0, \"create_time\": \"2026-10-25T10:00:00Z\", \"send_time\": \"\", \"settings\": {\"title\": \"Spring Launch\", \"subject_line\": \"Hello\"}, \"recipients\": {\"list_id\": \"57afe96172\", \"list_name\": \"Audience\", \"recipient_count\": 100}}",
+          "body": "{\"id\":\"42694e9e57\",\"web_id\":53,\"type\":\"regular\",\"status\":\"save\",\"emails_sent\":0,\"create_time\":\"2026-10-24T10:00:00Z\",\"settings\":{\"title\":\"Spring launch\",\"subject_line\":\"Spring news\"},\"recipients\":{\"list_id\":\"57afe96172\",\"list_name\":\"Spring audience\",\"recipient_count\":3}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -4032,19 +4014,22 @@
       "expected": {
         "branch": "sent",
         "failureKind": "",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
-            "createdAt": "2026-10-25T10:00:00Z",
+            "createdAt": "2026-10-24T10:00:00Z",
             "emailsSent": 0,
             "id": "42694e9e57",
             "listId": "57afe96172",
-            "listName": "Audience",
-            "recipientCount": 100,
+            "listName": "Spring audience",
+            "recipientCount": 3,
             "status": "save",
-            "subjectLine": "Hello",
-            "title": "Spring Launch",
+            "subjectLine": "Spring news",
+            "title": "Spring launch",
             "type": "regular",
-            "webId": 42
+            "webId": 53
           }
         },
         "requestCount": 2,
@@ -4264,6 +4249,9 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-25T10:00:00Z",
@@ -4336,6 +4324,9 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "mailchimpDispatchedCallId": "0bab1200-a794-5487-a44d-9955f9eab18d"
+        },
         "output": {
           "campaign": {
             "createdAt": "2026-10-24T10:00:00Z",
@@ -4480,12 +4471,8 @@
         "addTags": [
           "spring-launch"
         ],
-        "emailAddress": "Urist.McVankab@example.com",
-        "listId": "bad!",
-        "removeTags": [
-          "old-tag"
-        ],
-        "shouldSuppressAutomations": true
+        "emailAddress": "not an email",
+        "listId": "57afe96172"
       },
       "name": "updateMemberTags-defect",
       "operation": "updateMemberTags"
@@ -4712,17 +4699,12 @@
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
           "requestBody": {
-            "is_syncing": true,
             "tags": [
               {
                 "name": "spring-launch",
                 "status": "active"
-              },
-              {
-                "name": "old-tag",
-                "status": "inactive"
               }
             ]
           },
@@ -4756,12 +4738,8 @@
         "addTags": [
           "spring-launch"
         ],
-        "emailAddress": "Urist.McVankab@example.com",
-        "listId": "57afe96172",
-        "removeTags": [
-          "old-tag"
-        ],
-        "shouldSuppressAutomations": true
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
       },
       "name": "updateMemberTags-not-found",
       "operation": "updateMemberTags"
@@ -4823,21 +4801,16 @@
       "callId": "e25ce930-a423-596f-b992-602689b73e65",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"title\":\"Too Many Requests\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
           "requestBody": {
-            "is_syncing": true,
             "tags": [
               {
                 "name": "spring-launch",
                 "status": "active"
-              },
-              {
-                "name": "old-tag",
-                "status": "inactive"
               }
             ]
           },
@@ -4868,12 +4841,8 @@
         "addTags": [
           "spring-launch"
         ],
-        "emailAddress": "Urist.McVankab@example.com",
-        "listId": "57afe96172",
-        "removeTags": [
-          "old-tag"
-        ],
-        "shouldSuppressAutomations": true
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
       },
       "name": "updateMemberTags-rate-limit",
       "operation": "updateMemberTags"
@@ -5212,17 +5181,12 @@
         {
           "keyMode": "absent",
           "method": "POST",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45/tags",
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0/tags",
           "requestBody": {
-            "is_syncing": true,
             "tags": [
               {
                 "name": "spring-launch",
                 "status": "active"
-              },
-              {
-                "name": "old-tag",
-                "status": "inactive"
               }
             ]
           },
@@ -5253,12 +5217,8 @@
         "addTags": [
           "spring-launch"
         ],
-        "emailAddress": "Urist.McVankab@example.com",
-        "listId": "57afe96172",
-        "removeTags": [
-          "old-tag"
-        ],
-        "shouldSuppressAutomations": true
+        "emailAddress": "ben@example.com",
+        "listId": "57afe96172"
       },
       "name": "updateMemberTags-transport-before-send",
       "operation": "updateMemberTags"
@@ -5385,26 +5345,9 @@
       },
       "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
       "input": {
-        "emailAddress": "Urist.McVankab@example.com",
-        "isResubscribeAllowed": true,
-        "listId": "bad!",
-        "marketingPermissions": [
-          {
-            "isEnabled": true,
-            "marketingPermissionId": "permission1"
-          }
-        ],
-        "mergeFields": {
-          "ADDRESS": {
-            "addr1": "1 Main",
-            "city": "Portland"
-          },
-          "AGE": 30,
-          "FNAME": "Urist"
-        },
-        "shouldSkipMergeValidation": true,
-        "status": "unsubscribed",
-        "statusIfNew": "pending"
+        "emailAddress": "not an email",
+        "listId": "57afe96172",
+        "statusIfNew": "subscribed"
       },
       "name": "upsertMember-defect",
       "operation": "upsertMember"
@@ -5887,34 +5830,14 @@
       "callId": "2b931676-b663-5a16-bd69-9d43a17efc7f",
       "exchanges": [
         {
-          "body": "",
+          "body": "{\"title\":\"Too Many Requests\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
-          "query": {
-            "skip_merge_validation": [
-              "true"
-            ]
-          },
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
           "requestBody": {
-            "email_address": "Urist.McVankab@example.com",
-            "marketing_permissions": [
-              {
-                "enabled": true,
-                "marketing_permission_id": "permission1"
-              }
-            ],
-            "merge_fields": {
-              "ADDRESS": {
-                "addr1": "1 Main",
-                "city": "Portland"
-              },
-              "AGE": 30,
-              "FNAME": "Urist"
-            },
-            "status": "unsubscribed",
-            "status_if_new": "pending"
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
           },
           "requestHeaders": {
             "Accept": [
@@ -5940,26 +5863,9 @@
       },
       "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
       "input": {
-        "emailAddress": "Urist.McVankab@example.com",
-        "isResubscribeAllowed": true,
+        "emailAddress": "ben@example.com",
         "listId": "57afe96172",
-        "marketingPermissions": [
-          {
-            "isEnabled": true,
-            "marketingPermissionId": "permission1"
-          }
-        ],
-        "mergeFields": {
-          "ADDRESS": {
-            "addr1": "1 Main",
-            "city": "Portland"
-          },
-          "AGE": 30,
-          "FNAME": "Urist"
-        },
-        "shouldSkipMergeValidation": true,
-        "status": "unsubscribed",
-        "statusIfNew": "pending"
+        "statusIfNew": "subscribed"
       },
       "name": "upsertMember-rate-limit",
       "operation": "upsertMember"
@@ -6387,30 +6293,10 @@
         {
           "keyMode": "absent",
           "method": "PUT",
-          "path": "/lists/57afe96172/members/cb63c7306d1853af527b11f0cb244d45",
-          "query": {
-            "skip_merge_validation": [
-              "true"
-            ]
-          },
+          "path": "/lists/57afe96172/members/2c66f6142933ed5a97948f89cb1c7be0",
           "requestBody": {
-            "email_address": "Urist.McVankab@example.com",
-            "marketing_permissions": [
-              {
-                "enabled": true,
-                "marketing_permission_id": "permission1"
-              }
-            ],
-            "merge_fields": {
-              "ADDRESS": {
-                "addr1": "1 Main",
-                "city": "Portland"
-              },
-              "AGE": 30,
-              "FNAME": "Urist"
-            },
-            "status": "unsubscribed",
-            "status_if_new": "pending"
+            "email_address": "ben@example.com",
+            "status_if_new": "subscribed"
           },
           "requestHeaders": {
             "Accept": [
@@ -6436,26 +6322,9 @@
       },
       "idempotencyKey": "2b931676-b663-5a16-bd69-9d43a17efc7f",
       "input": {
-        "emailAddress": "Urist.McVankab@example.com",
-        "isResubscribeAllowed": true,
+        "emailAddress": "ben@example.com",
         "listId": "57afe96172",
-        "marketingPermissions": [
-          {
-            "isEnabled": true,
-            "marketingPermissionId": "permission1"
-          }
-        ],
-        "mergeFields": {
-          "ADDRESS": {
-            "addr1": "1 Main",
-            "city": "Portland"
-          },
-          "AGE": 30,
-          "FNAME": "Urist"
-        },
-        "shouldSkipMergeValidation": true,
-        "status": "unsubscribed",
-        "statusIfNew": "pending"
+        "statusIfNew": "subscribed"
       },
       "name": "upsertMember-transport-before-send",
       "operation": "upsertMember"

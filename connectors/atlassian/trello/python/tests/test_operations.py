@@ -7,6 +7,7 @@ from uuid import UUID
 
 import httpx
 import pytest
+from dex import CodecRegistry
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -27,10 +28,27 @@ from dex_connectors.atlassian_trello import (
     UpdateCardInput,
     operations,
 )
-from dex_connectors.atlassian_trello.client import ProviderResponse
+from dex_connectors.atlassian_trello.client import ProviderResponse, decode_card
 
 CONNECTION = ConnectionRef("trello", "trello-test")
 CARD_ID = "6512f0a1c2d3e4f5a6b7c8d9"
+
+
+@pytest.mark.parametrize(
+    "provider_position,expected_position", [(16384, 16384), (16384.0, 16384), (1024.5, 1024.5)]
+)
+def test_card_position_uses_go_json_number_shape(
+    provider_position: int | float, expected_position: int | float
+) -> None:
+    """Preserve fractional positions while encoding integral positions as Go JSON numbers."""
+    card = decode_card(
+        {"id": CARD_ID, "idBoard": CARD_ID, "idList": CARD_ID, "pos": provider_position}, False
+    )
+    wire_value = CodecRegistry().resolve(type(card)).encode(card)
+    assert isinstance(wire_value.data, str)
+    encoded = json.loads(wire_value.data)
+    assert type(encoded["position"]) is type(expected_position)
+    assert encoded["position"] == expected_position
 
 
 def make_client(handler: httpx.MockTransport) -> Client:
@@ -164,6 +182,7 @@ async def test_created_card_references_match_go_patterns(
         make_call("createCard"), CreateCardInput(CARD_ID, "Example")
     )
     assert attempt.branch == "created"
+    assert attempt.value is not None
     assert attempt.value.board_id == expected_board_id
     assert attempt.value.short_link == expected_short_link
     await client.http_client.aclose()

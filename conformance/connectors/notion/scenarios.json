@@ -426,6 +426,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "ad0e2f6d-9e39-5278-8995-6ca0b37f578f",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
           "page": {
@@ -2137,6 +2143,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1a5cfbd2-5224-58dc-b7f5-65c7af8fdce8",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -2222,6 +2233,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "VALIDATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a6a34d0c-b57e-5fcc-90e3-d50908478223",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -2354,6 +2370,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "bd0d87be-cae8-5cd7-a624-fbdf90ab370f",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },
@@ -2458,6 +2479,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4dece8a8-3964-511b-b91d-4d979749be5e",
+          "providerId": "1f3c9a2e-5b7d-4e8a-9c01-23456789abcd",
+          "state": "claimed"
+        },
         "output": {
           "confirmedAfterTimeout": true,
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566",
@@ -2528,6 +2555,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "441be5bb-62c1-5b2c-b3c8-735d568ed7c4",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2611,6 +2643,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "db2c42a3-e919-5af8-a22c-7f2431b6a0f3",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2691,6 +2728,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f9081f28-c96b-5951-9b79-4a4208bcbed8",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2830,6 +2872,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "52ad17ed-9b57-59c0-99d6-7c69b5e2d82c",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -2850,6 +2897,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "52ad17ed-9b57-59c0-99d6-7c69b5e2d82c",
+            "state": "canResend"
+          },
           "retryAfterMs": 0
         }
       ],
@@ -3678,6 +3730,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "275ccb9c-00ee-5081-9574-60cb0d55279c",
+          "state": "claimed"
+        },
         "output": {
           "dataSourceId": "2a4d6f80-1b3c-4d5e-8f70-112233445566"
         },

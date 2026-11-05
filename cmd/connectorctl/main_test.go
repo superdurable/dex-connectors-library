@@ -390,6 +390,7 @@ func TestReleaseArtifactPublishesTokenGrantDeclarations(t *testing.T) {
 		"protocol": "oauth2",
 		"refresh": {
 			"terminalErrorCodes": ["invalid_grant", "invalid_client"],
+			"storedMissingExpiry": "refresh",
 			"missingExpiry": {"lifetime": "2h"},
 			"additionalParameters": {"scope": "offline_access files.read"}
 		}
@@ -400,6 +401,7 @@ func TestReleaseArtifactPublishesTokenGrantDeclarations(t *testing.T) {
 		"clientSecretCredential": "client_secret",
 		"scopes": ["https://api.example.com/.default"],
 		"credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+		"storedMissingExpiry": "refresh",
 		"terminalErrorCodes": ["invalid_client", "unauthorized_client"]
 	}`, string(methods[2]["clientCredentials"]))
 	require.JSONEq(t, `{"jwtBearer": {

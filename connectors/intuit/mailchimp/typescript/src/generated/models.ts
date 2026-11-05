@@ -3,7 +3,42 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
+
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -20,6 +55,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret Mailchimp Marketing API key of the Mailchimp user the connector acts as. Sign in at https://login.mailchimp.com/, select your profile icon, choose Profile, open the Extras drop-down, choose API keys, then Create A Key, name it, choose Generate Key, and Copy Key to Clipboard; Mailchimp shows the full key only once. It is letters and digits, then a hyphen and your data center, such as -us6 at the end. Paste the whole key including the suffix: the connector derives the API host https://us6.api.mailchimp.com/3.0 from it, so there is no separate server field, and sends the key as a Bearer token only to that host. Stored only in this credential field; keys created on or after June 22, 2026 expire one year after creation, so paste the replacement key here before then. */
   apiKey: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_key"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
@@ -224,17 +272,17 @@ export const MemberSchema = z.strictObject({
   "language": z.string().optional(),
   "listId": z.string(),
   "webId": z.number().int().optional(),
-  "signedUpAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "optedInAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "lastChangedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "signedUpAt": GoTimeJSONSchema.nullable().optional(),
+  "optedInAt": GoTimeJSONSchema.nullable().optional(),
+  "lastChangedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Member>;
 
 /** Runtime validator for ListMembersInput. */
 export const ListMembersInputSchema = z.strictObject({
   "listId": z.string(),
   "status": z.string().optional(),
-  "changedSince": z.iso.datetime({ offset: true }).nullable().optional(),
-  "optedInSince": z.iso.datetime({ offset: true }).nullable().optional(),
+  "changedSince": GoTimeJSONSchema.nullable().optional(),
+  "optedInSince": GoTimeJSONSchema.nullable().optional(),
   "pageSize": z.number().int().optional(),
   "offset": z.number().int().optional(),
 }) satisfies z.ZodType<ListMembersInput>;
@@ -303,8 +351,8 @@ export const CampaignSchema = z.strictObject({
   "listName": z.string().optional(),
   "recipientCount": z.number().int(),
   "emailsSent": z.number().int(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "sentAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
+  "sentAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Campaign>;
 
 /** Runtime validator for SendCampaignOutput. */

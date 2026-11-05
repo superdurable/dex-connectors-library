@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -26,6 +27,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret Klaviyo private API key starting pk_ from https://www.klaviyo.com/settings/account/api-keys after Settings > API keys > Create Private API Key; grant profiles:read and events:write. Blank prevents requests. */
   privateApiKey: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["private_api_key"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["private_api_key"] != null && !(typeof fields["private_api_key"] === 'string')) throw new TypeError("credential private_api_key has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["private_api_key"]) throw new TypeError("credential private_api_key is required");
+  credentials.privateApiKey = new SecretString((fields["private_api_key"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

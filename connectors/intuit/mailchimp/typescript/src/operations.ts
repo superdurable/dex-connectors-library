@@ -163,7 +163,7 @@ export class SendCampaignOperation implements Mutation<SendCampaignInput, SendCa
     const receipt = this.client.receipt(call, sent, input.campaignId);
     if (sent.outcome === 'succeeded') return newMutationBranch('sent', output, receipt);
     if (sent.outcome === 'rateLimited' || sent.outcome === 'notSent') {
-      try { await call.context.recordHeartbeat(null); } catch { /* A stale checkpoint prevents a repeated send. */ }
+      try { await call.context.recordHeartbeat(undefined); } catch { /* A stale checkpoint prevents a repeated send. */ }
       return newMutationRetry(sent.failure!, sent.retryAfterMs);
     }
     if (sent.outcome === 'unavailable' || sent.outcome === 'invalid') return newMutationUncertain(output, sent.failure!, receipt);

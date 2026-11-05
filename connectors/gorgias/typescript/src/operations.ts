@@ -138,7 +138,7 @@ async function recordDispatch(call: Call): Promise<boolean> {
   try { await call.context.recordHeartbeat({ gorgiasDispatchedCallId: call.id }); return true; }
   catch { return false; }
 }
-async function releaseDispatch(call: Call): Promise<void> { try { await call.context.recordHeartbeat(null); } catch { /* A retained marker safely forces read-back. */ } }
+async function releaseDispatch(call: Call): Promise<void> { try { await call.context.recordHeartbeat(undefined); } catch { /* A retained marker safely forces read-back. */ } }
 function reconcileDelay(delay: number, minimum: number): number { return Math.min(60_000, Math.max(delay, minimum)); }
 async function reconcile<T>(call: Call, failure: Failure, output: T, receipt: Receipt, delay = 0, uncertainFailure = failure): Promise<MutationAttempt<T>> {
   if (call.context.attempt < 4 && await recordDispatch(call)) return newMutationRetry(failure, reconcileDelay(delay, 15_000));
