@@ -245,6 +245,54 @@
     "publicDefault": "('default', ('tuple', ()))",
     "publicType": "('sequence', ('map', 'str', 'any'))"
   },
+  "superdurable_llm.GenerateTextRequest.messages": {
+    "publicType": "('sequence', ('record', (('role', 'MessageRole'), ('text', 'str'))))",
+    "generatedType": "('optional', ('sequence', ('record', (('role', 'str'), ('text', 'str')))))",
+    "publicDefault": "('required',)",
+    "generatedDefault": "('default', ('tuple', ()))"
+  },
+  "superdurable_llm.GenerateTextRequest.reasoningEffort": {
+    "publicType": "('union', (\"'ReasoningEffort'\", \"'str'\"))",
+    "generatedType": "'str'",
+    "publicDefault": "('default', '')",
+    "generatedDefault": "('default', '')"
+  },
+  "superdurable_llm.GenerateTextRequest.structuredOutput": {
+    "publicType": "('optional', ('record', (('description', 'str'), ('name', 'str'), ('schema', ('map', 'str', 'object')))))",
+    "generatedType": "('optional', ('record', (('description', 'str'), ('name', 'str'), ('schema', ('optional', ('map', 'str', 'any'))))))",
+    "publicDefault": "('default', None)",
+    "generatedDefault": "('default', None)"
+  },
+  "superdurable_llm.GenerateTextResponse.finishReason": {
+    "publicType": "('union', (\"'FinishReason'\", \"'str'\"))",
+    "generatedType": "'str'",
+    "publicDefault": "('default', '')",
+    "generatedDefault": "('default', '')"
+  },
+  "superdurable_llm.textgenMessage.role": {
+    "publicType": "'MessageRole'",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "generatedDefault": "('default', '')"
+  },
+  "superdurable_llm.textgenMessage.text": {
+    "publicType": "'str'",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "generatedDefault": "('default', '')"
+  },
+  "superdurable_llm.textgenStructuredOutput.name": {
+    "publicType": "'str'",
+    "generatedType": "'str'",
+    "publicDefault": "('required',)",
+    "generatedDefault": "('default', '')"
+  },
+  "superdurable_llm.textgenStructuredOutput.schema": {
+    "publicType": "('map', 'str', 'object')",
+    "generatedType": "('optional', ('map', 'str', 'any'))",
+    "publicDefault": "('required',)",
+    "generatedDefault": "('default', None)"
+  },
   "unsplash.PhotoPage.photos": {
     "generatedDefault": "('default', ('tuple', ()))",
     "generatedType": "('optional', ('sequence', ('record', (('altDescription', ('optional', 'str')), ('description', ('optional', 'str')), ('htmlUrl', 'str'), ('id', 'str'), ('photographerName', 'str'), ('photographerURL', 'str'), ('regularUrl', 'str')))))",

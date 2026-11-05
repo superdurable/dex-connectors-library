@@ -1,6 +1,6 @@
 # Zoho Desk Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go@v0.24.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/desk/go@v0.24.1`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/desk`.
 
@@ -307,14 +307,13 @@ positions:
   lost Worker or an Execute timeout, selects `uncertain` without sending. The
   checkpoint is read before credentials, so a revoked authorization on that
   later attempt still reports `uncertain`, not "nothing was created".
-- Only an outcome that proves Zoho Desk did not apply the request is retried:
-  a 429, which Zoho Desk returns instead of processing; a DNS, connect, or TLS
-  failure before any connection was obtained, traced with `httptrace`; the
-  operation deadline passing before the request started; and a 401 followed
-  by one refresh, which happens only when the recorded expiry has passed. The
-  checkpoint is cleared first.
-- A 5xx, a 408, a lost or unreadable response, and an invalid, oversized, or
-  credential-reflecting 2xx select `uncertain`: the ticket or comment may
+- A 429 or 503 is retried, as required by the connector retry contract. A DNS,
+  connect, or TLS failure before any connection was obtained (traced with
+  `httptrace`), an operation deadline before sending, and a 401 followed by one
+  refresh when the recorded expiry has passed are retried too. The checkpoint
+  is cleared first.
+- A 408, other 5xx, a lost or unreadable response, and an invalid, oversized,
+  or credential-reflecting 2xx select `uncertain`: the ticket or comment may
   exist, and the connector never resends it. The example leaves the branch
   unwired, so the Flow fails and a person can check Zoho Desk before another run.
 
@@ -341,8 +340,9 @@ A body that contains the access token is dropped.
 | 405, 409, 413, 415, other 4xx | `providerRejected` | `providerRejected` |
 | 3xx | `providerRejected`, `PROTOCOL`; redirects are never followed | same |
 | 429 (`THRESHOLD_EXCEEDED`, `TOO_MANY_REQUESTS`) | Retry, after `Retry-After` when present | Retry, after `Retry-After` when present |
+| 503 | Retry, after `Retry-After` when present | Retry, after `Retry-After` when present |
 | DNS, connect, or TLS failure before a connection, or the deadline passed before sending | Retry | Retry |
-| 408, 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
+| 408, other 5xx, lost or unreadable response | Retry, after `Retry-After` when present | `uncertain` |
 | oversized, malformed, or credential-reflecting 2xx | `invalidResponse` | `uncertain` |
 | revoked authorization (`invalid_code` on refresh) | `providerRejected`, `AUTHENTICATION` | same |
 | token refresh outage | Retry | Retry |
