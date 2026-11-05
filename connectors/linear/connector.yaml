@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: linear
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-linear"
+      operations: [searchIssues, getIssue, createIssue, updateIssue, addComment, findUserByEmail, listWorkflowStates]
+      triggers: []
   codegen:
     go:
       package: linear
