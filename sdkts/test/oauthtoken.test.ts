@@ -86,6 +86,9 @@ describe('OAuth token exchange', () => {
     const incomplete: typeof fetch = async () => Response.json({ access_token: 'a', expires_in: 0, token_type: 'Bearer' });
     await expect(endpoint(incomplete).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('omitted required fields');
     await expect(endpoint(incomplete, { url: 'http://auth.example.test/token' }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('endpoint is invalid');
+    await expect(endpoint(async () => Response.json({ access_token: 'new', expires_in: 3600, token_type: 'Bearer' }),
+      { url: 'HTTPS://auth.example.test/token' }).exchangeRefreshToken(client, new SecretString('old'))).resolves.toBeDefined();
+    await expect(endpoint(incomplete, { url: ' https://auth.example.test/token' }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('endpoint is invalid');
     await expect(endpoint(incomplete, { url: 'https://user:password@auth.example.test/token' }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('endpoint is invalid');
     await expect(endpoint(incomplete, { retainedResponseFields: ['access_token'] }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('cannot retain');
     await expect(endpoint(incomplete, { additionalRequestParameters: { grant_type: 'other' } }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('cannot replace');
@@ -96,6 +99,9 @@ describe('OAuth token exchange', () => {
     const result = await endpoint(missing, { url: 'http://identity.internal/token', allowsPlainHTTP: true, acceptsMissingExpiresIn: true, acceptsMissingTokenType: true }).exchangeRefreshToken(client, new SecretString('old'));
     expect(result.expiresInMs).toBe(0);
     expect(result.tokenType).toBe('');
+    await expect(endpoint(missing, { url: 'HTTP://identity.internal/token', allowsPlainHTTP: true,
+      acceptsMissingExpiresIn: true, acceptsMissingTokenType: true })
+      .exchangeRefreshToken(client, new SecretString('old'))).resolves.toBeDefined();
   });
 });
 
