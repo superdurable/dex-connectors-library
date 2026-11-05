@@ -16,6 +16,7 @@ from dex_connectors.sdk import (
 
 from dex_connectors.github import Client, Config, Credentials, ListPullRequestFilesInput
 from dex_connectors.github.client import _path_escape, _query
+from dex_connectors.github.operations import _time, _url
 
 
 @pytest.mark.parametrize(
@@ -28,8 +29,18 @@ def test_go_path_escape(value: str, escaped: str) -> None:
 
 
 def test_go_query_escape_and_key_order() -> None:
-    """Encode sorted keys, plus-spaces, and escaped tilde like Go url.Values."""
-    assert _query({"z": "a b~*", "a": "x"}) == "a=x&z=a+b%7E%2A"
+    """Encode sorted keys and plus-spaces like Go url.Values."""
+    assert _query({"z": "a b~*", "a": "x"}) == "a=x&z=a+b~%2A"
+
+
+def test_provider_url_escapes_path_and_fragment_like_go() -> None:
+    assert _url("https://example.com/a b?x=a b#frag ment") == "https://example.com/a%20b?x=a b#frag%20ment"
+    assert _url("https://example.com/path?") == "https://example.com/path?"
+
+
+def test_provider_time_rejects_unrepresentable_nanoseconds() -> None:
+    with pytest.raises(ValueError, match="exactly"):
+        _time("2026-01-01T00:00:00.123456789Z")
 
 
 def test_reject_non_loopback_plain_http() -> None:

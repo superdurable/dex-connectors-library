@@ -15,6 +15,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -118,7 +119,7 @@ def classify_status(response: ProviderResponse) -> tuple[bool, FailureKind, str,
                 raise ValueError
         except ValueError:
             return True, FailureKind.PROTOCOL, "provider returned an invalid Retry-After header", 0
-        return True, category, message, float(delay)
+        return True, category, message, parse_retry_after(retry_header, datetime.now(UTC))
     return True, category, message, 0
 
 
@@ -212,7 +213,7 @@ class Client:
         from urllib.parse import quote_plus
 
         def query_escape(value: str) -> str:
-            return quote_plus(value, safe="").replace("~", "%7E")
+            return quote_plus(value, safe="")
 
         encoded_query = "&".join(
             f"{query_escape(key)}={query_escape(value)}"

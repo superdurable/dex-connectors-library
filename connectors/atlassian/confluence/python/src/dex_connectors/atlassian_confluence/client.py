@@ -23,6 +23,7 @@ from dex_connectors.sdk.providerhttp import (
     ProviderTransportError,
     is_header_safe_credential,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
     validate_base_url,
@@ -73,6 +74,7 @@ class Exchange:
     is_dispatched: bool = False
     error: str = ""
     reflects_secret: bool = False
+    body_failed: bool = False
 
 
 @dataclass(slots=True)
@@ -282,7 +284,7 @@ class Client:
         )
         target = self.endpoint + prefix + path
         if query:
-            target += "?" + urlencode(sorted(query.items())).replace("~", "%7E")
+            target += "?" + urlencode(sorted(query.items()))
         try:
             body = (
                 json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
@@ -332,17 +334,13 @@ class Client:
             except BodyTooLargeError:
                 return Exchange(response.status_code, response.headers, is_too_large=True, is_dispatched=True)
             except ProviderTransportError:
-                return Exchange(response.status_code, response.headers, is_dispatched=True, error="transport")
+                return Exchange(response.status_code, response.headers, is_dispatched=True, body_failed=True)
         raise RuntimeError("Confluence credential retry exhausted")
 
     def retry_after(self, response: Exchange) -> float:
         """Read Retry-After seconds, capped at one hour."""
-        try:
-            return (
-                min(max(float(response.headers.get("Retry-After", "")), 0), 3600) if response.headers else 0
-            )
-        except ValueError:
-            return 0
+        header = response.headers.get("Retry-After", "") if response.headers else ""
+        return parse_retry_after(header, self.now())
 
     def classify_read(self, operation: str, subject: str, response: Exchange) -> Classification:
         """Classify a read without inspecting non-success bodies."""
@@ -396,6 +394,11 @@ class Client:
                     f"Confluence returned unexpected HTTP {status} for the {subject}",
                 ),
             )
+        if response.body_failed:
+            return Classification(
+                "retry",
+                failure(operation, FailureKind.TRANSPORT, f"Confluence {subject} response was interrupted"),
+            )
         if response.is_too_large or response.reflects_secret:
             return Classification(
                 "invalid",
@@ -432,6 +435,14 @@ class Client:
             )
         status = response.status
         if 200 <= status < 300:
+            if response.body_failed:
+                return Classification(
+                    "ambiguous",
+                    failure(
+                        operation, FailureKind.TRANSPORT,
+                        f"Confluence accepted the {subject} but its response was interrupted",
+                    ),
+                )
             if response.is_too_large or response.reflects_secret:
                 return Classification(
                     "ambiguous",

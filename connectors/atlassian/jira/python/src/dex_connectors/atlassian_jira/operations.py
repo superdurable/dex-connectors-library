@@ -4,9 +4,11 @@
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any, TypeVar, cast
 
 from dex_connectors.sdk import (
@@ -147,6 +149,31 @@ def _field_string(value: dict[str, Any], field: str) -> str:
     return "" if item is None else _string(item)
 
 
+def _exact_json_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        converted = float(value)
+        if not math.isfinite(converted) or str(value) != json.dumps(converted):
+            raise ValueError("additional field number cannot be encoded exactly")
+        return converted
+    if isinstance(value, list):
+        return [_exact_json_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _exact_json_value(item) for key, item in value.items()}
+    return value
+
+
+def _issue_json(body: bytes) -> Any:
+    return json.loads(body, parse_float=Decimal, parse_constant=_reject_json_constant)
+
+
+def _reject_json_constant(value: str) -> Any:
+    raise ValueError(f"invalid JSON constant {value}")
+
+
+def _equal_fold(left: str, right: str) -> bool:
+    return len(left) == len(right) and left.casefold() == right.casefold()
+
+
 def _timestamp(value: str) -> datetime:
     if not value:
         return datetime.min.replace(tzinfo=UTC)
@@ -156,6 +183,8 @@ def _timestamp(value: str) -> datetime:
             raise ValueError("invalid format")
         offset = match["offset"]
         fraction = match["fraction"]
+        if fraction and len(fraction[1:]) > 6 and fraction[7:].strip("0"):
+            raise ValueError("Jira timestamp cannot be represented exactly as datetime")
         microseconds = int(((fraction or "")[1:] + "000000")[:6]) if fraction else 0
         parsed = datetime(
             int(match["year"]),
@@ -268,7 +297,7 @@ def _issue_resource(raw: Any, additional: tuple[str, ...], description: bool) ->
         is_description_truncated=truncated,
         created_at=_timestamp(_field_string(fields, "created")),
         updated_at=_timestamp(_field_string(fields, "updated")),
-        additional_fields={name: fields[name] for name in additional if name in fields},
+        additional_fields={name: _exact_json_value(fields[name]) for name in additional if name in fields},
     )
 
 
@@ -332,7 +361,7 @@ class GetIssueOperation:
             return cast(QueryAttempt[Issue], result)
         receipt = self.client.receipt(call, response, issue_id)
         try:
-            issue = _issue_resource(json.loads(response.body), input.additional_fields, True)
+            issue = _issue_resource(_issue_json(response.body), input.additional_fields, True)
         except (ValueError, TypeError, KeyError):
             return _query(
                 "invalidResponse",
@@ -457,7 +486,7 @@ class SearchIssuesOperation:
             return cast(QueryAttempt[SearchIssuesOutput], result)
         receipt = self.client.receipt(call, response)
         try:
-            page = _object(json.loads(response.body))
+            page = _object(_issue_json(response.body))
             token = _field_string(page, "nextPageToken")
             if len(token.encode()) > 4096:
                 raise ValueError("invalid page token")
@@ -609,14 +638,14 @@ class TransitionIssueOperation:
         output = TransitionIssueOutput(
             issue_id=found_id, issue_key=key, previous_status=status, status=status
         )
-        if destination and status.name.casefold() == destination.casefold():
+        if destination and _equal_fold(status.name, destination):
             return _mutation("transitioned", replace(output, is_already_in_destination_status=True), receipt)
         matches = [
             item
             for item in available
             if (not transition_id or item.id == transition_id)
-            and (not transition_name or item.name.strip().casefold() == transition_name.casefold())
-            and (not destination or item.destination_status.name.casefold() == destination.casefold())
+            and (not transition_name or _equal_fold(item.name.strip(), transition_name))
+            and (not destination or _equal_fold(item.destination_status.name, destination))
         ]
         if len(matches) != 1:
             kind = FailureKind.CONFLICT if not matches else FailureKind.VALIDATION
@@ -647,6 +676,11 @@ class TransitionIssueOperation:
             payload=payload,
         )
         receipt = self.client.receipt(call, response, key)
+        if response.request_defect:
+            return _mutation(
+                "defect", output, receipt,
+                failure("transitionIssue", FailureKind.LOCAL_DEFECT, "Jira request could not be built"),
+            )
         if not response.transport_error and 200 <= response.status < 300:
             return _mutation("transitioned", replace(output, status=chosen.destination_status), receipt)
         if response.status == 404:
@@ -689,6 +723,17 @@ class TransitionIssueOperation:
                 )
             )
         assert reread is not None
+        if not response.transport_error and response.status < 400:
+            return _mutation(
+                "invalidResponse",
+                output,
+                receipt,
+                failure(
+                    "transitionIssue",
+                    FailureKind.PROTOCOL,
+                    f"Jira returned unexpected HTTP {response.status} for the transition",
+                ),
+            )
         if 400 <= response.status < 500 and response.status not in (408, 409, 429):
             fields = rejected_fields(response.body)
             return _mutation(
@@ -737,11 +782,11 @@ def _readback_status(response: Exchange) -> str:
 
 def _matches_property(value: Any, expected: str) -> bool:
     if isinstance(value, str):
-        return value.casefold() == expected.casefold()
+        return _equal_fold(value, expected)
     return (
         isinstance(value, dict)
         and isinstance(value.get("value"), str)
-        and value["value"].casefold() == expected.casefold()
+        and _equal_fold(value["value"], expected)
     )
 
 
@@ -1027,6 +1072,17 @@ class _FencedWrite:
         dispatch = _WriteDispatch(self.client, call, credentials, cloud_id, path, payload)
         try:
             response = await fence.dispatch(dispatch.send)
+        except TimeoutError:
+            return await self._reconcile(
+                call,
+                credentials,
+                cloud_id,
+                requested,
+                marker,
+                "",
+                failure(self.operation, FailureKind.AVAILABILITY, f"Jira {self.subject} dispatch timed out"),
+                receipt,
+            )
         except (CheckpointError, InsufficientAttemptTimeError):
             return MutationAttempt.retry(
                 failure(

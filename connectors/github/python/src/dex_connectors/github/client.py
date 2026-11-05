@@ -16,6 +16,7 @@ from dex_connectors.sdk.providerhttp import (
     BodyTooLargeError,
     ProviderTransportError,
     new_provider_http_client,
+    parse_retry_after,
     read_bounded_body,
     send_traced,
 )
@@ -45,7 +46,7 @@ def _path_escape(value: str) -> str:
 
 
 def _query(values: dict[str, str]) -> str:
-    return urlencode(sorted(values.items()), quote_via=quote_plus).replace("~", "%7E")
+    return urlencode(sorted(values.items()), quote_via=quote_plus)
 
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -237,8 +238,8 @@ class Client:
         ):
             delay = 60.0
             retry_after = response.headers.get("Retry-After", "")
-            if retry_after.isdecimal() and int(retry_after) > 0:
-                delay = float(int(retry_after))
+            if retry_after.isascii() and retry_after.isdecimal() and int(retry_after) > 0:
+                delay = parse_retry_after(retry_after, self._now())
             elif response.headers.get("X-RateLimit-Remaining") == "0":
                 reset = response.headers.get("X-RateLimit-Reset", "")
                 if reset.isdecimal():

@@ -4,6 +4,7 @@
 
 import ipaddress
 import json
+import math
 import re
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -126,14 +127,20 @@ def _number(record: dict[str, object], name: str) -> int:
         return 0
     if type(value) not in (int, float):
         raise ValueError("invalid Calendly number")
-    return int(cast(float | int, value))
+    try:
+        floating = float(cast(float | int, value))
+        if not math.isfinite(floating):
+            raise ValueError
+        return int(floating)
+    except (OverflowError, ValueError):
+        raise ValueError("invalid Calendly number") from None
 
 
 def _integer(record: dict[str, object], name: str) -> int:
     value = record.get(name)
     if value is None:
         return 0
-    if type(value) is not int:
+    if type(value) is not int or not -(1 << 63) <= value < (1 << 63):
         raise ValueError("invalid Calendly integer")
     return value
 
@@ -164,6 +171,8 @@ def _timestamp(value: str, optional: bool = False) -> datetime:
         raise ValueError("invalid Calendly timestamp")
     year, month, day, hour, minute, second = map(int, match.groups()[:6])
     fraction = match.group(7) or ""
+    if len(fraction) > 6 and fraction[6:].strip("0"):
+        raise ValueError("Calendly timestamp cannot be represented exactly as datetime")
     zone = match.group(8)
     if minute > 59 or second > 59 or (zone != "Z" and int(zone[-2:]) > 59):
         raise ValueError("invalid Calendly timestamp")

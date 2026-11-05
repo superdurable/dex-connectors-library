@@ -29,6 +29,11 @@ def test_go_offset_and_comma_fraction_are_accepted() -> None:
     assert _instant("timeMin", "2026-02-24T09:00:00,5+99:59").microsecond == 500000
 
 
+def test_instant_rejects_unrepresentable_nanoseconds() -> None:
+    with pytest.raises(ValueError, match="timeMin"):
+        _instant("timeMin", "2026-02-24T09:00:00.123456789Z")
+
+
 def test_go_path_escape_and_unicode_mail_addresses() -> None:
     """Keep provider IDs escaped and accept Go-supported bare addresses."""
     assert path_escape("a/b!?'(),;~$&+=:@") == "a%2Fb%21%3F%27%28%29%2C%3B~$&+=:@"

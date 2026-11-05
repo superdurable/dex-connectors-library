@@ -52,7 +52,7 @@ def path_escape(value: str) -> str:
 
 def query_escape(value: str) -> str:
     """Escape a query component like Go url.QueryEscape, including tilde."""
-    return quote_plus(value, safe="").replace("~", "%7E")
+    return quote_plus(value, safe="")
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -72,6 +72,7 @@ class Exchange:
     reflects_secret: bool = False
     transport_error: bool = False
     not_sent: bool = False
+    request_defect: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +185,10 @@ class Client:
         exchange = await self.request(
             call, credentials, "GET", "/oauth/token/accessible-resources", gateway=True
         )
+        if exchange.request_defect:
+            raise SessionError(
+                failure(operation, FailureKind.LOCAL_DEFECT, "Jira request could not be built")
+            )
         if (
             exchange.transport_error
             or exchange.body_failed
@@ -291,11 +296,14 @@ class Client:
             url += "?" + "&".join(
                 f"{query_escape(key)}={query_escape(value)}" for key, value in sorted(query.items())
             )
-        body = (
-            json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
-            if payload is not None
-            else None
-        )
+        try:
+            body = (
+                json.dumps(payload, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+                if payload is not None
+                else None
+            )
+        except (TypeError, ValueError):
+            return Exchange(request_defect=True)
         for index in range(2):
             result = await self._send_once(credentials, method, url, body)
             if (
@@ -322,6 +330,9 @@ class Client:
             headers["Content-Type"] = "application/json"
         try:
             request = self.http_client.build_request(method, url, headers=headers, content=body, timeout=20)
+        except (httpx.HTTPError, ValueError):
+            return Exchange(request_defect=True)
+        try:
             response, _ = await send_traced(self.http_client, request)
             limit = (
                 self.config.max_response_bytes if 200 <= response.status_code < 300 else MAX_ERROR_BODY_BYTES
@@ -358,6 +369,10 @@ class Client:
     def classify_read(self, operation: str, subject: str, response: Exchange) -> Classification:
         """Classify a Jira read before its operation chooses a branch."""
         status = response.status
+        if response.request_defect:
+            return Classification(
+                "defect", failure(operation, FailureKind.LOCAL_DEFECT, "Jira request could not be built")
+            )
         if response.transport_error:
             return Classification(
                 "retry",
@@ -424,6 +439,10 @@ class Client:
 
     def classify_write(self, operation: str, subject: str, response: Exchange) -> Classification:
         """Classify a non-idempotent write before read-back."""
+        if response.request_defect:
+            return Classification(
+                "defect", failure(operation, FailureKind.LOCAL_DEFECT, "Jira request could not be built")
+            )
         if response.transport_error:
             if response.not_sent:
                 return Classification(

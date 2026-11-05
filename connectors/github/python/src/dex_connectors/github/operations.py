@@ -8,7 +8,7 @@ import unicodedata
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit, urlunsplit
 
 from dex_connectors.sdk import Call, FailureKind, QueryAttempt
 
@@ -86,7 +86,10 @@ def _time(value: Any, required: bool = False) -> datetime | None:
     if match is None:
         raise ValueError("GitHub response time is invalid")
     year, month, day, hour, minute, second = (int(match.group(index)) for index in range(1, 7))
-    fraction = (match.group(7) or "")[:6].ljust(6, "0")
+    raw_fraction = match.group(7) or ""
+    if len(raw_fraction) > 6 and raw_fraction[6:].strip("0"):
+        raise ValueError("GitHub response time cannot be represented exactly as datetime")
+    fraction = raw_fraction[:6].ljust(6, "0")
     zone = match.group(8)
     try:
         parsed = datetime(year, month, day, hour, minute, second, int(fraction), tzinfo=UTC)
@@ -103,8 +106,21 @@ def _time(value: Any, required: bool = False) -> datetime | None:
 
 def _url(value: Any) -> str:
     candidate = _string(value, 2048)
-    parsed = urlsplit(candidate)
-    return candidate if parsed.scheme in ("http", "https") and parsed.hostname else ""
+    if re.search(r"%(?![0-9A-Fa-f]{2})", candidate):
+        return ""
+    try:
+        parsed = urlsplit(candidate)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return ""
+    except ValueError:
+        return ""
+    path = quote(parsed.path, safe="/!$&'()*+,;=:@[]-._~%")
+    fragment = quote(parsed.fragment, safe="!$&()*+,;=:@/?-._~%")
+    result = urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, fragment))
+    if not parsed.query and candidate.split("#", 1)[0].endswith("?"):
+        position = result.find("#")
+        result = result + "?" if position < 0 else result[:position] + "?" + result[position:]
+    return result
 
 
 def _truncate(value: Any, maximum: int) -> tuple[str, bool]:

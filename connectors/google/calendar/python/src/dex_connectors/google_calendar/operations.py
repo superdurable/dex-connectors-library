@@ -107,7 +107,10 @@ def _instant(name: str, value: str) -> datetime:
         hour, minute, second = map(int, (match[2], match[3], match[4]))
         if hour > 23 or minute > 59 or second > 59:
             raise ValueError
-        fraction = int((match[5] or "")[:6].ljust(6, "0"))
+        raw_fraction = match[5] or ""
+        if len(raw_fraction) > 6 and raw_fraction[6:].strip("0"):
+            raise ValueError
+        fraction = int(raw_fraction[:6].ljust(6, "0"))
         offset = match[6]
         delta = (
             0
@@ -705,14 +708,23 @@ class CreateEventOperation:
             if mapped is not None:
                 return mapped
             assert read.value is not None
+            assert read.receipt is not None
+            read_receipt = Receipt(
+                read.receipt.call_id,
+                read.receipt.provider,
+                read.receipt.observed_at,
+                read.receipt.idempotency_key,
+                event_id,
+                read.receipt.provider_request_id,
+            )
             if read.value.status == "cancelled":
                 return MutationAttempt.branch_result(
                     "conflict",
                     CreateEventOutput(read.value),
-                    receipt,
+                    read_receipt,
                     failure(FailureKind.CONFLICT, operation, "event ID belongs to a deleted event"),
                 )
-            return MutationAttempt.branch_result("created", CreateEventOutput(read.value, True), receipt)
+            return MutationAttempt.branch_result("created", CreateEventOutput(read.value, True), read_receipt)
         if not 200 <= response.status < 300:
             return _status_attempt(response, operation, True, empty, receipt)
         try:

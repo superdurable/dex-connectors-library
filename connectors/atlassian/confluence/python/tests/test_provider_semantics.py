@@ -8,7 +8,7 @@ from dex_connectors.sdk import ConnectionRef, SecretString, StaticCredentialProv
 
 from dex_connectors.atlassian_confluence import Client, Config, Credentials, PageSearchFilter
 from dex_connectors.atlassian_confluence.client import Exchange, path_escape
-from dex_connectors.atlassian_confluence.operations import _build_cql, _page
+from dex_connectors.atlassian_confluence.operations import _build_cql, _page, _page_summary
 
 _CONNECTION = ConnectionRef("atlassian", "confluence-pages")
 _CREDENTIALS = Credentials(
@@ -44,6 +44,19 @@ def test_provider_wrong_typed_fields_fail_instead_of_coercing() -> None:
     }
     with pytest.raises(ValueError):
         _page(page, "storage", "markdown", 200)
+
+
+def test_search_keeps_page_with_unparseable_version_time() -> None:
+    summary = _page_summary(
+        {
+            "type": "page", "id": "600002", "title": "Policy", "status": "current",
+            "space": {"id": 98306, "key": "OPS"},
+            "version": {"number": 1, "when": "not-a-time"},
+            "_links": {"webui": "/spaces/OPS/pages/600002"},
+        },
+        "https://ops.atlassian.net/wiki",
+    )
+    assert summary is not None and summary.last_modified_at.year == 1
 
 
 @pytest.mark.asyncio

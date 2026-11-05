@@ -29,6 +29,7 @@ from ._generated.definitions import (
     SEARCH_PAGES_DEFINITION,
     UPDATE_PAGE_DEFINITION,
 )
+from ._generated.timestamps import parse_go_datetime
 from .client import (
     Classification,
     Client,
@@ -79,7 +80,7 @@ def _string(value: dict[str, Any], key: str) -> str:
 
 def _number(value: dict[str, Any], key: str) -> int:
     field = value.get(key, 0)
-    if type(field) is not int:
+    if type(field) is not int or not -(1 << 63) <= field < (1 << 63):
         raise ValueError(f"{key} has an invalid type")
     return field
 
@@ -87,7 +88,14 @@ def _number(value: dict[str, Any], key: str) -> int:
 def _date(value: str) -> datetime:
     if not value:
         return _EMPTY_TIME
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parse_go_datetime(value, "Confluence timestamp")
+
+
+def _safe_date(value: str) -> datetime:
+    try:
+        return _date(value)
+    except ValueError:
+        return _EMPTY_TIME
 
 
 def _id(value: str, name: str) -> str:
@@ -232,7 +240,7 @@ def _page_summary(resource: object, base: str) -> PageSummary | None:
         space_id=space_id if _ID.fullmatch(space_id) else "",
         space_key=_string(space, "key"),
         version_number=_number(version, "number"),
-        last_modified_at=_date(_string(version, "when")),
+        last_modified_at=_safe_date(_string(version, "when")),
         web_url=_web_url(base, _string(links, "webui")),
     )
 
@@ -475,7 +483,7 @@ def _comment_output(
     return replace(
         requested,
         comment_id=_string(resource, "id"),
-        created_at=_date(_string(_object(resource, "version"), "createdAt")),
+        created_at=_safe_date(_string(_object(resource, "version"), "createdAt")),
         is_confirmed_by_read_back=confirmed,
     )
 
@@ -525,7 +533,7 @@ async def _clear_heartbeat(call: Call) -> None:
 
 async def _find_page(
     client: Client, session: Session, operation: str, space_id: str, title: str
-) -> tuple[Classification, Exchange, dict[str, Any] | None]:
+) -> tuple[Classification, Exchange, dict[str, Any] | None, str]:
     response = await client.exchange(
         session,
         "GET",
@@ -535,9 +543,11 @@ async def _find_page(
     )
     classified = client.classify_read(operation, "page lookup", response)
     if classified.outcome != "accepted":
-        return classified, response, None
+        return classified, response, None, ""
     try:
-        resources = decode_object(response).get("results")
+        listing = decode_object(response)
+        resources = listing.get("results")
+        base = _string(_object(listing, "_links"), "base")
         if not isinstance(resources, list) or len(resources) > 5:
             raise ValueError("invalid page list")
         for resource in resources:
@@ -545,12 +555,12 @@ async def _find_page(
                 raise ValueError("invalid page")
             _valid_page(resource)
             if _string(resource, "title") == title and _string(resource, "spaceId") == space_id:
-                return classified, response, resource
+                return classified, response, resource, base
     except (ValueError, TypeError):
         classified = Classification(
             "invalid", failure(operation, FailureKind.PROTOCOL, "Confluence returned an invalid page list")
         )
-    return classified, response, None
+    return classified, response, None, ""
 
 
 def _reconcile_creation(
@@ -559,9 +569,9 @@ def _reconcile_creation(
     requested: CreatePageOutput,
     comparison: str,
     first_send_at: datetime,
-    lookup: tuple[Classification, Exchange, dict[str, Any] | None],
+    lookup: tuple[Classification, Exchange, dict[str, Any] | None, str],
 ) -> MutationAttempt[CreatePageOutput] | None:
-    classified, response, page = lookup
+    classified, response, page, base = lookup
     receipt = client.receipt(session, response)
     if classified.outcome == "notFound":
         return MutationAttempt.branch_result("notFound", requested, receipt, classified.failure)
@@ -579,7 +589,7 @@ def _reconcile_creation(
         )
     if page is None:
         return None
-    output = _create_output(requested, page)
+    output = _create_output(requested, page, base=base)
     receipt = client.receipt(session, response, output.page_id)
     try:
         created_at = _date(_string(page, "createdAt"))
@@ -990,9 +1000,12 @@ class AddCommentOperation:
                 for item in results:
                     if not isinstance(item, dict):
                         continue
-                    comment_id = _string(item, "id")
-                    body = _string(_object(_object(item, "body"), "storage"), "value")
-                    created_at = _date(_string(_object(item, "version"), "createdAt"))
+                    try:
+                        comment_id = _string(item, "id")
+                        body = _string(_object(_object(item, "body"), "storage"), "value")
+                        created_at = _date(_string(_object(item, "version"), "createdAt"))
+                    except (ValueError, TypeError):
+                        continue
                     if (
                         _ID.fullmatch(comment_id)
                         and created_at >= first_send_at - timedelta(minutes=1)

@@ -218,7 +218,9 @@ class Client:
                         return Exchange(response.status_code, response.headers, error="tooLarge")
                     contents = b""
                 except ProviderTransportError:
-                    return Exchange(response.status_code, response.headers, error="transport")
+                    if 200 <= response.status_code < 300:
+                        return Exchange(response.status_code, response.headers, error="transport")
+                    contents = b""
                 exchange = Exchange(response.status_code, response.headers, contents)
             finally:
                 await response.aclose()

@@ -34,6 +34,11 @@ def test_invalid_calendar_timestamp(value: str) -> None:
         _timestamp(value)
 
 
+def test_timestamp_rejects_unrepresentable_nanoseconds() -> None:
+    with pytest.raises(ValueError, match="exactly"):
+        _timestamp("2026-11-01T12:00:00.123456789Z")
+
+
 def test_go_compatible_wide_offset_and_comma_fraction() -> None:
     """Parse the legal RFC3339 forms Go accepts on provider responses."""
     assert _timestamp("2026-11-01T12:00:00,5+99:59") == datetime(2026, 10, 28, 8, 1, 0, 500000, UTC)
