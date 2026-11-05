@@ -11,6 +11,12 @@ spec:
   codegen:
     go:
       package: quickbooks
+  languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-intuit-quickbooks"
+      operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
+      triggers: []
   configuration:
     fields:
       - name: environment
