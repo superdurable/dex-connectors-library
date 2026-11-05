@@ -68,7 +68,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "google-oauth refresh without token type",
@@ -101,7 +101,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "google-oauth refresh without expires_in",
@@ -134,7 +134,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "workspace-domain-delegation jwtBearer",
@@ -202,7 +202,7 @@
     "updates": {
       "access_token": "manifest-access-token-2"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -240,7 +240,7 @@
     "updates": {
       "access_token": "manifest-access-token-2"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -279,7 +279,7 @@
     "updates": {
       "access_token": "manifest-access-token-2"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
@@ -317,7 +317,7 @@
     "updates": {
       "access_token": "manifest-access-token-2"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "keyCredential": "service_account_key",
     "privateKeyMember": "private_key",
     "keyMembers": {
