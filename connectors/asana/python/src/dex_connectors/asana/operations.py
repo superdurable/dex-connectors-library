@@ -3,10 +3,11 @@
 """Asana Query and Mutation invocation with Go-compatible provider outcomes."""
 
 import json
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, timedelta
-from typing import Any
+from typing import Any, cast
 
+import dex
 from dex_connectors.sdk import (
     Call,
     CallID,
@@ -25,6 +26,8 @@ from dex_connectors.sdk.singledispatch import (
     DispatchNotAllowedError,
     Fence,
     InsufficientAttemptTimeError,
+    Marker,
+    State,
 )
 
 from ._generated.definitions import (
@@ -64,6 +67,63 @@ from .task import (
     plain_text,
     task_name,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _AsanaCheckpoint:
+    call_id: CallID = field(metadata={"dex_json_name": "callId"})
+    operation: str
+    attempt: int
+    object_id: str = field(default="", metadata={"dex_json_name": "objectId", "dex_json_omit_default": True})
+    can_resend: bool = field(
+        default=False, metadata={"dex_json_name": "canResend", "dex_json_omit_default": True}
+    )
+
+
+class _AsanaHeartbeatContext:
+    def __init__(self, context: dex.AsyncContext, operation: str) -> None:
+        self._context = context
+        self._operation = operation
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._context, name)
+
+    def has_last_heartbeat_value(self) -> bool:
+        return self._context.has_last_heartbeat_value()
+
+    def get_last_heartbeat_value(self, _value_type: type[Marker]) -> Marker | None:
+        checkpoint = self._context.get_last_heartbeat_value(_AsanaCheckpoint)
+        if checkpoint is None:
+            return None
+        if checkpoint.operation != self._operation:
+            raise ValueError("Asana checkpoint belongs to another operation")
+        return Marker(
+            checkpoint.call_id, checkpoint.attempt,
+            State.CAN_RESEND if checkpoint.can_resend else State.CLAIMED,
+            checkpoint.object_id,
+        )
+
+    async def heartbeat(self, marker: Marker) -> None:
+        await self._context.heartbeat(_AsanaCheckpoint(
+            marker.call_id, self._operation, marker.attempt, marker.provider_id,
+            marker.state in (State.CAN_RESEND, State.NOT_SENT),
+        ))
+
+
+def _asana_fence(call: Call, operation: str) -> Fence:
+    if call.context is None:
+        raise ValueError("Asana dispatch requires a Dex context")
+    context = _AsanaHeartbeatContext(call.context, operation)
+    return Fence(replace(call, context=cast(dex.AsyncContext, context)), timedelta(seconds=30))
+
+
+async def _record_asana_readback(call: Call, operation: str, object_id: str) -> None:
+    if call.context is None:
+        raise ValueError("Asana read-back requires a Dex context")
+    try:
+        await call.context.heartbeat(_AsanaCheckpoint(call.id, operation, call.context.attempt, object_id))
+    except Exception:
+        pass  # A lost read-back checkpoint never authorizes another POST.
 
 
 def _read_outcome(
@@ -485,7 +545,7 @@ class CreateTaskOperation:
             return MutationAttempt.branch_result(
                 "defect", requested, Receipt(), failure("createTask", FailureKind.VALIDATION, str(error))
             )
-        fence = Fence(call, timedelta(seconds=30))
+        fence = _asana_fence(call, "createTask")
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
             return MutationAttempt.uncertain(
@@ -528,6 +588,7 @@ class CreateTaskOperation:
                 else MutationAttempt.branch_result("defect", requested, Receipt(), authentication_problem)
             )
         if task_id:
+            await _record_asana_readback(call, "createTask", task_id)
             return await self._read_back(call, token, requested, task_id, fence)
         try:
             exchange = await fence.dispatch(
@@ -780,7 +841,7 @@ class AddCommentOperation:
             return MutationAttempt.branch_result(
                 "defect", requested, Receipt(), failure("addComment", FailureKind.VALIDATION, str(error))
             )
-        fence = Fence(call, timedelta(seconds=30))
+        fence = _asana_fence(call, "addComment")
         decision = await fence.decide()
         if decision.kind == DecisionKind.FAIL_CLOSED:
             return MutationAttempt.uncertain(
@@ -823,6 +884,7 @@ class AddCommentOperation:
                 else MutationAttempt.branch_result("defect", requested, Receipt(), authentication_problem)
             )
         if story_id:
+            await _record_asana_readback(call, "addComment", story_id)
             return await self._read_back(call, token, requested, story_id, fence)
         try:
             exchange = await fence.dispatch(
