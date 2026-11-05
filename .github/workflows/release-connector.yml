@@ -812,7 +812,6 @@ jobs:
           npm run build --prefix site
           node site/scripts/render-card.mjs \
             --catalog dist/pages/catalog.yaml \
-            --repository . \
             --output dist/pages/card.png
           cp -a site/dist/. dist/pages/
       - uses: actions/configure-pages@v5

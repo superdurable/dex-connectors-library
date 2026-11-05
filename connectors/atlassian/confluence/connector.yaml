@@ -81,6 +81,7 @@ spec:
         missingExpiry: reject
         storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma
+        acceptedScopeSets: [[search:confluence, read:page:confluence, write:page:confluence, read:space:confluence, read:comment:confluence, write:comment:confluence]]
         acceptsMissingTokenType: true
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   studio:
