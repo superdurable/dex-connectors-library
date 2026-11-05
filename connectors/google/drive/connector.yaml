@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: google
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-google-drive'
+      operations: [searchFiles, getFile, readFileText, uploadFile]
+      triggers: []
   codegen:
     go:
       package: drive
@@ -96,6 +102,7 @@ spec:
             scopeSeparators: whitespaceAndComma
             missingExpiry: reject
             storedMissingExpiry: refresh
+            requiredScopes: [https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file]
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
       - id: workspace-domain-delegation
         displayName: Workspace domain-wide delegation

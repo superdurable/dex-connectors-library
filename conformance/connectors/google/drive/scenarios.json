@@ -1,0 +1,3253 @@
+{
+  "connector": "google-drive",
+  "scenarios": [
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "body": "{\"files\": [{\"id\": \"file_1\", \"name\": \"Plan.txt\", \"mimeType\": \"text/plain\", \"size\": \"5\", \"createdTime\": \"2026-03-01T00:00:00Z\", \"modifiedTime\": \"2026-03-02T00:00:00Z\", \"parents\": [\"folder_1\"], \"webViewLink\": \"https://drive.google.com/file/d/file_1/view\"}], \"nextPageToken\": \"later\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next"
+            ],
+            "q": [
+              "name contains 'Plan' and mimeType = 'text/plain' and 'folder_1' in parents and trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "id": "file_1",
+              "mimeType": "text/plain",
+              "modifiedTime": "2026-03-02T00:00:00Z",
+              "name": "Plan.txt",
+              "parents": [
+                "folder_1"
+              ],
+              "webViewLink": "https://drive.google.com/file/d/file_1/view"
+            }
+          ],
+          "nextPageToken": "later"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan",
+        "nameMatch": "contains",
+        "pageSize": 2,
+        "pageToken": "next",
+        "parentFolderId": "folder_1"
+      },
+      "name": "searchFiles-found-all-fields",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "25"
+            ],
+            "q": [
+              "trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchFiles-not-found",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"INVALID_ARGUMENT\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "25"
+            ],
+            "q": [
+              "trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchFiles-provider-rejected",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "body": "{\"files\":[{\"id\":77}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "25"
+            ],
+            "q": [
+              "trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchFiles-invalid-response",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "files": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101
+      },
+      "name": "searchFiles-defect",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "25"
+            ],
+            "q": [
+              "trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchFiles-retry-429",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "25"
+            ],
+            "q": [
+              "trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchFiles-retry-503",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "25"
+            ],
+            "q": [
+              "trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchFiles-transport",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"file_1\", \"name\": \"Plan.txt\", \"mimeType\": \"text/plain\", \"size\": \"5\", \"createdTime\": \"2026-03-01T00:00:00Z\", \"modifiedTime\": \"2026-03-02T00:00:00Z\", \"parents\": [\"folder_1\"], \"webViewLink\": \"https://drive.google.com/file/d/file_1/view\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdTime": "2026-03-01T00:00:00Z",
+          "id": "file_1",
+          "isTrashed": false,
+          "mimeType": "text/plain",
+          "modifiedTime": "2026-03-02T00:00:00Z",
+          "name": "Plan.txt",
+          "parents": [
+            "folder_1"
+          ],
+          "sizeBytes": 5,
+          "webViewLink": "https://drive.google.com/file/d/file_1/view"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "getFile-found",
+      "operation": "getFile"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "isTrashed": false,
+          "mimeType": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "getFile-not-found",
+      "operation": "getFile"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "isTrashed": false,
+          "mimeType": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "getFile-provider-rejected",
+      "operation": "getFile"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [
+        {
+          "body": "{\"id\":77}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "isTrashed": false,
+          "mimeType": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "getFile-invalid-response",
+      "operation": "getFile"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isTrashed": false,
+          "mimeType": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "bad/id"
+      },
+      "name": "getFile-defect",
+      "operation": "getFile"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "getFile-retry-429",
+      "operation": "getFile"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "getFile-retry-503",
+      "operation": "getFile"
+    },
+    {
+      "callId": "8f3aa3b8-867b-50be-b3e7-86511a3aea02",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "getFile-transport",
+      "operation": "getFile"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"file_1\", \"name\": \"Plan.txt\", \"mimeType\": \"text/plain\", \"size\": \"5\", \"createdTime\": \"2026-03-01T00:00:00Z\", \"modifiedTime\": \"2026-03-02T00:00:00Z\", \"parents\": [\"folder_1\"], \"webViewLink\": \"https://drive.google.com/file/d/file_1/view\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "hello",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "alt": [
+              "media"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "byteCount": 5,
+          "fileId": "file_1",
+          "mimeType": "text/plain",
+          "name": "Plan.txt",
+          "text": "hello",
+          "textMimeType": "text/plain"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-read",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "byteCount": 0,
+          "fileId": "",
+          "mimeType": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-not-found",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file_1\",\"name\":\"Archive\",\"mimeType\":\"application/pdf\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsupportedContent",
+        "failureKind": "VALIDATION",
+        "output": {
+          "byteCount": 0,
+          "fileId": "file_1",
+          "mimeType": "application/pdf",
+          "name": "Archive"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-unsupported",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file_1\",\"name\":\"Huge\",\"mimeType\":\"text/plain\",\"size\":\"9999999\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tooLarge",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "byteCount": 0,
+          "fileId": "file_1",
+          "mimeType": "text/plain",
+          "name": "Huge"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-too-large",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"file_1\", \"name\": \"Plan.txt\", \"mimeType\": \"text/plain\", \"size\": \"5\", \"createdTime\": \"2026-03-01T00:00:00Z\", \"modifiedTime\": \"2026-03-02T00:00:00Z\", \"parents\": [\"folder_1\"], \"webViewLink\": \"https://drive.google.com/file/d/file_1/view\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "alt": [
+              "media"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "byteCount": 0,
+          "fileId": "file_1",
+          "mimeType": "text/plain",
+          "name": "Plan.txt"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-provider-rejected",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\":77}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "byteCount": 0,
+          "fileId": "",
+          "mimeType": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-invalid-response",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "byteCount": 0,
+          "fileId": "",
+          "mimeType": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "bad/id"
+      },
+      "name": "readFileText-defect",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-retry-429",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-retry-503",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-transport",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"file_1\", \"name\": \"Plan.txt\", \"mimeType\": \"text/plain\", \"size\": \"5\", \"createdTime\": \"2026-03-01T00:00:00Z\", \"modifiedTime\": \"2026-03-02T00:00:00Z\", \"parents\": [\"folder_1\"], \"webViewLink\": \"https://drive.google.com/file/d/file_1/view\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCIsInBhcmVudHMiOlsiZm9sZGVyXzEiXX0=",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "aGVsbG8=",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uploaded",
+        "failureKind": "",
+        "output": {
+          "file": {
+            "createdTime": "2026-03-01T00:00:00Z",
+            "id": "file_1",
+            "isTrashed": false,
+            "mimeType": "text/plain",
+            "modifiedTime": "2026-03-02T00:00:00Z",
+            "name": "Plan.txt",
+            "parents": [
+              "folder_1"
+            ],
+            "sizeBytes": 5,
+            "webViewLink": "https://drive.google.com/file/d/file_1/view"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt",
+        "parentFolderId": "folder_1",
+        "textContent": "hello"
+      },
+      "name": "uploadFile-uploaded",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"image_1\",\"name\":\"image.png\",\"mimeType\":\"image/png\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoiaW1hZ2UvcG5nIiwibmFtZSI6ImltYWdlLnBuZyJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "AAEC",
+                "headers": {
+                  "Content-Type": [
+                    "image/png"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uploaded",
+        "failureKind": "",
+        "output": {
+          "file": {
+            "id": "image_1",
+            "isTrashed": false,
+            "mimeType": "image/png",
+            "name": "image.png"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "byteContent": "AAEC",
+        "mimeType": "image/png",
+        "name": "image.png"
+      },
+      "name": "uploadFile-bytes",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\": [{\"id\": \"file_1\", \"name\": \"Plan.txt\", \"mimeType\": \"text/plain\", \"size\": \"5\", \"createdTime\": \"2026-03-01T00:00:00Z\", \"modifiedTime\": \"2026-03-02T00:00:00Z\", \"parents\": [\"folder_1\"], \"webViewLink\": \"https://drive.google.com/file/d/file_1/view\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uploaded",
+        "failureKind": "",
+        "output": {
+          "file": {
+            "createdTime": "2026-03-01T00:00:00Z",
+            "id": "file_1",
+            "isTrashed": false,
+            "mimeType": "text/plain",
+            "modifiedTime": "2026-03-02T00:00:00Z",
+            "name": "Plan.txt",
+            "parents": [
+              "folder_1"
+            ],
+            "sizeBytes": 5,
+            "webViewLink": "https://drive.google.com/file/d/file_1/view"
+          },
+          "isFromEarlierAttempt": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-earlier",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "file": {
+            "id": "",
+            "isTrashed": false,
+            "mimeType": "",
+            "name": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-provider-rejected",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[{\"id\":77}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "file": {
+            "id": "",
+            "isTrashed": false,
+            "mimeType": "",
+            "name": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-invalid-response",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "file": {
+            "id": "",
+            "isTrashed": false,
+            "mimeType": "",
+            "name": ""
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-uncertain",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "file": {
+            "id": "",
+            "isTrashed": false,
+            "mimeType": "",
+            "name": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": ""
+      },
+      "name": "uploadFile-defect",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-retry-429",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-retry-503",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-transport",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file_1\",\"name\":\"Plan.txt\",\"mimeType\":\"text/plain\",\"size\":\"5\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "alt": [
+              "media"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-content-retry-429",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file_1\",\"name\":\"Plan.txt\",\"mimeType\":\"text/plain\",\"size\":\"5\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "alt": [
+              "media"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-content-retry-503",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "23b2414c-e754-5797-9faa-b93d5e47441f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file_1\",\"name\":\"Plan.txt\",\"mimeType\":\"text/plain\",\"size\":\"5\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "fields": [
+              "id,name,mimeType,size"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files/file_1",
+          "query": {
+            "alt": [
+              "media"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "file_1"
+      },
+      "name": "readFileText-content-transport",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-post-retry-429",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-post-retry-503",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-post-transport-before-send",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "file": {
+            "id": "",
+            "isTrashed": false,
+            "mimeType": "",
+            "name": ""
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-post-transport-after-send",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-readback-retry-429",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-readback-retry-503",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-readback-transport",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "0f9ad880-3914-5804-bab5-af904d2df14b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "nextPageToken,incompleteSearch,files(id,name,mimeType,parents,modifiedTime,webViewLink)"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "orderBy": [
+              "modifiedTime desc,name"
+            ],
+            "pageSize": [
+              "25"
+            ],
+            "q": [
+              "trashed = false"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "searchFiles-credential-rejected",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "exchanges": [
+        {
+          "body": "{\"files\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drive/v3/files",
+          "query": {
+            "corpora": [
+              "allDrives"
+            ],
+            "fields": [
+              "incompleteSearch,files(id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType))"
+            ],
+            "includeItemsFromAllDrives": [
+              "true"
+            ],
+            "pageSize": [
+              "10"
+            ],
+            "q": [
+              "appProperties has { key='dexIdempotencyKey' and value='4f07954e-1608-577e-bfa7-8e1ee9dc7b02' }"
+            ],
+            "spaces": [
+              "drive"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/upload/drive/v3/files",
+          "query": {
+            "fields": [
+              "id,name,mimeType,description,parents,driveId,createdTime,modifiedTime,size,md5Checksum,version,webViewLink,trashed,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shortcutDetails(targetId,targetMimeType)"
+            ],
+            "supportsAllDrives": [
+              "true"
+            ],
+            "uploadType": [
+              "multipart"
+            ]
+          },
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiNGYwNzk1NGUtMTYwOC01NzdlLWJmYTctOGUxZWU5ZGM3YjAyIn0sIm1pbWVUeXBlIjoidGV4dC9wbGFpbiIsIm5hbWUiOiJQbGFuLnR4dCJ9",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer drive-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "multipart/related"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "file": {
+            "id": "",
+            "isTrashed": false,
+            "mimeType": "",
+            "name": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f07954e-1608-577e-bfa7-8e1ee9dc7b02",
+      "input": {
+        "mimeType": "text/plain",
+        "name": "Plan.txt"
+      },
+      "name": "uploadFile-credential-rejected",
+      "operation": "uploadFile"
+    }
+  ],
+  "schemaVersion": 1
+}
