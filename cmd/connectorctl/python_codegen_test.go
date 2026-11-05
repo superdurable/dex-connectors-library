@@ -875,3 +875,34 @@ func TestPythonPublishedModelNamesPreventExternalNameCollision(t *testing.T) {
 		t.Fatalf("published Python model name was renamed: %v", err)
 	}
 }
+
+func TestPythonGeneratedModelCommentsDoNotEndInWhitespace(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{
+			Name:    "SearchArticlesInput",
+			Comment: "First line\n\nSecond line",
+			Fields: []gomodel.Field{{
+				Name: "query", Type: gomodel.Type{Kind: gomodel.String},
+				Comment: "Field first line\n\nField second line",
+			}},
+		}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := generated["models.py"]
+	if !strings.Contains(models, "# First line\n#\n# Second line") || !strings.Contains(models, "    # Field first line\n    #\n    # Field second line") {
+		t.Fatalf("blank model comment lines were not preserved without trailing whitespace:\n%s", models)
+	}
+	for _, line := range strings.Split(models, "\n") {
+		if strings.TrimRight(line, " \t") != line {
+			t.Fatalf("generated Python model comment ends in whitespace: %q", line)
+		}
+	}
+}
