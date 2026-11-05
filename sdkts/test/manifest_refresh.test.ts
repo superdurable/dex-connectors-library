@@ -597,3 +597,63 @@ describe('manifest credential refresh', () => {
     }
   });
 });
+
+describe('Go-specific manifest refresh declarations', () => {
+  it('checks scope arrays, Graph prefixes, URL origins, and capped expiry', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = (method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>;
+    refresh.requiredScopes = ['files.read'];
+    refresh.responseScopeField = 'scopesArray';
+    refresh.scopeResourcePrefix = 'https://graph.microsoft.com/';
+    refresh.caseInsensitiveScopes = true;
+    refresh.scopeResourcePrefixCaseInsensitive = true;
+    refresh.expiryCap = '1h';
+    refresh.responseURLValidation = { credential: 'instance_url', allowedHosts: ['example.test'], requireResponse: true, refreshWhenInvalid: true };
+    let body: Record<string, unknown> = { access_token: 'next', token_type: 'Bearer', expires_in: 7200,
+      scopes: ['HTTPS://GRAPH.MICROSOFT.COM/FILES.READ'], instance_url: 'https://example.test/' };
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json(body) });
+    expect(driver.refreshRequired({ ...state(), expiresAt: new Date(Date.now() + 3600_000) })).toBe(true);
+    const result = await driver.refresh(state(), new AbortController().signal);
+    expect(result.credentials.instanceUrl).toBe('https://example.test');
+    expect(result.expiresAt.getTime()).toBeLessThan(Date.now() + 3601_000);
+    body = { ...body, scopes: ['other'] };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    body = { ...body, scopes: [] };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    body = { ...body, scopes: ['files.read'], instance_url: 'https://foreign.test' };
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(RetryError);
+  });
+
+  it('uses JWT exp and keeps undated tokens without a refresh grant', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = (method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>;
+    refresh.missingExpiry = 'keep';
+    refresh.storedMissingExpiry = 'refreshIfRefreshTokenPresent';
+    refresh.accessTokenJWTExpiryFallback = '1h';
+    const exp = Math.floor(Date.now() / 1000) + 7200;
+    const jwt = `e30.${Buffer.from(JSON.stringify({ exp })).toString('base64url')}.signature`;
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
+      fetch: async () => Response.json({ access_token: jwt, token_type: 'Bearer', scope: 'files.read' }) });
+    expect(driver.refreshRequired({ credentials: { ...credentials(), accessToken: new SecretString(jwt) }, now: new Date() })).toBe(false);
+    expect(driver.refreshRequired({ credentials: { ...credentials(), accessToken: new SecretString('bad') }, now: new Date() })).toBe(true);
+    expect(driver.refreshRequired({ credentials: { ...credentials(), refreshToken: new SecretString('') }, now: new Date() })).toBe(false);
+    const result = await driver.refresh(state(), new AbortController().signal);
+    expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now() + 7100_000);
+  });
+});
+
+describe('manifest token endpoint address policy', () => {
+  it('refuses link-local HTTP endpoints before sending a token', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const oauth = method.oauth2 as Record<string, unknown>;
+    oauth.tokenEndpoint = { fromSetting: 'tokenEndpoint' };
+    oauth.tokenEndpointNetworkPolicy = 'privateNetworkHTTP';
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields, settings: { tokenEndpoint: 'http://169.254.169.254/token' } });
+    await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(RetryError);
+  });
+});
