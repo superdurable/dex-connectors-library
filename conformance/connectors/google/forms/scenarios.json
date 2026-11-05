@@ -1,0 +1,1042 @@
+{
+  "connector": "google-forms",
+  "scenarios": [
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{\"formId\": \"1FAIpQLintake\", \"info\": {\"title\": \"Vendor intake\", \"documentTitle\": \"Vendor intake responses\"}, \"items\": [{\"itemId\": \"it_name\", \"title\": \"Company name\", \"questionItem\": {\"question\": {\"questionId\": \"q_name\", \"required\": true, \"textQuestion\": {}}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "documentTitle": "Vendor intake responses",
+          "formId": "1FAIpQLintake",
+          "items": [
+            {
+              "itemId": "it_name",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": true,
+                  "itemId": "it_name",
+                  "questionId": "q_name",
+                  "title": "Company name",
+                  "type": "shortText"
+                }
+              ],
+              "title": "Company name"
+            }
+          ],
+          "title": "Vendor intake"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-success",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-notFound",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-providerRejected",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-invalidResponse",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-rateLimit",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-outage",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-transport",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad/id"
+      },
+      "name": "getForm-defect",
+      "operation": "getForm"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{\"responses\": [{\"responseId\": \"r_acme\", \"formId\": \"1FAIpQLintake\", \"createTime\": \"2026-09-30T08:00:00Z\", \"lastSubmittedTime\": \"2026-09-30T09:00:00Z\", \"respondentEmail\": \"buyer@example.com\", \"answers\": {\"q_name\": {\"questionId\": \"q_name\", \"textAnswers\": {\"answers\": [{\"value\": \"Acme GmbH\"}]}}}}], \"nextPageToken\": \"page-two\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "formId": "1FAIpQLintake",
+          "nextPageToken": "page-two",
+          "responses": [
+            {
+              "answers": [
+                {
+                  "questionId": "q_name",
+                  "values": [
+                    "Acme GmbH"
+                  ]
+                }
+              ],
+              "createdAt": "2026-09-30T08:00:00Z",
+              "formId": "1FAIpQLintake",
+              "lastSubmittedAt": "2026-09-30T09:00:00Z",
+              "respondentEmail": "buyer@example.com",
+              "responseId": "r_acme"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "submittedAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-success",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "submittedAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-notFound",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "submittedAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-providerRejected",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "submittedAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-invalidResponse",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "submittedAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-rateLimit",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "submittedAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-outage",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "submittedAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-transport",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad/id"
+      },
+      "name": "listResponses-defect",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{\"responseId\": \"r_acme\", \"formId\": \"1FAIpQLintake\", \"createTime\": \"2026-09-30T08:00:00Z\", \"lastSubmittedTime\": \"2026-09-30T09:00:00Z\", \"respondentEmail\": \"buyer@example.com\", \"answers\": {\"q_name\": {\"questionId\": \"q_name\", \"textAnswers\": {\"answers\": [{\"value\": \"Acme GmbH\"}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses/r_acme",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "answers": [
+            {
+              "questionId": "q_name",
+              "values": [
+                "Acme GmbH"
+              ]
+            }
+          ],
+          "createdAt": "2026-09-30T08:00:00Z",
+          "formId": "1FAIpQLintake",
+          "lastSubmittedAt": "2026-09-30T09:00:00Z",
+          "respondentEmail": "buyer@example.com",
+          "responseId": "r_acme"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "r_acme"
+      },
+      "name": "getResponse-success",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses/r_acme",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "r_acme"
+      },
+      "name": "getResponse-notFound",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses/r_acme",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "r_acme"
+      },
+      "name": "getResponse-providerRejected",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses/r_acme",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "r_acme"
+      },
+      "name": "getResponse-invalidResponse",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses/r_acme",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "r_acme"
+      },
+      "name": "getResponse-rateLimit",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses/r_acme",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "r_acme"
+      },
+      "name": "getResponse-outage",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses/r_acme",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "r_acme"
+      },
+      "name": "getResponse-transport",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "responseId": "bad/id"
+      },
+      "name": "getResponse-defect",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/forms/1FAIpQLintake/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e= 2026-09-30T08:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer forms-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "formId": "1FAIpQLintake",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake",
+        "pageSize": 2,
+        "submittedAtOrAfter": "2026-09-30T08:00:00Z"
+      },
+      "name": "listResponses-atOrAfter",
+      "operation": "listResponses"
+    }
+  ],
+  "schemaVersion": 1
+}
