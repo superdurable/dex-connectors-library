@@ -615,6 +615,51 @@ async def test_manifest_template_uses_go_path_segment_escaping() -> None:
 
 
 @pytest.mark.asyncio
+async def test_manifest_template_rejects_aliases_and_lowercases_valid_tenant() -> None:
+    """An invalid tenant cannot reach the token transport; accepted domains use Go casing."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["tokenEndpoint"] = {
+        "template": "https://login.microsoftonline.com/{client_id}/oauth2/v2.0/token",
+        "templateValueRules": {"client_id": {
+            "trimSpace": True, "lowercase": True, "maxBytes": 253,
+            "patterns": [
+                r"^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$",
+                r"^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$",
+            ],
+            "reject": ["common", "organizations", "consumers"],
+        }},
+    }
+    auth["methods"][0]["oauth2"]["refresh"]["trimClientID"] = True
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"access_token": "next", "expires_in": 3600, "token_type": "Bearer"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Microsoft", auth, FIELDS, client)
+
+        async def refresh(tenant: str) -> None:
+            state = CredentialRefreshState(
+                Credentials(SecretString("old"), SecretString("prior"), client_id=tenant),
+                None, datetime.now(UTC),
+            )
+            await driver.refresh(state)
+
+        for tenant in ("common", " Organizations ", "CONSUMERS", "contoso", "a/b.com", "x" * 254):
+            with pytest.raises(ReauthorizationRequiredError):
+                await refresh(tenant)
+        assert requests == []
+        await refresh("  Contoso.OnMicrosoft.com  ")
+    assert str(requests[0].url) == (
+        "https://login.microsoftonline.com/contoso.onmicrosoft.com/oauth2/v2.0/token"
+    )
+    assert base64.b64decode(requests[0].headers["authorization"].split()[1]) == (
+        b"Contoso.OnMicrosoft.com:client-secret"
+    )
+
+
+@pytest.mark.asyncio
 async def test_manifest_client_credentials_preserves_offline_access_scope() -> None:
     """Client-credentials requests keep every declared scope, including offline_access."""
     auth = {
@@ -1375,5 +1420,12 @@ async def test_manifest_token_endpoint_policy_refuses_forbidden_http_without_con
                     "Example", auth, FIELDS, client, settings={"tokenEndpoint": token_endpoint},
                 )
                 with pytest.raises(RetryError):
+                    await driver.refresh(state)
+                assert connect.call_count == 0, token_endpoint
+            for token_endpoint in ("https://identity.example/token#fragment", "https://identity.example/a b"):
+                driver = ManifestCredentialRefreshDriver[Credentials](
+                    "Example", auth, FIELDS, client, settings={"tokenEndpoint": token_endpoint},
+                )
+                with pytest.raises(ReauthorizationRequiredError):
                     await driver.refresh(state)
                 assert connect.call_count == 0, token_endpoint

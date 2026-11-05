@@ -191,6 +191,8 @@ class TokenEndpoint:
     ) -> TokenResponse:
         parsed = urlsplit(self.url)
         if (
+            not (self.url.startswith("https://") or (self.allows_plain_http and self.url.startswith("http://")))
+            or
             parsed.scheme not in ({"http", "https"} if self.allows_plain_http else {"https"})
             or not parsed.hostname or parsed.username is not None or parsed.password is not None
         ):

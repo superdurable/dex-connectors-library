@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.6.0` supplies the models, provider operation contracts, credential
+Version `0.7.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
 checkpoint values below, plus opt-in provider address policies. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
@@ -259,6 +259,14 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.7.0`: Manifest token endpoint templates apply declared
+  `templateValueRules` before path escaping. Rules trim Go Unicode whitespace,
+  reject names, bound UTF-8 length, accept full-match patterns, and lowercase
+  accepted values. Invalid values require reauthorization before a token request.
+  `trimClientID` on refresh or client-credentials declarations trims the client
+  ID sent to the token endpoint when the Go driver does so.
+  Private-network HTTP token endpoints reject fragments and non-printable or
+  non-ASCII URL text before transport.
 - `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
   The string mode preserves every supplied fractional digit; the default
   `datetime` mode names a Go-valid value that cannot be represented exactly.

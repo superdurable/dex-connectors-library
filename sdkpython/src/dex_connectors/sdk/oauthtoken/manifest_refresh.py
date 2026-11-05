@@ -321,6 +321,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "authentication": oauth.get("tokenEndpointAuthMethod", "client_secret_post"),
                     "encoding": oauth.get("tokenRequestEncoding", "form"),
                     "client_id": oauth["clientIDCredential"],
+                    "trim_client_id": refresh.get("trimClientID", False),
                     "client_secret": oauth["clientSecretCredential"],
                     "allows_public_client": refresh.get("allowsPublicClient", False),
                     "refresh_field": grant["refreshTokenCredential"],
@@ -375,6 +376,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "authentication": client.get("tokenEndpointAuthMethod", "client_secret_post"),
                     "encoding": client.get("tokenRequestEncoding", "form"),
                     "client_id": client["clientIDCredential"],
+                    "trim_client_id": client.get("trimClientID", False),
                     "client_secret": client["clientSecretCredential"],
                     "mappings": client["credentialMappings"],
                     "scopes": client.get("scopes", []),
@@ -485,9 +487,15 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 key = parsed
             except (ValueError, UnicodeDecodeError):
                 raise ReauthorizationRequiredError() from None
+        endpoint_url = self._resolve_source(grant["endpoint"], credentials, key)
+        if grant["token_endpoint_network_policy"] == "privateNetworkHTTP" and (
+            any(ord(character) <= 0x20 or ord(character) > 0x7E for character in endpoint_url)
+            or "#" in endpoint_url
+        ):
+            raise ReauthorizationRequiredError()
         endpoint = TokenEndpoint(
             self._provider_name,
-            self._resolve_source(grant["endpoint"], credentials, key),
+            endpoint_url,
             http_client,
             terminal_error_codes=tuple(grant["terminal_codes"]),
             allows_plain_http=grant["token_endpoint_network_policy"] == "privateNetworkHTTP",
@@ -543,8 +551,9 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         method = self._resolve_source(grant["authentication"], credentials, key)
         if not secret and grant["kind"] == "refresh" and grant["allows_public_client"]:
             method = "none"
+        client_id = self._credential_value(credentials, grant["client_id"])
         client = ClientCredentials(
-            self._credential_value(credentials, grant["client_id"]),
+            _trim_go_space(client_id) if grant.get("trim_client_id") else client_id,
             SecretString(secret),
             ClientAuthenticationMethod(method),
         )
@@ -683,16 +692,17 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             value = key.get(source["fromKey"], "")
         elif "template" in source:
             template = str(source["template"])
-            return re.sub(
-                r"\{([^{}]+)\}",
-                lambda match: quote(
-                    self._credential_value(credentials, match.group(1))
-                    if match.group(1) in self._fields
-                    else self._settings.get(match.group(1), ""),
-                    safe=":@&=+$",
-                ),
-                template,
-            )
+            rules = source.get("templateValueRules", {})
+            for match in re.finditer(r"\{([^{}]+)\}", template):
+                name = match.group(1)
+                raw = (
+                    self._credential_value(credentials, name)
+                    if name in self._fields
+                    else self._settings.get(name, "")
+                )
+                value = _apply_template_value_rule(raw, rules.get(name, {}))
+                template = template.replace(match.group(0), quote(value, safe=":@&=+$"))
+            return template
         else:
             raise ReauthorizationRequiredError()
         if "values" in source:
@@ -738,6 +748,19 @@ def _parse_duration(value: str) -> timedelta:
     if position != len(value) or total_nanoseconds > maximum:
         raise ValueError("manifest grant duration is invalid")
     return sign * timedelta(microseconds=total_nanoseconds // 1000)
+
+
+def _apply_template_value_rule(raw: str, rule: Mapping[str, Any]) -> str:
+    """Validate one path value before applying the manifest's canonical casing."""
+    value = _trim_go_space(raw) if rule.get("trimSpace") is True else raw
+    if rule.get("maxBytes") and len(value.encode("utf-8")) > rule["maxBytes"]:
+        raise ReauthorizationRequiredError()
+    if value.lower() in {rejected.lower() for rejected in rule.get("reject", [])}:
+        raise ReauthorizationRequiredError()
+    patterns = rule.get("patterns", [])
+    if patterns and not any(re.fullmatch(pattern, value) for pattern in patterns):
+        raise ReauthorizationRequiredError()
+    return value.lower() if rule.get("lowercase") is True else value
 
 
 def _trim_go_space(value: str) -> str:
