@@ -149,6 +149,13 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 continue
             try:
                 token, copies = await self._exchange(grant, credentials)
+            except httpx.InvalidURL:
+                raise RetryError(
+                    Failure(
+                        FailureKind.PROTOCOL, self._provider_name,
+                        "refreshCredentials", "token endpoint is invalid",
+                    )
+                ) from None
             except (OSError, ValueError) as error:
                 raise RetryError(
                     Failure(FailureKind.PROTOCOL, self._provider_name, "refreshCredentials", str(error))
@@ -160,8 +167,11 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             reported_scope = token.scope
             has_reported_scope = bool(reported_scope.strip())
             reported_scope_array: list[str] | None = None
+            has_scope_array = True
             if grant["response_scope_field"] == "scopesArray":
                 raw_scopes = token.retained_fields.get("scopes")
+                has_scope_array = raw_scopes is not None
+                has_reported_scope = False
                 if raw_scopes is not None:
                     if not isinstance(raw_scopes, list) or any(
                         not isinstance(scope, str) for scope in raw_scopes
@@ -199,7 +209,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 and (not grant["exact_scopes"] or granted_scopes == {canonical(scope) for scope in scope_set})
                 for scope_set in accepted_scope_sets
             )
-            if grant["response_scopes"] != "ignore" and has_wrong_scopes:
+            if grant["response_scopes"] != "ignore" and has_scope_array and has_wrong_scopes:
                 raise ReauthorizationRequiredError()
             updates: dict[str, str | SecretString] = {}
             for mapping in grant["mappings"]:
@@ -217,11 +227,16 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     mapping["source"] for mapping in grant["mappings"] if mapping["credential"] == destination
                 )
                 has_response = source in token.retained_fields
-                value = (
-                    (token.retained_fields[source] if has_response else None)
-                    if (has_response or url_rule.get("requireResponse"))
-                    else self._credential_value(credentials, destination) or url_rule.get("defaultURL", "")
-                )
+                returned = token.retained_fields.get(source)
+                prior = self._credential_value(credentials, destination)
+                if has_response and returned is not None:
+                    value = returned
+                elif returned is None and has_response:
+                    value = prior
+                elif url_rule.get("requireResponse"):
+                    value = None
+                else:
+                    value = prior or url_rule.get("defaultURL", "")
                 if not isinstance(value, str) or not _is_valid_response_url(value, url_rule):
                     raise RetryError(
                         Failure(
@@ -581,6 +596,24 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             raise ValueError("manifest storedMissingExpiry must be refresh or keep")
 
     def _validate_new_declarations(self, grant: Mapping[str, Any]) -> None:
+        url_rule = grant["response_url_validation"]
+        allowed_url_keys = {
+            "credential", "allowedHosts", "allowedHostSuffix", "allowAnyHTTPS", "allowLoopback",
+            "forbidPort", "requireResponse", "refreshWhenInvalid", "defaultURL",
+        }
+        if not isinstance(url_rule, dict) or set(url_rule) - allowed_url_keys:
+            raise ValueError("manifest responseURLValidation field is invalid")
+        if (
+            grant["refresh_when_credential_blank"]
+            and grant["refresh_when_credential_blank"] not in self._fields
+        ):
+            raise ValueError("manifest refreshWhenCredentialBlank field is not mapped")
+        if url_rule and (
+            not isinstance(url_rule.get("credential"), str)
+            or url_rule["credential"] not in self._fields
+            or not any(mapping.get("credential") == url_rule["credential"] for mapping in grant["mappings"])
+        ):
+            raise ValueError("manifest responseURLValidation credential is not mapped")
         if grant["token_endpoint_network_policy"] not in ("", "privateNetworkHTTP"):
             raise ValueError("manifest tokenEndpointNetworkPolicy is invalid")
         if grant["response_scope_field"] not in ("scope", "scopesArray"):
@@ -770,10 +803,13 @@ def _read_jwt_expiry_seconds(token: str) -> int | None:
     segments = token.split(".")
     if len(segments) != 3:
         return None
-    if re.fullmatch(r"[A-Za-z0-9_-]*=*", segments[1]) is None:
+    if re.fullmatch(r"[A-Za-z0-9_\-\r\n]*=*", segments[1]) is None:
         return None
     try:
-        payload = base64.urlsafe_b64decode(segments[1].rstrip("=") + "=" * (-len(segments[1]) % 4))
+        unpadded = segments[1].rstrip("=").replace("\r", "").replace("\n", "")
+        payload = base64.urlsafe_b64decode(unpadded + "=" * (-len(unpadded) % 4))
+        if not _has_bounded_json_depth(payload):
+            return None
         claims = json.loads(payload)
         exp = claims.get("exp") if isinstance(claims, dict) else None
         return (
@@ -781,8 +817,36 @@ def _read_jwt_expiry_seconds(token: str) -> int | None:
             if isinstance(exp, (int, float)) and not isinstance(exp, bool) and 0 < exp <= 0x7FFFFFFF * 4
             else None
         )
-    except (ValueError, TypeError, UnicodeDecodeError):
+    except (ValueError, TypeError, UnicodeDecodeError, RecursionError):
         return None
+
+
+def _has_bounded_json_depth(payload: bytes) -> bool:
+    """Reject oversized or deeply nested JWT claims before recursive JSON parsing."""
+    if len(payload) > 16 << 10:
+        return False
+    depth = 0
+    in_string = False
+    escaped = False
+    for byte in payload:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif byte == 0x5C:
+                escaped = True
+            elif byte == 0x22:
+                in_string = False
+        elif byte == 0x22:
+            in_string = True
+        elif byte in (0x7B, 0x5B):
+            depth += 1
+            if depth > 128:
+                return False
+        elif byte in (0x7D, 0x5D):
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0 and not in_string
 
 
 def _is_valid_response_url(value: str, rule: Mapping[str, Any]) -> bool:
@@ -811,8 +875,6 @@ def _validate_response_url(value: str, rule: Mapping[str, Any]) -> str:
         port = parsed.port
     except ValueError:
         raise ValueError("response URL is invalid") from None
-    if rule.get("forbidPort") and rule.get("allowedHosts") and parsed.netloc not in rule["allowedHosts"]:
-        raise ValueError("response URL is invalid")
     try:
         is_loopback = ip_address(host).is_loopback
     except ValueError:

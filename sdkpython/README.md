@@ -261,18 +261,14 @@ The core example sends through an in-process HTTP transport.
 
 - `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
   The string mode preserves every supplied fractional digit; the default
-  `datetime` mode names the field when a Go-valid value cannot be represented
-  exactly.
-
-- `0.6.0`: Manifest refresh follows Go scope and credential URL policies,
-  including HubSpot scope arrays whose elements remain whole, Microsoft Graph
-  scope prefixes, Zoho expiry caps, monday.com JWT expiry, and private-network
-  token endpoints. Retryable token failures raise `RetryError`.
-
-- `0.6.0`: Manifest token grants accept `responseScopes: ignore` when the Go
-  credential driver does not inspect reported scope values. The default checks
-  returned scopes against declared requirements. Retryable token endpoint
-  failures from manifest refresh now raise `RetryError`.
+  `datetime` mode names a Go-valid value that cannot be represented exactly.
+  Manifest grants follow Go scope and credential URL policies for HubSpot,
+  Microsoft Graph, Zoho, Salesforce, and monday.com. `responseScopes: ignore`
+  skips reported scopes; the default checks them. Absent or null HubSpot scope
+  arrays skip the array check; each present element is one complete scope name.
+  Null response URLs reuse the validated stored
+  origin. Private-network token endpoints reject forbidden addresses before
+  connecting. Retryable token failures raise `RetryError`.
 - `0.5.0`: Manifest refresh accepts alternative scope sets and validates
   declared delegated JWT subjects using Go `mail.ParseAddress` address equality
   before token requests. `missingExpiry: reject` requires a positive
