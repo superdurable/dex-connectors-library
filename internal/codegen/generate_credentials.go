@@ -99,6 +99,17 @@ func isRequiredInSharedCredential(method schema.AuthMethod, field schema.Field) 
 	return field.Required || slices.Contains(mintedAccessTokenCredentials(method), field.Name)
 }
 
+// SharedRequiredCredentialFields returns the fields an application must receive from a shared connection broker.
+func SharedRequiredCredentialFields(method schema.AuthMethod) []string {
+	required := []string{}
+	for _, field := range method.Fields {
+		if isRequiredInSharedCredential(method, field) {
+			required = append(required, field.Name)
+		}
+	}
+	return required
+}
+
 func writeCredentialValidator(generation *generator, manifest schema.Manifest, signature string, isRequired func(schema.AuthMethod, schema.Field) bool) {
 	generation.mustWrite("%s", signature)
 	if len(manifest.Spec.Auth.Methods) == 0 {

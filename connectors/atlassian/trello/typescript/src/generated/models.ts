@@ -3,7 +3,42 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
+
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -25,6 +60,22 @@ export interface Credentials {
   apiKey: SecretString;
   /** Secret Trello user token that lets the app act as your Trello member: open https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&key= followed by the API key above, choose Allow, and copy the token from the page that opens. It grants access to everything the member can reach, so Dex Web stores it as a secret; blank means no Trello call can authenticate. Revoke it under Applications at https://trello.com/u/your-username/account. */
   token: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_key", "token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_key"] != null && !(typeof fields["api_key"] === 'string')) throw new TypeError("credential api_key has an invalid type");
+  if (fields["token"] != null && !(typeof fields["token"] === 'string')) throw new TypeError("credential token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["api_key"]) throw new TypeError("credential api_key is required");
+  credentials.apiKey = new SecretString((fields["api_key"] ?? '') as string);
+  if (!fields["token"]) throw new TypeError("credential token is required");
+  credentials.token = new SecretString((fields["token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
@@ -232,8 +283,8 @@ export const ListCardsInputSchema = z.strictObject({
   "boardId": z.string().optional(),
   "listId": z.string().optional(),
   "status": z.string().optional(),
-  "dueBefore": z.iso.datetime({ offset: true }).nullable().optional(),
-  "dueAfter": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueBefore": GoTimeJSONSchema.nullable().optional(),
+  "dueAfter": GoTimeJSONSchema.nullable().optional(),
   "hasDueDate": z.boolean().optional(),
   "isDueComplete": z.boolean().optional(),
   "pageSize": z.number().int().optional(),
@@ -265,9 +316,9 @@ export const CardSchema = z.strictObject({
   "listId": z.string(),
   "listName": z.string().optional(),
   "isClosed": z.boolean(),
-  "due": z.iso.datetime({ offset: true }).nullable().optional(),
+  "due": GoTimeJSONSchema.nullable().optional(),
   "isDueComplete": z.boolean(),
-  "start": z.iso.datetime({ offset: true }).nullable().optional(),
+  "start": GoTimeJSONSchema.nullable().optional(),
   "labelIds": z.array(z.string()).optional(),
   "labels": z.array(LabelSchema).optional(),
   "hasMoreLabels": z.boolean().optional(),
@@ -276,7 +327,7 @@ export const CardSchema = z.strictObject({
   "position": z.number(),
   "url": z.string().optional(),
   "shortUrl": z.string().optional(),
-  "lastActivityAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "lastActivityAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Card>;
 
 /** Runtime validator for ListCardsOutput. */
@@ -296,7 +347,7 @@ export const CreateCardInputSchema = z.strictObject({
   "listId": z.string(),
   "name": z.string(),
   "description": z.string().optional(),
-  "due": z.iso.datetime({ offset: true }).nullable().optional(),
+  "due": GoTimeJSONSchema.nullable().optional(),
   "labelIds": z.array(z.string()).optional(),
   "memberIds": z.array(z.string()).optional(),
   "position": z.string().optional(),
@@ -320,7 +371,7 @@ export const UpdateCardInputSchema = z.strictObject({
   "boardId": z.string().optional(),
   "position": z.string().optional(),
   "isClosed": z.boolean().optional(),
-  "due": z.iso.datetime({ offset: true }).nullable().optional(),
+  "due": GoTimeJSONSchema.nullable().optional(),
   "shouldClearDue": z.boolean().optional(),
   "isDueComplete": z.boolean().optional(),
   "labelIds": z.array(z.string()).nullable().optional(),
@@ -346,5 +397,5 @@ export const AddCommentOutputSchema = z.strictObject({
   "cardId": z.string(),
   "commentId": z.string().optional(),
   "authorMemberId": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<AddCommentOutput>;

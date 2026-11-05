@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Gmail API base URL; leave blank for Google's public v1 API. Enter an absolute HTTPS URL only for an explicitly supported compatible gateway. */
@@ -53,37 +87,76 @@ export interface Credentials {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "primary_email", "refresh_token", "service_account_key"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
+  if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new TypeError("credential delegated_user has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
+  if (fields["primary_email"] != null && !(typeof fields["primary_email"] === 'string')) throw new TypeError("credential primary_email has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (fields["service_account_key"] != null && !(typeof fields["service_account_key"] === 'string')) throw new TypeError("credential service_account_key has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
   const method = selectedMethod || "google-oauth";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "google-oauth") {
-    if (fields["oauth_client_id"] != null && typeof fields["oauth_client_id"] !== 'string') throw new TypeError("credential oauth_client_id has an invalid type");
     if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
     if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
-    if (fields["oauth_client_secret"] != null && typeof fields["oauth_client_secret"] !== 'string') throw new TypeError("credential oauth_client_secret has an invalid type");
     if (!fields["oauth_client_secret"]) throw new TypeError("credential oauth_client_secret is required");
     if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
-    if (fields["access_token"] != null && typeof fields["access_token"] !== 'string') throw new TypeError("credential access_token has an invalid type");
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["refresh_token"] != null && typeof fields["refresh_token"] !== 'string') throw new TypeError("credential refresh_token has an invalid type");
     if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
-    if (fields["primary_email"] != null && typeof fields["primary_email"] !== 'string') throw new TypeError("credential primary_email has an invalid type");
     if (!fields["primary_email"]) throw new TypeError("credential primary_email is required");
     if (fields["primary_email"]) credentials.primaryEmail = fields["primary_email"] as string;
   } else if (method === "workspace-domain-delegation") {
-    if (fields["service_account_key"] != null && typeof fields["service_account_key"] !== 'string') throw new TypeError("credential service_account_key has an invalid type");
     if (!fields["service_account_key"]) throw new TypeError("credential service_account_key is required");
     if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
-    if (fields["delegated_user"] != null && typeof fields["delegated_user"] !== 'string') throw new TypeError("credential delegated_user has an invalid type");
     if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
-    if (fields["access_token"] != null && typeof fields["access_token"] !== 'string') throw new TypeError("credential access_token has an invalid type");
+    credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
+    credentials.primaryEmail = (fields["primary_email"] ?? '') as string;
+  } else {
+    throw new TypeError('credential auth_method is invalid');
+  }
+  return credentials;
+}
+
+/** Decode shared credential fields for the selected authorization method. */
+export function decodeSharedCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["auth_method", "access_token", "delegated_user", "oauth_client_id", "oauth_client_secret", "primary_email", "refresh_token", "service_account_key"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
+  if (fields["delegated_user"] != null && !(typeof fields["delegated_user"] === 'string')) throw new TypeError("credential delegated_user has an invalid type");
+  if (fields["oauth_client_id"] != null && !(typeof fields["oauth_client_id"] === 'string')) throw new TypeError("credential oauth_client_id has an invalid type");
+  if (fields["oauth_client_secret"] != null && !(typeof fields["oauth_client_secret"] === 'string')) throw new TypeError("credential oauth_client_secret has an invalid type");
+  if (fields["primary_email"] != null && !(typeof fields["primary_email"] === 'string')) throw new TypeError("credential primary_email has an invalid type");
+  if (fields["refresh_token"] != null && !(typeof fields["refresh_token"] === 'string')) throw new TypeError("credential refresh_token has an invalid type");
+  if (fields["service_account_key"] != null && !(typeof fields["service_account_key"] === 'string')) throw new TypeError("credential service_account_key has an invalid type");
+  const selectedMethod = fields['auth_method'] ?? '';
+  if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
+  const method = selectedMethod || "google-oauth";
+  const credentials = { authMethodId: method } as Credentials;
+  if (method === "google-oauth") {
+    if (!fields["oauth_client_id"]) throw new TypeError("credential oauth_client_id is required");
+    if (fields["oauth_client_id"]) credentials.oauthClientId = fields["oauth_client_id"] as string;
+    if (fields["oauth_client_secret"]) credentials.oauthClientSecret = new SecretString(fields["oauth_client_secret"] as string);
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
-    if (fields["primary_email"] != null && typeof fields["primary_email"] !== 'string') throw new TypeError("credential primary_email has an invalid type");
+    if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
+    if (!fields["primary_email"]) throw new TypeError("credential primary_email is required");
     if (fields["primary_email"]) credentials.primaryEmail = fields["primary_email"] as string;
+  } else if (method === "workspace-domain-delegation") {
+    if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
+    if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
+    if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
+    if (!fields["access_token"]) throw new TypeError("credential access_token is required");
+    credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
+    credentials.primaryEmail = (fields["primary_email"] ?? '') as string;
   } else {
     throw new TypeError('credential auth_method is invalid');
   }
@@ -181,7 +254,7 @@ export const MessageSchema = z.strictObject({
   "textBody": z.string().optional(),
   "htmlBody": z.string().optional(),
   "snippet": z.string().optional(),
-  "receivedAt": z.iso.datetime({ offset: true }),
+  "receivedAt": GoTimeJSONSchema,
   "labelIds": z.array(z.string()).optional(),
 }) satisfies z.ZodType<Message>;
 

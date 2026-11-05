@@ -79,8 +79,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Contentful stored credential does not match the connector credential fields")
+        if set(material) - set(('delivery_token',)):
+            raise ValueError("Contentful stored credential does not match the connector credential fields")
         delivery_token = material.get("delivery_token")
-        if not isinstance(delivery_token, str) or not delivery_token:
+        if delivery_token is not None and not (isinstance(delivery_token, str)):
+            raise ValueError("Contentful credential delivery_token has an invalid type")
+        if not delivery_token:
             raise ValueError("Contentful credential delivery_token is required")
         return Credentials(SecretString(delivery_token))
 

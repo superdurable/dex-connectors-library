@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 import { ConnectionRefSchema } from '@superdurable/connectors-sdk';
-import { newRefreshingCredentialProvider, type LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
+import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 import { z } from 'zod';
 import { GmailClient, type GmailClientOptions } from './client.js';
 import { GmailConnection } from './connection.js';
 import { decodeGmailCredentials, decodeGmailSharedCredentials, encodeGmailCredentials } from './credential_codec.js';
+import { newProjectCredentialProvider } from './generated/connection.js';
 import { ConnectorID, ProviderID, type Config } from './models.js';
 
 const ProjectGmailConfigurationSchema = z.object({
@@ -35,6 +36,6 @@ export function newProjectGmailClient(project: LoadedProject, connectionName: st
     ...(fields.pollInterval ? { pollIntervalMs: Math.ceil(fields.pollInterval / 1_000_000) } : {}),
     ...(fields.pollPageSize ? { pollPageSize: fields.pollPageSize } : {}),
   };
-  const provider = newRefreshingCredentialProvider(project.connections, { connectorId: ConnectorID, connectionName }, decodeGmailCredentials, encodeGmailCredentials, decodeGmailSharedCredentials);
+  const provider = newProjectCredentialProvider(project, connectionName, decodeGmailCredentials, encodeGmailCredentials, decodeGmailSharedCredentials);
   return new GmailClient(config, provider, options);
 }

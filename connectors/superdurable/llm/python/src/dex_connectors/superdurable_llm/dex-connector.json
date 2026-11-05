@@ -1,0 +1,54 @@
+{
+  "connectorId": "llm",
+  "releaseTag": "connectors/superdurable/llm/go/v0.25.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-superdurable-llm",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_generate_text_step",
+      "kind": "query",
+      "operationId": "generateText",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "generated",
+          "field": "generated",
+          "optional": false
+        },
+        {
+          "id": "truncated",
+          "field": "truncated",
+          "optional": true
+        },
+        {
+          "id": "blocked",
+          "field": "blocked",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
