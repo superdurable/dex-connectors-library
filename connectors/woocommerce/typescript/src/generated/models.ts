@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -28,6 +29,22 @@ export interface Credentials {
   consumerKey: SecretString;
   /** Secret cs_ value generated beside consumer_key at your store admin > WooCommerce > Settings > Advanced > REST API. Stored only in Dex credentials; blank prevents calls. */
   consumerSecret: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["consumer_key", "consumer_secret"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["consumer_key"] != null && !(typeof fields["consumer_key"] === 'string')) throw new TypeError("credential consumer_key has an invalid type");
+  if (fields["consumer_secret"] != null && !(typeof fields["consumer_secret"] === 'string')) throw new TypeError("credential consumer_secret has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["consumer_key"]) throw new TypeError("credential consumer_key is required");
+  credentials.consumerKey = new SecretString((fields["consumer_key"] ?? '') as string);
+  if (!fields["consumer_secret"]) throw new TypeError("credential consumer_secret is required");
+  credentials.consumerSecret = new SecretString((fields["consumer_secret"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

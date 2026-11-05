@@ -17,6 +17,75 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestPythonRefreshDeclarationUsesDecodedManifest(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods[0].OAuth2.Refresh.AdditionalParameters = map[string]string{
+		"description": "retained", "protocol": "oauth2",
+	}
+	manifest.Spec.Auth.Methods[0].OAuth2.TokenEndpoint = schema.ValueSource{
+		FromCredential: "oauth_client_id", Values: map[string]string{"description": "https://example.com/token"},
+	}
+	files, err := generatedPythonFiles(manifestPath, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "connectors", "google", "gmail", "python", "src", "dex_connectors", "google_gmail", "_generated", "refresh.py")
+	declaration := string(files[path])
+	for _, expected := range []string{"'defaultMethod': 'google-oauth'", "'requiredScopes'", "'workspace-domain-delegation'", "'oauth_client_id': 'oauth_client_id'", "'description': 'retained'", "'protocol': 'oauth2'", "'values': {'description': 'https://example.com/token'}"} {
+		if !strings.Contains(declaration, expected) {
+			t.Errorf("generated refresh declaration omits %s", expected)
+		}
+	}
+}
+
+func TestPythonPrivateTokenEndpointProjectConnectionUsesPolicyClient(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "superdurable", "oauth2-http", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{}, Triggers: []string{}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest, PackageName: "superdurable_oauth2_http", MockPackageName: "oauth2httpmock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection := generated["connection.py"]
+	for _, required := range []string{
+		"from dex_connectors.sdk.providerhttp import new_provider_http_client",
+		`http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")`,
+		"if http_client is not None:",
+		"private token endpoint does not accept a custom HTTP client",
+	} {
+		if !strings.Contains(connection, required) {
+			t.Errorf("generated private endpoint connection omits %q", required)
+		}
+	}
+	if strings.Contains(connection, "http_client = http_client or httpx.AsyncClient()") {
+		t.Error("generated private endpoint connection constructs an unrestricted HTTP client")
+	}
+}
+
+func TestPythonSalesforceBlankStoredMethodUsesDeclaredDefault(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "salesforce", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{}, Triggers: []string{}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "salesforce", MockPackageName: "salesforcemock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["connection.py"], `method = selected_method or "salesforce-oauth"`) {
+		t.Fatal("blank Salesforce auth_method must select the production OAuth method")
+	}
+}
+
 func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "connectors", "atlassian", "bitbucket", "connector.yaml")
 	manifest, err := load(manifestPath)
@@ -47,6 +116,85 @@ func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	}
 }
 
+func TestPythonCodegenJiraServiceManagementProviderGolden(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "atlassian", "jira-service-management", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getTicket"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "atlassian_jira_service_management", MockPackageName: "jiraservicemanagementmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"connection.py", "mock.py", "refresh.py"} {
+		goldenPath := filepath.Join("testdata", "jira-service-management-golden", name)
+		if os.Getenv("UPDATE_JIRA_SERVICE_MANAGEMENT_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from Jira Service Management golden output", name)
+		}
+	}
+	for _, expected := range []string{"ConnectionRef(PROVIDER, connection_name)", "reference.provider != PROVIDER", "matching[0].provider != PROVIDER", "ConnectionKey(CONNECTOR_ID, connection_name)"} {
+		if !strings.Contains(generated["connection.py"]+generated["mock.py"], expected) {
+			t.Errorf("Jira Service Management generated wiring omits %s", expected)
+		}
+	}
+	if !strings.Contains(generated["refresh.py"], "'storedMissingExpiry': 'refresh'") {
+		t.Error("Jira Service Management refresh declaration must preserve stored expiry policy")
+	}
+	if !strings.Contains(generated["refresh.py"], "'acceptedScopeSets': [['read:servicedesk-request', 'write:servicedesk-request', 'manage:servicedesk-customer', 'read:jira-work', 'write:jira-work']]") {
+		t.Error("Jira Service Management refresh declaration must require the resource scopes without offline_access")
+	}
+}
+
+func TestPythonCodegenDocuSignOptionalSecretsGolden(t *testing.T) {
+	manifestPath := filepath.Join("..", "..", "connectors", "docusign", "connector.yaml")
+	manifest, err := load(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getEnvelope"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "docusign_fixture", MockPackageName: "docusignmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"config.py", "connection.py"} {
+		goldenPath := filepath.Join("testdata", "docusign-golden", name)
+		if os.Getenv("UPDATE_DOCUSIGN_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from DocuSign golden output", name)
+		}
+	}
+	if !strings.Contains(generated["connection.py"], "credentials.oauth_client_secret.reveal() if credentials.oauth_client_secret is not None") {
+		t.Error("DocuSign encoding must guard a missing method secret before reveal")
+	}
+	if !strings.Contains(generated["connection.py"], "credentials.connect_hmac_key.reveal() if credentials.connect_hmac_key is not None") {
+		t.Error("DocuSign encoding must guard optional Connect HMAC secret before reveal")
+	}
+}
+
 func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "schema", "testdata", "multi-auth.yaml")
 	manifest, err := load(manifestPath)
@@ -60,6 +208,21 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	}
 	manifest.Spec.Auth.Methods[0].Configuration = &schema.Configuration{Fields: []schema.Field{{Name: "workspaceId", GoName: "WorkspaceID", Type: "string", Description: "Workspace for the selected method.", Required: true}}}
 	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "session_note", GoName: "SessionNote", Type: "string", Description: "Optional session note.", Required: false})
+	manifest.Spec.Auth.Methods[0].Fields = append(manifest.Spec.Auth.Methods[0].Fields, schema.Field{Name: "webhook_signing_key", GoName: "WebhookSigningKey", Type: "secretString", Description: "Optional webhook signing key.", Required: false})
+	manifest.Spec.Auth.Methods[1].Fields = append(manifest.Spec.Auth.Methods[1].Fields, schema.Field{Name: "environment", GoName: "Environment", Type: "enum", Enum: []string{"production", "sandbox"}, Description: "Login environment.", Required: false}, schema.Field{Name: "login_url", GoName: "LoginURL", Type: "url", Description: "Login URL.", Required: false})
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, schema.AuthMethod{ID: "typed", Fields: []schema.Field{
+		{Name: "request_count", GoName: "RequestCount", Type: "integer", Required: true},
+		{Name: "wait_duration", GoName: "WaitDuration", Type: "duration", Required: true},
+		{Name: "labels", GoName: "Labels", Type: "stringList", Required: false},
+		{Name: "headers", GoName: "Headers", Type: "stringMap", Required: false},
+		{Name: "optional_count", GoName: "OptionalCount", Type: "integer", Required: false},
+	}})
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, schema.AuthMethod{ID: "optional-only", Fields: []schema.Field{{Name: "optional_note", GoName: "OptionalNote", Type: "string", Required: false}}})
+	grantManifest, err := load(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods = append(manifest.Spec.Auth.Methods, grantManifest.Spec.Auth.Methods[2])
 	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "multi_auth_fixture", MockPackageName: "multiauthfixturemock"})
 	if err != nil {
 		t.Fatal(err)
@@ -93,10 +256,58 @@ func TestPythonCodegenMultiAuthGolden(t *testing.T) {
 	}
 }
 
+func TestPythonCalendlyOptionalSecretRefreshRoundTrip(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "calendly", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"listScheduledEvents"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "calendly_fixture", MockPackageName: "calendlymock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := json.Marshal(map[string]string{"config.py": generated["config.py"], "connection.py": generated["connection.py"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("python3", "-c", calendlyOptionalSecretRuntimeTest)
+	command.Stdin = bytes.NewReader(sources)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("Calendly optional secret refresh round-trip: %v\n%s", err, output)
+	}
+}
+
+const calendlyOptionalSecretRuntimeTest = `
+import ast, json, sys
+from dataclasses import dataclass, replace
+from typing import Any
+sources = json.load(sys.stdin)
+class SecretString:
+    def __init__(self, value): self.value = value
+    def reveal(self): return self.value
+namespace = {'__name__': '__main__', 'dataclass': dataclass, 'SecretString': SecretString, 'Any': Any}
+config = ast.parse(sources['config.py'])
+credentials = next(node for node in config.body if isinstance(node, ast.ClassDef) and node.name == 'Credentials')
+exec(compile(ast.Module(body=[credentials], type_ignores=[]), '<credentials>', 'exec'), namespace)
+connection = ast.parse(sources['connection.py'])
+codec = [node for node in connection.body if isinstance(node, ast.FunctionDef) and node.name in ('decode_credentials', 'encode_credentials')]
+exec(compile(ast.Module(body=codec, type_ignores=[]), '<codec>', 'exec'), namespace)
+decode, encode = namespace['decode_credentials'], namespace['encode_credentials']
+oauth = {'auth_method': 'calendly-oauth', 'oauth_client_id': 'client', 'oauth_client_secret': 'secret', 'access_token': 'access', 'refresh_token': 'refresh'}
+pat = {'auth_method': 'personal-access-token', 'access_token': 'token'}
+for material in (oauth, pat):
+    resolved = decode(material)
+    assert resolved.webhook_signing_key.reveal() == ''
+    assert encode(resolved) == material
+    assert decode(encode(resolved)).webhook_signing_key.reveal() == ''
+    assert encode(replace(resolved, webhook_signing_key=SecretString('key')))['webhook_signing_key'] == 'key'
+`
+
 const multiAuthPythonRuntimeTest = `
 import ast, asyncio, json, sys
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 sources = json.load(sys.stdin)
 config_tree = ast.parse(sources['config.py'])
 config_class = next(node for node in config_tree.body if isinstance(node, ast.ClassDef) and node.name == 'Config')
@@ -105,42 +316,213 @@ exec(compile(ast.Module(body=[config_class], type_ignores=[]), '<generated-confi
 assert config_namespace['Config'](account_id='account').region == ''
 source = sources['connection.py']
 tree = ast.parse(source)
-credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
+credential_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_credentials')
+shared_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_shared_credentials')
+credential_encoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'encode_credentials')
+url_validator = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_is_absolute_credential_url')
 config_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == '_decode_config')
 class SecretString:
     def __init__(self, value): self.value = value
+    def reveal(self): return self.value
 class Credentials:
     def __init__(self, **values): self.__dict__.update(values)
 class Config:
     def __init__(self, **values): self.__dict__.update(values)
-class Project:
-    def __init__(self, values): self.values = values
-    async def resolve_credential(self, key, call_id): return self.values
-namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString}
-exec(compile(ast.Module(body=[credential_source, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
-Source = namespace['_ProjectCredentialSource']
+from re import search
+namespace = {'Any': Any, 'Call': object, 'LoadedProject': object, 'ConnectionKey': object, 'Credentials': Credentials, 'Config': Config, 'SecretString': SecretString, 'urlsplit': urlsplit, 'search': search}
+exec(compile(ast.Module(body=[url_validator, credential_decoder, shared_decoder, credential_encoder, config_decoder], type_ignores=[]), '<generated>', 'exec'), namespace)
 assert namespace['_decode_config']({'accountId':'account'}).workspace_id == ''
 assert namespace['_decode_config']({'accountId':'account', 'workspaceId':'workspace'}).workspace_id == 'workspace'
-class Call:
-    id = 'call'
-def resolve(values):
-    return asyncio.run(Source(Project(values), object()).resolve(Call()))
-default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh', 'service_account_key':17})
+def resolve(values, shared=False):
+    return namespace['decode_shared_credentials'](values) if shared else namespace['decode_credentials'](values)
+default = resolve({'auth_method':None, 'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
 assert default.auth_method_id == 'google-oauth' and not hasattr(default, 'service_account_key')
-alternate = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':'note', 'oauth_client_id':17})
+assert namespace['encode_credentials'](default)['auth_method'] == 'google-oauth'
+assert default.webhook_signing_key.reveal() == ''
+assert 'webhook_signing_key' not in namespace['encode_credentials'](default)
+assert resolve(namespace['encode_credentials'](default)).webhook_signing_key.reveal() == ''
+shared = resolve({'oauth_client_id':'id', 'access_token':'access'}, shared=True)
+assert shared.access_token.value == 'access' and not hasattr(shared, 'oauth_client_secret')
+app_only = resolve({'auth_method':'app-only', 'tenant_id':'tenant', 'client_id':'id', 'access_token':'access'}, shared=True)
+assert app_only.access_token.value == 'access' and not hasattr(app_only, 'client_secret')
+alternate = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':'note', 'environment':'sandbox', 'login_url':'https://example.com/login', 'oauth_client_id':'other'})
 assert alternate.auth_method_id == 'workspace-service-account' and alternate.service_account_key.value == 'key'
 assert alternate.session_note == 'note'
 assert not hasattr(alternate, 'oauth_client_id')
+for invalid_url in (' https://example.com', 'https://example.com\n', 'https://exa mple.com', 'https://%zz', 'https://example.com/%zz', 'https://u:p@[secretish]/'):
+    try: resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'login_url':invalid_url})
+    except ValueError as error: assert str(error) == 'Multi Auth Fixture credential login_url must be an absolute URL', str(error)
+    else: raise AssertionError('invalid URL accepted')
+assert resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'login_url':'https://example.com:99999'}).login_url.endswith(':99999')
+typed = resolve({'auth_method':'typed', 'request_count':1, 'wait_duration':2, 'labels':[None, 'x'], 'headers':{'empty':None, 'filled':'x'}, 'optional_count':0})
+assert typed.labels == ['', 'x'] and typed.headers == {'empty':'', 'filled':'x'} and not hasattr(typed, 'optional_count')
+assert resolve({'auth_method':'optional-only'}, shared=True).auth_method_id == 'optional-only'
+for invalid_collection in ({'labels':[1]}, {'headers':{'bad':1}}):
+    try: resolve({'auth_method':'typed', 'request_count':1, 'wait_duration':2, **invalid_collection})
+    except ValueError as error: assert 'has an invalid type' in str(error), str(error)
+    else: raise AssertionError('invalid collection element accepted')
+for field in ('request_count', 'wait_duration'):
+    for invalid_value in (0, -1):
+        values = {'auth_method':'typed', 'request_count':1, 'wait_duration':2, field:invalid_value}
+        try: resolve(values)
+        except ValueError as error: assert str(error) == 'Multi Auth Fixture credential ' + field + ' must be positive', str(error)
+        else: raise AssertionError('nonpositive required number accepted')
+try: resolve({'auth_method':'typed', 'request_count':1, 'wait_duration':2, 'optional_count':-1})
+except ValueError as error: assert str(error) == 'Multi Auth Fixture credential optional_count cannot be negative', str(error)
+else: raise AssertionError('negative optional number accepted')
 optional_null = resolve({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'session_note':None})
-assert not hasattr(optional_null, 'session_note')
+assert optional_null.session_note == ''
 for values, message in (
     ({'auth_method':'workspace-service-account', 'service_account_key':None, 'delegated_user':'user'}, 'credential service_account_key is required'),
     ({'auth_method':'unknown'}, 'credential auth_method is invalid'),
     ({'auth_method':0}, 'credential auth_method is invalid'),
+    ({'auth_method':'google-oauth', 'oauth_client_id':'id', 'access_token':'access', 'oauth_client_secret':'secret', 'refresh_token':'refresh', 'service_account_key':17}, 'credential service_account_key has an invalid type'),
+    ({'auth_method':'google-oauth', 'oauth_client_id':'id', 'access_token':'access', 'oauth_client_secret':'secret', 'refresh_token':'refresh', 'unknown':'value'}, 'stored credential does not match'),
+    ({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'environment':'staging'}, 'credential environment is invalid'),
+    ({'auth_method':'workspace-service-account', 'service_account_key':'key', 'delegated_user':'user', 'login_url':'relative'}, 'credential login_url must be an absolute URL'),
 ):
     try: resolve(values)
     except ValueError as error: assert message in str(error), str(error)
     else: raise AssertionError('invalid selected method was accepted')
+for values in ({'oauth_client_id':'id'}, {'access_token':'access'}):
+    try: resolve(values, shared=True)
+    except ValueError: pass
+    else: raise AssertionError('incomplete shared credential was accepted')
+try: resolve({'auth_method':'app-only', 'tenant_id':'tenant', 'client_id':'id'}, shared=True)
+except ValueError as error: assert 'credential access_token is required' in str(error)
+else: raise AssertionError('shared minted token was optional')
+`
+
+func TestPythonCodegenSingleAuthGolden(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "spotify", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Fields[1].Required = true
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"listPlaylistTracks"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "spotify_fixture", MockPackageName: "spotifymock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	goldenPath := filepath.Join("testdata", "single-auth-golden", "connection.py")
+	if os.Getenv("UPDATE_SINGLE_AUTH_GOLDEN") == "1" {
+		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(goldenPath, []byte(generated["connection.py"]), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(goldenPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if generated["connection.py"] != string(want) {
+		t.Fatal("single-auth Python connection differs from golden output")
+	}
+	pythonSources, err := json.Marshal(map[string]string{"config.py": generated["config.py"], "connection.py": generated["connection.py"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("python3", "-c", singleAuthPythonRuntimeTest)
+	command.Stdin = bytes.NewReader(pythonSources)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated single-auth credential behavior: %v\n%s", err, output)
+	}
+}
+
+func TestPythonCodegenJWTBearerGolden(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Auth.Methods = []schema.AuthMethod{manifest.Spec.Auth.Methods[len(manifest.Spec.Auth.Methods)-1]}
+	manifest.Spec.Auth.DefaultMethod = "jwt-bearer"
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getThing"}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "jwt_bearer_fixture", MockPackageName: "jwtbearermock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"connection.py", "refresh.py"} {
+		goldenPath := filepath.Join("testdata", "jwt-bearer-golden", name)
+		if os.Getenv("UPDATE_JWT_BEARER_GOLDEN") == "1" {
+			if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(goldenPath, []byte(generated[name]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(goldenPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated[name] != string(want) {
+			t.Errorf("%s differs from JWT bearer golden output", name)
+		}
+	}
+	if !strings.Contains(generated["connection.py"], "decode_shared_credentials") ||
+		!strings.Contains(generated["connection.py"], "RefreshingCredentialProvider") {
+		t.Error("JWT bearer connection omits renewable shared credentials")
+	}
+}
+
+const singleAuthPythonRuntimeTest = `
+import ast, asyncio, json, sys
+from dataclasses import dataclass
+sources = json.load(sys.stdin)
+class SecretString:
+    def __init__(self, value): self.value = value
+    def reveal(self): return self.value
+config_tree = ast.parse(sources['config.py'])
+credentials_class = next(node for node in config_tree.body if isinstance(node, ast.ClassDef) and node.name == 'Credentials')
+namespace = {'__name__':'__main__', 'dataclass':dataclass, 'SecretString':SecretString, 'Call':object, 'LoadedProject':object, 'ConnectionKey':object}
+exec(compile(ast.Module(body=[credentials_class], type_ignores=[]), '<generated-config>', 'exec'), namespace)
+tree = ast.parse(sources['connection.py'])
+credential_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_credentials')
+shared_decoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'decode_shared_credentials')
+credential_encoder = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'encode_credentials')
+credential_source = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == '_ProjectCredentialSource')
+exec(compile(ast.Module(body=[credential_decoder, shared_decoder, credential_encoder], type_ignores=[]), '<generated-connection>', 'exec'), namespace)
+def resolve(values, shared=False):
+    return namespace['decode_shared_credentials'](values) if shared else namespace['decode_credentials'](values)
+complete = resolve({'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'})
+assert complete.oauth_client_id == 'id' and complete.oauth_client_secret.reveal() == 'secret' and complete.refresh_token.reveal() == 'refresh'
+assert namespace['encode_credentials'](complete) == {'oauth_client_id':'id', 'oauth_client_secret':'secret', 'access_token':'access', 'refresh_token':'refresh'}
+shared = resolve({'access_token':'access'}, shared=True)
+assert shared.oauth_client_id == '' and shared.oauth_client_secret.reveal() == '' and shared.refresh_token.reveal() == '' and shared.access_token.reveal() == 'access'
+absent_optional = resolve({'oauth_client_secret':'secret', 'access_token':'access'})
+assert absent_optional.oauth_client_id == '' and absent_optional.oauth_client_secret.reveal() == 'secret' and absent_optional.refresh_token.reveal() == ''
+try: resolve({'access_token':'access'})
+except ValueError as error: assert str(error) == 'Spotify credential oauth_client_secret is required'
+else: raise AssertionError('private host-kept secret was optional')
+for shared_flag in (False, True):
+    try: resolve({'access_token':'access', 'unknown':'value'}, shared=shared_flag)
+    except ValueError as error: assert str(error) == 'Spotify stored credential does not match the connector credential fields'
+    else: raise AssertionError('unknown key accepted')
+class RefreshDriver:
+    def __class_getitem__(cls, item): return cls
+    def __init__(self, *args, **kwargs): self.args = args; self.kwargs = kwargs
+class RefreshProvider:
+    def __init__(self, *args): self.args = args; self.calls = []
+    async def resolve_with_refresh(self, call, driver):
+        self.calls.append(('resolve', driver)); return complete
+    async def resolve_after_rejection(self, call, driver):
+        self.calls.append(('rejection', driver)); return complete
+class Project:
+    connections = object()
+from types import SimpleNamespace
+namespace.update({'RefreshingCredentialProvider':RefreshProvider, 'ManifestCredentialRefreshDriver':RefreshDriver,
+                  'AUTHORIZATION':{'type':'oauth2'}, 'CREDENTIAL_FIELDS':{'access_token':'access_token'},
+                  'httpx':SimpleNamespace(AsyncClient=object), 'CredentialRefreshDriver':RefreshDriver})
+exec(compile(ast.Module(body=[credential_source], type_ignores=[]), '<generated-source>', 'exec'), namespace)
+source = namespace['_ProjectCredentialSource'](Project(), object(), object(), {'tenant':'example'})
+assert source.provider.args[2:] == (namespace['decode_credentials'], namespace['encode_credentials'], namespace['decode_shared_credentials'])
+assert source.driver.args[1:3] == (namespace['AUTHORIZATION'], namespace['CREDENTIAL_FIELDS'])
+assert source.driver.kwargs['settings'] == {'tenant':'example'}
+assert asyncio.run(source.resolve(object())) is complete
+assert asyncio.run(source.resolve_after_rejection(object())) is complete
+assert [kind for kind, _ in source.provider.calls] == ['resolve', 'rejection']
 `
 
 func TestPythonCodegenKeepsMockScenariosDistinctFromBranchHelpers(t *testing.T) {
@@ -578,5 +960,100 @@ func TestPythonPublishedModelNamesPreventExternalNameCollision(t *testing.T) {
 	_, err = gomodel.Load(goDirectory, []string{"ExternalFirstItem", "ExternalSameName"}, publishedNames...)
 	if err == nil || !strings.Contains(err.Error(), `Go model name "v1Item" conflicts`) {
 		t.Fatalf("published Python model name was renamed: %v", err)
+	}
+}
+
+func TestPythonNanosecondTimestampFieldsKeepStringWireValues(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages.Python.TimestampFormat = "rfc3339Nano"
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{Name: "TimestampFixture", Fields: []gomodel.Field{
+			{Name: "submittedAt", Type: gomodel.Type{Kind: gomodel.Time}, Optional: true},
+			{Name: "updatedAt", Type: gomodel.Type{Kind: gomodel.Time, Nullable: true}, Optional: true},
+		}}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := generated["models.py"]
+	for _, want := range []string{
+		"submitted_at: str = _dataclass_field(default='0001-01-01T00:00:00Z'",
+		"updated_at: str | None = _dataclass_field(default=None",
+		"canonical_go_timestamp(timestamp, 'submitted_at')",
+		"format_rfc3339_nano(timestamp)",
+	} {
+		if !strings.Contains(models, want) {
+			t.Errorf("nanosecond model omits %q:\n%s", want, models)
+		}
+	}
+	if strings.Contains(models, "dex_json_format") {
+		t.Error("Dex datetime codec would truncate a nine-digit timestamp")
+	}
+}
+
+func TestPythonTimestampInputMatchesGoJSONFixture(t *testing.T) {
+	command := exec.Command("python3", filepath.Join("..", "..", "script", "python_timestamp_parity_test.py"))
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Go timestamp fixture replay failed: %v\n%s", err, output)
+	}
+}
+
+func TestPythonDatetimeTimestampFieldsParseGoInputsBeforeInvoke(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{Name: "TimestampInput", Fields: []gomodel.Field{
+			{Name: "updatedSince", Type: gomodel.Type{Kind: gomodel.Time}},
+		}}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["models.py"], "parse_go_datetime(self.updated_since, 'updated_since')") {
+		t.Fatal("generated datetime input does not parse Go timestamp strings")
+	}
+	if !strings.Contains(generated["timestamps.py"], "cannot be represented exactly as datetime") {
+		t.Fatal("generated datetime parser does not reject lost precision")
+	}
+}
+
+func TestPythonGeneratedModelCommentsDoNotEndInWhitespace(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{
+			Name:    "SearchArticlesInput",
+			Comment: "First line\n\nSecond line",
+			Fields: []gomodel.Field{{
+				Name: "query", Type: gomodel.Type{Kind: gomodel.String},
+				Comment: "Field first line\n\nField second line",
+			}},
+		}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := generated["models.py"]
+	if !strings.Contains(models, "# First line\n#\n# Second line") || !strings.Contains(models, "    # Field first line\n    #\n    # Field second line") {
+		t.Fatalf("blank model comment lines were not preserved without trailing whitespace:\n%s", models)
+	}
+	for _, line := range strings.Split(models, "\n") {
+		if strings.TrimRight(line, " \t") != line {
+			t.Fatalf("generated Python model comment ends in whitespace: %q", line)
+		}
 	}
 }

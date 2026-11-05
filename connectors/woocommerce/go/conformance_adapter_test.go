@@ -11,18 +11,16 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-const conformanceEndpointPath = "/shop"
-const conformanceFixturePathPrefix = "/shop"
+const conformanceEndpointPath = ""
+const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	reference := sdkgo.ConnectionRef{Provider: "woocommerce", Name: "woocommerce"}
-	client, err := New(Config{StoreURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
-		reference: {ConsumerKey: sdkgo.NewSecretString("ck_test"), ConsumerSecret: sdkgo.NewSecretString("cs_test")},
-	}, WithHTTPClient(transport))
+	connection := sdkgo.ConnectionRef{Provider: "woocommerce", Name: "woocommerce"}
+	client, err := New(Config{StoreURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{connection: {ConsumerKey: sdkgo.NewSecretString("ck_test"), ConsumerSecret: sdkgo.NewSecretString("cs_test")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listOrders": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrders(), reference),
-		"getOrder":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), reference),
+		"listOrders": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListOrders(), connection),
+		"getOrder":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetOrder(), connection),
 	}}
 }

@@ -577,6 +577,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -640,6 +641,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -703,6 +705,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -766,6 +769,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -796,6 +800,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -881,6 +886,7 @@
         "retryAfterMs": 0,
         "uncertain": true
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -982,6 +988,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -2472,6 +2479,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -2557,6 +2565,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -2619,6 +2628,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3122,6 +3132,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3378,6 +3389,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3632,6 +3644,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -3882,6 +3895,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4147,6 +4161,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4226,6 +4241,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4294,6 +4310,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4602,6 +4619,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",
@@ -4613,8 +4631,10 @@
       "operation": "replyToConversation",
       "priorHeartbeat": {
         "attempt": 1,
-        "callId": "086d15f9-0a76-5218-9367-313eebf7077a",
-        "state": "claimed"
+        "value": {
+          "intercomReplyDispatchedAt": 1793318400,
+          "intercomReplyDispatchedCallId": "086d15f9-0a76-5218-9367-313eebf7077a"
+        }
       }
     },
     {
@@ -4702,6 +4722,7 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
+      "fixedClock": "2026-10-30T00:00:00Z",
       "idempotencyKey": "086d15f9-0a76-5218-9367-313eebf7077a",
       "input": {
         "adminId": "77",

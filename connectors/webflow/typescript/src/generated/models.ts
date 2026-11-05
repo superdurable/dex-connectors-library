@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -26,6 +27,19 @@ export const ConfigSchema = z.object({
 export interface Credentials {
   /** Secret Webflow credential. Start at https://webflow.com/dashboard and follow the authorization guide to create or find it; paste the token exactly, without Bearer. Blank prevents calls. It is sent only in a request header. */
   siteToken: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["site_token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["site_token"] != null && !(typeof fields["site_token"] === 'string')) throw new TypeError("credential site_token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["site_token"]) throw new TypeError("credential site_token is required");
+  credentials.siteToken = new SecretString((fields["site_token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

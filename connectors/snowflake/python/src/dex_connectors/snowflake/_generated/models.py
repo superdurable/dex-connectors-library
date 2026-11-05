@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -41,6 +43,12 @@ class StatementSubmission:
     statement_handle: str = _dataclass_field(default='', metadata={'dex_json_name': 'statementHandle'})
     # SubmittedAt is when Snowflake created the statement, when it reported that time.
     submitted_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'submittedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.submitted_at, str):
+            object.__setattr__(self, 'submitted_at', parse_go_datetime(self.submitted_at, 'submitted_at'))
+        elif self.submitted_at is not None:
+            validate_go_datetime(self.submitted_at, 'submitted_at')
 
 
 setattr(StatementSubmission, '__module__', 'dex_connectors.snowflake.models')
@@ -124,6 +132,10 @@ class StatementResult:
     submitted_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'submittedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.submitted_at, str):
+            object.__setattr__(self, 'submitted_at', parse_go_datetime(self.submitted_at, 'submitted_at'))
+        elif self.submitted_at is not None:
+            validate_go_datetime(self.submitted_at, 'submitted_at')
         object.__setattr__(self, 'columns', _replace_nil_slices(self.columns, 1))
         object.__setattr__(self, 'rows', _replace_nil_slices(self.rows, 1))
 

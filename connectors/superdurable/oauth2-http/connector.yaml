@@ -88,6 +88,7 @@ spec:
       protocol: oauth2
       authorizationEndpoint: {fromSetting: authorizationEndpoint}
       tokenEndpoint: {fromSetting: tokenEndpoint}
+      tokenEndpointNetworkPolicy: privateNetworkHTTP
       scopes: {fromSetting: scopes}
       clientIDCredential: oauth_client_id
       clientSecretCredential: oauth_client_secret
@@ -97,6 +98,9 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: {fromSetting: tokenEndpointAuthMethod}
       refresh:
+        responseScopes: ignore
+        missingExpiry: reject
+        storedMissingExpiry: refreshIfRefreshTokenPresent
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
     - name: sendRequest
