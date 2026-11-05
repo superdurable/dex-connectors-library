@@ -29,6 +29,22 @@ v1.10.0 and later require Go 1.25. Each operation opens one connection, runs one
 closes the connection. The connector keeps no pool, so a rotated password takes effect on the next
 Step.
 
+## Python package
+
+The [Python package](python/README.md) adds native `query` and `execute` operations at
+`v0.1.0`, with a [runnable refund Flow](python/examples/record_refund/flow.py).
+Its default `mandatory` TLS mode verifies a server certificate. Python currently rejects
+`strict` and `trust-server-certificate` before connecting because its native driver lacks
+per-connection support for those modes; the Go connector continues to support them.
+The Python package has a real Dex example integration test and SQL Server service-container
+integration tests in CI. Live provider behavior remains unverified.
+Python also selects `invalidResponse` for `TIME`, `DATETIME2`, or `DATETIMEOFFSET`
+result columns at scale 7, because its native driver would lose the seventh digit.
+The Python package preserves declared decimal and money scales, returns SQL CLR values as
+typed base64, sums trigger row counts, and verifies certificate DNS and IP Subject Alternative
+Names before login. Its mandatory TLS mode uses a system CA file or `certifi` fallback;
+`SQLSERVER_SSL_CA` can select a private CA file on the Worker.
+
 ## Company directory
 
 The connector lives at `connectors/microsoft/sql-server` with company `Microsoft`, beside the other
