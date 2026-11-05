@@ -20,6 +20,7 @@ interface Grant {
   authentication: unknown;
   encoding: string;
   clientID: string;
+  trimClientID: boolean;
   clientSecret: string;
   refreshField: string;
   keyCredential: string;
@@ -212,7 +213,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       }
       return declared.map(declaration => ({
         kind: 'refresh', endpoint: oauth.tokenEndpoint, tokenEndpointNetworkPolicy: manifestText(oauth.tokenEndpointNetworkPolicy), authentication: oauth.tokenEndpointAuthMethod ?? 'client_secret_post',
-        encoding: manifestText(oauth.tokenRequestEncoding) || 'form', clientID: manifestText(oauth.clientIDCredential),
+        encoding: manifestText(oauth.tokenRequestEncoding) || 'form', clientID: manifestText(oauth.clientIDCredential), trimClientID: refresh?.trimClientID === true,
         clientSecret: manifestText(oauth.clientSecretCredential), refreshField: manifestText(declaration.refreshTokenCredential),
         keyCredential: '', assertion: {}, mappings: manifestList(declaration.credentialMappings).map(manifestObject), copies: [],
         scopes: declaration.grantedScopes === 'userScopes' ? oauth.userScopes : (refresh?.requiredScopes ?? oauth.scopes), requestScopes: [],
@@ -239,7 +240,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       return [{
         kind: 'client_credentials', endpoint: client.tokenEndpoint, tokenEndpointNetworkPolicy: '',
         authentication: client.tokenEndpointAuthMethod ?? 'client_secret_post',
-        encoding: manifestText(client.tokenRequestEncoding) || 'form', clientID: manifestText(client.clientIDCredential),
+        encoding: manifestText(client.tokenRequestEncoding) || 'form', clientID: manifestText(client.clientIDCredential), trimClientID: client.trimClientID === true,
         clientSecret: manifestText(client.clientSecretCredential), refreshField: '', keyCredential: '', assertion: {},
         mappings: manifestList(client.credentialMappings).map(manifestObject), copies: [], scopes: client.scopes,
         requestScopes: client.scopes, acceptedScopeSets: client.acceptedScopeSets, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
@@ -261,7 +262,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     const bearer = manifestObject(serviceAccount.jwtBearer);
     return [{
       kind: 'jwt_bearer', endpoint: bearer.tokenEndpoint, tokenEndpointNetworkPolicy: '', authentication: '', encoding: 'form',
-      clientID: '', clientSecret: '', refreshField: '', keyCredential: manifestText(bearer.keyCredential),
+      clientID: '', trimClientID: false, clientSecret: '', refreshField: '', keyCredential: manifestText(bearer.keyCredential),
       assertion: bearer, mappings: manifestList(bearer.credentialMappings).map(manifestObject),
       copies: manifestList(bearer.credentialCopies).map(manifestObject), scopes: bearer.scopes, requestScopes: [], acceptedScopeSets: bearer.acceptedScopeSets,
       responseURLValidation: manifestObject(bearer.responseURLValidation),
@@ -285,8 +286,11 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       try { key = manifestObject(JSON.parse(this.#credentialValue(credentials, grant.keyCredential)) as unknown); }
       catch { throw new ReauthorizationRequiredError(); }
     }
+    const endpointURL = this.#resolveSource(grant.endpoint, credentials, key);
+    if (grant.tokenEndpointNetworkPolicy === 'privateNetworkHTTP' && (!/^[!-~]+$/.test(endpointURL) || endpointURL.includes('#')))
+      throw new ReauthorizationRequiredError();
     const endpoint = new TokenEndpoint({
-      providerName: this.#providerName, url: this.#resolveSource(grant.endpoint, credentials, key),
+      providerName: this.#providerName, url: endpointURL,
       ...(grant.tokenEndpointNetworkPolicy === 'privateNetworkHTTP' ? { addressPolicy: 'privateNetworkHTTP' as const } : {}),
       terminalErrorCodes: grant.terminalCodes, acceptedTokenTypes: grant.acceptedTokenTypes,
       acceptsMissingTokenType: grant.acceptsMissingTokenType,
@@ -321,7 +325,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       throw new ReauthorizationRequiredError();
     const authenticationMethod = secret || grant.kind === 'client_credentials'
       ? this.#resolveSource(grant.authentication, credentials, key) as ClientAuthenticationMethod : 'none';
-    const client = { id: this.#credentialValue(credentials, grant.clientID), secret: new SecretString(secret), authenticationMethod };
+    const clientID = this.#credentialValue(credentials, grant.clientID);
+    const client = { id: grant.trimClientID ? trimGoSpace(clientID) : clientID, secret: new SecretString(secret), authenticationMethod };
     if (grant.kind === 'refresh') {
       return endpoint.exchangeRefreshToken(client, new SecretString(this.#credentialValue(credentials, grant.refreshField)), signal);
     }
@@ -424,8 +429,12 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     if (typeof source === 'string') return source;
     const valueSource = manifestObject(source);
     if (typeof valueSource.value === 'string') return valueSource.value;
-    if (typeof valueSource.template === 'string') return valueSource.template.replace(/\{([^{}]+)\}/g, (_, name: string) =>
-      pathEscape(this.#credentialFields[name] ? this.#credentialValue(credentials, name) : this.#settings[name] ?? ''));
+    if (typeof valueSource.template === 'string') return valueSource.template.replace(/\{([^{}]+)\}/g, (_, name: string) => {
+      const raw = this.#credentialFields[name] ? this.#credentialValue(credentials, name) : this.#settings[name] ?? '';
+      const rule = manifestObject(manifestObject(valueSource.templateValueRules)[name]);
+      const value = applyTemplateValueRule(raw, rule);
+      return pathEscape(value);
+    });
     let value = '';
     if (typeof valueSource.fromCredential === 'string') value = this.#credentialValue(credentials, valueSource.fromCredential);
     else if (typeof valueSource.fromSetting === 'string') value = this.#settings[valueSource.fromSetting] ?? '';
@@ -498,6 +507,21 @@ function isGoMailAddress(value: string): boolean {
 function pathEscape(value: string): string {
   return encodeURIComponent(value).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
     .replace(/%(?:2B|26|3D|3A|40|24)/g, escaped => ({ '%2B': '+', '%26': '&', '%3D': '=', '%3A': ':', '%40': '@', '%24': '$' })[escaped] ?? escaped);
+}
+function applyTemplateValueRule(raw: string, rule: ManifestObject): string {
+  let value = rule.trimSpace === true ? trimGoSpace(raw) : raw;
+  if (typeof rule.maxBytes === 'number' && Buffer.byteLength(value, 'utf8') > rule.maxBytes)
+    throw new ReauthorizationRequiredError();
+  if (manifestList(rule.reject).some(rejected => typeof rejected === 'string' && rejected.toLowerCase() === value.toLowerCase()))
+    throw new ReauthorizationRequiredError();
+  const patterns = manifestList(rule.patterns);
+  if (patterns.length && !patterns.some(pattern => {
+    if (typeof pattern !== 'string') throw new TypeError('manifest template value pattern is invalid');
+    const matched = new RegExp(pattern).exec(value);
+    return matched?.index === 0 && matched[0].length === value.length;
+  })) throw new ReauthorizationRequiredError();
+  if (rule.lowercase === true) value = value.toLowerCase();
+  return value;
 }
 function parseDurationMs(value: string): number {
   if (!value) return 0;

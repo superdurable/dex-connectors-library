@@ -86,6 +86,7 @@ describe('OAuth token exchange', () => {
     const incomplete: typeof fetch = async () => Response.json({ access_token: 'a', expires_in: 0, token_type: 'Bearer' });
     await expect(endpoint(incomplete).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('omitted required fields');
     await expect(endpoint(incomplete, { url: 'http://auth.example.test/token' }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('endpoint is invalid');
+    await expect(endpoint(incomplete, { url: 'HTTPS://auth.example.test/token' }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('endpoint is invalid');
     await expect(endpoint(incomplete, { url: 'https://user:password@auth.example.test/token' }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('endpoint is invalid');
     await expect(endpoint(incomplete, { retainedResponseFields: ['access_token'] }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('cannot retain');
     await expect(endpoint(incomplete, { additionalRequestParameters: { grant_type: 'other' } }).exchangeRefreshToken(client, new SecretString('old'))).rejects.toThrow('cannot replace');

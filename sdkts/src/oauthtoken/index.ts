@@ -193,6 +193,8 @@ function responsePathValue(response: Record<string, unknown>, path: string): str
 }
 
 function validateEndpointURL(value: string, allowsPlainHTTP: boolean, providerName: string): void {
+  if (!value.startsWith('https://') && !(allowsPlainHTTP && value.startsWith('http://')))
+    throw new TypeError(`${providerName} token endpoint is invalid`);
   let parsed: URL;
   try { parsed = new URL(value); } catch { throw new TypeError(`${providerName} token endpoint is invalid`); }
   if (!parsed.hostname || (parsed.protocol !== 'https:' && !(allowsPlainHTTP && parsed.protocol === 'http:')) || parsed.username || parsed.password) throw new TypeError(`${providerName} token endpoint is invalid`);
