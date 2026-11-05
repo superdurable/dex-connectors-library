@@ -41,7 +41,9 @@ export const Authorization = {
     ],
     "refresh": {
       "acceptsMissingTokenType": true,
+      "missingExpiry": "reject",
       "scopeSeparators": "whitespaceAndComma",
+      "storedMissingExpiry": "refresh",
       "terminalErrorCodes": [
         "invalid_grant",
         "invalid_client",
