@@ -3,6 +3,7 @@
 
 import { ReauthorizationRequiredError, RetryError } from '../errors.js';
 import { isIP } from 'node:net';
+import { isLoopbackIPAddressLiteral } from '../netpolicy.js';
 import { SecretString, type CredentialRefreshDriver, type CredentialRefreshResult, type CredentialRefreshState } from '../credentials.js';
 import {
   isRefreshRequired, parseRSAPrivateKeyPEM, signJWTBearerAssertion, TokenEndpoint,
@@ -72,7 +73,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   readonly #auth: ManifestObject;
   readonly #credentialFields: Readonly<Record<string, string>>;
   readonly #settings: Readonly<Record<string, string>>;
-  readonly #fetch: typeof fetch;
+  readonly #fetch: typeof fetch | undefined;
   readonly #now: () => Date;
 
   /** Bind validated auth data, pinned settings, a caller-owned transport, and a clock. */
@@ -82,7 +83,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     this.#auth = options.auth;
     this.#credentialFields = options.credentialFields;
     this.#settings = options.settings ?? {};
-    this.#fetch = options.fetch ?? fetch;
+    this.#fetch = options.fetch;
     this.#now = options.now ?? (() => new Date());
     const methods = manifestList(this.#auth.methods);
     for (const method of methods.length ? methods : [this.#auth]) {
@@ -124,7 +125,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       let token: TokenResponse;
       try { token = await this.#exchange(grant, credentials, method, signal); }
       catch (error) {
-        if (error instanceof ReauthorizationRequiredError || error instanceof TypeError) throw error;
+        if (error instanceof ReauthorizationRequiredError) throw error;
         throw new RetryError({ kind: 'PROTOCOL', provider: this.#providerName, operation: 'refreshCredentials',
           message: error instanceof Error ? error.message : 'token endpoint failed' });
       }
@@ -137,13 +138,14 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       let hasReportedScopes = reportedScopes.trim() !== '';
       if (grant.responseScopeField === 'scopesArray') {
         const returned = token.retainedFields.scopes;
+        hasReportedScopes = false;
         if (returned !== undefined && returned !== null) {
           if (!Array.isArray(returned) || returned.some(value => typeof value !== 'string')) throw new ReauthorizationRequiredError();
           reportedScopes = returned as string[];
           hasReportedScopes = true;
         }
       }
-      if (grant.responseScopes !== 'ignore' && (grant.exactScopes ? !scopeSets.some(set => hasDeclaredScopes(reportedScopes, set, grant.scopeSeparators, true, grant.scopeResourcePrefix, grant.caseInsensitiveScopes, grant.scopeResourcePrefixCaseInsensitive))
+      if (grant.responseScopes !== 'ignore' && !(grant.responseScopeField === 'scopesArray' && !hasReportedScopes) && (grant.exactScopes ? !scopeSets.some(set => hasDeclaredScopes(reportedScopes, set, grant.scopeSeparators, true, grant.scopeResourcePrefix, grant.caseInsensitiveScopes, grant.scopeResourcePrefixCaseInsensitive))
         : hasReportedScopes && !scopeSets.some(set => hasDeclaredScopes(reportedScopes, set, grant.scopeSeparators, false, grant.scopeResourcePrefix, grant.caseInsensitiveScopes, grant.scopeResourcePrefixCaseInsensitive)))) throw new ReauthorizationRequiredError();
       const updates: Record<string, unknown> = {};
       for (const mapping of grant.mappings) {
@@ -161,8 +163,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         const hasResponse = Object.hasOwn(token.retainedFields, source);
         const returned = token.retainedFields[source];
         const prior = this.#credentialValue(credentials, destination);
-        const value = hasResponse ? returned : grant.responseURLValidation.requireResponse === true ? undefined
-          : prior || manifestText(grant.responseURLValidation.defaultURL);
+        const value = hasResponse && returned !== null ? returned : returned === null ? prior
+          : grant.responseURLValidation.requireResponse === true ? undefined : prior || manifestText(grant.responseURLValidation.defaultURL);
         if (typeof value !== 'string' || !isValidResponseURL(value, grant.responseURLValidation))
           throw new RetryError({ kind: 'PROTOCOL', provider: this.#providerName, operation: 'refreshCredentials', message: 'token response URL is invalid' });
         updates[this.#credentialFields[destination]!] = validateResponseURL(value, grant.responseURLValidation);
@@ -292,7 +294,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       additionalRequestParameters: grant.additionalParameters,
       credentialMappingPaths: grant.mappings.map(mapping => manifestText(mapping.source)),
       retainedResponseFields: [...(grant.responseScopeField === 'scopesArray' ? ['scopes'] : []),
-        ...grant.mappings.filter(mapping => mapping.credential === grant.responseURLValidation.credential).map(mapping => manifestText(mapping.source))], fetch: this.#fetch,
+        ...grant.mappings.filter(mapping => mapping.credential === grant.responseURLValidation.credential).map(mapping => manifestText(mapping.source))],
+      ...(this.#fetch ? { fetch: this.#fetch } : {}),
     });
     if (grant.kind === 'jwt_bearer') {
       const assertion = grant.assertion;
@@ -370,6 +373,14 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
   }
 
   #validateNewDeclarations(grant: Grant): void {
+    const urlRule = grant.responseURLValidation;
+    const allowedURLKeys = new Set(['credential', 'allowedHosts', 'allowedHostSuffix', 'allowAnyHTTPS', 'allowLoopback', 'forbidPort', 'requireResponse', 'refreshWhenInvalid', 'defaultURL']);
+    if (Object.keys(urlRule).some(key => !allowedURLKeys.has(key))) throw new TypeError('manifest responseURLValidation field is invalid');
+    if (grant.refreshWhenCredentialBlank && !this.#credentialFields[grant.refreshWhenCredentialBlank])
+      throw new TypeError('manifest refreshWhenCredentialBlank field is not mapped');
+    if (Object.keys(urlRule).length && (!manifestText(urlRule.credential) || !this.#credentialFields[manifestText(urlRule.credential)] ||
+      !grant.mappings.some(mapping => mapping.credential === urlRule.credential)))
+      throw new TypeError('manifest responseURLValidation credential is not mapped');
     if (grant.responseScopeField !== 'scope' && grant.responseScopeField !== 'scopesArray') throw new TypeError('manifest responseScopeField is invalid');
     if (grant.scopeResourcePrefix && grant.scopeResourcePrefix !== 'https://graph.microsoft.com/') throw new TypeError('manifest scopeResourcePrefix is invalid');
     if (grant.expiryCap && parseDurationMs(grant.expiryCap) <= 0) throw new TypeError('manifest expiryCap must be positive');
@@ -535,12 +546,12 @@ function validateResponseURL(value: string, rule: ManifestObject): string {
   if (parsed.username || parsed.password || (parsed.pathname !== '' && parsed.pathname !== '/') || parsed.search || parsed.hash)
     throw new TypeError('response URL is invalid');
   const host = parsed.hostname.toLowerCase();
-  const loopback = host === 'localhost' || (() => { try { return isIP(host) !== 0 && (host === '127.0.0.1' || host.startsWith('127.') || host === '[::1]'); } catch { return false; } })();
+  const authority = value.slice(value.indexOf('://') + 3).split('/')[0]!;
+  const rawHost = authority.startsWith('[') ? authority.slice(1, authority.indexOf(']')) : authority.split(':')[0]!;
+  const loopback = rawHost.toLowerCase() === 'localhost' || isLoopbackIPAddressLiteral(rawHost);
   if (parsed.protocol !== 'https:' && !(rule.allowLoopback === true && loopback && parsed.protocol === 'http:')) throw new TypeError('response URL is invalid');
   if (rule.forbidPort === true && parsed.port) throw new TypeError('response URL is invalid');
   const hosts = manifestList(rule.allowedHosts);
-  if (rule.forbidPort === true && hosts.length && !hosts.includes(value.split('://')[1]!.split('/')[0]!))
-    throw new TypeError('response URL is invalid');
   const suffix = manifestText(rule.allowedHostSuffix);
   if (!(rule.allowAnyHTTPS === true && parsed.protocol === 'https:') &&
     !(rule.allowLoopback === true && loopback) && !hosts.includes(host) &&

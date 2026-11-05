@@ -285,6 +285,8 @@ await fence.recordProviderId(result.providerId);
 
 Manifest token grants accept `responseScopes: ignore` when the Go credential driver does not inspect reported scope values. The default checks returned scopes against declared requirements. Retryable token endpoint failures from manifest refresh now throw `RetryError`. Manifest grants also check HubSpot scope arrays, Microsoft Graph resource-prefixed scopes, Zoho and Salesforce provider origins, Pipedrive domain changes, one-hour expiry caps, and monday.com JWT expiry. Each scope-array element is one name, including any comma it contains. A configurable token endpoint can use the private-network HTTP address policy.
 
+Without an injected transport, that policy checks resolved addresses before sending refresh credentials and refuses link-local, metadata, and public HTTP targets. A caller-owned `fetch` remains available for trusted proxies and tests. HubSpot's absent or null `scopes` array skips the array scope check; a null response URL reuses and validates the stored URL.
+
 Generated connector timestamp fields use `GoTimeInputSchema`. It accepts the same input syntax as Go `time.Time.UnmarshalJSON`, including comma fractional seconds and unusual timezone offsets, and preserves the supplied string without rounding.
 
 ### 0.5.0
