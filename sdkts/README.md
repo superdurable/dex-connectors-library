@@ -285,7 +285,7 @@ await fence.recordProviderId(result.providerId);
 
 ### 0.8.0
 
-Manifest OAuth refresh honors `refresh.tokenExchangeTimeout` in addition to the caller's deadline; a timeout is retryable, matching Go's credential refresh drivers. Provider HTTP preserves response metadata on interrupted body reads, and `encodeQueryValues` supplies Go-compatible query encoding for connector ports. These additions are not breaking; existing connectors keep their current query serialization until migrated.
+Manifest OAuth refresh and client-credentials minting honor `tokenExchangeTimeout` in addition to the caller's deadline; a timeout is retryable, matching Go's credential refresh drivers. Provider HTTP preserves response metadata on interrupted body reads, and `encodeQueryValues` supplies Go-compatible query encoding for connector ports. These additions are not breaking; existing connectors keep their current query serialization until migrated.
 
 ### 0.7.0
 

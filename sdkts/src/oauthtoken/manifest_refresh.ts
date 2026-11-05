@@ -248,7 +248,7 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         requestScopes: client.scopes, acceptedScopeSets: client.acceptedScopeSets, terminalCodes: strings(client.terminalErrorCodes, ['invalid_client']),
         responseURLValidation: {},
         responseScopes: client.responseScopes ?? 'check', responseScopeField: 'scope', scopeResourcePrefix: '', caseInsensitiveScopes: false, scopeResourcePrefixCaseInsensitive: false,
-        refreshWhenCredentialBlank: '', expiryCap: '', tokenExchangeTimeout: '', accessTokenJWTExpiryFallback: '',
+        refreshWhenCredentialBlank: '', expiryCap: '', tokenExchangeTimeout: manifestText(client.tokenExchangeTimeout), accessTokenJWTExpiryFallback: '',
         acceptedTokenTypes: strings(client.acceptedTokenTypes, ['Bearer']),
         exactScopes: false,
         scopeSeparators: (client.scopeSeparators ?? 'whitespace') as Grant['scopeSeparators'], allowsPublicClient: false,
@@ -329,12 +329,12 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
       ? this.#resolveSource(grant.authentication, credentials, key) as ClientAuthenticationMethod : 'none';
     const clientID = this.#credentialValue(credentials, grant.clientID);
     const client = { id: grant.trimClientID ? trimGoSpace(clientID) : clientID, secret: new SecretString(secret), authenticationMethod };
+    const exchangeSignal = grant.tokenExchangeTimeout
+      ? AbortSignal.any([signal, AbortSignal.timeout(Math.ceil(parseDurationMs(grant.tokenExchangeTimeout)))]) : signal;
     if (grant.kind === 'refresh') {
-      const exchangeSignal = grant.tokenExchangeTimeout
-        ? AbortSignal.any([signal, AbortSignal.timeout(Math.ceil(parseDurationMs(grant.tokenExchangeTimeout)))]) : signal;
       return endpoint.exchangeRefreshToken(client, new SecretString(this.#credentialValue(credentials, grant.refreshField)), exchangeSignal);
     }
-    return endpoint.exchangeClientCredentials(client, this.#scopes(grant.requestScopes), signal);
+    return endpoint.exchangeClientCredentials(client, this.#scopes(grant.requestScopes), exchangeSignal);
   }
 
   #resolveAssertionSource(source: unknown, assertion: ManifestObject, credentials: C, key: ManifestObject): string {
@@ -399,8 +399,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
     if (grant.responseScopeField !== 'scope' && grant.responseScopeField !== 'scopesArray') throw new TypeError('manifest responseScopeField is invalid');
     if (grant.scopeResourcePrefix && grant.scopeResourcePrefix !== 'https://graph.microsoft.com/') throw new TypeError('manifest scopeResourcePrefix is invalid');
     if (grant.expiryCap && parseDurationMs(grant.expiryCap) <= 0) throw new TypeError('manifest expiryCap must be positive');
-    if (grant.tokenExchangeTimeout && (grant.kind !== 'refresh' || parseDurationMs(grant.tokenExchangeTimeout) <= 0))
-      throw new TypeError('manifest tokenExchangeTimeout must be a positive refresh duration');
+    if (grant.tokenExchangeTimeout && parseDurationMs(grant.tokenExchangeTimeout) <= 0)
+      throw new TypeError('manifest tokenExchangeTimeout must be a positive duration');
     if (grant.accessTokenJWTExpiryFallback && parseDurationMs(grant.accessTokenJWTExpiryFallback) <= 0) throw new TypeError('manifest accessTokenJWTExpiryFallback must be positive');
     if (grant.responseScopes !== 'check' && grant.responseScopes !== 'ignore')
       throw new TypeError('manifest responseScopes must be check or ignore');

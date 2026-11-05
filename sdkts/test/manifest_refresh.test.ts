@@ -61,6 +61,24 @@ describe('manifest credential refresh', () => {
     expect(() => new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
       credentialFields })).toThrow('tokenExchangeTimeout');
   });
+
+  it('limits a client-credentials exchange as the Go Xero driver does', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    delete method.oauth2;
+    method.type = 'apiKey';
+    method.clientCredentials = { tokenEndpoint: 'https://oauth.example.test/token',
+      clientIDCredential: 'client_id', clientSecretCredential: 'client_secret',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }],
+      tokenExchangeTimeout: '15ms' };
+    const caller = new AbortController();
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields, fetch: async (_url, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      }) });
+    await expect(driver.refresh(state(), caller.signal)).rejects.toBeInstanceOf(RetryError);
+    expect(caller.signal.aborted).toBe(false);
+  });
   it('uses the default method and follows Go scope and missing-expiry rules', async () => {
     const configured = structuredClone(auth) as Record<string, unknown>;
     const method = (configured.methods as Record<string, unknown>[])[0]!;
