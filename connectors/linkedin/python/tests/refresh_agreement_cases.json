@@ -67,7 +67,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "spec.auth refresh without token type",
@@ -98,7 +98,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "spec.auth refresh with partial scopes",
@@ -131,7 +131,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "spec.auth refresh with extra scopes",
@@ -164,7 +164,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "spec.auth refresh without expires_in",
@@ -196,7 +196,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null
+    "terminalErrorCodes": []
   },
   {
     "name": "spec.auth refresh without a client secret",
@@ -227,7 +227,7 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": null,
+    "terminalErrorCodes": [],
     "mayRefuseWithoutCall": true
   }
 ]

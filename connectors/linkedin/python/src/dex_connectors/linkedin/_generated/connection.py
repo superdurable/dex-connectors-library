@@ -152,17 +152,17 @@ def _decode_config(value: dict[str, Any]) -> Config:
     if set(value) - {"userInfoUrl", "timeout", "maxResponseBytes"}:
         raise ValueError("LinkedIn configuration has unknown fields")
     config_arguments: dict[str, Any] = {}
-    if "userInfoUrl" in value:
+    if "userInfoUrl" in value and value["userInfoUrl"] != '':
         user_info_url = value["userInfoUrl"]
         if not (isinstance(user_info_url, str)):
             raise ValueError("LinkedIn configuration userInfoUrl has an invalid type")
         config_arguments['user_info_url'] = user_info_url
-    if "timeout" in value:
+    if "timeout" in value and value["timeout"] != '':
         timeout = value["timeout"]
         if not (type(timeout) is int):
             raise ValueError("LinkedIn configuration timeout has an invalid type")
         config_arguments['timeout_seconds'] = timeout / 1_000_000_000
-    if "maxResponseBytes" in value:
+    if "maxResponseBytes" in value and value["maxResponseBytes"] != '':
         max_response_bytes = value["maxResponseBytes"]
         if not (type(max_response_bytes) is int):
             raise ValueError("LinkedIn configuration maxResponseBytes has an invalid type")
