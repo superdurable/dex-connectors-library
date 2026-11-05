@@ -27,6 +27,7 @@ from dex_connectors.sdk.oauthtoken import (
     TokenEndpoint,
 )
 from dex_connectors.sdk.oauthtoken.manifest_refresh import _read_jwt_expiry_seconds
+from dex_connectors.sdk.providerhttp import AddressRefusal
 
 
 @dataclass(frozen=True, slots=True)
@@ -657,6 +658,66 @@ async def test_manifest_template_rejects_aliases_and_lowercases_valid_tenant() -
     assert base64.b64decode(requests[0].headers["authorization"].split()[1]) == (
         b"Contoso.OnMicrosoft.com:client-secret"
     )
+
+
+@pytest.mark.asyncio
+async def test_template_value_rules_match_complete_ascii_values_and_validate_at_construction() -> None:
+    """Template alternatives and byte limits follow the cross-language grant contract."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    oauth = auth["methods"][0]["oauth2"]
+    oauth["tokenEndpoint"] = {
+        "template": "https://example.test/{client_id}",
+        "templateValueRules": {"client_id": {
+            "patterns": ["a|ab"], "maxBytes": 253, "lowercase": False,
+        }},
+    }
+    rule = oauth["tokenEndpoint"]["templateValueRules"]["client_id"]
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"access_token": "next", "expires_in": 3600, "token_type": "Bearer"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        def driver() -> ManifestCredentialRefreshDriver[Credentials]:
+            return ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+        async def refresh(value: str) -> None:
+            state = CredentialRefreshState(
+                Credentials(SecretString("old"), SecretString("prior"), client_id=value),
+                None, datetime.now(UTC),
+            )
+            await driver().refresh(state)
+
+        await refresh("ab")
+        assert str(requests[-1].url) == "https://example.test/ab"
+        rule["patterns"] = ["[A-Za-z]+"]
+        await refresh("A" * 253)
+        with pytest.raises(ReauthorizationRequiredError):
+            await refresh("A" * 254)
+        rule["maxBytes"] = 0
+        with pytest.raises(ReauthorizationRequiredError):
+            await refresh("A")
+        rule["maxBytes"] = 253
+        await refresh("AbC")
+        assert str(requests[-1].url) == "https://example.test/AbC"
+        rule["trimSpace"] = True
+        await refresh("  AbC  ")
+        assert base64.b64decode(requests[-1].headers["authorization"].split()[1]).startswith(
+            b"  AbC  :"
+        )
+        for value in ("K", "ſ"):
+            with pytest.raises(ReauthorizationRequiredError):
+                await refresh(value)
+        rule["patterns"] = [r"\d+"]
+        with pytest.raises(ReauthorizationRequiredError):
+            await refresh("١")
+        for invalid_rule in ({"patterns": ["(?i)abc"]}, {"reject": [42]}, {"unknown": True}):
+            rule.update(invalid_rule)
+            with pytest.raises(ValueError):
+                driver()
+            for key in invalid_rule:
+                del rule[key]
 
 
 @pytest.mark.asyncio
@@ -1419,10 +1480,13 @@ async def test_manifest_token_endpoint_policy_refuses_forbidden_http_without_con
                 driver = ManifestCredentialRefreshDriver[Credentials](
                     "Example", auth, FIELDS, client, settings={"tokenEndpoint": token_endpoint},
                 )
-                with pytest.raises(RetryError):
+                with pytest.raises(AddressRefusal):
                     await driver.refresh(state)
                 assert connect.call_count == 0, token_endpoint
-            for token_endpoint in ("https://identity.example/token#fragment", "https://identity.example/a b"):
+            for token_endpoint in (
+                "https://identity.example/token#fragment", "https://identity.example/a b",
+                "https://identity.example/é", "https://identity.example/\tpath",
+            ):
                 driver = ManifestCredentialRefreshDriver[Credentials](
                     "Example", auth, FIELDS, client, settings={"tokenEndpoint": token_endpoint},
                 )

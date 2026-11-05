@@ -95,8 +95,16 @@ async def test_token_endpoint_rejects_unsafe_configuration() -> None:
         with pytest.raises(ValueError, match="URL"):
             await insecure.exchange_refresh_token(credentials, SecretString("refresh"))
         uppercase_scheme = TokenEndpoint("Example", "HTTPS://oauth.example/token", client)
-        with pytest.raises(ValueError, match="URL"):
+        with pytest.raises(OSError, match="HTTP 302"):
             await uppercase_scheme.exchange_refresh_token(credentials, SecretString("refresh"))
+        uppercase_plain = TokenEndpoint(
+            "Example", "HTTP://oauth.example/token", client, allows_plain_http=True
+        )
+        with pytest.raises(OSError, match="HTTP 302"):
+            await uppercase_plain.exchange_refresh_token(credentials, SecretString("refresh"))
+        leading_space = TokenEndpoint("Example", " https://oauth.example/token", client)
+        with pytest.raises(ValueError, match="URL"):
+            await leading_space.exchange_refresh_token(credentials, SecretString("refresh"))
         override = TokenEndpoint(
             "Example", "https://oauth.example/token", client,
             additional_request_parameters={"grant_type": "other"},

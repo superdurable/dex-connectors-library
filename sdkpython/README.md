@@ -269,6 +269,9 @@ The core example sends through an in-process HTTP transport.
   as Salesforce declares, without requiring a JSON key credential.
   Private-network HTTP token endpoints reject fragments and non-printable or
   non-ASCII URL text before transport.
+  Migration: `TokenEndpoint` now accepts uppercase ASCII `HTTP://` and `HTTPS://`
+  schemes, while leading whitespace remains invalid. Address-policy refusals
+  retain their `AddressRefusal` type so callers can treat them as terminal validation defects.
 - `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
   The string mode preserves every supplied fractional digit; the default
   `datetime` mode names a Go-valid value that cannot be represented exactly.

@@ -21,7 +21,7 @@ from ..credentials import (
     SecretString,
 )
 from ..errors import Failure, FailureKind, RetryError
-from ..providerhttp import new_provider_http_client
+from ..providerhttp import AddressRefusal, new_provider_http_client
 from . import (
     ClientAuthenticationMethod,
     ClientCredentials,
@@ -150,12 +150,16 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             try:
                 token, copies = await self._exchange(grant, credentials)
             except httpx.InvalidURL:
+                if grant["token_endpoint_network_policy"] == "privateNetworkHTTP":
+                    raise AddressRefusal("URL is invalid") from None
                 raise RetryError(
                     Failure(
                         FailureKind.PROTOCOL, self._provider_name,
                         "refreshCredentials", "token endpoint is invalid",
                     )
                 ) from None
+            except AddressRefusal:
+                raise
             except (OSError, ValueError) as error:
                 raise RetryError(
                     Failure(FailureKind.PROTOCOL, self._provider_name, "refreshCredentials", str(error))
@@ -605,6 +609,13 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             raise ValueError("manifest storedMissingExpiry must be refresh or keep")
 
     def _validate_new_declarations(self, grant: Mapping[str, Any]) -> None:
+        endpoint = grant["endpoint"]
+        if isinstance(endpoint, dict) and "templateValueRules" in endpoint:
+            rules = endpoint["templateValueRules"]
+            if not isinstance(rules, dict):
+                raise ValueError("manifest template value rules are invalid")
+            for rule in rules.values():
+                _validate_template_value_rule(rule)
         url_rule = grant["response_url_validation"]
         allowed_url_keys = {
             "credential", "allowedHosts", "allowedHostSuffix", "allowAnyHTTPS", "allowLoopback",
@@ -752,15 +763,47 @@ def _parse_duration(value: str) -> timedelta:
 
 def _apply_template_value_rule(raw: str, rule: Mapping[str, Any]) -> str:
     """Validate one path value before applying the manifest's canonical casing."""
+    _validate_template_value_rule(rule)
     value = _trim_go_space(raw) if rule.get("trimSpace") is True else raw
-    if rule.get("maxBytes") and len(value.encode("utf-8")) > rule["maxBytes"]:
+    if "maxBytes" in rule and len(value.encode("utf-8")) > rule["maxBytes"]:
         raise ReauthorizationRequiredError()
     if value.lower() in {rejected.lower() for rejected in rule.get("reject", [])}:
         raise ReauthorizationRequiredError()
     patterns = rule.get("patterns", [])
-    if patterns and not any(re.fullmatch(pattern, value) for pattern in patterns):
+    if patterns and not any(re.fullmatch(pattern, value, flags=re.ASCII) for pattern in patterns):
         raise ReauthorizationRequiredError()
     return value.lower() if rule.get("lowercase") is True else value
+
+
+def _validate_template_value_rule(rule: Any) -> None:
+    if not isinstance(rule, dict):
+        raise ValueError("manifest template value rule is invalid")
+    allowed = {"trimSpace", "maxBytes", "patterns", "reject", "lowercase"}
+    if (
+        set(rule) - allowed
+        or ("trimSpace" in rule and not isinstance(rule["trimSpace"], bool))
+        or ("lowercase" in rule and not isinstance(rule["lowercase"], bool))
+        or ("maxBytes" in rule and (
+            not isinstance(rule["maxBytes"], int) or isinstance(rule["maxBytes"], bool)
+            or rule["maxBytes"] < 0
+        ))
+        or ("reject" in rule and (
+            not isinstance(rule["reject"], list)
+            or any(not isinstance(value, str) for value in rule["reject"])
+        ))
+        or ("patterns" in rule and (
+            not isinstance(rule["patterns"], list)
+            or any(not isinstance(value, str) for value in rule["patterns"])
+        ))
+    ):
+        raise ValueError("manifest template value rule is invalid")
+    for pattern in rule.get("patterns", []):
+        if re.search(r"\(\?(?!:)", pattern):
+            raise ValueError("manifest template value pattern is invalid")
+        try:
+            re.compile(pattern, flags=re.ASCII)
+        except re.error as error:
+            raise ValueError("manifest template value pattern is invalid") from error
 
 
 def _trim_go_space(value: str) -> str:
