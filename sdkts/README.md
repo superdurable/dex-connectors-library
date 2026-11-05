@@ -1,6 +1,6 @@
 # Connector TypeScript SDK
 
-`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.3.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+`@superdurable/connectors-sdk` is the provider-neutral TypeScript SDK for Dex connectors. It provides stable value contracts, typed Query and Mutation operations, Dex Step factories, credential refresh, OAuth token exchanges, HTTP safety helpers, project configuration loading, scripted mocks, and single-dispatch marker decisions. The package is at version `0.6.0`, requires Node 22 or 24, and uses `@superdurable/dex` 1.28.0 or newer. It is ESM-only, matching Dex: use `import`; direct `require()` fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 
 Install dependencies and verify the package from this directory:
 
@@ -231,9 +231,9 @@ mutation.assertNoFailures();
 
 ## OAuth token refresh
 
-The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. The [manifest refresh example](examples/manifest_refresh.mjs) uses `ManifestCredentialRefreshDriver` with a generated authorization declaration and field map to exchange refresh-token, client-credentials, or JWT-bearer grants, preserve rotated material, check scopes, and replace only mapped fields. Constructor options also accept startup-pinned `settings`, a caller-owned `fetch`, and an injectable `now` clock. Credentials for a connector with several authorization methods use `authMethodId`; an empty value selects `defaultMethod`. Refresh validation uses `requiredScopes` when declared, and a grant can override `exactScopes` or `acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace` (the default) or `whitespaceAndComma` for both exact and all-scope checks. A blank client secret requires reauthorization unless `refresh.allowsPublicClient` is true. A response lacking `expires_in` is retryable unless the manifest declares `missingExpiry`. Only declared terminal OAuth errors below HTTP 500 require reauthorization; transport, server, and other token errors remain retryable.
+The [runnable OAuth exchange example](examples/oauthtoken.mjs) shows a provider-neutral refresh-token grant. The injected `fetch` returns a local fixture; a connector normally uses the provider's fixed HTTPS token endpoint. `TokenEndpoint` also supports client-credentials and JWT-bearer grants, optional Basic authentication, declared response fields, bounded responses, and terminal OAuth error-code classification. The [manifest refresh example](examples/manifest_refresh.mjs) uses `ManifestCredentialRefreshDriver` with a generated authorization declaration and field map to exchange refresh-token, client-credentials, or JWT-bearer grants, preserve rotated material, check scopes, and replace only mapped fields. Constructor options also accept startup-pinned `settings`, a caller-owned `fetch`, and an injectable `now` clock. Credentials for a connector with several authorization methods use `authMethodId`; an empty value selects `defaultMethod`. Refresh validation uses `requiredScopes` when declared, and a grant can override `exactScopes` or `acceptsMissingTokenType`. `refresh.scopeSeparators` selects `whitespace` (the default) or `whitespaceAndComma` for both exact and all-scope checks. A blank client secret requires reauthorization unless `refresh.allowsPublicClient` is true. A response lacking `expires_in` is retryable by default or with `missingExpiry: reject`; `keep` returns an expired result, and a positive declared lifetime supplies its expiry. Only declared terminal OAuth errors below HTTP 500 require reauthorization; transport, server, and other token errors remain retryable.
 
-An access token with no stored expiry remains usable; the current project provider requires authoritative expiry before forcing refresh after a provider rejection. A response without `expires_in` uses the manifest's `missingExpiry` lifetime or returns an expired result for `keep`. The current project provider rejects that result without changing stored material. Refreshing multiple grants follows the Go driver's current single-expiry behavior: active grants rotate together and the earliest expiry wins. A process failure between provider response and persistence, or failure of a later grant after an earlier rotation, can lose a one-use refresh token.
+An access token with no stored expiry remains usable by default. Declare `storedMissingExpiry: refresh` on a refresh, client-credentials, or JWT-bearer grant to refresh it, as Atlassian does. The separate `missingExpiry` declaration controls a token response without `expires_in`; when absent, that response is retryable. A declared `missingExpiry` lifetime supplies an expiry, while `keep` returns an expired result that the current project provider rejects. Refreshing multiple grants follows the Go driver's current single-expiry behavior: active grants rotate together and the earliest expiry wins. A process failure between provider response and persistence, or failure of a later grant after an earlier rotation, can lose a one-use refresh token.
 
 ```js
 import { SecretString } from '../dist/index.js';
@@ -280,6 +280,31 @@ await fence.recordProviderId(result.providerId);
 ```
 
 ## Release notes
+
+### 0.7.0
+
+Manifest token endpoint templates now apply declared `templateValueRules` to each placeholder before path escaping. A rule can trim Go Unicode whitespace, reject names, bound UTF-8 length, accept full-match patterns, and lowercase the accepted value. An invalid value requires reauthorization before any token request. The Microsoft app-only manifests use this to reject multi-tenant aliases and invalid tenants.
+Template patterns use a portable Go and JavaScript subset: lookaround, backreferences, Unicode property escapes, quoted literals, POSIX classes, and inline flags are rejected when the manifest is loaded.
+`trimClientID` on refresh or client-credentials declarations trims the client ID sent in the token request when the Go driver does so.
+JWT-bearer grants accept a PEM private key directly from a credential field, as Salesforce declares, without requiring a JSON key credential.
+Private-network HTTP token endpoints also reject fragments and non-printable or non-ASCII URL text before transport, matching the configurable Go connector.
+Migration: `TokenEndpoint` accepts uppercase ASCII `HTTP://` and `HTTPS://` schemes; leading whitespace remains invalid. An address-policy refusal retains its `AddressRefusal` type so a connector can classify it as a terminal validation defect.
+
+### 0.6.0
+
+Manifest token grants accept `responseScopes: ignore` when the Go credential driver does not inspect reported scope values. The default checks returned scopes against declared requirements. Retryable token endpoint failures from manifest refresh now throw `RetryError`. Manifest grants also check HubSpot scope arrays, Microsoft Graph resource-prefixed scopes, Zoho and Salesforce provider origins, Pipedrive domain changes, one-hour expiry caps, and monday.com JWT expiry. Each scope-array element is one name, including any comma it contains. A configurable token endpoint can use the private-network HTTP address policy.
+
+Without an injected transport, that policy checks resolved addresses before sending refresh credentials and refuses link-local, metadata, and public HTTP targets. A caller-owned `fetch` remains available for trusted proxies and tests. HubSpot's absent or null `scopes` array skips the array scope check; a null response URL reuses and validates the stored URL.
+
+Generated connector timestamp fields use `GoTimeInputSchema`. It accepts the same input syntax as Go `time.Time.UnmarshalJSON`, including comma fractional seconds and unusual timezone offsets, and preserves the supplied string without rounding.
+
+### 0.5.0
+
+Manifest refresh supports `acceptedScopeSets` for providers that grant equivalent scope alternatives; on OAuth refresh it applies to every grant under `refresh.grants` and excludes `offline_access` from response checks. JWT bearer grants may declare `subjectValidation: goMailAddress`; the driver then validates the trimmed delegated subject using Go `mail.ParseAddress` address equality before sending a token request. `missingExpiry: reject` requires a positive `expires_in` and treats a malformed successful response as retryable.
+
+### 0.4.0
+
+Adds `storedMissingExpiry` to refresh-token, client-credentials, and JWT-bearer declarations. `refresh` renews a stored credential without expiry independently of `missingExpiry`, which still controls token responses without `expires_in`.
 
 ### 0.3.0
 

@@ -42,6 +42,12 @@
       "expected": {
         "branch": "accepted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "providerId": "SMfedcba9876543210fedcba9876543210",
+          "state": "claimed"
+        },
         "output": {
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "2026-09-30T17:04:05Z",
@@ -109,6 +115,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "claimed"
+        },
         "output": {
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "0001-01-01T00:00:00Z",
@@ -168,6 +179,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "claimed"
+        },
         "output": {
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "0001-01-01T00:00:00Z",
@@ -254,6 +270,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -304,6 +325,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -352,6 +378,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -400,6 +431,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "claimed"
+        },
         "output": {
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "0001-01-01T00:00:00Z",
@@ -927,6 +963,12 @@
       "expected": {
         "branch": "accepted",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "providerId": "SMfedcba9876543210fedcba9876543210",
+          "state": "claimed"
+        },
         "output": {
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "2026-09-30T17:04:05Z",
@@ -994,6 +1036,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "claimed"
+        },
         "output": {
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "0001-01-01T00:00:00Z",
@@ -1094,6 +1141,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "a29894ac-874e-5a65-a5a5-161c71200769",
+          "state": "claimed"
+        },
         "output": {
           "accountSid": "AC00000000000000000000000000000000",
           "createdAt": "0001-01-01T00:00:00Z",
