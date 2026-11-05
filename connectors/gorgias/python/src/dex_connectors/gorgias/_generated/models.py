@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -96,6 +98,36 @@ class Ticket:
     # TrashedAt is when the ticket was moved to the trash, or nil.
     trashed_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'trashedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.updated_at, str):
+            object.__setattr__(self, 'updated_at', parse_go_datetime(self.updated_at, 'updated_at'))
+        elif self.updated_at is not None:
+            validate_go_datetime(self.updated_at, 'updated_at')
+        if isinstance(self.last_received_message_at, str):
+            object.__setattr__(self, 'last_received_message_at', parse_go_datetime(self.last_received_message_at, 'last_received_message_at'))
+        elif self.last_received_message_at is not None:
+            validate_go_datetime(self.last_received_message_at, 'last_received_message_at')
+        if isinstance(self.last_message_at, str):
+            object.__setattr__(self, 'last_message_at', parse_go_datetime(self.last_message_at, 'last_message_at'))
+        elif self.last_message_at is not None:
+            validate_go_datetime(self.last_message_at, 'last_message_at')
+        if isinstance(self.closed_at, str):
+            object.__setattr__(self, 'closed_at', parse_go_datetime(self.closed_at, 'closed_at'))
+        elif self.closed_at is not None:
+            validate_go_datetime(self.closed_at, 'closed_at')
+        if isinstance(self.snoozed_until, str):
+            object.__setattr__(self, 'snoozed_until', parse_go_datetime(self.snoozed_until, 'snoozed_until'))
+        elif self.snoozed_until is not None:
+            validate_go_datetime(self.snoozed_until, 'snoozed_until')
+        if isinstance(self.trashed_at, str):
+            object.__setattr__(self, 'trashed_at', parse_go_datetime(self.trashed_at, 'trashed_at'))
+        elif self.trashed_at is not None:
+            validate_go_datetime(self.trashed_at, 'trashed_at')
+
 
 setattr(Ticket, '__module__', 'dex_connectors.gorgias.models')
 
@@ -181,6 +213,20 @@ class TicketMessage:
     sent_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'sentAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # FailedAt is when Gorgias failed to send the message, or nil.
     failed_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'failedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
+        if isinstance(self.sent_at, str):
+            object.__setattr__(self, 'sent_at', parse_go_datetime(self.sent_at, 'sent_at'))
+        elif self.sent_at is not None:
+            validate_go_datetime(self.sent_at, 'sent_at')
+        if isinstance(self.failed_at, str):
+            object.__setattr__(self, 'failed_at', parse_go_datetime(self.failed_at, 'failed_at'))
+        elif self.failed_at is not None:
+            validate_go_datetime(self.failed_at, 'failed_at')
 
 
 setattr(TicketMessage, '__module__', 'dex_connectors.gorgias.models')

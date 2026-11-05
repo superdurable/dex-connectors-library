@@ -79,8 +79,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Microsoft SQL Server stored credential does not match the connector credential fields")
+        if set(material) - set(('password',)):
+            raise ValueError("Microsoft SQL Server stored credential does not match the connector credential fields")
         password = material.get("password")
-        if not isinstance(password, str) or not password:
+        if password is not None and not (isinstance(password, str)):
+            raise ValueError("Microsoft SQL Server credential password has an invalid type")
+        if not password:
             raise ValueError("Microsoft SQL Server credential password is required")
         return Credentials(SecretString(password))
 

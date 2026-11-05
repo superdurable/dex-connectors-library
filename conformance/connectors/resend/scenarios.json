@@ -33,7 +33,7 @@
               "superdurable-resend/0.1"
             ]
           },
-          "status": 201
+          "status": 200
         }
       ],
       "expected": {
@@ -56,7 +56,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send-success",
+      "name": "sendEmail-success",
       "operation": "sendEmail"
     },
     {
@@ -91,7 +91,7 @@
               "superdurable-resend/0.1"
             ]
           },
-          "status": 400
+          "status": 401
         }
       ],
       "expected": {
@@ -114,14 +114,14 @@
           "reader@example.test"
         ]
       },
-      "name": "send-reject",
+      "name": "sendEmail-rejected",
       "operation": "sendEmail"
     },
     {
       "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
       "exchanges": [
         {
-          "body": "{\"id\":42}",
+          "body": "{",
           "derivedKey": "9c1ffc54-efb6-5a25-b326-2433e539f842",
           "headers": {},
           "keyMode": "derived",
@@ -172,33 +172,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send-malformed",
-      "operation": "sendEmail"
-    },
-    {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "id": ""
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "input": {
-        "from": "",
-        "html": "\u003cp\u003eHello\u003c/p\u003e",
-        "subject": "Welcome",
-        "to": [
-          "reader@example.test"
-        ]
-      },
-      "name": "send-invalid-input",
+      "name": "sendEmail-invalid",
       "operation": "sendEmail"
     },
     {
@@ -253,7 +227,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send-rate-limited",
+      "name": "sendEmail-rate-limit",
       "operation": "sendEmail"
     },
     {
@@ -308,7 +282,7 @@
           "reader@example.test"
         ]
       },
-      "name": "send-unavailable",
+      "name": "sendEmail-server-error",
       "operation": "sendEmail"
     },
     {
@@ -361,124 +335,35 @@
           "reader@example.test"
         ]
       },
-      "name": "send-transport-before",
+      "name": "sendEmail-transport",
       "operation": "sendEmail"
     },
     {
       "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "exchanges": [
-        {
-          "body": "{\"name\":\"invalid_idempotent_request\"}",
-          "derivedKey": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-          "headers": {},
-          "keyMode": "derived",
-          "method": "POST",
-          "path": "/emails",
-          "requestBody": {
-            "from": "Acme \u003chello@example.test\u003e",
-            "html": "\u003cp\u003eHello\u003c/p\u003e",
-            "subject": "Welcome",
-            "to": [
-              "reader@example.test"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-secret-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "User-Agent": [
-              "superdurable-resend/0.1"
-            ]
-          },
-          "status": 409
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "id": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "idempotencyKey": "9c1ffc54-efb6-5a25-b326-2433e539f842",
       "input": {
-        "from": "Acme \u003chello@example.test\u003e",
-        "html": "\u003cp\u003eHello\u003c/p\u003e",
-        "subject": "Welcome",
-        "to": [
-          "reader@example.test"
-        ]
+        "from": "",
+        "html": "",
+        "subject": "",
+        "to": []
       },
-      "name": "send-idempotency-conflict",
+      "name": "sendEmail-defect",
       "operation": "sendEmail"
     },
     {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "exchanges": [
-        {
-          "body": "{\"name\":\"other\"}",
-          "derivedKey": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-          "headers": {},
-          "keyMode": "derived",
-          "method": "POST",
-          "path": "/emails",
-          "requestBody": {
-            "from": "Acme \u003chello@example.test\u003e",
-            "html": "\u003cp\u003eHello\u003c/p\u003e",
-            "subject": "Welcome",
-            "to": [
-              "reader@example.test"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-secret-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ],
-            "User-Agent": [
-              "superdurable-resend/0.1"
-            ]
-          },
-          "status": 409
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "input": {
-        "from": "Acme \u003chello@example.test\u003e",
-        "html": "\u003cp\u003eHello\u003c/p\u003e",
-        "subject": "Welcome",
-        "to": [
-          "reader@example.test"
-        ]
-      },
-      "name": "send-processing-conflict",
-      "operation": "sendEmail"
-    },
-    {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
+      "callId": "d429293f-623f-5ba5-8857-a80c5575790e",
       "exchanges": [
         {
           "body": "{\"id\":\"email-1\",\"from\":\"Acme \u003chello@example.test\u003e\",\"to\":[\"reader@example.test\"],\"subject\":\"Welcome\",\"created_at\":\"2026-10-26T12:00:00Z\"}",
@@ -520,11 +405,99 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get-found",
+      "name": "getEmail-success",
       "operation": "getEmail"
     },
     {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
+      "callId": "fa493b4b-b542-5201-a5d1-3c49aa55aeb3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "email-1"
+      },
+      "name": "getEmail-rejected",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "8d9086be-fc7f-52ae-b7e5-8bc87fa98cb7",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/emails/email-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-secret-token"
+            ],
+            "User-Agent": [
+              "superdurable-resend/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created_at": "",
+          "from": "",
+          "id": "",
+          "subject": "",
+          "to": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": "email-1"
+      },
+      "name": "getEmail-invalid",
+      "operation": "getEmail"
+    },
+    {
+      "callId": "7ade3302-a7db-5e7e-81a5-d886039a7723",
       "exchanges": [
         {
           "body": "{}",
@@ -564,123 +537,11 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get-missing",
+      "name": "getEmail-not-found",
       "operation": "getEmail"
     },
     {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/emails/email-1",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-secret-token"
-            ],
-            "User-Agent": [
-              "superdurable-resend/0.1"
-            ]
-          },
-          "status": 400
-        }
-      ],
-      "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "created_at": "",
-          "from": "",
-          "id": "",
-          "subject": "",
-          "to": []
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "id": "email-1"
-      },
-      "name": "get-reject",
-      "operation": "getEmail"
-    },
-    {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "exchanges": [
-        {
-          "body": "{\"id\":42}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/emails/email-1",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-secret-token"
-            ],
-            "User-Agent": [
-              "superdurable-resend/0.1"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "invalidResponse",
-        "failureKind": "PROTOCOL",
-        "output": {
-          "created_at": "",
-          "from": "",
-          "id": "",
-          "subject": "",
-          "to": []
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "id": "email-1"
-      },
-      "name": "get-malformed",
-      "operation": "getEmail"
-    },
-    {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "created_at": "",
-          "from": "",
-          "id": "",
-          "subject": "",
-          "to": []
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "id": ""
-      },
-      "name": "get-invalid-input",
-      "operation": "getEmail"
-    },
-    {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
+      "callId": "ce7de2f2-c341-508c-afc1-d54140c625fc",
       "exchanges": [
         {
           "body": "{}",
@@ -713,11 +574,11 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get-rate-limited",
+      "name": "getEmail-rate-limit",
       "operation": "getEmail"
     },
     {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
+      "callId": "cccb94b2-88cf-5de8-8286-aa56be951745",
       "exchanges": [
         {
           "body": "{}",
@@ -750,11 +611,11 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get-unavailable",
+      "name": "getEmail-server-error",
       "operation": "getEmail"
     },
     {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
+      "callId": "d8923f15-c3df-5d31-88d4-a327c1a16348",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -785,51 +646,31 @@
       "input": {
         "id": "email-1"
       },
-      "name": "get-transport-before",
+      "name": "getEmail-transport",
       "operation": "getEmail"
     },
     {
-      "callId": "9c1ffc54-efb6-5a25-b326-2433e539f842",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"email+one@a:b\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/emails/email+one@a:b",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer test-secret-token"
-            ],
-            "User-Agent": [
-              "superdurable-resend/0.1"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "callId": "f5a24267-6493-5857-b6d8-b7e7ac6bd35e",
+      "exchanges": [],
       "expected": {
-        "branch": "found",
-        "failureKind": "",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "created_at": "",
           "from": "",
-          "id": "email+one@a:b",
+          "id": "",
           "subject": "",
           "to": []
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "input": {
-        "id": "email+one@a:b"
+        "id": ""
       },
-      "name": "get-escaped-path",
+      "name": "getEmail-defect",
       "operation": "getEmail"
     }
   ],

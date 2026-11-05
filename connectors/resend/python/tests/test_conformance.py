@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Replay Go-recorded Resend HTTP behavior through the Python package."""
+"""Replay Go-recorded resend provider exchanges."""
 
 import sys
 from pathlib import Path
@@ -8,21 +8,23 @@ from pathlib import Path
 import dex_connectors.sdk as sdk
 import pytest
 
-import dex_connectors.resend as resend
+import dex_connectors.resend as connector
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
-from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
+import connector_scenarios as conformance  # noqa: E402
 
-SCENARIOS = load_scenarios(ROOT / "conformance/connectors/resend/scenarios.json")
+SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/resend/scenarios.json")
 CONNECTION = sdk.ConnectionRef("resend", "resend")
-ADAPTER = PythonOperationAdapter(
+ADAPTER = conformance.PythonOperationAdapter(
     "resend",
     CONNECTION,
-    resend,
-    lambda http_client, _: resend.Client(
-        resend.Config(base_url="http://127.0.0.1"),
-        sdk.StaticCredentialProvider({CONNECTION: resend.Credentials(sdk.SecretString("test-secret-token"))}),
+    connector,
+    lambda http_client, recorder: connector.Client(
+        connector.Config(base_url="http://127.0.0.1:12345"),
+        conformance.static_credentials(
+            CONNECTION, connector.Credentials(api_key=sdk.SecretString("test-secret-token"))
+        ),
         http_client,
     ),
 )
@@ -30,5 +32,5 @@ ADAPTER = PythonOperationAdapter(
 
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
-    """Match Go requests, retries, branches, and exact SDK output."""
-    await replay(scenario, ADAPTER.invoke)
+    """Compare provider requests and SDK outcomes with Go."""
+    await conformance.replay(scenario, ADAPTER.invoke)

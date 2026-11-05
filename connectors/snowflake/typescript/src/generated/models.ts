@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Account identifier from https://app.snowflake.com > open the account selector at the bottom of the navigation menu > View account details > Account identifier. Use the preferred orgname-account_name form, such as myorg-analytics_prod, or a legacy account locator with its region and cloud segments, such as xy12345.us-east-2.aws; append .privatelink only when the Worker reaches Snowflake through private connectivity. Enter it without https:// and without .snowflakecomputing.com: the connector sends every request to https://<identifier>.snowflakecomputing.com and uses the part before the first period, upper-cased, in key-pair JWTs. Accounts on snowflakecomputing.cn (China) are not supported. Not secret; blank is invalid. */
@@ -54,19 +88,21 @@ export interface Credentials {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["auth_method", "private_key", "programmatic_access_token", "user"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["private_key"] != null && !(typeof fields["private_key"] === 'string')) throw new TypeError("credential private_key has an invalid type");
+  if (fields["programmatic_access_token"] != null && !(typeof fields["programmatic_access_token"] === 'string')) throw new TypeError("credential programmatic_access_token has an invalid type");
+  if (fields["user"] != null && !(typeof fields["user"] === 'string')) throw new TypeError("credential user has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
   const method = selectedMethod || "key-pair";
   const credentials = { authMethodId: method } as Credentials;
   if (method === "key-pair") {
-    if (fields["user"] != null && typeof fields["user"] !== 'string') throw new TypeError("credential user has an invalid type");
     if (!fields["user"]) throw new TypeError("credential user is required");
     if (fields["user"]) credentials.user = fields["user"] as string;
-    if (fields["private_key"] != null && typeof fields["private_key"] !== 'string') throw new TypeError("credential private_key has an invalid type");
     if (!fields["private_key"]) throw new TypeError("credential private_key is required");
     if (fields["private_key"]) credentials.privateKey = new SecretString(fields["private_key"] as string);
   } else if (method === "programmatic-access-token") {
-    if (fields["programmatic_access_token"] != null && typeof fields["programmatic_access_token"] !== 'string') throw new TypeError("credential programmatic_access_token has an invalid type");
     if (!fields["programmatic_access_token"]) throw new TypeError("credential programmatic_access_token is required");
     if (fields["programmatic_access_token"]) credentials.programmaticAccessToken = new SecretString(fields["programmatic_access_token"] as string);
   } else {
@@ -181,7 +217,7 @@ export const SubmitStatementInputSchema = z.strictObject({
 /** Runtime validator for StatementSubmission. */
 export const StatementSubmissionSchema = z.strictObject({
   "statementHandle": z.string(),
-  "submittedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "submittedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<StatementSubmission>;
 
 /** Runtime validator for Column. */
@@ -219,7 +255,7 @@ export const StatementResultSchema = z.strictObject({
   "totalRowCount": z.number().int().optional(),
   "truncated": z.boolean().optional(),
   "stats": StatementStatsSchema.optional(),
-  "submittedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "submittedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<StatementResult>;
 
 /** Runtime validator for CancelStatementInput. */

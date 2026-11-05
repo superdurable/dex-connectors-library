@@ -18,6 +18,7 @@ package entraid
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,8 +62,13 @@ var reportableGraphErrorCodes = map[string]bool{
 type Option func(*clientOptions)
 
 type clientOptions struct {
-	httpClient       *http.Client
-	localProviderURL string
+	httpClient                  *http.Client
+	localProviderURL            string
+	initialPasswordRandomSource io.Reader
+}
+
+func withInitialPasswordRandomSource(source io.Reader) Option {
+	return func(options *clientOptions) { options.initialPasswordRandomSource = source }
 }
 
 // WithHTTPClient overrides the default 25-second HTTP client used for Microsoft
@@ -84,13 +90,14 @@ func WithLocalProviderURL(baseURL string) Option {
 // Client executes authenticated Microsoft Graph requests for connector operations.
 // A Client is immutable after New and safe for concurrent use by Dex Workers.
 type Client struct {
-	httpClient           *http.Client
-	credentials          CredentialSource
-	refreshDriver        sdkgo.CredentialRefreshDriver[Credentials]
-	maxResponseBytes     int64
-	listUsersPageSize    int
-	creationKeyAttribute CreationKeyAttribute
-	now                  func() time.Time
+	httpClient                  *http.Client
+	credentials                 CredentialSource
+	refreshDriver               sdkgo.CredentialRefreshDriver[Credentials]
+	maxResponseBytes            int64
+	listUsersPageSize           int
+	creationKeyAttribute        CreationKeyAttribute
+	initialPasswordRandomSource io.Reader
+	now                         func() time.Time
 }
 
 // graphRequest is one Microsoft Graph request; its encoded payload is resent once after a 401 forces a refresh.
@@ -183,6 +190,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if dependencies.httpClient == nil {
 		dependencies.httpClient = &http.Client{Timeout: defaultRequestTimeout}
 	}
+	if dependencies.initialPasswordRandomSource == nil {
+		dependencies.initialPasswordRandomSource = rand.Reader
+	}
 	if dependencies.localProviderURL != "" {
 		routed, err := newLocalProviderHTTPClient(dependencies.httpClient, dependencies.localProviderURL)
 		if err != nil {
@@ -197,13 +207,14 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		return nil, fmt.Errorf("Microsoft Entra ID listUsers page size must be from 1 to %d", maxListUsersPageSize)
 	}
 	return &Client{
-		httpClient:           providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
-		credentials:          credentials,
-		refreshDriver:        NewCredentialRefreshDriver(dependencies.httpClient),
-		maxResponseBytes:     config.MaxResponseBytes,
-		listUsersPageSize:    int(config.ListUsersPageSize),
-		creationKeyAttribute: config.CreationKeyAttribute,
-		now:                  time.Now,
+		httpClient:                  providerhttp.NewProviderHTTPClient(dependencies.httpClient, defaultRequestTimeout),
+		credentials:                 credentials,
+		refreshDriver:               NewCredentialRefreshDriver(dependencies.httpClient),
+		maxResponseBytes:            config.MaxResponseBytes,
+		listUsersPageSize:           int(config.ListUsersPageSize),
+		creationKeyAttribute:        config.CreationKeyAttribute,
+		initialPasswordRandomSource: dependencies.initialPasswordRandomSource,
+		now:                         time.Now,
 	}, nil
 }
 

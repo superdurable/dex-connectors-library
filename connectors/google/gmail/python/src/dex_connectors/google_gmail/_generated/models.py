@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -55,6 +57,12 @@ class Message:
     received_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'receivedAt', 'dex_json_format': 'rfc3339'})
     # LabelIDs lists the Gmail labels applied to the message.
     label_ids: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'labelIds', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.received_at, str):
+            object.__setattr__(self, 'received_at', parse_go_datetime(self.received_at, 'received_at'))
+        elif self.received_at is not None:
+            validate_go_datetime(self.received_at, 'received_at')
 
 
 setattr(Message, '__module__', 'dex_connectors.google_gmail.models')
