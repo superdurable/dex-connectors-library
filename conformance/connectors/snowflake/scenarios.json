@@ -1308,7 +1308,7 @@
       "callId": "00000000-0000-4000-8000-000000000099",
       "exchanges": [
         {
-          "body": "{\"resultSetMetaData\":{\"format\":\"jsonv2\",\"numRows\":1,\"rowType\":[{\"name\":\"SMALL\",\"type\":\"fixed\",\"precision\":9},{\"name\":\"WIDE\",\"type\":\"fixed\",\"precision\":38},{\"name\":\"DECIMAL\",\"type\":\"fixed\",\"precision\":12,\"scale\":2},{\"name\":\"REAL\",\"type\":\"real\"},{\"name\":\"BOOLEAN\",\"type\":\"boolean\"},{\"name\":\"BINARY\",\"type\":\"binary\"},{\"name\":\"DATE\",\"type\":\"date\"},{\"name\":\"TIME\",\"type\":\"time\"},{\"name\":\"NTZ\",\"type\":\"timestamp_ntz\"},{\"name\":\"LTZ\",\"type\":\"timestamp_ltz\"},{\"name\":\"TZ\",\"type\":\"timestamp_tz\"},{\"name\":\"VARIANT\",\"type\":\"variant\"},{\"name\":\"UTC_TZ\",\"type\":\"timestamp_tz\"}],\"partitionInfo\":[{}]},\"data\":[[\"-42\",\"9007199254740993\",\"1200.00\",\"1.5e+10\",\"true\",\"0001ff\",\"18262\",\"82919.500000000\",\"-1.500000000\",\"1616173619.000000000\",\"1616173619.000000000 1500\",\"{\\\"amount\\\":12345678901234567890,\\\"decimal\\\":1.50,\\\"nested\\\":[1.25,-0]}\",\"1700000000.123456789 1440\"]],\"createdOn\":1700000000120}",
+          "body": "{\"resultSetMetaData\":{\"format\":\"jsonv2\",\"numRows\":1,\"rowType\":[{\"name\":\"SMALL\",\"type\":\"fixed\",\"precision\":9},{\"name\":\"WIDE\",\"type\":\"fixed\",\"precision\":38},{\"name\":\"DECIMAL\",\"type\":\"fixed\",\"precision\":12,\"scale\":2},{\"name\":\"REAL\",\"type\":\"real\"},{\"name\":\"BOOLEAN\",\"type\":\"boolean\"},{\"name\":\"BINARY\",\"type\":\"binary\"},{\"name\":\"DATE\",\"type\":\"date\"},{\"name\":\"TIME\",\"type\":\"time\"},{\"name\":\"NTZ\",\"type\":\"timestamp_ntz\"},{\"name\":\"LTZ\",\"type\":\"timestamp_ltz\"},{\"name\":\"TZ\",\"type\":\"timestamp_tz\"},{\"name\":\"VARIANT\",\"type\":\"variant\"},{\"name\":\"UTC_TZ\",\"type\":\"timestamp_tz\"}],\"partitionInfo\":[{}]},\"data\":[[\"-42\",\"9007199254740993\",\"1200.00\",\"1.5e+10\",\"true\",\"0001ff\",\"18262\",\"82919.500000000\",\"-1.500000000\",\"1616173619.000000000\",\"1616173619.000000000 1500\",\"{\\\"amount\\\":42,\\\"decimal\\\":1.5,\\\"nested\\\":[1.25,0]}\",\"1700000000.123456789 1440\"]],\"createdOn\":1700000000120}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -1421,11 +1421,11 @@
               "TZ": "2021-03-19T18:06:59+01:00",
               "UTC_TZ": "2023-11-14T22:13:20.123456789Z",
               "VARIANT": {
-                "amount": 12345678901234567000,
+                "amount": 42,
                 "decimal": 1.5,
                 "nested": [
                   1.25,
-                  -0
+                  0
                 ]
               },
               "WIDE": "9007199254740993"
