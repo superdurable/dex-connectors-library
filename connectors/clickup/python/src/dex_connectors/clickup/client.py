@@ -3,10 +3,12 @@
 """ClickUp HTTP client and provider outcome classification."""
 
 import json
+import math
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
@@ -143,11 +145,11 @@ class Client:
                     (query or {})[key] if isinstance((query or {})[key], list) else [(query or {})[key]]
                 )
             ]
-            query_text = urlencode(query_pairs, doseq=True).replace("~", "%7E")
+            query_text = urlencode(query_pairs, doseq=True)
             url = self.base_url + path + (("?" + query_text) if query_text else "")
             headers = {"Authorization": credentials.api_token.reveal(), "Accept": "application/json"}
             body = (
-                json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()
+                json.dumps(payload, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
                 if payload is not None
                 else None
             )
@@ -365,6 +367,10 @@ def flexible_id(value: Any) -> str:
         return value
     if type(value) is int:
         return str(value)
+    if isinstance(value, _JSONNumber):
+        return value.source
+    if isinstance(value, Decimal):
+        return str(value)
     raise ValueError("identifier is not a string or number")
 
 
@@ -373,9 +379,11 @@ def flexible_integer(value: Any) -> int:
     if value is None or value == "":
         return 0
     if type(value) is int:
-        return value
+        if -(2**63) <= value < 2**63:
+            return value
+        raise ValueError("user ID is not an integer")
     if isinstance(value, str) and re.fullmatch(r"[+-]?[0-9]+", value):
-        return int(value)
+        return flexible_integer(int(value))
     raise ValueError("user ID is not an integer")
 
 
@@ -386,18 +394,50 @@ def unix_milliseconds(value: Any) -> datetime | None:
     if type(value) not in (int, str) or not re.fullmatch(r"[+-]?[0-9]+", str(value)):
         raise ValueError("time is not Unix milliseconds")
     milliseconds = int(value)
-    if milliseconds < 0:
+    if milliseconds < 0 or milliseconds >= 2**63:
         raise ValueError("time is not Unix milliseconds")
     if milliseconds == 0:
         return None
-    return datetime.fromtimestamp(milliseconds / 1000, UTC)
+    try:
+        return datetime(1970, 1, 1, tzinfo=UTC) + timedelta(milliseconds=milliseconds)
+    except OverflowError as error:
+        raise ValueError("time is outside Python's supported range") from error
 
 
 def decode_object(body: bytes) -> dict[str, Any]:
     """Decode one JSON object; reject arrays and scalars."""
-    value = json.loads(body)
+    value = json.loads(body, parse_float=_JSONNumber, parse_constant=_reject_non_json_number)
     if not isinstance(value, dict):
         raise ValueError("response is not a JSON object")
+    return value
+
+
+class _JSONNumber(Decimal):
+    source: str
+
+    def __new__(cls, source: str) -> "_JSONNumber":
+        instance = super().__new__(cls, source)
+        instance.source = source
+        return instance
+
+
+def _reject_non_json_number(value: str) -> None:
+    raise ValueError(f"invalid JSON number {value}")
+
+
+def _exact_custom_field_value(value: Any, field_id: str) -> Any:
+    if isinstance(value, Decimal):
+        try:
+            converted = float(value)
+        except (OverflowError, ValueError) as error:
+            raise ValueError(f"custom field {field_id} value cannot be represented exactly") from error
+        if not math.isfinite(converted) or Decimal.from_float(converted) != value:
+            raise ValueError(f"custom field {field_id} value cannot be represented exactly")
+        return converted
+    if isinstance(value, list):
+        return [_exact_custom_field_value(item, field_id) for item in value]
+    if isinstance(value, dict):
+        return {key: _exact_custom_field_value(item, field_id) for key, item in value.items()}
     return value
 
 
@@ -410,33 +450,47 @@ def decode_task(value: Any, details: bool = False) -> "Task":
 
     def typed(field: str, expected: type, default: Any) -> Any:
         result = value.get(field, default)
-        if result is None and expected is list:
-            return []
+        if result is None:
+            return default
         if type(result) is not expected:
             raise ValueError(f"task {field} has invalid type")
         return result
+
+    def nullable_string(source: dict[str, Any], field: str, label: str) -> str:
+        result = source.get(field)
+        if result is None:
+            return ""
+        if type(result) is not str:
+            raise ValueError(f"{label} has invalid type")
+        return result
+
+    def timestamp(field: str) -> datetime | None:
+        try:
+            return unix_milliseconds(value.get(field))
+        except ValueError as error:
+            raise ValueError(f"task {field}: {error}") from error
 
     identifier = typed("id", str, "")
     if not task_id(identifier):
         raise ValueError("task has no valid ID")
     status = typed("status", dict, {})
-    if type(status.get("status", "")) is not str or type(status.get("type", "")) is not str:
-        raise ValueError("task status is invalid")
+    status_name = nullable_string(status, "status", "task status")
+    status_type = nullable_string(status, "type", "task status")
     raw_priority = value.get("priority")
     priority_name = ""
     if isinstance(raw_priority, dict):
-        priority_name = raw_priority.get("priority", "")
-        if type(priority_name) is not str:
-            raise ValueError("task priority is invalid")
-        raw_priority = raw_priority.get("id", "")
-        if not isinstance(raw_priority, str) or not re.fullmatch(r"[+-]?[0-9]+", raw_priority):
+        priority_name = nullable_string(raw_priority, "priority", "task priority")
+        raw_priority = flexible_id(raw_priority.get("id"))
+        if not re.fullmatch(r"[+-]?[0-9]+", raw_priority):
             raise ValueError("task priority has no valid level")
         raw_priority = int(raw_priority)
     if raw_priority is not None and (type(raw_priority) is not int or raw_priority not in (1, 2, 3, 4)):
         raise ValueError("task priority is invalid")
 
     def location(name: str) -> dict[str, Any]:
-        result = value.get(name) or {}
+        result = value.get(name)
+        if result is None:
+            return {}
         if not isinstance(result, dict):
             raise ValueError("task location is invalid")
         return result
@@ -448,29 +502,34 @@ def decode_task(value: Any, details: bool = False) -> "Task":
         user_id = flexible_integer(user.get("id"))
         if user_id <= 0:
             raise ValueError("task assignee has no valid user ID")
-        username = user.get("username", "")
-        if type(username) is not str:
-            raise ValueError("task assignee is invalid")
+        username = nullable_string(user, "username", "task assignee username")
         assignees.append(User(user_id, username))
     tags = []
     for tag in typed("tags", list, []):
-        if not isinstance(tag, dict) or type(tag.get("name", "")) is not str:
+        if not isinstance(tag, dict):
             raise ValueError("task tag is invalid")
-        tags.append(tag.get("name", ""))
+        tags.append(nullable_string(tag, "name", "task tag name"))
     creator = value.get("creator")
     if creator is not None:
         if not isinstance(creator, dict):
             raise ValueError("task creator is invalid")
         creator_id = flexible_integer(creator.get("id"))
-        creator = User(creator_id, creator.get("username", "")) if creator_id > 0 else None
-    custom_fields = []
-    if details:
-        for field in typed("custom_fields", list, [])[:100]:
-            if not isinstance(field, dict) or not task_id(field.get("id", "")):
+        creator_name = nullable_string(creator, "username", "task creator username")
+        creator = User(creator_id, creator_name) if creator_id > 0 else None
+    custom_fields: list[CustomFieldValue] = []
+    for field in typed("custom_fields", list, []):
+        if not isinstance(field, dict):
+            raise ValueError("task custom field is invalid")
+        field_id = nullable_string(field, "id", "task custom field ID")
+        field_name = nullable_string(field, "name", f"custom field {field_id} name")
+        field_type = nullable_string(field, "type", f"custom field {field_id} type")
+        if details and len(custom_fields) < 100:
+            if not task_id(field_id):
                 raise ValueError("task custom field has no valid ID")
             custom_fields.append(
                 CustomFieldValue(
-                    field["id"], field.get("name", ""), field.get("type", ""), field.get("value")
+                    field_id, field_name, field_type,
+                    _exact_custom_field_value(field.get("value"), field_id)
                 )
             )
     description = value.get("markdown_description")
@@ -493,14 +552,14 @@ def decode_task(value: Any, details: bool = False) -> "Task":
         custom_id=typed("custom_id", str, "") if value.get("custom_id") is not None else "",
         name=typed("name", str, ""),
         url=typed("url", str, ""),
-        status=TaskStatus(status.get("status", ""), status.get("type", "")),
+        status=TaskStatus(status_name, status_type),
         priority=raw_priority,
         priority_name=priority_name,
-        due_at=unix_milliseconds(value.get("due_date")),
-        start_at=unix_milliseconds(value.get("start_date")),
-        created_at=unix_milliseconds(value.get("date_created")) or datetime.min.replace(tzinfo=UTC),
-        updated_at=unix_milliseconds(value.get("date_updated")) or datetime.min.replace(tzinfo=UTC),
-        closed_at=unix_milliseconds(value.get("date_closed")),
+        due_at=timestamp("due_date"),
+        start_at=timestamp("start_date"),
+        created_at=timestamp("date_created") or datetime.min.replace(tzinfo=UTC),
+        updated_at=timestamp("date_updated") or datetime.min.replace(tzinfo=UTC),
+        closed_at=timestamp("date_closed"),
         is_archived=typed("archived", bool, False),
         creator=creator,
         assignees=tuple(assignees),
@@ -508,7 +567,7 @@ def decode_task(value: Any, details: bool = False) -> "Task":
         parent_task_id=typed("parent", str, "") if value.get("parent") is not None else "",
         workspace_id=flexible_id(value.get("team_id")),
         list_id=flexible_id(location("list").get("id")),
-        list_name=location("list").get("name", ""),
+        list_name=nullable_string(location("list"), "name", "task list name"),
         folder_id=flexible_id(location("folder").get("id")),
         space_id=flexible_id(location("space").get("id")),
         markdown_description=description if details and description is not None else "",

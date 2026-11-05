@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: MIT
 """ClickUp Query and Mutation invocations."""
 
+import asyncio
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from email import policy
 from email.utils import parseaddr
 from typing import Any, TypeVar
 
@@ -53,6 +56,42 @@ from .models import (
 )
 
 T = TypeVar("T")
+
+
+def _equal_fold(left: str, right: str) -> bool:
+    return len(left) == len(right) and all(
+        a.casefold() == b.casefold() for a, b in zip(left, right, strict=True)
+    )
+
+
+def _bare_email(value: str) -> bool:
+    parsed = policy.default.header_factory("To", value)
+    display_name, address = parseaddr(value)
+    return (
+        not parsed.defects
+        and len(parsed.addresses) == 1
+        and not display_name
+        and address == value
+        and bool(address)
+        and "@" in address
+    )
+
+
+async def _budgeted_exchange(
+    client: Client, deadline: float, credentials: Any, method: str, path: str
+) -> Exchange:
+    try:
+        return await asyncio.wait_for(
+            client.exchange("updateTaskTags", credentials, method, path),
+            timeout=max(0.0, deadline - asyncio.get_running_loop().time()),
+        )
+    except TimeoutError:
+        return Exchange(
+            "unconfirmed",
+            failure(
+                "updateTaskTags", FailureKind.TRANSPORT, "ClickUp request failed before a response arrived"
+            ),
+        )
 
 
 def _query_failure(result: Exchange, output: T, receipt: Receipt, not_found: bool = True) -> QueryAttempt[T]:
@@ -172,7 +211,8 @@ def _milliseconds(value: datetime | None) -> int | None:
         return None
     if value.tzinfo is None:
         raise ValueError("date must have a time-zone offset")
-    result = int(value.timestamp() * 1000)
+    elapsed = value.astimezone(UTC) - datetime(1970, 1, 1, tzinfo=UTC)
+    result = elapsed.days * 86_400_000 + elapsed.seconds * 1000 + elapsed.microseconds // 1000
     if result <= 0:
         raise ValueError("date must be after the Unix epoch")
     return result
@@ -296,12 +336,12 @@ class GetTaskOperation:
         try:
             task = decode_task(decode_object(result.body), True)
             return QueryAttempt.branch_result("found", task, self.client.receipt(call, task.id))
-        except (TypeError, ValueError, KeyError):
+        except (TypeError, ValueError, KeyError) as error:
             return QueryAttempt.branch_result(
                 "invalidResponse",
                 output,
                 receipt,
-                failure("getTask", FailureKind.PROTOCOL, "ClickUp returned an invalid task"),
+                failure("getTask", FailureKind.PROTOCOL, f"ClickUp returned an invalid task: {error}"),
             )
 
 
@@ -320,8 +360,7 @@ class FindMemberByEmailOperation:
         output = Member()
         try:
             _validate_numeric_id(input.workspace_id)
-            display_name, address = parseaddr(input.email)
-            if display_name or address != input.email or not address or "@" not in address:
+            if not _bare_email(input.email):
                 raise ValueError("email must be one bare email address")
         except ValueError as error:
             return _query_defect("findMemberByEmail", output, str(error))
@@ -338,30 +377,57 @@ class FindMemberByEmailOperation:
             if not isinstance(teams, list):
                 raise ValueError("missing teams")
             for team in teams:
+                if team is None:
+                    continue
                 if not isinstance(team, dict):
                     raise ValueError("invalid team")
-                if flexible_id(team.get("id")) != input.workspace_id:
+                flexible_id(team.get("id"))
+                members = team.get("members")
+                if members is None:
                     continue
-                members = team.get("members") or []
                 if not isinstance(members, list):
                     raise ValueError("invalid members")
                 for entry in members:
-                    user = entry.get("user", {})
+                    if entry is None:
+                        continue
+                    if not isinstance(entry, dict):
+                        raise ValueError("invalid member")
+                    user = entry.get("user")
+                    if user is None:
+                        continue
                     if not isinstance(user, dict):
                         raise ValueError("invalid user")
+                    flexible_integer(user.get("id"))
+                    for name in ("username", "email"):
+                        if user.get(name) is not None and type(user[name]) is not str:
+                            raise ValueError(f"invalid member {name}")
+                    role = user.get("role")
+                    if role is not None and (type(role) is not int or not -(2**63) <= role < 2**63):
+                        raise ValueError("invalid member role")
+            for team in teams:
+                if team is None:
+                    continue
+                if flexible_id(team.get("id")) != input.workspace_id:
+                    continue
+                members = team.get("members") or []
+                for entry in members:
+                    if entry is None:
+                        continue
+                    user = entry.get("user") or {}
                     email = user.get("email", "")
-                    if type(email) is not str:
-                        raise ValueError("invalid email")
-                    if email.strip().casefold() != input.email.casefold():
+                    email = email or ""
+                    if not _equal_fold(email.strip(), input.email):
                         continue
                     identifier = flexible_integer(user.get("id"))
                     if identifier <= 0:
                         raise ValueError("invalid member ID")
+                    username = user.get("username")
+                    role = user.get("role")
                     member = Member(
                         identifier,
-                        user.get("username", ""),
+                        username or "",
                         email.strip(),
-                        user.get("role") or None,
+                        role or None,
                         input.workspace_id,
                     )
                     return QueryAttempt.branch_result(
@@ -520,24 +586,26 @@ class UpdateTaskTagsOperation:
             return _mutation_credentials_failure(output, cause)
         assert credentials is not None
         receipt = self.client.receipt(call, input.task_id)
+        deadline = asyncio.get_running_loop().time() + 25.0
         for method, tag in (("POST", value) for value in input.add_tags):
-            result = await self.client.exchange(
-                "updateTaskTags", credentials, method, _task_path(input.task_id) + "/tag/" + path_escape(tag)
+            path = _task_path(input.task_id) + "/tag/" + path_escape(tag)
+            result = await _budgeted_exchange(
+                self.client, deadline, credentials, method, path
             )
             if result.kind not in ("succeeded", "invalid"):
                 return _mutation_failure(result, output, receipt)
             output = UpdateTaskTagsOutput(input.task_id, (), output.applied_changes + 1)
         for tag in input.remove_tags:
-            result = await self.client.exchange(
-                "updateTaskTags",
-                credentials,
-                "DELETE",
-                _task_path(input.task_id) + "/tag/" + path_escape(tag),
+            path = _task_path(input.task_id) + "/tag/" + path_escape(tag)
+            result = await _budgeted_exchange(
+                self.client, deadline, credentials, "DELETE", path,
             )
             if result.kind not in ("succeeded", "invalid"):
                 return _mutation_failure(result, output, receipt)
             output = UpdateTaskTagsOutput(input.task_id, (), output.applied_changes + 1)
-        result = await self.client.exchange("updateTaskTags", credentials, "GET", _task_path(input.task_id))
+        result = await _budgeted_exchange(
+            self.client, deadline, credentials, "GET", _task_path(input.task_id)
+        )
         if result.kind != "succeeded":
             return _mutation_failure(result, output, receipt)
         try:
@@ -632,6 +700,20 @@ class CreateTaskOperation:
                 set(field_ids)
             ):
                 raise ValueError("invalid custom field")
+            for custom_field in input.custom_fields:
+                custom_field_id = custom_field["id"] if isinstance(custom_field, dict) else custom_field.id
+                if (
+                    isinstance(custom_field, dict) and "value" not in custom_field
+                    or not isinstance(custom_field, dict) and custom_field.value is None
+                ):
+                    raise ValueError(f"custom field {custom_field_id} needs a JSON value")
+                custom_field_value = (
+                    custom_field["value"] if isinstance(custom_field, dict) else custom_field.value
+                )
+                try:
+                    json.dumps(custom_field_value, allow_nan=False)
+                except (TypeError, ValueError) as error:
+                    raise ValueError(f"custom field {custom_field_id} needs a JSON value") from error
         except (TypeError, ValueError) as error:
             return _mutation_defect("createTask", output, str(error))
         credentials, cause = await self.client.resolve_credentials(call, "createTask")
