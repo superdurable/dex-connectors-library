@@ -271,13 +271,13 @@ describe('manifest credential refresh', () => {
     refresh.missingExpiry = { lifetime: '+1h' };
     expect((await driverFor().refresh(state(), new AbortController().signal)).expiresAt.getTime()).toBeGreaterThan(Date.now() + 59 * 60_000);
     refresh.missingExpiry = { lifetime: '0' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     refresh.missingExpiry = { lifetime: '1fortnight' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     refresh.missingExpiry = { lifetime: '2562048h' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     refresh.missingExpiry = { lifetime: '-1h' };
-    await expect(driverFor().refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(TypeError);
+    expect(driverFor).toThrow(TypeError);
     expect(requests).toBe(3);
     refresh.missingExpiry = 'keep';
     refresh.grants = [
@@ -430,7 +430,7 @@ describe('manifest credential refresh', () => {
     const configured = structuredClone(auth) as Record<string, unknown>;
     const oauth = ((configured.methods as Record<string, unknown>[])[0]!.oauth2 as Record<string, unknown>);
     const refresh = oauth.refresh as Record<string, unknown>;
-    refresh.acceptedScopeSets = [['files.read'], ['files.manage']];
+    refresh.acceptedScopeSets = [['files.read', 'offline_access'], ['files.manage']];
     let returnedScope = '';
     const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured, credentialFields,
       fetch: async () => Response.json({ access_token: 'next', expires_in: 3600, token_type: 'Bearer', scope: returnedScope }) });
@@ -558,9 +558,27 @@ describe('manifest credential refresh', () => {
     await expect(driver.refresh(state(), new AbortController().signal)).resolves.toBeDefined();
   });
 
+  it('rejects ignored client scope sets and invalid JWT declarations at construction', () => {
+    const clientAuth = { clientCredentials: { acceptedScopeSets: [['read']], tokenEndpoint: 'https://oauth.example.test/token',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }] } };
+    expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: clientAuth, credentialFields })).toThrow(TypeError);
+    const jwtAuth = { serviceAccount: { jwtBearer: { lifetime: '1h',
+      credentialMappings: [{ credential: 'access_token', source: 'access_token' }] } } };
+    const assertion = jwtAuth.serviceAccount.jwtBearer as Record<string, unknown>;
+    for (const declaration of [{ subjectValidation: 'other' }, { subjectValidation: null },
+      { subjectValidation: 'goMailAddress' }, { scopeSeparators: null }, { scopeSeparators: 'other' },
+      { acceptedScopeSets: null }]) {
+      Object.assign(assertion, declaration);
+      expect(() => new ManifestCredentialRefreshDriver({ providerName: 'Example', auth: jwtAuth, credentialFields })).toThrow(TypeError);
+      for (const key of Object.keys(declaration)) delete assertion[key];
+    }
+  });
+
   it('rejects unknown manifest response declarations', () => {
     for (const declaration of [{ missingExpiry: 'unknown' }, { acceptedScopeSets: [] },
-      { acceptedScopeSets: [['read'], []] }, { scopeSeparators: 'comma' }]) {
+      { acceptedScopeSets: [['read'], []] }, { scopeSeparators: 'comma' },
+      { missingExpiry: null }, { acceptedScopeSets: null }, { scopeSeparators: null },
+      { missingExpiry: { lifetime: '0s' } }, { missingExpiry: { lifetime: 'nonsense' } }]) {
       const configured = structuredClone(auth) as Record<string, unknown>;
       const method = (configured.methods as Record<string, unknown>[])[0]!;
       Object.assign((method.oauth2 as Record<string, unknown>).refresh as object, declaration);
