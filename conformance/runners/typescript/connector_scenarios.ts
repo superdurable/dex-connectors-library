@@ -7,6 +7,73 @@ import { once } from 'node:events';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
+import { createHash } from 'node:crypto';
+
+export class SyntheticRandomSource {
+  private readonly seed: Buffer;
+  private counter = 0n;
+  private block = Buffer.alloc(0);
+  private offset = 0;
+
+  constructor(seed: string) {
+    if (!seed.startsWith('SYNTHETIC_CONFORMANCE_') || seed.length > 128) {
+      throw new Error('random seed must be an obvious synthetic conformance marker');
+    }
+    this.seed = Buffer.from(seed, 'utf8');
+  }
+
+  read(count: number): Buffer {
+    if (!Number.isSafeInteger(count) || count < 0) throw new Error('random byte count must be nonnegative');
+    const result = Buffer.alloc(count);
+    for (let index = 0; index < count; index++) {
+      if (this.offset === this.block.length) {
+        const counterBytes = Buffer.alloc(8);
+        counterBytes.writeBigUInt64BE(this.counter++);
+        this.block = createHash('sha256').update(this.seed).update(counterBytes).digest();
+        this.offset = 0;
+      }
+      result[index] = this.block[this.offset++]!;
+    }
+    return result;
+  }
+
+  goRandomInt(maximum: number): number {
+    if (!Number.isSafeInteger(maximum) || maximum < 1) throw new Error('random maximum must be positive');
+    const bitCount = Math.ceil(Math.log2(maximum));
+    const byteCount = Math.ceil(bitCount / 8);
+    while (true) {
+      const candidate = this.read(byteCount);
+      if (bitCount % 8) candidate[0] = candidate[0]! & ((1 << (bitCount % 8)) - 1);
+      let number = 0;
+      for (const byte of candidate) number = number * 256 + byte;
+      if (number < maximum) return number;
+    }
+  }
+}
+
+function redactSyntheticRandom(actual: unknown, expected: unknown): unknown {
+  if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) &&
+      isDeepStrictEqual(Object.keys(expected), ['$syntheticSha256'])) {
+    return { $syntheticSha256: typeof actual === 'string'
+      ? createHash('sha256').update(actual).digest('hex') : 'invalid' };
+  }
+  if (typeof actual === 'object' && actual !== null && !Array.isArray(actual) &&
+      typeof expected === 'object' && expected !== null && !Array.isArray(expected)) {
+    return Object.fromEntries(Object.entries(actual).map(([key, value]) =>
+      [key, redactSyntheticRandom(value, (expected as RecordValue)[key])]));
+  }
+  if (Array.isArray(actual) && Array.isArray(expected)) {
+    return actual.map((value, index) => redactSyntheticRandom(value, expected[index]));
+  }
+  return actual;
+}
+
+function containsSyntheticDigest(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  if (Array.isArray(value)) return value.some(containsSyntheticDigest);
+  if (isDeepStrictEqual(Object.keys(value), ['$syntheticSha256'])) return true;
+  return Object.values(value).some(containsSyntheticDigest);
+}
 
 type RecordValue = Record<string, unknown>;
 type RequestValues = Record<string, string | string[]>;
@@ -18,30 +85,41 @@ export interface Exchange {
 }
 export interface Expected {
   branch: string; failureKind: string; retry: boolean; retryAfterMs: number;
-  uncertain: boolean; requestCount: number; output?: unknown;
+  uncertain: boolean; requestCount: number; output?: unknown; heartbeat?: unknown;
 }
 export interface Scenario {
   name: string; operation: string; callId: string; idempotencyKey?: string; input: RecordValue;
-  exchanges: Exchange[]; expected: Expected; attempts?: number;
-  intermediate?: Array<{ failureKind: string; retryAfterMs: number; exchangeCount: number }>;
+  exchanges: Exchange[]; expected: Expected; attempts?: number; randomSeed?: string; randomRequestFields?: string[];
+  intermediate?: Array<{ failureKind: string; retryAfterMs: number; exchangeCount: number; heartbeat?: unknown }>;
   priorHeartbeat?: unknown;
+  fixedClock?: string;
 }
 
 export class HeartbeatContext {
   attempt: number;
   marker: unknown;
+  hasWrittenHeartbeat = false;
   readonly runId = 'run';
-  readonly flowStartedAt = new Date('1970-01-01T00:00:01Z');
+  readonly flowStartedAt: Date;
+  readonly fixedClock: Date;
   readonly deadline = new Date(Date.now() + 30_000);
   readonly cancellationSignal = new AbortController().signal;
   readonly flowId = 'conformance-flow';
-  constructor(priorHeartbeat: unknown) {
-    this.marker = priorHeartbeat;
+  constructor(priorHeartbeat: unknown, fixedClock?: string, readonly scenarioName = '') {
+    this.fixedClock = new Date(fixedClock ?? '1970-01-01T00:00:01Z');
+    this.flowStartedAt = new Date('1970-01-01T00:00:01Z');
+    this.marker = priorHeartbeat && typeof priorHeartbeat === 'object' && 'value' in priorHeartbeat
+      ? (priorHeartbeat as { value: unknown }).value : priorHeartbeat;
     this.attempt = priorHeartbeat === undefined ? 1 : Number((priorHeartbeat as { attempt: number }).attempt) + 1;
   }
   hasLastHeartbeatValue(): boolean { return this.marker !== undefined; }
   getLastHeartbeatValue(): unknown { return this.marker; }
-  async recordHeartbeat(value: unknown): Promise<void> { this.marker = value; }
+  async recordHeartbeat(value: unknown): Promise<void> {
+    this.marker = process.env.CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT === this.scenarioName
+      ? { __wrong_heartbeat_shape__: true } : value;
+    if (value === undefined && process.env.CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL === this.scenarioName) this.marker = null;
+    this.hasWrittenHeartbeat = true;
+  }
 }
 
 function record(value: unknown, required: string[], optional: string[], location: string): RecordValue {
@@ -59,10 +137,13 @@ export function loadScenarios(url: URL): Scenario[] {
   if (document.schemaVersion !== 1 || typeof document.connector !== 'string' || !document.connector ||
       !Array.isArray(document.scenarios) || document.scenarios.length === 0) throw new Error('invalid scenario document');
   for (const item of document.scenarios) {
-    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat'], url.pathname);
+    const scenario = record(item, ['name', 'operation', 'callId', 'input', 'exchanges', 'expected'], ['idempotencyKey', 'attempts', 'intermediate', 'priorHeartbeat', 'fixedClock', 'randomSeed', 'randomRequestFields'], url.pathname);
     if (typeof scenario.name !== 'string' || !scenario.name || typeof scenario.operation !== 'string' || !scenario.operation ||
         typeof scenario.callId !== 'string' || !scenario.callId || !Array.isArray(scenario.exchanges)) throw new Error('invalid scenario identity or exchanges');
     if ('idempotencyKey' in scenario && typeof scenario.idempotencyKey !== 'string') throw new Error('invalid optional scenario identity');
+    if ('randomSeed' in scenario && (typeof scenario.randomSeed !== 'string' || !scenario.randomSeed.startsWith('SYNTHETIC_CONFORMANCE_') || scenario.randomSeed.length > 128)) throw new Error('invalid synthetic random seed');
+    if ('randomRequestFields' in scenario && (!('randomSeed' in scenario) || !Array.isArray(scenario.randomRequestFields) || !scenario.randomRequestFields.length ||
+      scenario.randomRequestFields.some(field => typeof field !== 'string' || !field.startsWith('/') || field.includes('~')))) throw new Error('invalid random request fields');
     if (typeof scenario.input !== 'object' || scenario.input === null || Array.isArray(scenario.input)) {
       throw new Error(`${scenario.name}: input must be an object`);
     }
@@ -84,6 +165,17 @@ export function loadScenarios(url: URL): Scenario[] {
               !(Array.isArray(value) && value.length > 0 && value.every(item => typeof item === 'string'))))) throw new Error(`invalid ${field}`);
       }
       const body = exchange.requestBody;
+      if (typeof body === 'object' && body !== null && !Array.isArray(body) && '$multipart' in body) {
+        const parts = (body as RecordValue).$multipart;
+        if (Object.keys(body).length !== 1 || !Array.isArray(parts) || parts.some(part =>
+          typeof part !== 'object' || part === null || Array.isArray(part) ||
+          !isDeepStrictEqual(Object.keys(part).sort(), ['bodyBase64', 'headers']) ||
+          typeof part.bodyBase64 !== 'string' || typeof part.headers !== 'object' || part.headers === null ||
+          Array.isArray(part.headers) || Object.values(part.headers as RecordValue).some(values =>
+            !Array.isArray(values) || !values.length || values.some(value => typeof value !== 'string')))) {
+          throw new Error('invalid multipart expectation');
+        }
+      }
       if (typeof body === 'object' && body !== null && !Array.isArray(body) && '$rawMimeContains' in body) {
         const fragments = (body as RecordValue).$rawMimeContains;
         if (Object.keys(body).some(key => !['$rawMimeContains', 'threadId'].includes(key)) ||
@@ -92,20 +184,28 @@ export function loadScenarios(url: URL): Scenario[] {
             fragments.some(fragment => typeof fragment !== 'string' || !fragment)) throw new Error('invalid raw MIME assertions');
       }
     }
-    const expected = record(scenario.expected, ['branch', 'failureKind', 'retry', 'retryAfterMs', 'uncertain', 'requestCount'], ['output'], String(scenario.name));
+    const expected = record(scenario.expected, ['branch', 'failureKind', 'retry', 'retryAfterMs', 'uncertain', 'requestCount'], ['output', 'heartbeat'], String(scenario.name));
     if (typeof expected.branch !== 'string' || typeof expected.failureKind !== 'string' || typeof expected.retry !== 'boolean' ||
         typeof expected.uncertain !== 'boolean' || !Number.isInteger(expected.retryAfterMs) ||
         !Number.isInteger(expected.requestCount)) throw new Error('invalid expected decision');
     const intermediate = scenario.intermediate ?? [];
     if (!Array.isArray(intermediate) || (scenario.attempts ?? 1) !== intermediate.length + 1) throw new Error(`${scenario.name}: inconsistent attempts`);
-    for (const value of intermediate) record(value, ['failureKind', 'retryAfterMs', 'exchangeCount'], [], String(scenario.name));
+    for (const value of intermediate) record(value, ['failureKind', 'retryAfterMs', 'exchangeCount'], ['heartbeat'], String(scenario.name));
     if ('priorHeartbeat' in scenario) {
-      const prior = record(scenario.priorHeartbeat, ['callId', 'attempt', 'state'], ['providerId'], String(scenario.name));
-      if (prior.callId !== scenario.callId) throw new Error('prior heartbeat Call ID differs');
-      if (!Number.isInteger(prior.attempt) || Number(prior.attempt) < 1 ||
-          !['notSent', 'claimed', 'canResend'].includes(String(prior.state)) ||
-          ('providerId' in prior && typeof prior.providerId !== 'string')) throw new Error('invalid prior heartbeat');
+      const prior = record(scenario.priorHeartbeat, ['attempt'], ['value', 'callId', 'state', 'providerId'], String(scenario.name));
+      if (!Number.isInteger(prior.attempt) || Number(prior.attempt) < 1) throw new Error('invalid prior heartbeat attempt');
+      if ('value' in prior) {
+        if (Object.keys(prior).length !== 2 || prior.value === null) throw new Error('invalid prior heartbeat value');
+      } else {
+        record(prior, ['callId', 'attempt', 'state'], ['providerId'], String(scenario.name));
+        if (prior.callId !== scenario.callId) throw new Error('prior heartbeat Call ID differs');
+        if (!['notSent', 'claimed', 'canResend'].includes(String(prior.state)) ||
+            ('providerId' in prior && typeof prior.providerId !== 'string')) throw new Error('invalid prior heartbeat');
+      }
     }
+    if ('fixedClock' in scenario && (typeof scenario.fixedClock !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(scenario.fixedClock) ||
+        !Number.isFinite(Date.parse(scenario.fixedClock)))) throw new Error('invalid fixed clock');
   }
   return document.scenarios as Scenario[];
 }
@@ -166,6 +266,73 @@ export async function withScenarioHTTPServer<Value>(recorder: ExchangeRecorder,
   finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 }
 
+function multipartContentType(contentType: string): { mediaType: string; parameters: Record<string, string> } {
+  const [type = '', ...rawParameters] = contentType.split(/;(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+  const parameters: Record<string, string> = {};
+  for (const rawParameter of rawParameters) {
+    const separator = rawParameter.indexOf('=');
+    if (separator < 0) continue;
+    const name = rawParameter.slice(0, separator).trim().toLowerCase();
+    if (Object.hasOwn(parameters, name)) throw new Error('duplicate multipart media type parameter');
+    const rawValue = rawParameter.slice(separator + 1).trim();
+    parameters[name] = rawValue.startsWith('"') && rawValue.endsWith('"')
+      ? rawValue.slice(1, -1).replace(/\\(.)/g, '$1') : rawValue;
+  }
+  return { mediaType: type.trim().toLowerCase(), parameters };
+}
+
+function multipartMediaType(contentType: string): { mediaType: string; parameters: Record<string, string> } {
+  const result = multipartContentType(contentType);
+  delete result.parameters.boundary;
+  return result;
+}
+
+function isMultipart(contentType: string): boolean {
+  return ['multipart/form-data', 'multipart/mixed', 'multipart/related'].includes(multipartContentType(contentType).mediaType);
+}
+
+function multipartBody(contentType: string, body: Buffer): RecordValue {
+  const parsed = multipartContentType(contentType);
+  const boundary = parsed.parameters.boundary;
+  if (!isMultipart(contentType) || !boundary) throw new Error('missing multipart boundary');
+  const delimiter = Buffer.from(`--${boundary}`);
+  if (!body.subarray(0, delimiter.length).equals(delimiter)) throw new Error('invalid multipart opening delimiter');
+  let position = delimiter.length;
+  const parts: RecordValue[] = [];
+  while (true) {
+    if (body.subarray(position, position + 2).equals(Buffer.from('--'))) break;
+    if (!body.subarray(position, position + 2).equals(Buffer.from('\r\n'))) throw new Error('invalid multipart delimiter');
+    const headerStart = position + 2;
+    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), headerStart);
+    if (headerEnd < 0) throw new Error('missing multipart part headers');
+    const headers: Record<string, string[]> = {};
+    let lastName = '';
+    for (const line of new TextDecoder('utf-8', { fatal: true }).decode(body.subarray(headerStart, headerEnd)).split('\r\n')) {
+      if (/[\r\n]/.test(line)) throw new Error('invalid multipart part header');
+      if (/^[ \t]/.test(line)) {
+        if (!lastName) throw new Error('invalid multipart part header');
+        headers[lastName]![headers[lastName]!.length - 1] += ` ${line.trim()}`;
+        continue;
+      }
+      const separator = line.indexOf(':');
+      if (separator < 0 || !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(line.slice(0, separator))) throw new Error('invalid multipart part header');
+      const name = line.slice(0, separator).toLowerCase().replace(/(^|-)[a-z]/g, letter => letter.toUpperCase());
+      (headers[name] ??= []).push(line.slice(separator + 1).trim());
+      lastName = name;
+    }
+    const contentStart = headerEnd + 4;
+    const partDelimiter = Buffer.concat([Buffer.from('\r\n'), delimiter]);
+    let contentEnd = body.indexOf(partDelimiter, contentStart);
+    while (contentEnd >= 0 && !['\r\n', '--'].includes(body.subarray(contentEnd + partDelimiter.length, contentEnd + partDelimiter.length + 2).toString())) {
+      contentEnd = body.indexOf(partDelimiter, contentEnd + 1);
+    }
+    if (contentEnd < 0) throw new Error('missing multipart closing delimiter');
+    parts.push({ headers, bodyBase64: body.subarray(contentStart, contentEnd).toString('base64') });
+    position = contentEnd + 2 + delimiter.length;
+  }
+  return { $multipart: parts };
+}
+
 export class ExchangeRecorder {
   readonly mismatches: string[] = [];
   requestCount = 0;
@@ -182,7 +349,8 @@ export class ExchangeRecorder {
     }
     if (exchange.transportFailure !== 'before-send') this.providerRequestCount++;
     const url = new URL(request.url, 'http://localhost');
-    const bodyText = typeof request.body === 'string' ? request.body : request.body ? Buffer.from(request.body).toString() : '';
+    const bodyBytes = typeof request.body === 'string' ? Buffer.from(request.body) : Buffer.from(request.body ?? []);
+    const bodyText = bodyBytes.toString();
     this.equal(index, 'method', request.method, exchange.method);
     this.equal(index, 'path', url.pathname, this.pathPrefix + exchange.path);
     for (const [key, value] of Object.entries(exchange.query ?? {})) this.equal(index, `query ${key}`, url.searchParams.getAll(key), Array.isArray(value) ? value : [value]);
@@ -193,7 +361,10 @@ export class ExchangeRecorder {
     for (const key of new Set(form.keys())) if (!(key in (exchange.form ?? {}))) this.mismatches.push(`request ${index}: unasserted form ${key}=${JSON.stringify(form.getAll(key))}`);
     if (exchange.requestBody !== undefined) {
       const expected = exchange.requestBody;
-      if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) && '$rawMimeContains' in expected) {
+      if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) && '$multipart' in expected) {
+        try { this.equal(index, 'multipart body', multipartBody(String(contentType ?? ''), bodyBytes), expected); }
+        catch (error) { this.mismatches.push(`request ${index}: invalid multipart body: ${String(error)}`); }
+      } else if (typeof expected === 'object' && expected !== null && !Array.isArray(expected) && '$rawMimeContains' in expected) {
         let mime = '';
         try {
           const payload = JSON.parse(bodyText) as RecordValue;
@@ -216,9 +387,12 @@ export class ExchangeRecorder {
       } else {
         let body: unknown = bodyText;
         if (typeof expected === 'object' && expected !== null) {
-          try { body = JSON.parse(bodyText); } catch { /* Keep the raw body for mismatch reporting. */ }
+          try { body = JSON.parse(bodyText); } catch { if (containsSyntheticDigest(expected)) body = 'invalid JSON'; }
         }
-        this.equal(index, 'body', body, expected);
+        const redactedBody = redactSyntheticRandom(body, expected);
+        if (containsSyntheticDigest(expected)) {
+          if (!isDeepStrictEqual(redactedBody, expected)) this.mismatches.push(`request ${index}: body mismatch`);
+        } else this.equal(index, 'body', redactedBody, expected);
       }
     } else if (!exchange.form && bodyText) {
       this.mismatches.push(`request ${index}: unasserted body`);
@@ -228,7 +402,14 @@ export class ExchangeRecorder {
       const value = headers[name.toLowerCase()];
       return value === undefined ? [] : Array.isArray(value) ? value : [value];
     };
-    for (const [name, value] of Object.entries(exchange.requestHeaders ?? {})) this.equal(index, `header ${name}`, headerValues(name), Array.isArray(value) ? value : [value]);
+    for (const [name, value] of Object.entries(exchange.requestHeaders ?? {})) {
+      const actual = headerValues(name);
+      const expected = Array.isArray(value) ? value : [value];
+      if (name.toLowerCase() === 'content-type' && actual.length === 1 && expected.length === 1 && isMultipart(expected[0] ?? '')) {
+        try { this.equal(index, `header ${name}`, multipartMediaType(actual[0] ?? ''), multipartMediaType(expected[0] ?? '')); }
+        catch (error) { this.mismatches.push(`request ${index}: invalid header ${name}: ${String(error)}`); }
+      } else this.equal(index, `header ${name}`, actual, expected);
+    }
     const assertedHeaders = new Set(Object.keys(exchange.requestHeaders ?? {}).map(name => name.toLowerCase()));
     for (const [name, value] of Object.entries(headers)) {
       if (['host', 'accept-encoding', 'connection', 'content-length', 'idempotency-key'].includes(name)) continue;
@@ -277,6 +458,26 @@ function assertAttempt(attempt: { kind: string; branch?: string; failure?: { kin
   }
 }
 
+function assertHeartbeat(scenario: Scenario, context: HeartbeatContext, expected: { heartbeat?: unknown }, outputCodec: ScenarioOutputCodec): void {
+  if (context.hasWrittenHeartbeat !== ('heartbeat' in expected)) {
+    throw new Error(`${scenario.name}: heartbeat write differs from Go recording`);
+  }
+  if ('heartbeat' in expected) {
+    const isClear = isDeepStrictEqual(expected.heartbeat, { cleared: true });
+    if ((context.marker === undefined) !== isClear) {
+      throw new Error(`${scenario.name}: heartbeat clear differs from Go recording`);
+    }
+    if (isClear) return;
+    const encoded = outputCodec.encode(context.marker);
+    if (encoded.kind !== 'json' || typeof encoded.data !== 'string') throw new Error('SDK heartbeat codec did not encode JSON');
+    const heartbeat = JSON.parse(encoded.data);
+    if (!isDeepStrictEqual(heartbeat, expected.heartbeat)) {
+      throw new Error(`${scenario.name}: heartbeat ${JSON.stringify(heartbeat)} differs from Go recording ${JSON.stringify(expected.heartbeat)}`);
+    }
+    context.marker = expected.heartbeat;
+  }
+}
+
 export async function replay(
   scenario: Scenario,
   invoke: (scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) => Promise<{ kind: string; branch?: string; failure?: { kind: string }; retryAfterMs?: number; value?: unknown }>,
@@ -293,14 +494,24 @@ export async function replay(
   };
   const outputCodec = dexSDK.jsonCodec();
   const recorder = new ExchangeRecorder(scenario, pathPrefix);
-  const context = new HeartbeatContext(scenario.priorHeartbeat);
+  const context = new HeartbeatContext(scenario.priorHeartbeat, scenario.fixedClock, scenario.name);
   for (const intermediate of scenario.intermediate ?? []) {
+    context.hasWrittenHeartbeat = false;
     const attempt = await invoke(scenario, recorder, context);
     assertAttempt(attempt, { retry: true, uncertain: false, branch: '', requestCount: 0, ...intermediate }, outputCodec);
     if (recorder.requestCount !== intermediate.exchangeCount) throw new Error('intermediate exchange count differs');
+    if (process.env.CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT === scenario.name && !('heartbeat' in intermediate)) {
+      await context.recordHeartbeat({ __extra_heartbeat__: true });
+    }
+    assertHeartbeat(scenario, context, intermediate, outputCodec);
     context.attempt++;
   }
+  context.hasWrittenHeartbeat = false;
   const attempt = await invoke(scenario, recorder, context);
   recorder.finish();
   assertAttempt(attempt, scenario.expected, outputCodec);
+  if (process.env.CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT === scenario.name && !('heartbeat' in scenario.expected)) {
+    await context.recordHeartbeat({ __extra_heartbeat__: true });
+  }
+  assertHeartbeat(scenario, context, scenario.expected, outputCodec);
 }

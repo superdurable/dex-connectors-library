@@ -5,51 +5,153 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import importlib
 import json
 import os
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import fields
 from datetime import UTC, datetime, timedelta
+from email.message import Message
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 
 import httpx
-from dex import CodecRegistry
+from dex import CodecRegistry, Value, WireKind
 from dex_connectors import sdk
 from dex_connectors.sdk.singledispatch import Marker
 
+_NO_HEARTBEAT_VALUE = object()
+
+
+class SyntheticRandomSource:
+    """Reproduce Go conformance random bytes from an obvious non-secret seed."""
+
+    def __init__(self, seed: str) -> None:
+        if not seed.startswith("SYNTHETIC_CONFORMANCE_") or len(seed) > 128:
+            raise ValueError("random seed must be an obvious synthetic conformance marker")
+        self._seed = seed.encode("utf-8")
+        self._counter = 0
+        self._block = b""
+        self._offset = 0
+
+    def read(self, count: int) -> bytes:
+        """Read the SHA-256 counter stream used by the Go reference test."""
+        if count < 0:
+            raise ValueError("random byte count must be nonnegative")
+        result = bytearray()
+        while len(result) < count:
+            if self._offset == len(self._block):
+                self._block = hashlib.sha256(self._seed + self._counter.to_bytes(8, "big")).digest()
+                self._counter += 1
+                self._offset = 0
+            size = min(count - len(result), len(self._block) - self._offset)
+            result.extend(self._block[self._offset:self._offset + size])
+            self._offset += size
+        return bytes(result)
+
+    def go_random_int(self, maximum: int) -> int:
+        """Match crypto/rand.Int rejection sampling for a positive maximum."""
+        if maximum < 1:
+            raise ValueError("random maximum must be positive")
+        bit_count = (maximum - 1).bit_length()
+        byte_count = (bit_count + 7) // 8
+        while True:
+            candidate = bytearray(self.read(byte_count))
+            if bit_count % 8:
+                candidate[0] &= (1 << (bit_count % 8)) - 1
+            number = int.from_bytes(candidate, "big")
+            if number < maximum:
+                return number
+
+
+def _redact_synthetic_random(actual: object, expected: object) -> object:
+    if isinstance(expected, dict) and set(expected) == {"$syntheticSha256"}:
+        return {"$syntheticSha256": hashlib.sha256(actual.encode()).hexdigest()} if isinstance(actual, str) else {"$syntheticSha256": "invalid"}
+    if isinstance(actual, dict) and isinstance(expected, dict):
+        return {key: _redact_synthetic_random(value, expected.get(key)) for key, value in actual.items()}
+    if isinstance(actual, list) and isinstance(expected, list):
+        return [_redact_synthetic_random(value, expected[index] if index < len(expected) else None)
+                for index, value in enumerate(actual)]
+    return actual
+
+
+def _contains_synthetic_digest(value: object) -> bool:
+    if isinstance(value, dict):
+        return set(value) == {"$syntheticSha256"} or any(_contains_synthetic_digest(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_contains_synthetic_digest(item) for item in value)
+    return False
+
 
 class HeartbeatContext:
-    """Persist a non-secret dispatch marker across fixture attempts."""
+    """Persist the connector's encoded heartbeat across fixture attempts."""
 
-    def __init__(self, prior_heartbeat: dict[str, Any] | None = None) -> None:
+    def __init__(self, prior_heartbeat: dict[str, Any] | None = None,
+                 fixed_clock: str | None = None, scenario_name: str = "") -> None:
+        self.scenario_name = scenario_name
         self.attempt = prior_heartbeat["attempt"] + 1 if prior_heartbeat is not None else 1
         self.run_id = "run"
+        self.fixed_clock = (datetime.fromisoformat(fixed_clock)
+                            if fixed_clock is not None else datetime.fromtimestamp(1, UTC))
         self.flow_started_at = datetime.fromtimestamp(1, UTC)
         self.deadline = datetime.now(UTC) + timedelta(seconds=30)
-        self.marker = Marker.from_wire(prior_heartbeat) if prior_heartbeat is not None else None
+        self.heartbeat_payload = (prior_heartbeat.get("value", prior_heartbeat)
+                                  if prior_heartbeat is not None else None)
+        self.has_heartbeat_value = prior_heartbeat is not None
+        self.has_written_heartbeat = False
 
     def has_last_heartbeat_value(self) -> bool:
-        """Report whether a prior Dex attempt persisted a marker."""
-        return self.marker is not None
+        """Report whether a prior Dex attempt persisted a heartbeat."""
+        return self.has_heartbeat_value
 
     def get_last_heartbeat_value(self, value_type: type[object]) -> object:
-        """Return the marker in the SDK's typed heartbeat shape."""
-        assert value_type is Marker and self.marker is not None
-        return self.marker
+        """Decode the exact Go-recorded payload into the requested heartbeat type."""
+        if not self.has_heartbeat_value:
+            return None
+        if value_type is Marker:
+            return Marker.from_wire(self.heartbeat_payload)
+        return CodecRegistry().resolve(value_type).decode(
+            Value(WireKind.JSON, json.dumps(self.heartbeat_payload))
+        )
 
-    async def heartbeat(self, value: object) -> None:
-        """Record the last marker for the next fixture invocation."""
-        assert isinstance(value, Marker)
-        self.marker = value
+    async def heartbeat(self, value: object = _NO_HEARTBEAT_VALUE) -> None:
+        """Record the last heartbeat for the next fixture invocation."""
+        is_clear = value is _NO_HEARTBEAT_VALUE
+        encoded = (None if is_clear else value.to_wire() if isinstance(value, Marker)
+                   else json.loads(CodecRegistry().resolve(type(value)).encode(value).data))
+        if os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_HEARTBEAT") == self.scenario_name:
+            encoded = {"__wrong_heartbeat_shape__": True}
+            is_clear = False
+        if is_clear and os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_CLEAR_AS_NULL") == self.scenario_name:
+            is_clear = False
+        self.heartbeat_payload = encoded
+        self.has_heartbeat_value = not is_clear
+        self.has_written_heartbeat = True
 
 
 def _keys(value: object, required: set[str], optional: set[str], where: str) -> dict[str, Any]:
     if not isinstance(value, dict) or required - value.keys() or value.keys() - required - optional:
         raise ValueError(f"{where}: missing or unknown fields")
     return value
+
+
+def _same_json_value(actual: object, expected: object) -> bool:
+    if isinstance(actual, (int, float)) and not isinstance(actual, bool):
+        return isinstance(expected, (int, float)) and not isinstance(expected, bool) and actual == expected
+    if type(actual) is not type(expected):
+        return False
+    if isinstance(actual, dict):
+        return actual.keys() == expected.keys() and all(
+            _same_json_value(value, expected[key]) for key, value in actual.items()
+        )
+    if isinstance(actual, list):
+        return len(actual) == len(expected) and all(
+            _same_json_value(value, item) for value, item in zip(actual, expected)
+        )
+    return actual == expected
 
 
 def load_scenarios(path: Path) -> list[dict[str, Any]]:
@@ -63,10 +165,20 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
         raise ValueError(f"{path}: scenarios must be nonempty")
     for scenario in scenarios:
         _keys(scenario, {"name", "operation", "callId", "input", "exchanges", "expected"},
-              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat"}, str(path))
+              {"idempotencyKey", "attempts", "intermediate", "priorHeartbeat", "fixedClock", "randomSeed", "randomRequestFields"}, str(path))
         if any(not isinstance(scenario[field], str) or not scenario[field]
                for field in ("name", "operation", "callId")):
             raise ValueError(f"{scenario['name']}: invalid Call ID")
+        if "randomSeed" in scenario and (not isinstance(scenario["randomSeed"], str)
+                                         or not scenario["randomSeed"].startswith("SYNTHETIC_CONFORMANCE_")
+                                         or len(scenario["randomSeed"]) > 128):
+            raise ValueError(f"{scenario['name']}: invalid synthetic random seed")
+        if "randomRequestFields" in scenario and ("randomSeed" not in scenario
+                                                  or not isinstance(scenario["randomRequestFields"], list)
+                                                  or not scenario["randomRequestFields"]
+                                                  or any(not isinstance(field, str) or not field.startswith("/") or "~" in field
+                                                         for field in scenario["randomRequestFields"])):
+            raise ValueError(f"{scenario['name']}: invalid random request fields")
         if not isinstance(scenario["input"], dict) or not isinstance(scenario["exchanges"], list):
             raise TypeError(f"{scenario['name']}: invalid input or exchanges")
         for exchange in scenario["exchanges"]:
@@ -99,6 +211,16 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
                                                  for key, value in exchange[field].items())):
                     raise ValueError(f"{scenario['name']}: invalid {field}")
             body = exchange.get("requestBody")
+            if isinstance(body, dict) and "$multipart" in body and (
+                set(body) != {"$multipart"} or not isinstance(body["$multipart"], list)
+                or any(not isinstance(part, dict) or set(part) != {"headers", "bodyBase64"}
+                       or not isinstance(part["headers"], dict)
+                       or any(not isinstance(name, str) or not isinstance(values, list)
+                              or not values or any(not isinstance(value, str) for value in values)
+                              for name, values in part["headers"].items())
+                       or not isinstance(part["bodyBase64"], str) for part in body["$multipart"])
+            ):
+                raise ValueError(f"{scenario['name']}: invalid multipart expectation")
             if isinstance(body, dict) and "$rawMime" in body and (
                 set(body) - {"$rawMime", "threadId"} or not isinstance(body["$rawMime"], str)
             ):
@@ -111,24 +233,103 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
             ):
                 raise ValueError(f"{scenario['name']}: invalid raw MIME assertions")
         _keys(scenario["expected"], {"branch", "failureKind", "retry", "retryAfterMs", "uncertain", "requestCount"},
-              {"output"}, scenario["name"])
+              {"output", "heartbeat"}, scenario["name"])
         expected = scenario["expected"]
         if (any(not isinstance(expected[field], str) for field in ("branch", "failureKind"))
                 or any(type(expected[field]) is not bool for field in ("retry", "uncertain"))
                 or any(type(expected[field]) is not int for field in ("retryAfterMs", "requestCount"))):
             raise ValueError(f"{scenario['name']}: invalid expected decision")
         for intermediate in scenario.get("intermediate", []):
-            _keys(intermediate, {"failureKind", "retryAfterMs", "exchangeCount"}, set(), scenario["name"])
+            _keys(intermediate, {"failureKind", "retryAfterMs", "exchangeCount"}, {"heartbeat"}, scenario["name"])
         if "priorHeartbeat" in scenario:
-            _keys(scenario["priorHeartbeat"], {"callId", "attempt", "state"}, {"providerId"}, scenario["name"])
-            if scenario["priorHeartbeat"]["callId"] != scenario["callId"]:
-                raise ValueError(f"{scenario['name']}: prior heartbeat Call ID differs")
-            Marker.from_wire(scenario["priorHeartbeat"])
+            prior = _keys(scenario["priorHeartbeat"], {"attempt"},
+                          {"value", "callId", "state", "providerId"}, scenario["name"])
+            if type(prior["attempt"]) is not int or prior["attempt"] < 1:
+                raise ValueError(f"{scenario['name']}: invalid prior heartbeat attempt")
+            if "value" in prior:
+                if set(prior) != {"attempt", "value"} or prior["value"] is None:
+                    raise ValueError(f"{scenario['name']}: invalid prior heartbeat value")
+            else:
+                _keys(prior, {"callId", "attempt", "state"}, {"providerId"}, scenario["name"])
+                if prior["callId"] != scenario["callId"]:
+                    raise ValueError(f"{scenario['name']}: prior heartbeat Call ID differs")
+                Marker.from_wire(prior)
+        if "fixedClock" in scenario:
+            if (not isinstance(scenario["fixedClock"], str)
+                    or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z",
+                                    scenario["fixedClock"]) is None):
+                raise ValueError(f"{scenario['name']}: invalid fixed clock")
+            datetime.fromisoformat(scenario["fixedClock"])
         if scenario.get("attempts", 1) != len(scenario.get("intermediate", [])) + 1:
             raise ValueError(f"{scenario['name']}: inconsistent attempts")
         if "idempotencyKey" in scenario and not isinstance(scenario["idempotencyKey"], str):
             raise ValueError(f"{scenario['name']}: idempotency key must be a string")
     return scenarios
+
+
+def _multipart_media_type(content_type: str) -> tuple[str, tuple[tuple[str, str], ...]]:
+    message = Message()
+    message["Content-Type"] = content_type
+    parameter_names = [name.lower() for name, _ in (message.get_params() or [])[1:]]
+    if len(parameter_names) != len(set(parameter_names)):
+        raise ValueError("duplicate multipart media type parameter")
+    media_type = message.get_content_type()
+    parameters = tuple(sorted((name, value) for name, value in (message.get_params() or [])[1:]
+                              if name != "boundary"))
+    return media_type, parameters
+
+
+def _is_multipart(content_type: str) -> bool:
+    return _multipart_media_type(content_type)[0] in {"multipart/form-data", "multipart/mixed", "multipart/related"}
+
+
+def _multipart_body(content_type: str, body: bytes) -> dict[str, object]:
+    message = Message()
+    message["Content-Type"] = content_type
+    boundary = message.get_param("boundary")
+    if not _is_multipart(content_type) or not isinstance(boundary, str) or not boundary:
+        raise ValueError("missing multipart boundary")
+    delimiter = b"--" + boundary.encode("ascii")
+    if not body.startswith(delimiter):
+        raise ValueError("invalid multipart opening delimiter")
+    position = len(delimiter)
+    parts: list[dict[str, object]] = []
+    while True:
+        if body[position:position + 2] == b"--":
+            break
+        if body[position:position + 2] != b"\r\n":
+            raise ValueError("invalid multipart delimiter")
+        header_start = position + 2
+        header_end = body.find(b"\r\n\r\n", header_start)
+        if header_end < 0:
+            raise ValueError("missing multipart part headers")
+        part_headers: dict[str, list[str]] = {}
+        last_name = ""
+        for raw_line in body[header_start:header_end].split(b"\r\n"):
+            if b"\r" in raw_line or b"\n" in raw_line:
+                raise ValueError("invalid multipart part header")
+            if raw_line.startswith((b" ", b"\t")):
+                if not last_name:
+                    raise ValueError("invalid multipart part header")
+                part_headers[last_name][-1] += " " + raw_line.strip(b" \t").decode("utf-8")
+                continue
+            name_bytes, separator, value_bytes = raw_line.partition(b":")
+            if not separator or not re.fullmatch(rb"[!#$%&'*+.^_`|~0-9A-Za-z-]+", name_bytes):
+                raise ValueError("invalid multipart part header")
+            name = "-".join(component[:1].upper() + component[1:].lower()
+                            for component in name_bytes.decode("ascii").split("-"))
+            part_headers.setdefault(name, []).append(value_bytes.strip(b" \t").decode("utf-8"))
+            last_name = name
+        content_start = header_end + 4
+        part_delimiter = b"\r\n" + delimiter
+        content_end = body.find(part_delimiter, content_start)
+        while content_end >= 0 and body[content_end + len(part_delimiter):content_end + len(part_delimiter) + 2] not in (b"\r\n", b"--"):
+            content_end = body.find(part_delimiter, content_end + 1)
+        if content_end < 0:
+            raise ValueError("missing multipart closing delimiter")
+        parts.append({"headers": part_headers, "bodyBase64": base64.b64encode(body[content_start:content_end]).decode("ascii")})
+        position = content_end + 2 + len(delimiter)
+    return {"$multipart": parts}
 
 
 class ExchangeRecorder:
@@ -166,8 +367,13 @@ class ExchangeRecorder:
                     self.mismatches.append(f"request {index}: unasserted {field} {key}={values!r}")
         if "requestBody" in exchange:
             expected_body = exchange["requestBody"]
-            actual_body = request.content.decode()
-            if isinstance(expected_body, dict) and "$rawMimeContains" in expected_body:
+            actual_body = "" if isinstance(expected_body, dict) and "$multipart" in expected_body else request.content.decode()
+            if isinstance(expected_body, dict) and "$multipart" in expected_body:
+                try:
+                    self._equal(index, "multipart body", _multipart_body(request.headers.get("content-type", ""), request.content), expected_body)
+                except ValueError as error:
+                    self.mismatches.append(f"request {index}: invalid multipart body: {error}")
+            elif isinstance(expected_body, dict) and "$rawMimeContains" in expected_body:
                 try:
                     payload = json.loads(actual_body)
                     expected_keys = {"raw"} | ({"threadId"} if "threadId" in expected_body else set())
@@ -199,14 +405,28 @@ class ExchangeRecorder:
                 try:
                     actual_body = json.loads(actual_body)
                 except ValueError:
-                    pass
-                self._equal(index, "body", actual_body, expected_body)
+                    if _contains_synthetic_digest(expected_body):
+                        actual_body = "invalid JSON"
+                redacted_body = _redact_synthetic_random(actual_body, expected_body)
+                if _contains_synthetic_digest(expected_body):
+                    if redacted_body != expected_body:
+                        self.mismatches.append(f"request {index}: body mismatch")
+                else:
+                    self._equal(index, "body", redacted_body, expected_body)
             else:
                 self._equal(index, "body", actual_body, expected_body)
         elif not exchange.get("form") and request.content:
             self.mismatches.append(f"request {index}: unasserted body")
         for name, value in exchange.get("requestHeaders", {}).items():
-            self._equal(index, f"header {name}", request.headers.get_list(name), value if isinstance(value, list) else [value])
+            expected_values = value if isinstance(value, list) else [value]
+            actual_values = request.headers.get_list(name)
+            if name.lower() == "content-type" and len(expected_values) == len(actual_values) == 1 and _is_multipart(expected_values[0]):
+                try:
+                    self._equal(index, f"header {name}", _multipart_media_type(actual_values[0]), _multipart_media_type(expected_values[0]))
+                except ValueError as error:
+                    self.mismatches.append(f"request {index}: invalid header {name}: {error}")
+            else:
+                self._equal(index, f"header {name}", actual_values, expected_values)
         ignored_headers = {"host", "accept-encoding", "connection", "content-length"}
         for name, value in request.headers.items():
             if name in ignored_headers or name == "idempotency-key":
@@ -283,7 +503,7 @@ def assert_attempt(attempt: object, expected: dict[str, Any]) -> None:
     if "output" in expected:
         encoded = CodecRegistry().resolve(type(attempt.value)).encode(attempt.value)
         observed = json.loads(encoded.data)
-        assert observed == expected["output"], (
+        assert _same_json_value(observed, expected["output"]), (
             f"output {observed!r} differs from {expected['output']!r}"
         )
 
@@ -310,12 +530,14 @@ class PythonOperationAdapter:
             operation = (self.operation_types[operation_name](client) if operation_name in self.operation_types
                          else getattr(client, self._snake_case(operation_name))())
             input_type = getattr(self.module, operation_name[0].upper() + operation_name[1:] + "Input")
+            generated_models = importlib.import_module(f"{self.module.__name__}._generated.models")
+            is_generated_input = getattr(generated_models, input_type.__name__, None) is input_type
             fields_by_wire_name = {field.metadata.get("dex_json_name", field.name): field
                                    for field in fields(input_type)}
             input_arguments = {}
             for key, value in scenario["input"].items():
                 field = fields_by_wire_name[key]
-                if field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
+                if not is_generated_input and field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
                     value = datetime.fromisoformat(value.replace("Z", "+00:00"))
                 input_arguments[field.name] = value
             input_value = input_type(**input_arguments)
@@ -373,12 +595,42 @@ async def replay(
 ) -> None:
     """Replay all attempts, then check transport mismatches and the final decision."""
     recorder = ExchangeRecorder(scenario, scenario["callId"], path_prefix)
-    context = HeartbeatContext(scenario.get("priorHeartbeat"))
+    context = HeartbeatContext(scenario.get("priorHeartbeat"), scenario.get("fixedClock"), scenario["name"])
     for intermediate in scenario.get("intermediate", []):
+        context.has_written_heartbeat = False
         attempt = await invoke(scenario, recorder, context)
         assert_attempt(attempt, {"retry": True, "uncertain": False, "branch": "", **intermediate})
         assert recorder.request_count == intermediate["exchangeCount"]
+        if os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT") == scenario["name"] and "heartbeat" not in intermediate:
+            await context.heartbeat({"__extra_heartbeat__": True})
+        assert context.has_written_heartbeat == ("heartbeat" in intermediate), (
+            f"{scenario['name']}: heartbeat write differs from Go recording"
+        )
+        if "heartbeat" in intermediate:
+            assert_recorded_heartbeat(scenario["name"], context, intermediate["heartbeat"])
         context.attempt += 1
+    context.has_written_heartbeat = False
     attempt = await invoke(scenario, recorder, context)
     recorder.assert_complete()
     assert_attempt(attempt, scenario["expected"])
+    expected = scenario["expected"]
+    if os.environ.get("CONNECTOR_CONFORMANCE_MUTATE_EXTRA_HEARTBEAT") == scenario["name"] and "heartbeat" not in expected:
+        await context.heartbeat({"__extra_heartbeat__": True})
+    assert context.has_written_heartbeat == ("heartbeat" in expected), (
+        f"{scenario['name']}: heartbeat write differs from Go recording"
+    )
+    if "heartbeat" in expected:
+        assert_recorded_heartbeat(scenario["name"], context, expected["heartbeat"])
+
+
+def assert_recorded_heartbeat(name: str, context: HeartbeatContext, recorded: object) -> None:
+    """Match the connector's persisted heartbeat to one Go-recorded checkpoint."""
+    is_clear = (isinstance(recorded, dict) and set(recorded) == {"cleared"}
+                and recorded["cleared"] is True)
+    assert context.has_heartbeat_value != is_clear, f"{name}: heartbeat clear differs from Go recording"
+    if not is_clear:
+        assert _same_json_value(context.heartbeat_payload, recorded), (
+            f"{name}: heartbeat {context.heartbeat_payload!r} differs from Go recording {recorded!r}"
+        )
+    context.heartbeat_payload = None if is_clear else recorded
+    context.has_heartbeat_value = not is_clear

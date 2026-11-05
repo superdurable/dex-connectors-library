@@ -27,6 +27,7 @@ go get github.com/superdurable/dex-connectors-library/connectors/openai/go@v0.23
 
 The Python package is [`dex-connector-openai`](python/README.md), imported as
 `dex_connectors.openai`.
+The TypeScript package is [`@superdurable/connector-openai`](typescript/README.md). Its [summarize-text Flow](typescript/examples/summarize-text/workflow.ts) is a runnable Dex application using the `openai-api` connection.
 ## Connection
 
 The connection kind is `openai-api-key`. Its one secret field, `api_key`, is

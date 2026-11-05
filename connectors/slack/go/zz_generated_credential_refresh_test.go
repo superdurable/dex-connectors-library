@@ -30,19 +30,20 @@ import (
 type manifestGrant struct {
 	name string
 	// credentials returns the stored credentials before the request; privateKeyPEM signs JWT bearer assertions.
-	credentials func(privateKeyPEM string) slack.Credentials
-	settings    map[string]string
-	methodID    string
-	endpoint    string
-	encoding    string
-	clientAuth  string
-	clientID    string
-	secret      string
-	parameters  map[string]string
-	assertion   *manifestAssertion
-	response    map[string]any
-	variations  []manifestVariation
-	updates     map[string]string
+	credentials          func(privateKeyPEM string, overrides map[string]string) slack.Credentials
+	settings             map[string]string
+	methodID             string
+	endpoint             string
+	encoding             string
+	clientAuth           string
+	clientID             string
+	secret               string
+	parameters           map[string]string
+	assertion            *manifestAssertion
+	response             map[string]any
+	variations           []manifestVariation
+	refreshRequiredCases []manifestRefreshRequiredCase
+	updates              map[string]string
 	// refreshToken is the credential field that holds the refresh token, or empty for a minting grant.
 	refreshToken       string
 	terminalErrorCodes []string
@@ -51,10 +52,23 @@ type manifestGrant struct {
 	mayRefuseWithoutRequest bool
 }
 
+type manifestRefreshRequiredCase struct {
+	name                     string
+	credentials              map[string]string
+	expiresAt                string
+	expected                 bool
+	jwtAccessTokenCredential string
+	jwtExpiry                string
+}
+
 type manifestVariation struct {
-	name          string
-	response      map[string]any
-	expectedError string
+	name           string
+	response       map[string]any
+	credentials    map[string]string
+	updates        map[string]string
+	expectedError  string
+	expectedExpiry time.Duration
+	checkExpiry    bool
 }
 
 // manifestAssertion holds the JWT bearer claims that connector.yaml declares.
@@ -106,11 +120,15 @@ func (endpoint *manifestTokenEndpoint) RoundTrip(request *http.Request) (*http.R
 }
 
 func (grant manifestGrant) refresh(t *testing.T, privateKeyPEM string, status int, response map[string]any) (sdkgo.CredentialRefreshResult[slack.Credentials], *manifestTokenEndpoint, error) {
+	return grant.refreshWithOverrides(t, privateKeyPEM, status, response, nil)
+}
+
+func (grant manifestGrant) refreshWithOverrides(t *testing.T, privateKeyPEM string, status int, response map[string]any, overrides map[string]string) (sdkgo.CredentialRefreshResult[slack.Credentials], *manifestTokenEndpoint, error) {
 	t.Helper()
 	endpoint := &manifestTokenEndpoint{status: status, response: response}
 	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
 	result, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[slack.Credentials]{
-		Credentials: grant.credentials(privateKeyPEM), Now: time.Now(),
+		Credentials: grant.credentials(privateKeyPEM, overrides), Now: time.Now(),
 	})
 	return result, endpoint, err
 }
@@ -123,6 +141,7 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 	privateKeyPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateKeyDER}))
 	for _, grant := range manifestGrants() {
 		t.Run(grant.name, func(t *testing.T) {
+			requireManifestRefreshRequired(t, grant, privateKeyPEM)
 			if grant.mayRefuseWithoutRequest {
 				requireManifestPublicClientRefresh(t, grant, privateKeyPEM)
 				return
@@ -136,14 +155,65 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 	}
 }
 
+func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKeyPEM string) {
+	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	for _, refreshCase := range grant.refreshRequiredCases {
+		t.Run(refreshCase.name, func(t *testing.T) {
+			now := time.Now().UTC()
+			overrides := map[string]string{}
+			for name, value := range refreshCase.credentials {
+				overrides[name] = value
+			}
+			if refreshCase.jwtAccessTokenCredential != "" {
+				jwtExpiry := now.Add(time.Hour)
+				if refreshCase.jwtExpiry == "expired" {
+					jwtExpiry = now.Add(-time.Hour)
+				}
+				payload, err := json.Marshal(map[string]int64{"exp": jwtExpiry.Unix()})
+				require.NoError(t, err)
+				overrides[refreshCase.jwtAccessTokenCredential] = "e30." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
+			}
+			var expiresAt *time.Time
+			switch refreshCase.expiresAt {
+			case "fresh":
+				fresh := now.Add(time.Hour)
+				expiresAt = &fresh
+			case "expired":
+				expired := now.Add(-time.Hour)
+				expiresAt = &expired
+			case "missing":
+			default:
+				t.Fatalf("unknown expiry state %q", refreshCase.expiresAt)
+			}
+			state := sdkgo.CredentialRefreshState[slack.Credentials]{
+				Credentials: grant.credentials(privateKeyPEM, overrides), ExpiresAt: expiresAt, Now: now,
+			}
+			require.Equal(t, refreshCase.expected, driver.RefreshRequired(state), "connector.yaml declares this stored-token refresh policy")
+			require.Empty(t, endpoint.requests, "RefreshRequired never calls the provider")
+		})
+	}
+}
+
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
-			_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, variation.response)
+			startedAt := time.Now().UTC()
+			result, endpoint, err := grant.refreshWithOverrides(t, privateKeyPEM, http.StatusOK, variation.response, variation.credentials)
 			require.Len(t, endpoint.requests, 1, "a response variation reaches the provider")
 			switch variation.expectedError {
 			case "":
 				require.NoError(t, err)
+				expectedCredentials := manifestCredentialValues(grant.credentials(privateKeyPEM, variation.credentials))
+				for field, value := range variation.updates {
+					expectedCredentials[field] = value
+				}
+				require.Equal(t, expectedCredentials, manifestCredentialValues(result.Credentials), "the response variation stores the declared credentials")
+				if variation.checkExpiry && variation.expectedExpiry == 0 {
+					require.True(t, result.ExpiresAt.IsZero(), "a kept undated token has zero expiry")
+				} else if variation.checkExpiry {
+					require.WithinDuration(t, startedAt.Add(variation.expectedExpiry), result.ExpiresAt, 3*time.Second)
+				}
 			case "reauthorization":
 				require.True(t, sdkgo.IsReauthorizationRequired(err), "the declared scope variation requires reauthorization: %v", err)
 			case "retryable":
@@ -187,7 +257,7 @@ func requireManifestGrantUpdatesCredentials(t *testing.T, grant manifestGrant, p
 	require.NoError(t, err)
 	require.Len(t, endpoint.requests, 1, "one grant sends one token request")
 	requireManifestTokenRequest(t, grant, endpoint.requests[0], publicKey)
-	expected := manifestCredentialValues(grant.credentials(privateKeyPEM))
+	expected := manifestCredentialValues(grant.credentials(privateKeyPEM, nil))
 	for field, value := range grant.updates {
 		expected[field] = value
 	}
@@ -279,7 +349,7 @@ func requireManifestRefreshTokenIsKept(t *testing.T, grant manifestGrant, privat
 	response := manifestResponseWithout(grant.response, "refresh_token")
 	result, _, err := grant.refresh(t, privateKeyPEM, http.StatusOK, response)
 	require.NoError(t, err)
-	stored := manifestCredentialValues(grant.credentials(privateKeyPEM))[grant.refreshToken]
+	stored := manifestCredentialValues(grant.credentials(privateKeyPEM, nil))[grant.refreshToken]
 	require.Equal(t, stored, manifestCredentialValues(result.Credentials)[grant.refreshToken], "a response without refresh_token keeps the stored one")
 }
 
@@ -363,8 +433,8 @@ func manifestGrants() []manifestGrant {
 	return []manifestGrant{
 		{
 			name: "spec.auth refresh bot_refresh_token",
-			credentials: func(privateKeyPEM string) slack.Credentials {
-				return slack.Credentials{
+			credentials: func(privateKeyPEM string, overrides map[string]string) slack.Credentials {
+				credentials := slack.Credentials{
 					OAuthClientID:     "manifest-client-id",
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					BotToken:          sdkgo.NewSecretString("manifest-access-token"),
@@ -373,6 +443,34 @@ func manifestGrants() []manifestGrant {
 					UserRefreshToken:  sdkgo.NewSecretString(""),
 					AppToken:          sdkgo.NewSecretString("manifest-app_token"),
 				}
+				if value, ok := overrides["oauth_client_id"]; ok {
+					credentials.OAuthClientID = value
+				}
+				if value, ok := overrides["oauth_client_secret"]; ok {
+					credentials.OAuthClientSecret = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_token"]; ok {
+					credentials.BotToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_refresh_token"]; ok {
+					credentials.BotRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_token"]; ok {
+					credentials.UserToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_refresh_token"]; ok {
+					credentials.UserRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["app_token"]; ok {
+					credentials.AppToken = sdkgo.NewSecretString(value)
+				}
+				return credentials
+			},
+			refreshRequiredCases: []manifestRefreshRequiredCase{
+				{name: "fresh token", credentials: map[string]string{}, expiresAt: "fresh", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "expired token", credentials: map[string]string{}, expiresAt: "expired", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token", credentials: map[string]string{}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "blank access token", credentials: map[string]string{"bot_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
 			},
 			endpoint:   "https://slack.com/api/oauth.v2.access",
 			encoding:   "form",
@@ -382,11 +480,20 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write"}, expectedError: "retryable"},
-				{name: " with partial scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "bot"}, expectedError: "reauthorization"},
-				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write manifest-extra-scope", "token_type": "bot"}, expectedError: "reauthorization"},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, expectedError: "retryable"},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with uppercase scope names", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "CHANNELS:HISTORY GROUPS:HISTORY CHANNELS:READ GROUPS:READ USERS:READ CHAT:WRITE", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with comma-separated scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history,groups:history,channels:read,groups:read,users:read,chat:write,channels:history", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 1", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 2", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history channels:read groups:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 3", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history groups:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 4", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 5", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 6", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write manifest-extra-scope", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
 			updates:            map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"},
 			refreshToken:       "bot_refresh_token",
@@ -394,8 +501,8 @@ func manifestGrants() []manifestGrant {
 		},
 		{
 			name: "spec.auth refresh bot_refresh_token without a client secret",
-			credentials: func(privateKeyPEM string) slack.Credentials {
-				return slack.Credentials{
+			credentials: func(privateKeyPEM string, overrides map[string]string) slack.Credentials {
+				credentials := slack.Credentials{
 					OAuthClientID:     "manifest-client-id",
 					OAuthClientSecret: sdkgo.NewSecretString(""),
 					BotToken:          sdkgo.NewSecretString("manifest-access-token"),
@@ -404,6 +511,34 @@ func manifestGrants() []manifestGrant {
 					UserRefreshToken:  sdkgo.NewSecretString(""),
 					AppToken:          sdkgo.NewSecretString("manifest-app_token"),
 				}
+				if value, ok := overrides["oauth_client_id"]; ok {
+					credentials.OAuthClientID = value
+				}
+				if value, ok := overrides["oauth_client_secret"]; ok {
+					credentials.OAuthClientSecret = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_token"]; ok {
+					credentials.BotToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_refresh_token"]; ok {
+					credentials.BotRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_token"]; ok {
+					credentials.UserToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_refresh_token"]; ok {
+					credentials.UserRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["app_token"]; ok {
+					credentials.AppToken = sdkgo.NewSecretString(value)
+				}
+				return credentials
+			},
+			refreshRequiredCases: []manifestRefreshRequiredCase{
+				{name: "fresh token", credentials: map[string]string{}, expiresAt: "fresh", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "expired token", credentials: map[string]string{}, expiresAt: "expired", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token", credentials: map[string]string{}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "blank access token", credentials: map[string]string{"bot_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
 			},
 			endpoint:                "https://slack.com/api/oauth.v2.access",
 			encoding:                "form",
@@ -419,8 +554,8 @@ func manifestGrants() []manifestGrant {
 		},
 		{
 			name: "spec.auth refresh user_refresh_token",
-			credentials: func(privateKeyPEM string) slack.Credentials {
-				return slack.Credentials{
+			credentials: func(privateKeyPEM string, overrides map[string]string) slack.Credentials {
+				credentials := slack.Credentials{
 					OAuthClientID:     "manifest-client-id",
 					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
 					BotToken:          sdkgo.NewSecretString("manifest-bot_token"),
@@ -429,6 +564,34 @@ func manifestGrants() []manifestGrant {
 					UserRefreshToken:  sdkgo.NewSecretString("manifest-refresh-token"),
 					AppToken:          sdkgo.NewSecretString("manifest-app_token"),
 				}
+				if value, ok := overrides["oauth_client_id"]; ok {
+					credentials.OAuthClientID = value
+				}
+				if value, ok := overrides["oauth_client_secret"]; ok {
+					credentials.OAuthClientSecret = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_token"]; ok {
+					credentials.BotToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_refresh_token"]; ok {
+					credentials.BotRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_token"]; ok {
+					credentials.UserToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_refresh_token"]; ok {
+					credentials.UserRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["app_token"]; ok {
+					credentials.AppToken = sdkgo.NewSecretString(value)
+				}
+				return credentials
+			},
+			refreshRequiredCases: []manifestRefreshRequiredCase{
+				{name: "fresh token", credentials: map[string]string{}, expiresAt: "fresh", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "expired token", credentials: map[string]string{}, expiresAt: "expired", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token", credentials: map[string]string{}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "blank access token", credentials: map[string]string{"user_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
 			},
 			endpoint:   "https://slack.com/api/oauth.v2.access",
 			encoding:   "form",
@@ -438,11 +601,16 @@ func manifestGrants() []manifestGrant {
 			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
 			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "user"},
 			variations: []manifestVariation{
-				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
-				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history"}, expectedError: "retryable"},
-				{name: " with partial scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "user"}, expectedError: "reauthorization"},
-				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history manifest-extra-scope", "token_type": "user"}, expectedError: "reauthorization"},
-				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "user"}, expectedError: "retryable"},
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with uppercase scope names", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "CHANNELS:HISTORY GROUPS:HISTORY", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with comma-separated scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history,groups:history,channels:history", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 1", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "groups:history", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without required scope 2", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with extra scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history manifest-extra-scope", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "reauthorization", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
 			updates:            map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"},
 			refreshToken:       "user_refresh_token",
@@ -450,8 +618,8 @@ func manifestGrants() []manifestGrant {
 		},
 		{
 			name: "spec.auth refresh user_refresh_token without a client secret",
-			credentials: func(privateKeyPEM string) slack.Credentials {
-				return slack.Credentials{
+			credentials: func(privateKeyPEM string, overrides map[string]string) slack.Credentials {
+				credentials := slack.Credentials{
 					OAuthClientID:     "manifest-client-id",
 					OAuthClientSecret: sdkgo.NewSecretString(""),
 					BotToken:          sdkgo.NewSecretString("manifest-bot_token"),
@@ -460,6 +628,34 @@ func manifestGrants() []manifestGrant {
 					UserRefreshToken:  sdkgo.NewSecretString("manifest-refresh-token"),
 					AppToken:          sdkgo.NewSecretString("manifest-app_token"),
 				}
+				if value, ok := overrides["oauth_client_id"]; ok {
+					credentials.OAuthClientID = value
+				}
+				if value, ok := overrides["oauth_client_secret"]; ok {
+					credentials.OAuthClientSecret = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_token"]; ok {
+					credentials.BotToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["bot_refresh_token"]; ok {
+					credentials.BotRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_token"]; ok {
+					credentials.UserToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["user_refresh_token"]; ok {
+					credentials.UserRefreshToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["app_token"]; ok {
+					credentials.AppToken = sdkgo.NewSecretString(value)
+				}
+				return credentials
+			},
+			refreshRequiredCases: []manifestRefreshRequiredCase{
+				{name: "fresh token", credentials: map[string]string{}, expiresAt: "fresh", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "expired token", credentials: map[string]string{}, expiresAt: "expired", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token", credentials: map[string]string{}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "blank access token", credentials: map[string]string{"user_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
 			},
 			endpoint:                "https://slack.com/api/oauth.v2.access",
 			encoding:                "form",

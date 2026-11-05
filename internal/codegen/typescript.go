@@ -148,6 +148,15 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 		credentialImports = providerType
 	}
 	output.WriteString("import type { " + credentialImports + " } from '@superdurable/connectors-sdk';\n\n")
+	for _, model := range models {
+		for _, field := range model.Fields {
+			if modelTypeContainsTime(field.Type) {
+				output.WriteString(goTimeJSONValidator)
+				goto timestampValidatorWritten
+			}
+		}
+	}
+timestampValidatorWritten:
 	output.WriteString("/** Connector configuration; omitted fields use manifest defaults. */\nexport interface Config {\n")
 	for _, field := range generatedConfigFields(manifest) {
 		name := field.Name
@@ -373,7 +382,7 @@ func typeScriptSchema(value gomodel.Type) string {
 	case gomodel.Float:
 		result = "z.number()"
 	case gomodel.Time:
-		result = "z.iso.datetime({ offset: true })"
+		result = "GoTimeJSONSchema"
 	case gomodel.Bytes:
 		result = "z.base64()"
 	case gomodel.Unknown:
@@ -540,7 +549,7 @@ func writeTypeScriptCredentialDecoder(output *bytes.Buffer, manifest schema.Mani
 			}
 			if isSingleMethod {
 				fmt.Fprintf(output, "  credentials.%s = %s;\n", typeScriptFieldName(field.Name), typeScriptCredentialValue(field, true))
-			} else if !field.Required && (field.Type == "secretString" || field.Type == "string" || field.Type == "enum" || field.Type == "url") {
+			} else if HasDeclaredTokenGrants(manifest) && !field.Required && (field.Type == "secretString" || field.Type == "string" || field.Type == "enum" || field.Type == "url") {
 				fmt.Fprintf(output, "    credentials.%s = %s;\n", typeScriptFieldName(field.Name), typeScriptCredentialValue(field, true))
 			} else {
 				fmt.Fprintf(output, "    if (%s) credentials.%s = %s;\n", value, typeScriptFieldName(field.Name), typeScriptCredentialValue(field, false))

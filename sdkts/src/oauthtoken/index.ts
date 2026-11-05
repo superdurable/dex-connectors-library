@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { sendProviderRequest } from '../providerhttp/index.js';
 import { createPrivateKey, sign, type KeyObject } from 'node:crypto';
 import { ReauthorizationRequiredError } from '../errors.js';
 import { SecretString } from '../credentials.js';
@@ -20,6 +21,7 @@ export interface ClientCredentials {
 
 /** Successful replacement material from one OAuth grant. */
 export class TokenResponse {
+  readonly #mappedCredentialFields: Readonly<Record<string, SecretString>>;
   /** Replacement access token. */ readonly accessToken: SecretString;
   /** Rotated refresh token, empty when the provider retained it. */ readonly refreshToken: SecretString;
   /** Access lifetime in milliseconds; zero only when explicitly accepted. */ readonly expiresInMs: number;
@@ -29,7 +31,7 @@ export class TokenResponse {
   /** Only explicitly retained non-standard response fields. */ readonly retainedFields: Readonly<Record<string, unknown>>;
 
   /** Capture validated provider response fields. */
-  constructor(fields: { accessToken: SecretString; refreshToken: SecretString; expiresInMs: number; refreshTokenExpiresInMs: number; scope: string; tokenType: string; retainedFields: Record<string, unknown> }) {
+  constructor(fields: { accessToken: SecretString; refreshToken: SecretString; expiresInMs: number; refreshTokenExpiresInMs: number; scope: string; tokenType: string; retainedFields: Record<string, unknown>; mappedCredentialFields?: Record<string, SecretString> }) {
     this.accessToken = fields.accessToken;
     this.refreshToken = fields.refreshToken;
     this.expiresInMs = fields.expiresInMs;
@@ -37,10 +39,14 @@ export class TokenResponse {
     this.scope = fields.scope;
     this.tokenType = fields.tokenType;
     this.retainedFields = fields.retainedFields;
+    this.#mappedCredentialFields = fields.mappedCredentialFields ?? {};
   }
 
   /** Keep the previous refresh token when no rotated value was returned. */
   nextRefreshToken(prior: SecretString): SecretString { return this.refreshToken.reveal() ? this.refreshToken : prior; }
+
+  /** Reveal only one declared credential mapping at the provider boundary. */
+  mappedCredentialValue(path: string): string | undefined { return this.#mappedCredentialFields[path]?.reveal(); }
 }
 
 /** One provider token endpoint and its declared response rules. */
@@ -52,10 +58,12 @@ export interface TokenEndpointOptions {
   /** Accept a successful response without token_type. */ acceptsMissingTokenType?: boolean;
   /** Accept a successful response without expires_in. */ acceptsMissingExpiresIn?: boolean;
   /** Non-standard, non-secret top-level fields to retain. */ retainedResponseFields?: readonly string[];
+  /** Dotted response paths mapped into private connector credentials. */ credentialMappingPaths?: readonly string[];
   /** Send JSON instead of form encoding when the provider requires it. */ usesJSONRequestBody?: boolean;
   /** Permit a declared HTTP endpoint, including private-network identity servers. */ allowsPlainHTTP?: boolean;
   /** Fixed non-secret grant parameters that cannot override OAuth grant fields. */ additionalRequestParameters?: Readonly<Record<string, string>>;
   /** Caller-owned fetch implementation for a proxy or local test. */ fetch?: typeof fetch;
+  /** DNS-pinned address policy for configurable token endpoints. */ addressPolicy?: 'privateNetworkHTTP';
 }
 
 /** Provider-neutral OAuth refresh and client-credentials exchanges. */
@@ -108,7 +116,7 @@ export class TokenEndpoint {
 
   async #exchange(parameters: Record<string, string>, basicClient: ClientCredentials | undefined, signal: AbortSignal | undefined): Promise<TokenResponse> {
     const options = this.#options;
-    validateEndpointURL(options.url, options.allowsPlainHTTP ?? false, options.providerName);
+    validateEndpointURL(options.url, options.allowsPlainHTTP ?? options.addressPolicy === 'privateNetworkHTTP', options.providerName);
     for (const field of options.retainedResponseFields ?? []) {
       if (standardResponseFields.has(field)) throw new TypeError(`${options.providerName} token endpoint cannot retain the standard ${field} field`);
     }
@@ -128,7 +136,14 @@ export class TokenEndpoint {
     if (basicClient) headers.Authorization = `Basic ${Buffer.from(`${basicClient.id}:${basicClient.secret?.reveal() ?? ''}`).toString('base64')}`;
     let response: Response;
     try {
-      response = await (options.fetch ?? fetch)(options.url, { method: 'POST', headers, body, redirect: 'manual', ...(signal ? { signal } : {}) });
+      if (options.addressPolicy === 'privateNetworkHTTP' && !options.fetch) {
+        const providerResponse = await sendProviderRequest({ url: options.url, method: 'POST', headers,
+          body: new TextEncoder().encode(body), maxResponseBytes: 1 << 20,
+          addressPolicy: 'privateNetworkHTTP', ...(signal ? { signal } : {}) });
+        response = new Response(Buffer.from(providerResponse.body), { status: providerResponse.status });
+      } else {
+        response = await (options.fetch ?? fetch)(options.url, { method: 'POST', headers, body, redirect: 'manual', ...(signal ? { signal } : {}) });
+      }
     } catch {
       throw new Error(`${options.providerName} token endpoint is unavailable`);
     }
@@ -154,14 +169,28 @@ export class TokenEndpoint {
     if (typeof accessToken !== 'string' || !accessToken || !hasAcceptedExpiry || !hasAcceptedType) throw new Error(`${options.providerName} token response omitted required fields`);
     const retainedFields: Record<string, unknown> = {};
     for (const field of options.retainedResponseFields ?? []) if (Object.hasOwn(decoded, field)) retainedFields[field] = decoded[field];
+    const mappedCredentialFields: Record<string, SecretString> = {};
+    for (const path of options.credentialMappingPaths ?? []) {
+      const value = responsePathValue(decoded, path);
+      if (value !== undefined) mappedCredentialFields[path] = new SecretString(value);
+    }
     const refreshToken = typeof decoded.refresh_token === 'string' ? decoded.refresh_token : '';
     const refreshTokenExpiry = typeof decoded.refresh_token_expires_in === 'number' && decoded.refresh_token_expires_in > 0 ? decoded.refresh_token_expires_in : 0;
-    return new TokenResponse({ accessToken: new SecretString(accessToken), refreshToken: new SecretString(refreshToken), expiresInMs: (expiresIn as number | undefined ?? 0) * 1000, refreshTokenExpiresInMs: refreshTokenExpiry * 1000, scope: typeof decoded.scope === 'string' ? decoded.scope : '', tokenType: typeof tokenType === 'string' ? tokenType : '', retainedFields });
+    return new TokenResponse({ accessToken: new SecretString(accessToken), refreshToken: new SecretString(refreshToken), expiresInMs: (expiresIn as number | undefined ?? 0) * 1000, refreshTokenExpiresInMs: refreshTokenExpiry * 1000, scope: typeof decoded.scope === 'string' ? decoded.scope : '', tokenType: typeof tokenType === 'string' ? tokenType : '', retainedFields, mappedCredentialFields });
   }
 }
 
 const grantParameters = new Set(['grant_type', 'refresh_token', 'client_id', 'client_secret', 'assertion', 'client_assertion', 'client_assertion_type']);
 const standardResponseFields = new Set(['access_token', 'refresh_token', 'expires_in', 'refresh_token_expires_in', 'scope', 'token_type', 'error', 'error_description', 'error_uri', 'id_token']);
+
+function responsePathValue(response: Record<string, unknown>, path: string): string | undefined {
+  let value: unknown = response;
+  for (const member of path.split('.')) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, member)) return undefined;
+    value = (value as Record<string, unknown>)[member];
+  }
+  return typeof value === 'string' ? value : undefined;
+}
 
 function validateEndpointURL(value: string, allowsPlainHTTP: boolean, providerName: string): void {
   let parsed: URL;
@@ -218,6 +247,8 @@ export function hasExactScopes(returnedScope: string, requiredScopes: readonly s
   const granted = new Set(returnedScope.split(/[ ,]+/).filter(Boolean));
   return granted.size === new Set(requiredScopes).size && hasAllScopes(returnedScope, requiredScopes);
 }
+
+export { ManifestCredentialRefreshDriver } from './manifest_refresh.js';
 
 function lifetimeShare(maximumMs: number, issuedAt?: Date, expiresAt?: Date): number {
   const lifetimeMs = issuedAt && expiresAt ? expiresAt.getTime() - issuedAt.getTime() : 0;

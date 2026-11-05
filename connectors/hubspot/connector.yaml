@@ -92,6 +92,8 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            responseScopeField: scopesArray
+            requiredScopes: [crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.companies.read, crm.objects.companies.write, crm.objects.deals.read, crm.objects.deals.write, crm.objects.owners.read]
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]

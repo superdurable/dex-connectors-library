@@ -11,6 +11,9 @@ payload = json.load(sys.stdin)
 manifest = payload["manifest"]
 metadata = manifest["metadata"]
 spec = manifest["spec"]
+nanosecond_timestamps = (
+    spec["languages"]["python"].get("timestampFormat") == "rfc3339Nano"
+)
 auth_methods = spec["auth"].get("methods", [])
 
 
@@ -147,8 +150,9 @@ def python_type(
             "int64": ("int", "0"),
             "float": ("float", "0.0"),
             "time": (
-                "datetime",
-                "_dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))",
+                ("str", "'0001-01-01T00:00:00Z'")
+                if nanosecond_timestamps else
+                ("datetime", "_dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))")
             ),
             "bytes": ("str", "''"),
             "unknown": ("Any", "None"),
@@ -251,6 +255,7 @@ def render_models():
             lines.append("    pass")
         has_default_field = False
         nullable_list_fields = []
+        timestamp_fields = []
         for field_info in model["fields"]:
             python_name = python_field_name(field_info["jsonName"])
             field_type, default = python_type(
@@ -266,8 +271,10 @@ def render_models():
                 metadata["dex_json_name"] = wire_name
             if field_info["omitEmpty"]:
                 metadata["dex_json_omit_default"] = True
-            if field_info["irType"]["Kind"] == "time":
+            if field_info["irType"]["Kind"] == "time" and not nanosecond_timestamps:
                 metadata["dex_json_format"] = "rfc3339"
+            if field_info["irType"]["Kind"] == "time":
+                timestamp_fields.append(python_name)
             if field_info.get("description"):
                 for comment_line in field_info["description"].strip().splitlines():
                     lines.append("    # " + comment_line if comment_line else "    #")
@@ -302,8 +309,23 @@ def render_models():
                 and not field_info["hasPresence"]
             ):
                 nullable_list_fields.append((python_name, field_info["irType"]))
-        if nullable_list_fields:
+        if nullable_list_fields or timestamp_fields:
             lines.extend(["", "    def __post_init__(self) -> None:"])
+            for python_name in timestamp_fields:
+                if nanosecond_timestamps:
+                    lines.extend([
+                        f"        if self.{python_name} is not None:",
+                        f"            timestamp = self.{python_name}",
+                        f"            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, {python_name!r}))",
+                        f"            object.__setattr__(self, {python_name!r}, canonical)",
+                    ])
+                else:
+                    lines.extend([
+                        f"        if isinstance(self.{python_name}, str):",
+                        f"            object.__setattr__(self, {python_name!r}, parse_go_datetime(self.{python_name}, {python_name!r}))",
+                        f"        elif self.{python_name} is not None:",
+                        f"            validate_go_datetime(self.{python_name}, {python_name!r})",
+                    ])
             for python_name, type_info in nullable_list_fields:
                 lines.append(
                     f"        object.__setattr__(self, {python_name!r}, "
@@ -340,6 +362,12 @@ def render_models():
         header.append("from typing import " + ", ".join(typing_imports))
     if "SecretString" in body:
         header += ["", "from dex_connectors.sdk import SecretString"]
+    if nanosecond_timestamps and "format_rfc3339_nano(" in body:
+        header += ["", "from dex_connectors.sdk import format_rfc3339_nano"]
+    if "canonical_go_timestamp(" in body:
+        header += ["", "from .timestamps import canonical_go_timestamp"]
+    if "parse_go_datetime(" in body:
+        header += ["", "from .timestamps import parse_go_datetime, validate_go_datetime"]
     return "\n".join(header) + "\n\n" + body
 
 
@@ -1024,6 +1052,10 @@ def render_connection():
         "def _decode_config(value: dict[str, Any]) -> Config:",
     ]
     config_fields = configuration_fields()
+    # Preserve generated behavior for published packages without optional credentials.
+    has_optional_credential = not auth_methods and any(
+        not field_info["required"] for field_info in credential_fields
+    )
     allowed = (
         "{"
         + ", ".join(quoted(field_info["name"]) for field_info in config_fields)
@@ -1041,11 +1073,16 @@ def render_connection():
         raw_name = (
             name.removesuffix("_seconds") if field_info["type"] == "duration" else name
         )
-        lines.append(f"    if {quoted(field_info['name'])} in value:")
+        field_present = f"{quoted(field_info['name'])} in value"
+        if has_optional_credential and not field_info["required"]:
+            field_present += f" and value[{quoted(field_info['name'])}] != ''"
+        lines.append(f"    if {field_present}:")
         lines.append(f"        {raw_name} = value[{quoted(field_info['name'])}]")
         field_type = field_info["type"]
         if field_type in ("string", "url"):
             check = f"isinstance({raw_name}, str)"
+            if has_optional_credential and field_info["required"]:
+                check += f" and bool({raw_name})"
         elif field_type == "enum":
             check = f"isinstance({raw_name}, str) and {raw_name} in {tuple(field_info['enum'])!r}"
         elif field_type == "stringList":
@@ -1119,6 +1156,8 @@ class MockOutputExpression:
                 + "}"
             )
         if kind == "time":
+            if nanosecond_timestamps:
+                return repr(value)
             return f"datetime.fromisoformat({quoted(value)}.replace('Z', '+00:00'))"
         if kind != "ref":
             return repr(value)
@@ -1406,6 +1445,8 @@ result = {
     "definitions.py": render_definitions(),
     "steps.py": render_steps(),
 }
+if any(field_info["irType"]["Kind"] == "time" for model in models for field_info in model["fields"]):
+    result["timestamps.py"] = payload["timestampSource"]
 if payload["hasDeclaredTokenGrants"]:
     authorization = json.loads(json.dumps(spec["auth"]))
     omitted = {

@@ -5,7 +5,7 @@
 import html
 import json
 import re
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from functools import cmp_to_key
 from typing import Any
 
@@ -21,7 +21,7 @@ from dex_connectors.sdk import (
     QueryDefinition,
     Receipt,
 )
-from dex_connectors.sdk.singledispatch import Marker, State
+from dex_connectors.sdk.singledispatch import State
 
 from ._generated import definitions as defs
 from .client import (
@@ -53,6 +53,11 @@ from .models import (
 
 _ZERO_TICKET = Ticket(status="")
 _RETRY_OUTCOMES = frozenset(("rateLimited", "notSent", "unavailable"))
+
+
+@dataclass(frozen=True, slots=True)
+class _DispatchMarker:
+    dispatched_call_id: CallID = field(metadata={"dex_json_name": "gorgiasDispatchedCallId"})
 _STATUSES = frozenset(("open", "closed"))
 _PRIORITIES = frozenset(("low", "normal", "high", "critical"))
 _CURSOR = re.compile(r"^[A-Za-z0-9+/=_.:-]{1,2048}$")
@@ -538,8 +543,8 @@ async def _prior_dispatch(call: Call) -> bool:
     try:
         if not context.has_last_heartbeat_value():
             return False
-        marker = context.get_last_heartbeat_value(Marker)
-        return marker is None or marker.state == State.CLAIMED
+        context.get_last_heartbeat_value(_DispatchMarker)
+        return True
     except Exception:
         return True
 
@@ -548,13 +553,16 @@ async def _checkpoint(call: Call, state: State) -> bool:
     if call.context is None:
         return False
     try:
-        await call.context.heartbeat(Marker(call.id, call.context.attempt, state))
+        if state == State.CLAIMED:
+            await call.context.heartbeat(_DispatchMarker(call.id))
+        else:
+            await call.context.heartbeat()
         return True
     except Exception:
         return False
 
 
-def _reconcile_failure(
+async def _reconcile_failure(
     call: Call,
     operation: str,
     reason: Failure,
@@ -564,7 +572,8 @@ def _reconcile_failure(
     can_retry: bool = True,
 ) -> MutationAttempt[Any]:
     if can_retry and call.context is not None and call.context.attempt < 4:
-        return MutationAttempt.retry(reason, min(max(delay, 15), 60))
+        if await _checkpoint(call, State.CLAIMED):
+            return MutationAttempt.retry(reason, min(max(delay, 15), 60))
     return MutationAttempt.uncertain(
         zero,
         failure(
@@ -628,7 +637,7 @@ class CreateTicketOperation:
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
             if prior_dispatch:
-                return _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
+                return await _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
 
@@ -647,7 +656,10 @@ class CreateTicketOperation:
             try:
                 records, _ = decode_list(result.body, "ticket")
                 for record in records:
-                    ticket = decode_ticket(record)
+                    try:
+                        ticket = decode_ticket(record)
+                    except (ValueError, TypeError, KeyError, AttributeError):
+                        continue
                     if ticket.external_id == str(call.idempotency_key):
                         return ticket, result, self.client.receipt(call, result, ticket.id)
             except (ValueError, TypeError, KeyError, AttributeError) as error:
@@ -668,7 +680,7 @@ class CreateTicketOperation:
             if result.outcome != "success":
                 assert result.failure is not None
                 if prior_dispatch:
-                    return _reconcile_failure(
+                    return await _reconcile_failure(
                         call,
                         operation,
                         result.failure,
@@ -689,7 +701,7 @@ class CreateTicketOperation:
                     "an earlier attempt of this Step sent the request and Gorgias shows no ticket "
                     "with its external ID, so it is not sent again",
                 )
-                return _reconcile_failure(call, operation, reason, receipt, zero)
+                return await _reconcile_failure(call, operation, reason, receipt, zero)
         if not await _checkpoint(call, State.CLAIMED):
             return MutationAttempt.retry(
                 failure(
@@ -792,7 +804,7 @@ class AddNoteOperation:
         credentials, credential_failure = await self.client.resolve_credentials(call, operation)
         if credential_failure:
             if prior_dispatch:
-                return _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
+                return await _reconcile_failure(call, operation, credential_failure, Receipt(), zero)
             return MutationAttempt.branch_result(defs.DEFECT, zero, Receipt(), credential_failure)
         assert credentials is not None
         path = f"/tickets/{input.ticket_id}"
@@ -828,7 +840,7 @@ class AddNoteOperation:
             if result.outcome != "success":
                 assert result.failure is not None
                 if prior_dispatch:
-                    return _reconcile_failure(
+                    return await _reconcile_failure(
                         call,
                         operation,
                         result.failure,
@@ -849,7 +861,7 @@ class AddNoteOperation:
                     "an earlier attempt of this Step sent the request and Gorgias shows no message "
                     "with its external ID, so it is not sent again",
                 )
-                return _reconcile_failure(call, operation, reason, receipt, zero)
+                return await _reconcile_failure(call, operation, reason, receipt, zero)
         payload: dict[str, Any] = {
             "channel": "internal-note",
             "via": "api",

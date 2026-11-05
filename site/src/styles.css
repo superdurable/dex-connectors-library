@@ -52,7 +52,7 @@
   --sd-rule: #1d211e;
   --sd-rule-strong: #303133;
   --sd-accent: #70eea9;
-  --sd-accent-hover: #6ee3a2;
+  --sd-accent-hover: #a6f5c9;
   --sd-accent-soft: #0f2a1d;
   --sd-on-accent: #070a08;
 }
@@ -261,8 +261,40 @@ h1, h2, h3 { text-wrap: balance; }
   color: var(--sd-accent);
 }
 
-/* Collapse point shared with superdurable.io and docs per the header spec. */
-@media (max-width: 1080px) {
+.sd-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0 1.15rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+/* Matches the 2rem GitHub pill so the actions share one height. */
+.sd-button-small {
+  min-height: 2rem;
+  padding: 0 0.9rem;
+  font-size: 0.875rem;
+}
+
+.sd-button-primary {
+  background: var(--sd-accent);
+  color: var(--sd-on-accent);
+}
+
+.sd-button-primary:hover {
+  background: var(--sd-accent-hover);
+}
+
+/* Three actions need more room than the spec's 1080 px; keep sites on one value. */
+@media (max-width: 1120px) {
   .sd-nav,
   .sd-header-actions {
     display: none;
@@ -308,6 +340,46 @@ h2, h3 {
   line-height: 1.6;
 }
 
+.lede-repository-link {
+  display: inline-flex;
+  align-items: stretch;
+  margin-left: 0.5em;
+  border: 1px solid var(--sd-rule-strong);
+  border-radius: 999px;
+  color: var(--sd-text);
+  font-size: 0.82em;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+  vertical-align: middle;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.lede-repository-link:hover {
+  border-color: var(--sd-text);
+  background: var(--sd-bg-alt);
+}
+
+.lede-repository-link svg { flex: none; }
+
+.lede-repository-link-name,
+.lede-repository-link-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2px 10px;
+}
+
+.lede-repository-link-stars {
+  gap: 0.25rem;
+  padding-left: 8px;
+  border-left: 1px solid var(--sd-rule-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.lede-repository-link-stars svg { color: #e3b341; }
+
 .site-tabs {
   display: flex;
   gap: 0.25rem;
@@ -337,6 +409,32 @@ h2, h3 {
   color: var(--sd-text);
   box-shadow: inset 0 0 0 1px var(--sd-rule-strong);
 }
+
+.repository-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2rem;
+  padding: 0.45rem 0.95rem;
+  border: 1px solid var(--sd-rule-strong);
+  border-radius: 999px;
+  color: var(--sd-text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.repository-source-link:hover {
+  border-color: var(--sd-text);
+  background: var(--sd-bg-alt);
+}
+
+.repository-source-link svg { flex: none; }
+
+.connector-source { margin: 0 0 8px; }
 
 .totals {
   display: flex;

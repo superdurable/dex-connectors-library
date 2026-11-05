@@ -1,0 +1,4739 @@
+{
+  "connector": "snowflake",
+  "scenarios": [
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000000\",\"sqlState\":\"00000\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "acct_003"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          "acct_003"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submitStatement-rate-limited",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000000\",\"sqlState\":\"00000\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "acct_003"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          "acct_003"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submitStatement-unavailable",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "acct_003"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          "acct_003"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submitStatement-transport",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000709\",\"sqlState\":\"02000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "acct_003"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          "acct_003"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submitStatement-rejected",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000005",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000000\",\"sqlState\":\"00000\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "query": {
+            "partition": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "columns": [
+          {
+            "name": "EVENT_COUNT",
+            "nullable": false,
+            "precision": 18,
+            "type": "fixed"
+          }
+        ],
+        "partition": 1,
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "getStatementResult-rate-limited",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000006",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000000\",\"sqlState\":\"00000\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "query": {
+            "partition": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "columns": [
+          {
+            "name": "EVENT_COUNT",
+            "nullable": false,
+            "precision": 18,
+            "type": "fixed"
+          }
+        ],
+        "partition": 1,
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "getStatementResult-unavailable",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000007",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "query": {
+            "partition": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columns": [
+          {
+            "name": "EVENT_COUNT",
+            "nullable": false,
+            "precision": 18,
+            "type": "fixed"
+          }
+        ],
+        "partition": 1,
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "getStatementResult-transport",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000008",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000709\",\"sqlState\":\"02000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "query": {
+            "partition": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "columns": [],
+          "partition": 1,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columns": [
+          {
+            "name": "EVENT_COUNT",
+            "nullable": false,
+            "precision": 18,
+            "type": "fixed"
+          }
+        ],
+        "partition": 1,
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "getStatementResult-rejected",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000000\",\"sqlState\":\"00000\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "264be5a3-a3ac-59c1-809f-6449ee63520a"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancelStatement-rate-limited",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000000\",\"sqlState\":\"00000\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "264be5a3-a3ac-59c1-809f-6449ee63520a"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancelStatement-unavailable",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "264be5a3-a3ac-59c1-809f-6449ee63520a"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancelStatement-transport",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"000709\",\"sqlState\":\"02000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "264be5a3-a3ac-59c1-809f-6449ee63520a"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 422
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancelStatement-rejected",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\": \"00000000-0000-4000-8000-000000000003\", \"createdOn\": 1767225600000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "acct_003"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "submittedAt": "2026-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          "acct_003"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit-accepted",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [],
+        "statement": "SELECT ?"
+      },
+      "name": "submit-defect",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000015",
+      "exchanges": [
+        {
+          "body": "{\"code\": \"090001\", \"sqlState\": \"00000\", \"statementHandle\": \"00000000-0000-4000-8000-000000000003\", \"resultSetMetaData\": {\"format\": \"jsonv2\", \"numRows\": 1, \"rowType\": [{\"name\": \"EVENT_COUNT\", \"type\": \"fixed\", \"precision\": 18}], \"partitionInfo\": [{}]}, \"data\": [[\"128\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "name": "EVENT_COUNT",
+              "nullable": false,
+              "precision": 18,
+              "type": "fixed"
+            }
+          ],
+          "partition": 0,
+          "partitionCount": 1,
+          "rows": [
+            {
+              "EVENT_COUNT": "128"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "totalRowCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result-completed",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000016",
+      "exchanges": [
+        {
+          "body": "[[\"128\"]]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "query": {
+            "partition": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "name": "EVENT_COUNT",
+              "nullable": false,
+              "precision": 18,
+              "type": "fixed"
+            }
+          ],
+          "partition": 1,
+          "rows": [
+            {
+              "EVENT_COUNT": "128"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "columns": [
+          {
+            "name": "EVENT_COUNT",
+            "nullable": false,
+            "precision": 18,
+            "type": "fixed"
+          }
+        ],
+        "partition": 1,
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result-later-partition",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000017",
+      "exchanges": [
+        {
+          "body": "{\"createdOn\":1767225600000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "running",
+        "failureKind": "",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "submittedAt": "2026-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result-running",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000018",
+      "exchanges": [
+        {
+          "body": "{\"resultSetMetaData\": {\"format\": \"jsonv2\", \"numRows\": 1001, \"rowType\": [{\"name\": \"EVENT_COUNT\", \"type\": \"fixed\", \"precision\": 18}], \"partitionInfo\": [{}]}, \"data\": [[\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"], [\"128\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "truncated",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "columns": [
+            {
+              "name": "EVENT_COUNT",
+              "nullable": false,
+              "precision": 18,
+              "type": "fixed"
+            }
+          ],
+          "partition": 0,
+          "partitionCount": 1,
+          "rows": [
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            },
+            {
+              "EVENT_COUNT": "128"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "totalRowCount": 1001,
+          "truncated": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result-truncated",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000019",
+      "exchanges": [
+        {
+          "body": "{\"data\":[[\"a\"]]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result-invalid-response",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000020",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "columns": [],
+          "partition": 0,
+          "rows": [],
+          "statementHandle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "invalid"
+      },
+      "name": "result-defect",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"090001\",\"sqlState\":\"00000\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "264be5a3-a3ac-59c1-809f-6449ee63520a"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "cancel-accepted",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "statementHandle": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "input": {
+        "statementHandle": "invalid"
+      },
+      "name": "cancel-defect",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\": \"00000000-0000-4000-8000-000000000003\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "REAL",
+                "value": "1.5"
+              },
+              "2": {
+                "type": "BOOLEAN",
+                "value": "true"
+              },
+              "3": {
+                "type": "TEXT",
+                "value": null
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ?, ?, ?",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          1.5,
+          true,
+          null
+        ],
+        "statement": "SELECT ?, ?, ?"
+      },
+      "name": "submit-typed-bindings",
+      "operation": "submitStatement"
+    },
+    {
+      "callId": "00000000-0000-4000-8000-000000000099",
+      "exchanges": [
+        {
+          "body": "{\"resultSetMetaData\":{\"format\":\"jsonv2\",\"numRows\":1,\"rowType\":[{\"name\":\"SMALL\",\"type\":\"fixed\",\"precision\":9},{\"name\":\"WIDE\",\"type\":\"fixed\",\"precision\":38},{\"name\":\"DECIMAL\",\"type\":\"fixed\",\"precision\":12,\"scale\":2},{\"name\":\"REAL\",\"type\":\"real\"},{\"name\":\"BOOLEAN\",\"type\":\"boolean\"},{\"name\":\"BINARY\",\"type\":\"binary\"},{\"name\":\"DATE\",\"type\":\"date\"},{\"name\":\"TIME\",\"type\":\"time\"},{\"name\":\"NTZ\",\"type\":\"timestamp_ntz\"},{\"name\":\"LTZ\",\"type\":\"timestamp_ltz\"},{\"name\":\"TZ\",\"type\":\"timestamp_tz\"},{\"name\":\"VARIANT\",\"type\":\"variant\"},{\"name\":\"UTC_TZ\",\"type\":\"timestamp_tz\"}],\"partitionInfo\":[{}]},\"data\":[[\"-42\",\"9007199254740993\",\"1200.00\",\"1.5e+10\",\"true\",\"0001ff\",\"18262\",\"82919.500000000\",\"-1.500000000\",\"1616173619.000000000\",\"1616173619.000000000 1500\",\"{\\\"amount\\\":12345678901234567890,\\\"decimal\\\":1.50,\\\"nested\\\":[1.25,-0]}\",\"1700000000.123456789 1440\"]],\"createdOn\":1700000000120}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "columns": [
+            {
+              "name": "SMALL",
+              "nullable": false,
+              "precision": 9,
+              "type": "fixed"
+            },
+            {
+              "name": "WIDE",
+              "nullable": false,
+              "precision": 38,
+              "type": "fixed"
+            },
+            {
+              "name": "DECIMAL",
+              "nullable": false,
+              "precision": 12,
+              "scale": 2,
+              "type": "fixed"
+            },
+            {
+              "name": "REAL",
+              "nullable": false,
+              "type": "real"
+            },
+            {
+              "name": "BOOLEAN",
+              "nullable": false,
+              "type": "boolean"
+            },
+            {
+              "name": "BINARY",
+              "nullable": false,
+              "type": "binary"
+            },
+            {
+              "name": "DATE",
+              "nullable": false,
+              "type": "date"
+            },
+            {
+              "name": "TIME",
+              "nullable": false,
+              "type": "time"
+            },
+            {
+              "name": "NTZ",
+              "nullable": false,
+              "type": "timestamp_ntz"
+            },
+            {
+              "name": "LTZ",
+              "nullable": false,
+              "type": "timestamp_ltz"
+            },
+            {
+              "name": "TZ",
+              "nullable": false,
+              "type": "timestamp_tz"
+            },
+            {
+              "name": "VARIANT",
+              "nullable": false,
+              "type": "variant"
+            },
+            {
+              "name": "UTC_TZ",
+              "nullable": false,
+              "type": "timestamp_tz"
+            }
+          ],
+          "partition": 0,
+          "partitionCount": 1,
+          "rows": [
+            {
+              "BINARY": "AAH/",
+              "BOOLEAN": true,
+              "DATE": "2020-01-01",
+              "DECIMAL": "1200.00",
+              "LTZ": "2021-03-19T17:06:59Z",
+              "NTZ": "1969-12-31T23:59:58.5",
+              "REAL": 15000000000,
+              "SMALL": -42,
+              "TIME": "23:01:59.5",
+              "TZ": "2021-03-19T18:06:59+01:00",
+              "UTC_TZ": "2023-11-14T22:13:20.123456789Z",
+              "VARIANT": {
+                "amount": 12345678901234567000,
+                "decimal": 1.5,
+                "nested": [
+                  1.25,
+                  -0
+                ]
+              },
+              "WIDE": "9007199254740993"
+            }
+          ],
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "submittedAt": "2023-11-14T22:13:20.12Z",
+          "totalRowCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "name": "result-typed-values",
+      "operation": "getStatementResult"
+    },
+    {
+      "attempts": 2,
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT 1",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"statementHandle\": \"00000000-0000-4000-8000-000000000003\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT 1",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "statement": "SELECT 1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "submit-lost-response-retry",
+      "operation": "submitStatement"
+    },
+    {
+      "attempts": 2,
+      "callId": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "264be5a3-a3ac-59c1-809f-6449ee63520a"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements/00000000-0000-4000-8000-000000000003/cancel",
+          "query": {
+            "requestId": [
+              "264be5a3-a3ac-59c1-809f-6449ee63520a"
+            ]
+          },
+          "requestBody": {},
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-secret-value-0123456789"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "PROGRAMMATIC_ACCESS_TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "264be5a3-a3ac-59c1-809f-6449ee63520a",
+      "input": {
+        "statementHandle": "00000000-0000-4000-8000-000000000003"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "cancel-lost-response-retry",
+      "operation": "cancelStatement"
+    },
+    {
+      "callId": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "exchanges": [
+        {
+          "body": "{\"statementHandle\": \"00000000-0000-4000-8000-000000000003\", \"createdOn\": 1767225600000}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/statements",
+          "query": {
+            "async": [
+              "true"
+            ],
+            "requestId": [
+              "c57550bf-395d-5486-9f44-1a08d1b0c3ba"
+            ],
+            "retry": [
+              "true"
+            ]
+          },
+          "requestBody": {
+            "bindings": {
+              "1": {
+                "type": "TEXT",
+                "value": "acct_003"
+              }
+            },
+            "database": "ANALYTICS",
+            "parameters": {
+              "MULTI_STATEMENT_COUNT": "1"
+            },
+            "role": "DEX_REPORTING",
+            "schema": "BILLING",
+            "statement": "SELECT ? AS EVENT_COUNT",
+            "timeout": 3600,
+            "warehouse": "REPORTING_WH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer conformance-key-pair-jwt"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "dex-snowflake-connector/1.0"
+            ],
+            "X-Snowflake-Authorization-Token-Type": [
+              "KEYPAIR_JWT"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "submitted",
+        "failureKind": "",
+        "output": {
+          "statementHandle": "00000000-0000-4000-8000-000000000003",
+          "submittedAt": "2026-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c57550bf-395d-5486-9f44-1a08d1b0c3ba",
+      "input": {
+        "parameters": [
+          "acct_003"
+        ],
+        "statement": "SELECT ? AS EVENT_COUNT"
+      },
+      "name": "submit-key-pair-jwt",
+      "operation": "submitStatement"
+    }
+  ],
+  "schemaVersion": 1
+}

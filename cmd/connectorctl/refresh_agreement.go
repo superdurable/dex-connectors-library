@@ -42,35 +42,17 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	connectorDirectory := filepath.Dir(manifestPath)
 	if manifest.Spec.Languages != nil && manifest.Spec.Languages.Python != nil {
 		pythonTests := filepath.Join(connectorDirectory, "python", "tests")
-		if _, err := os.Stat(pythonTests); err == nil {
-			files[filepath.Join(pythonTests, "refresh_agreement_cases.json")] = cases
-			pythonTest := filepath.Join(pythonTests, "test_refresh_agreement.py")
-			if _, err := os.Stat(pythonTest); err == nil {
-				relativeDirectory, err := connectorDirectoryInCatalog(manifestPath)
-				if err != nil {
-					return nil, err
-				}
-				files[pythonTest] = codegen.GeneratePythonRefreshAgreementTest(pythonImportPackageName(relativeDirectory))
-			} else if !os.IsNotExist(err) {
-				return nil, err
-			}
-		} else if !os.IsNotExist(err) {
+		files[filepath.Join(pythonTests, "refresh_agreement_cases.json")] = cases
+		relativeDirectory, err := connectorDirectoryInCatalog(manifestPath)
+		if err != nil {
 			return nil, err
 		}
+		files[filepath.Join(pythonTests, "test_refresh_agreement.py")] = codegen.GeneratePythonRefreshAgreementTest(pythonImportPackageName(relativeDirectory))
 	}
 	if manifest.Spec.Languages != nil && manifest.Spec.Languages.TypeScript != nil {
 		typeScriptTests := filepath.Join(connectorDirectory, "typescript", "test")
-		if _, err := os.Stat(typeScriptTests); err == nil {
-			files[filepath.Join(typeScriptTests, "fixtures", "refresh-agreement-cases.json")] = cases
-			typeScriptTest := filepath.Join(typeScriptTests, "refresh_agreement.test.ts")
-			if _, err := os.Stat(typeScriptTest); err == nil {
-				files[typeScriptTest] = codegen.GenerateTypeScriptRefreshAgreementTest()
-			} else if !os.IsNotExist(err) {
-				return nil, err
-			}
-		} else if !os.IsNotExist(err) {
-			return nil, err
-		}
+		files[filepath.Join(typeScriptTests, "fixtures", "refresh-agreement-cases.json")] = cases
+		files[filepath.Join(typeScriptTests, "refresh_agreement.test.ts")] = codegen.GenerateTypeScriptRefreshAgreementTest()
 	}
 	return files, nil
 }

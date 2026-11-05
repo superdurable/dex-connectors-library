@@ -78,6 +78,8 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -106,6 +108,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -134,6 +138,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -162,6 +168,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -190,6 +198,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -218,6 +228,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -246,6 +258,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -274,6 +288,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
@@ -302,6 +318,8 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            expiryCap: 1h
+            responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]

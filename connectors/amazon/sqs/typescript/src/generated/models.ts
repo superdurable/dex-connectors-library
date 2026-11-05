@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** AWS Region of the queue, written as a Region code such as eu-west-1. Open https://console.aws.amazon.com/sqs/v3/home, choose the Region in the console's Region selector, and read it from the queue URL, which starts https://sqs.<region>.amazonaws.com. An SQS-compatible server such as ElasticMQ or LocalStack uses the Region it is configured with. Not secret. A Region that differs from the queue's selects providerRejected. Blank uses the displayed default. */
@@ -184,8 +218,8 @@ export const MessageSchema = z.strictObject({
   "receiptHandle": z.string(),
   "body": z.string(),
   "md5OfBody": z.string(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
-  "firstReceivedAt": z.iso.datetime({ offset: true }).optional(),
+  "sentAt": GoTimeJSONSchema.optional(),
+  "firstReceivedAt": GoTimeJSONSchema.optional(),
   "receiveCount": z.number().int(),
   "messageGroupId": z.string().optional(),
   "messageDeduplicationId": z.string().optional(),
@@ -226,5 +260,5 @@ export const ChangedMessageVisibilitySchema = z.strictObject({
   "queueUrl": z.string(),
   "messageId": z.string().optional(),
   "visibilityTimeoutSeconds": z.number().int(),
-  "visibleAfter": z.iso.datetime({ offset: true }),
+  "visibleAfter": GoTimeJSONSchema,
 }) satisfies z.ZodType<ChangedMessageVisibility>;

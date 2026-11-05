@@ -11,6 +11,12 @@ spec:
   languages:
     python:
       version: v0.1.0
+      package: dex-connector-openai
+      operations: [createResponse, retrieveResponse]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-openai"
       operations: [createResponse, retrieveResponse]
       triggers: []
   codegen:
