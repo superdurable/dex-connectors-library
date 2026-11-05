@@ -1,0 +1,143 @@
+[
+  {
+    "name": "linear-oauth refresh",
+    "methodId": "linear-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_secret": "manifest-webhook_signing_secret"
+    },
+    "endpoint": "https://api.linear.app/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client"
+    ]
+  },
+  {
+    "name": "linear-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "linear-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_secret": "manifest-webhook_signing_secret"
+    },
+    "endpoint": "https://api.linear.app/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "write",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "linear-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "linear-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_secret": "manifest-webhook_signing_secret"
+    },
+    "endpoint": "https://api.linear.app/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "write"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "linear-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "linear-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token",
+      "webhook_signing_secret": "manifest-webhook_signing_secret"
+    },
+    "endpoint": "https://api.linear.app/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  }
+]
