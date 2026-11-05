@@ -13,6 +13,13 @@ The TypeScript package `@superdurable/connector-freshdesk` is also available at
 [search example](typescript/examples/search-tickets/README.md). Its live Freshdesk
 behavior has not been verified.
 
+The Python package `dex-connector-freshworks-freshdesk` is available at
+[`python/`](python/README.md). It implements all five ticket operations and includes
+a runnable [search Flow](python/examples/search_tickets/README.md). Its provider
+requests replay the Go conformance fixtures, and the search example passed through
+a real local Dex Worker and Client with the generated mock. Live Freshdesk API
+behavior and the Dex Web authorization form remain unverified for Python.
+
 The Freshdesk Connector reads and writes Freshdesk tickets from Dex Flows
 through Freshdesk API v2. It exposes these operation-specific Dex Step
 factories:

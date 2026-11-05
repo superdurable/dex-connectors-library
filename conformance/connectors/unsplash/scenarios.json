@@ -2,10 +2,10 @@
   "connector": "unsplash",
   "scenarios": [
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "b9c08048-a898-54c9-be2f-ab1b3ae3b03f",
       "exchanges": [
         {
-          "body": "{\"total\": 1, \"total_pages\": 1, \"results\": [{\"id\": \"office-1\", \"description\": \"A sunlit office\", \"alt_description\": \"sunlit office interior\", \"urls\": {\"regular\": \"https://images.unsplash.com/photo-office-1\"}, \"links\": {\"html\": \"https://unsplash.com/photos/office-1\"}, \"user\": {\"name\": \"A. Photographer\", \"links\": {\"html\": \"https://unsplash.com/@photographer\"}}}]}",
+          "body": "{\"total\":1,\"total_pages\":1,\"results\":[{\"id\":\"office-1\",\"description\":\"A sunlit office\",\"alt_description\":\"sunlit office interior\",\"urls\":{\"regular\":\"https://images.unsplash.com/photo-office-1\"},\"links\":{\"html\":\"https://unsplash.com/photos/office-1\"},\"user\":{\"name\":\"A. Photographer\",\"links\":{\"html\":\"https://unsplash.com/@photographer\"}}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -64,51 +64,7 @@
       "operation": "searchPhotos"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [
-        {
-          "body": "{\"total\": 0, \"total_pages\": 0, \"results\": []}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/search/photos",
-          "query": {
-            "query": [
-              "nothing"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Client-ID unsplash-test-key"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "photos": [],
-          "total": 0,
-          "totalPages": 0
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "query": "nothing"
-      },
-      "name": "searchPhotos-empty",
-      "operation": "searchPhotos"
-    },
-    {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "e5bb1ed6-2788-5e9a-9e73-f7d17dd21dde",
       "exchanges": [
         {
           "body": "{}",
@@ -160,10 +116,10 @@
       "operation": "searchPhotos"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "93bb5440-81c0-5ca1-8d08-b2870829b728",
       "exchanges": [
         {
-          "body": "{\"total\":1,\"total_pages\":1,\"results\":[{}]}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -212,32 +168,10 @@
       "operation": "searchPhotos"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "photos": [],
-          "total": 0,
-          "totalPages": 0
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "query": " "
-      },
-      "name": "searchPhotos-defect",
-      "operation": "searchPhotos"
-    },
-    {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "fa64fe84-cf18-5194-a4d2-a9e3ee142317",
       "exchanges": [
         {
-          "body": "",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -277,14 +211,14 @@
         "perPage": 5,
         "query": "office"
       },
-      "name": "searchPhotos-429-retry",
+      "name": "searchPhotos-rate-limit",
       "operation": "searchPhotos"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "358479ba-14da-5309-9eab-e5e7fed6ff71",
       "exchanges": [
         {
-          "body": "",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -324,11 +258,11 @@
         "perPage": 5,
         "query": "office"
       },
-      "name": "searchPhotos-5xx-retry",
+      "name": "searchPhotos-server-error",
       "operation": "searchPhotos"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "7597470d-852b-5620-a895-5d423bfe78f5",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -369,14 +303,38 @@
         "perPage": 5,
         "query": "office"
       },
-      "name": "searchPhotos-transport-retry",
+      "name": "searchPhotos-transport",
       "operation": "searchPhotos"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "c2e11296-0666-5d2a-89e7-a12efd421eb0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "photos": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 0,
+        "perPage": 0,
+        "query": ""
+      },
+      "name": "searchPhotos-defect",
+      "operation": "searchPhotos"
+    },
+    {
+      "callId": "75237ae6-8287-568a-93d0-74d3b374476f",
       "exchanges": [
         {
-          "body": "{\"id\": \"office-1\", \"description\": \"A sunlit office\", \"alt_description\": \"sunlit office interior\", \"urls\": {\"regular\": \"https://images.unsplash.com/photo-office-1\"}, \"links\": {\"html\": \"https://unsplash.com/photos/office-1\"}, \"user\": {\"name\": \"A. Photographer\", \"links\": {\"html\": \"https://unsplash.com/@photographer\"}}}",
+          "body": "{\"id\":\"office-1\",\"description\":\"A sunlit office\",\"alt_description\":\"sunlit office interior\",\"urls\":{\"regular\":\"https://images.unsplash.com/photo-office-1\"},\"links\":{\"html\":\"https://unsplash.com/photos/office-1\"},\"user\":{\"name\":\"A. Photographer\",\"links\":{\"html\":\"https://unsplash.com/@photographer\"}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -412,14 +370,14 @@
       "input": {
         "id": "office-1"
       },
-      "name": "getPhoto-found",
+      "name": "getPhoto-success",
       "operation": "getPhoto"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "7d2c24a1-7a80-5131-bfb6-ae43898a27d3",
       "exchanges": [
         {
-          "body": "",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -432,53 +390,12 @@
               "Client-ID unsplash-test-key"
             ]
           },
-          "status": 404
-        }
-      ],
-      "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "htmlUrl": "",
-          "id": "",
-          "photographerName": "",
-          "photographerURL": "",
-          "regularUrl": ""
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "id": "office-1"
-      },
-      "name": "getPhoto-not-found",
-      "operation": "getPhoto"
-    },
-    {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [
-        {
-          "body": "",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/photos/office-1",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Client-ID unsplash-test-key"
-            ]
-          },
-          "status": 403
+          "status": 401
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHORIZATION",
+        "failureKind": "AUTHENTICATION",
         "output": {
           "htmlUrl": "",
           "id": "",
@@ -498,10 +415,10 @@
       "operation": "getPhoto"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "936248e0-68c2-59ba-899e-c588382c896d",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -539,11 +456,28 @@
       "operation": "getPhoto"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [],
+      "callId": "c37b6764-48d4-5740-9267-5481580b979a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/photos/office-1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Client-ID unsplash-test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
       "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
         "output": {
           "htmlUrl": "",
           "id": "",
@@ -551,22 +485,22 @@
           "photographerURL": "",
           "regularUrl": ""
         },
-        "requestCount": 0,
+        "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "input": {
-        "id": "/"
+        "id": "office-1"
       },
-      "name": "getPhoto-defect",
+      "name": "getPhoto-not-found",
       "operation": "getPhoto"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "0bd1c62e-00a3-55f7-affb-d9613be4bae8",
       "exchanges": [
         {
-          "body": "",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -593,14 +527,14 @@
       "input": {
         "id": "office-1"
       },
-      "name": "getPhoto-429-retry",
+      "name": "getPhoto-rate-limit",
       "operation": "getPhoto"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "91775c14-6e5e-5f3f-bb9a-4da3cba403c6",
       "exchanges": [
         {
-          "body": "",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -627,11 +561,11 @@
       "input": {
         "id": "office-1"
       },
-      "name": "getPhoto-5xx-retry",
+      "name": "getPhoto-server-error",
       "operation": "getPhoto"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "d946c624-0c2d-5d22-9f4f-424fe9996b3b",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -659,7 +593,31 @@
       "input": {
         "id": "office-1"
       },
-      "name": "getPhoto-transport-retry",
+      "name": "getPhoto-transport",
+      "operation": "getPhoto"
+    },
+    {
+      "callId": "a6c46561-9e75-5129-88fd-f25fa1f2031f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "htmlUrl": "",
+          "id": "",
+          "photographerName": "",
+          "photographerURL": "",
+          "regularUrl": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "id": ""
+      },
+      "name": "getPhoto-defect",
       "operation": "getPhoto"
     }
   ],

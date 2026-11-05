@@ -111,23 +111,27 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Email (IMAP and SMTP) stored credential does not match the connector credential fields")
+        if set(material) - set(('username', 'password', 'smtp_username', 'smtp_password')):
+            raise ValueError("Email (IMAP and SMTP) stored credential does not match the connector credential fields")
         username = material.get("username")
-        if not isinstance(username, str) or not username:
-            raise ValueError("Email (IMAP and SMTP) credential username is required")
+        if username is not None and not (isinstance(username, str)):
+            raise ValueError("Email (IMAP and SMTP) credential username has an invalid type")
         password = material.get("password")
-        if not isinstance(password, str) or not password:
-            raise ValueError("Email (IMAP and SMTP) credential password is required")
+        if password is not None and not (isinstance(password, str)):
+            raise ValueError("Email (IMAP and SMTP) credential password has an invalid type")
         smtp_username = material.get("smtp_username")
-        if smtp_username is None:
-            smtp_username = ''
-        if not isinstance(smtp_username, str):
+        if smtp_username is not None and not (isinstance(smtp_username, str)):
             raise ValueError("Email (IMAP and SMTP) credential smtp_username has an invalid type")
         smtp_password = material.get("smtp_password")
-        if smtp_password is None:
-            smtp_password = ''
-        if not isinstance(smtp_password, str):
+        if smtp_password is not None and not (isinstance(smtp_password, str)):
             raise ValueError("Email (IMAP and SMTP) credential smtp_password has an invalid type")
-        return Credentials(username, SecretString(password), smtp_username, SecretString(smtp_password))
+        if not username:
+            raise ValueError("Email (IMAP and SMTP) credential username is required")
+        if not password:
+            raise ValueError("Email (IMAP and SMTP) credential password is required")
+        return Credentials(username, SecretString(password), (smtp_username or ''), SecretString(smtp_password or ''))
 
 
 def new_project_connection(

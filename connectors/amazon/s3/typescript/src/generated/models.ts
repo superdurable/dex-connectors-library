@@ -3,7 +3,42 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
+
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -45,6 +80,24 @@ export interface Credentials {
   secretAccessKey: SecretString;
   /** Secret session token, only for temporary AWS credentials whose access key ID starts with ASIA, such as the output of aws sts get-session-token or aws sts assume-role (https://docs.aws.amazon.com/STS/latest/APIReference/API_GetSessionToken.html). Temporary credentials expire, usually within hours, and this connector cannot renew them: replace all three values before they expire, or an expired token selects providerRejected. Blank means long-term credentials, which Amazon S3 IAM user keys, Cloudflare R2, and MinIO use. */
   sessionToken?: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["access_key_id", "secret_access_key", "session_token"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["access_key_id"] != null && !(typeof fields["access_key_id"] === 'string')) throw new TypeError("credential access_key_id has an invalid type");
+  if (fields["secret_access_key"] != null && !(typeof fields["secret_access_key"] === 'string')) throw new TypeError("credential secret_access_key has an invalid type");
+  if (fields["session_token"] != null && !(typeof fields["session_token"] === 'string')) throw new TypeError("credential session_token has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["access_key_id"]) throw new TypeError("credential access_key_id is required");
+  credentials.accessKeyId = new SecretString((fields["access_key_id"] ?? '') as string);
+  if (!fields["secret_access_key"]) throw new TypeError("credential secret_access_key is required");
+  credentials.secretAccessKey = new SecretString((fields["secret_access_key"] ?? '') as string);
+  credentials.sessionToken = new SecretString((fields["session_token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
@@ -223,7 +276,7 @@ export const ObjectSummarySchema = z.strictObject({
   "key": z.string(),
   "sizeBytes": z.number().int(),
   "eTag": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeJSONSchema.optional(),
   "storageClass": z.string().optional(),
 }) satisfies z.ZodType<ObjectSummary>;
 
@@ -255,7 +308,7 @@ export const ObjectMetadataSchema = z.strictObject({
   "contentLanguage": z.string().optional(),
   "contentDisposition": z.string().optional(),
   "cacheControl": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeJSONSchema.optional(),
   "versionId": z.string().optional(),
   "storageClass": z.string().optional(),
   "serverSideEncryption": z.string().optional(),
@@ -276,7 +329,7 @@ export const ObjectTextSchema = z.strictObject({
   "contentType": z.string().optional(),
   "eTag": z.string().optional(),
   "versionId": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeJSONSchema.optional(),
   "sizeBytes": z.number().int(),
   "text": z.string().optional(),
 }) satisfies z.ZodType<ObjectText>;
@@ -300,6 +353,6 @@ export const StoredObjectSchema = z.strictObject({
   "versionId": z.string().optional(),
   "sizeBytes": z.number().int(),
   "contentType": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeJSONSchema.optional(),
   "isFromEarlierAttempt": z.boolean().optional(),
 }) satisfies z.ZodType<StoredObject>;

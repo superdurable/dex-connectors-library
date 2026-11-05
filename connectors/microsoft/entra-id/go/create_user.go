@@ -6,6 +6,7 @@ package entraid
 import (
 	"crypto/rand"
 	"errors"
+	"io"
 	"math/big"
 	"net/http"
 	"regexp"
@@ -139,7 +140,7 @@ func (operation CreateUserOperation) Invoke(call sdkgo.Call, input CreateUserInp
 	if failure != nil {
 		return sdkgo.NewMutationBranch(CreateUserBranchDefect, CreateUserOutput{}, failure, sdkgo.Receipt{})
 	}
-	if request.PasswordProfile.Password, err = generateInitialPassword(); err != nil {
+	if request.PasswordProfile.Password, err = generateInitialPassword(operation.client.initialPasswordRandomSource); err != nil {
 		return sdkgo.NewMutationBranch(CreateUserBranchDefect, CreateUserOutput{}, failurePointer(sdkgo.FailureLocalDefect, operationID, "initial password could not be generated"), sdkgo.Receipt{})
 	}
 	exchange := operation.client.exchange(call, &credential, operationID, graphRequest{method: http.MethodPost, path: "/users", payload: request})
@@ -299,25 +300,25 @@ func hasObjectConflictDetail(body []byte) bool {
 
 // generateInitialPassword returns a random password with every Microsoft Entra character class
 // that lives only in the request body.
-func generateInitialPassword() (string, error) {
+func generateInitialPassword(randomSource io.Reader) (string, error) {
 	alphabet := strings.Join(initialPasswordCharacterClasses, "")
 	password := make([]byte, 0, initialPasswordLength)
 	for _, characterClass := range initialPasswordCharacterClasses {
-		character, err := randomCharacter(characterClass)
+		character, err := randomCharacter(randomSource, characterClass)
 		if err != nil {
 			return "", err
 		}
 		password = append(password, character)
 	}
 	for len(password) < initialPasswordLength {
-		character, err := randomCharacter(alphabet)
+		character, err := randomCharacter(randomSource, alphabet)
 		if err != nil {
 			return "", err
 		}
 		password = append(password, character)
 	}
 	for index := len(password) - 1; index > 0; index-- {
-		swapIndex, err := rand.Int(rand.Reader, big.NewInt(int64(index+1)))
+		swapIndex, err := rand.Int(randomSource, big.NewInt(int64(index+1)))
 		if err != nil {
 			return "", err
 		}
@@ -326,8 +327,8 @@ func generateInitialPassword() (string, error) {
 	return string(password), nil
 }
 
-func randomCharacter(characters string) (byte, error) {
-	index, err := rand.Int(rand.Reader, big.NewInt(int64(len(characters))))
+func randomCharacter(randomSource io.Reader, characters string) (byte, error) {
+	index, err := rand.Int(randomSource, big.NewInt(int64(len(characters))))
 	if err != nil {
 		return 0, err
 	}

@@ -36,6 +36,8 @@ describe('Gmail credential refresh driver', () => {
     expect(result.credentials.accessToken.reveal()).toBe('new-access-token');
     expect(result.credentials.refreshToken?.reveal()).toBe('old-refresh-token');
     expect(result.expiresAt.toISOString()).toBe('2026-01-02T01:00:00.000Z');
+    const defaultMethodResult = await driver.refresh({ credentials: { ...oauth, authMethodId: '' }, now }, new AbortController().signal);
+    expect(defaultMethodResult.credentials.accessToken.reveal()).toBe('new-access-token');
   });
 
   it('stores a rotated token and rejects missing scopes or invalid grants', async () => {
@@ -45,12 +47,14 @@ describe('Gmail credential refresh driver', () => {
     await expect(missingScope.refresh({ credentials: oauth, now }, new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
     const revoked = new GmailCredentialRefreshDriver(async () => Response.json({ error: 'invalid_grant' }, { status: 400 }), () => now);
     await expect(revoked.refresh({ credentials: oauth, now }, new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    const missingExpiry = new GmailCredentialRefreshDriver(async () => Response.json({ access_token: 'new-access-token', token_type: 'Bearer' }), () => now);
+    await expect(missingExpiry.refresh({ credentials: oauth, now }, new AbortController().signal)).rejects.toThrow('omitted required fields');
   });
 
   it('signs a delegated Workspace assertion and copies the delegated mailbox', async () => {
     const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
     const workspace: Credentials = {
-      authMethodId: 'workspace-domain-delegation', accessToken: new SecretString(''), primaryEmail: '', delegatedUser: 'staff@example.com',
+      authMethodId: 'workspace-domain-delegation', accessToken: new SecretString(''), primaryEmail: '', delegatedUser: '  staff@example.com  ',
       serviceAccountKey: new SecretString(JSON.stringify({ client_email: 'service@example.iam.gserviceaccount.com', private_key: privateKey.export({ format: 'pem', type: 'pkcs8' }).toString(), token_uri: 'https://token.example.test/token' })),
     };
     const driver = new GmailCredentialRefreshDriver(async (url, options) => {
@@ -65,6 +69,19 @@ describe('Gmail credential refresh driver', () => {
     }, () => now);
     const result = await driver.refresh({ credentials: workspace, now }, new AbortController().signal);
     expect(result.credentials.primaryEmail).toBe('staff@example.com');
+    expect(result.credentials.delegatedUser).toBe('  staff@example.com  ');
     expect(result.credentials.accessToken.reveal()).toBe('delegated-access-token');
+  });
+
+  it('rejects invalid delegation before exchange and leaves unknown methods retryable', async () => {
+    const validKey = { client_email: 'service@example.com', private_key: 'key', token_uri: 'https://example.com/token' };
+    const workspace: Credentials = { ...oauth, authMethodId: 'workspace-domain-delegation', delegatedUser: 'user@example.com',
+      serviceAccountKey: new SecretString(JSON.stringify({ ...validKey, token_uri: 'http://example.com/token' })) };
+    const driver = new GmailCredentialRefreshDriver(async () => { throw new Error('unexpected token request'); });
+    await expect(driver.refresh({ credentials: workspace, now }, new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    await expect(driver.refresh({ credentials: { ...workspace, delegatedUser: 'invalid', serviceAccountKey: new SecretString(JSON.stringify(validKey)) }, now },
+      new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+    await expect(driver.refresh({ credentials: { ...workspace, authMethodId: 'other' }, now }, new AbortController().signal))
+      .rejects.toThrow('not supported');
   });
 });

@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: llm
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-superdurable-llm
+      operations: [generateText]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-superdurable-llm'
