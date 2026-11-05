@@ -1663,6 +1663,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "providerId": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "state": "claimed"
+        },
         "output": {
           "bookingUrl": "https://calendly.com/d/abcd-1234/30-minute-meeting",
           "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
@@ -1710,6 +1716,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "claimed"
+        },
         "output": {
           "bookingUrl": "",
           "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
@@ -1757,6 +1768,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "claimed"
+        },
         "output": {
           "bookingUrl": "",
           "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
@@ -1828,6 +1844,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -1871,6 +1892,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1912,6 +1938,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1953,6 +1984,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "claimed"
+        },
         "output": {
           "bookingUrl": "",
           "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
@@ -3751,6 +3787,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "providerId": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "state": "claimed"
+        },
         "output": {
           "bookingUrl": "https://calendly.com/d/abcd-1234/30-minute-meeting",
           "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
@@ -3768,6 +3810,11 @@
         {
           "exchangeCount": 1,
           "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+            "state": "canResend"
+          },
           "retryAfterMs": 2000
         }
       ],

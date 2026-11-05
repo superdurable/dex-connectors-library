@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** Largest Calendly API response body, in bytes, that one call reads; a larger response selects invalidResponse. Enter a positive integer only to raise or lower this safety limit, for example when an organization has very large invitee answers. Blank uses the default. */
@@ -363,8 +397,8 @@ export interface WebhookSubscription {
 export const ListScheduledEventsInputSchema = z.strictObject({
   "userUri": z.string().optional(),
   "organizationUri": z.string().optional(),
-  "minStartTime": z.iso.datetime({ offset: true }),
-  "maxStartTime": z.iso.datetime({ offset: true }),
+  "minStartTime": GoTimeJSONSchema,
+  "maxStartTime": GoTimeJSONSchema,
   "status": z.string().optional(),
   "inviteeEmail": z.string().optional(),
   "sort": z.string().optional(),
@@ -399,7 +433,7 @@ export const CancellationSchema = z.strictObject({
   "canceledBy": z.string().optional(),
   "reason": z.string().optional(),
   "cancelerType": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeJSONSchema.optional(),
 }) satisfies z.ZodType<Cancellation>;
 
 /** Runtime validator for ScheduledEvent. */
@@ -407,15 +441,15 @@ export const ScheduledEventSchema = z.strictObject({
   "uri": z.string(),
   "name": z.string().optional(),
   "status": z.string(),
-  "startTime": z.iso.datetime({ offset: true }),
-  "endTime": z.iso.datetime({ offset: true }),
+  "startTime": GoTimeJSONSchema,
+  "endTime": GoTimeJSONSchema,
   "eventTypeUri": z.string().optional(),
   "location": ScheduledEventLocationSchema,
   "inviteesCounter": ScheduledEventInviteesCounterSchema,
   "hosts": z.array(ScheduledEventHostSchema).optional(),
   "cancellation": CancellationSchema.optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeJSONSchema.optional(),
+  "updatedAt": GoTimeJSONSchema.optional(),
 }) satisfies z.ZodType<ScheduledEvent>;
 
 /** Runtime validator for ScheduledEventPage. */
@@ -424,8 +458,8 @@ export const ScheduledEventPageSchema = z.strictObject({
   "nextPageToken": z.string().optional(),
   "userUri": z.string().optional(),
   "organizationUri": z.string().optional(),
-  "minStartTime": z.iso.datetime({ offset: true }),
-  "maxStartTime": z.iso.datetime({ offset: true }),
+  "minStartTime": GoTimeJSONSchema,
+  "maxStartTime": GoTimeJSONSchema,
 }) satisfies z.ZodType<ScheduledEventPage>;
 
 /** Runtime validator for GetScheduledEventInput. */
@@ -466,8 +500,8 @@ export const InviteeSchema = z.strictObject({
   "cancelUrl": z.string().optional(),
   "rescheduleUrl": z.string().optional(),
   "cancellation": CancellationSchema.optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeJSONSchema.optional(),
+  "updatedAt": GoTimeJSONSchema.optional(),
 }) satisfies z.ZodType<Invitee>;
 
 /** Runtime validator for EventInviteePage. */
@@ -519,6 +553,6 @@ export const WebhookSubscriptionSchema = z.strictObject({
   "scope": z.string(),
   "organizationUri": z.string(),
   "userUri": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeJSONSchema.optional(),
   "wasCreated": z.boolean(),
 }) satisfies z.ZodType<WebhookSubscription>;

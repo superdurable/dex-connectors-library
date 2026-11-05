@@ -535,6 +535,9 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "pageId": "600002",
           "parentPageId": "65537",
@@ -597,6 +600,9 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -679,6 +685,9 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 5000,
@@ -729,6 +738,9 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1078,6 +1090,9 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "commentId": "700001",
           "createdAt": "2026-10-25T09:00:00Z",
@@ -1132,6 +1147,9 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 2000,
@@ -1179,6 +1197,9 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 5000,
@@ -1224,6 +1245,9 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "cleared": true
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1592,6 +1616,9 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "parentPageId": "65537",
           "spaceId": "98306",
@@ -1649,6 +1676,9 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "parentPageId": "65537",
           "spaceId": "98306",
@@ -1736,6 +1766,9 @@
       "expected": {
         "branch": "titleConflict",
         "failureKind": "CONFLICT",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "pageId": "600003",
           "parentPageId": "65537",
@@ -1820,6 +1853,9 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "pageId": "600002",
           "parentPageId": "65537",
@@ -2097,6 +2133,9 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "pageId": "600002"
@@ -2148,6 +2187,9 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "dispatchedAtUnixMilli": 1792918800000
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "pageId": "600002"
@@ -2246,6 +2288,9 @@
         {
           "exchangeCount": 1,
           "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "dispatchedAtUnixMilli": 1792918800000
+          },
           "retryAfterMs": 5000
         }
       ],

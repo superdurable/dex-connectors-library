@@ -44,7 +44,7 @@
     "example:read:start": "npm run build && tsx examples/read-page/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.5.0",
+    "@superdurable/connectors-sdk": "0.7.0",
     "@superdurable/dex": ">=1.28.0",
     "htmlparser2": "^10.1.0",
     "zod": "^4.1.0"

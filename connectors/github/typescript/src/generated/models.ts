@@ -6,6 +6,40 @@ import { z } from 'zod';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk';
 
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
+
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
   /** GitHub REST API base URL; leave blank for GitHub.com. Enter the absolute HTTPS API URL only when this connector explicitly supports the selected GitHub Enterprise host. */
@@ -385,8 +419,8 @@ export const AuthenticatedProfileSchema = z.strictObject({
   "publicRepos": z.number().int(),
   "followers": z.number().int(),
   "following": z.number().int(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
+  "updatedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<AuthenticatedProfile>;
 
 /** Runtime validator for ListPublicRepositoriesInput. */
@@ -411,9 +445,9 @@ export const RepositorySchema = z.strictObject({
   "stargazersCount": z.number().int(),
   "forksCount": z.number().int(),
   "openIssuesCount": z.number().int(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "pushedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema.nullable().optional(),
+  "updatedAt": GoTimeJSONSchema.nullable().optional(),
+  "pushedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Repository>;
 
 /** Runtime validator for PublicRepositories. */
@@ -426,8 +460,8 @@ export const PublicRepositoriesSchema = z.strictObject({
 export const ListMergedPullRequestsInputSchema = z.strictObject({
   "owner": z.string(),
   "repository": z.string(),
-  "mergedAfter": z.iso.datetime({ offset: true }),
-  "mergedBefore": z.iso.datetime({ offset: true }),
+  "mergedAfter": GoTimeJSONSchema,
+  "mergedBefore": GoTimeJSONSchema,
   "pageSize": z.number().int().optional(),
   "page": z.number().int().optional(),
 }) satisfies z.ZodType<ListMergedPullRequestsInput>;
@@ -440,7 +474,7 @@ export const MergedPullRequestSchema = z.strictObject({
   "bodyTruncated": z.boolean(),
   "url": z.string().optional(),
   "authorLogin": z.string().optional(),
-  "mergedAt": z.iso.datetime({ offset: true }),
+  "mergedAt": GoTimeJSONSchema,
   "labels": z.array(z.string()).optional(),
 }) satisfies z.ZodType<MergedPullRequest>;
 
@@ -498,8 +532,8 @@ export const ReleaseSchema = z.strictObject({
   "bodyTruncated": z.boolean(),
   "isDraft": z.boolean(),
   "isPrerelease": z.boolean(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "publishedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema,
+  "publishedAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Release>;
 
 /** Runtime validator for ReleasePage. */
@@ -512,8 +546,8 @@ export const ReleasePageSchema = z.strictObject({
 export const ListCommitsInputSchema = z.strictObject({
   "owner": z.string(),
   "repository": z.string(),
-  "since": z.iso.datetime({ offset: true }),
-  "until": z.iso.datetime({ offset: true }),
+  "since": GoTimeJSONSchema,
+  "until": GoTimeJSONSchema,
   "path": z.string().optional(),
   "ref": z.string().optional(),
   "pageSize": z.number().int().optional(),
@@ -527,8 +561,8 @@ export const CommitSummarySchema = z.strictObject({
   "messageTruncated": z.boolean(),
   "authorLogin": z.string().optional(),
   "authorName": z.string().optional(),
-  "authoredAt": z.iso.datetime({ offset: true }),
-  "committedAt": z.iso.datetime({ offset: true }),
+  "authoredAt": GoTimeJSONSchema,
+  "committedAt": GoTimeJSONSchema,
   "url": z.string().optional(),
 }) satisfies z.ZodType<CommitSummary>;
 

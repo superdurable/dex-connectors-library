@@ -66,6 +66,7 @@ export const Authorization = {
         ],
         "refresh": {
           "missingExpiry": "reject",
+          "responseScopes": "ignore",
           "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_grant",

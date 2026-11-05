@@ -45,6 +45,7 @@ export const Authorization = {
         ],
         "refresh": {
           "missingExpiry": "reject",
+          "scopeSeparators": "whitespaceAndComma",
           "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_grant",
@@ -100,6 +101,7 @@ export const Authorization = {
           "privateKey": {
             "fromKey": "private_key"
           },
+          "scopeSeparators": "whitespaceAndComma",
           "scopes": [
             "https://www.googleapis.com/auth/calendar.events",
             "https://www.googleapis.com/auth/calendar.events.freebusy",

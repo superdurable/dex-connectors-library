@@ -33,6 +33,32 @@
       "invalid_grant",
       "invalid_client",
       "unauthorized_client"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
     ]
   },
   {
@@ -66,7 +92,33 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   },
   {
     "name": "spec.auth refresh without token type",
@@ -97,7 +149,92 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with uppercase scope names",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.atlassian.com/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "READ:SERVICEDESK-REQUEST WRITE:SERVICEDESK-REQUEST MANAGE:SERVICEDESK-CUSTOMER READ:JIRA-WORK WRITE:JIRA-WORK",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   },
   {
     "name": "spec.auth refresh with comma-separated scopes",
@@ -122,17 +259,338 @@
       "access_token": "manifest-access-token-2",
       "expires_in": 3600,
       "refresh_token": "manifest-refresh-token-2",
-      "scope": "read:servicedesk-request,write:servicedesk-request,manage:servicedesk-customer,read:jira-work,write:jira-work,manifest-extra-scope",
+      "scope": "read:servicedesk-request,write:servicedesk-request,manage:servicedesk-customer,read:jira-work,write:jira-work,read:servicedesk-request",
       "token_type": "Bearer"
     },
     "updates": {
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   },
   {
-    "name": "spec.auth refresh with partial scopes",
+    "name": "spec.auth refresh without required scope 1",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.atlassian.com/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "write:servicedesk-request manage:servicedesk-customer read:jira-work write:jira-work",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh without required scope 2",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.atlassian.com/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "read:servicedesk-request manage:servicedesk-customer read:jira-work write:jira-work",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh without required scope 3",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.atlassian.com/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "read:servicedesk-request write:servicedesk-request read:jira-work write:jira-work",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh without required scope 4",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.atlassian.com/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "read:servicedesk-request write:servicedesk-request manage:servicedesk-customer write:jira-work",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh without required scope 5",
+    "expectedError": "reauthorization",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.atlassian.com/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "read:servicedesk-request write:servicedesk-request manage:servicedesk-customer read:jira-work",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with different reported scope",
     "expectedError": "reauthorization",
     "credentials": {
       "access_token": "manifest-access-token",
@@ -162,7 +620,33 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   },
   {
     "name": "spec.auth refresh without expires_in",
@@ -194,6 +678,88 @@
       "access_token": "manifest-access-token-2",
       "refresh_token": "manifest-refresh-token-2"
     },
-    "terminalErrorCodes": []
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh without refresh_token",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.atlassian.com/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "read:servicedesk-request write:servicedesk-request manage:servicedesk-customer read:jira-work write:jira-work",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
   }
 ]

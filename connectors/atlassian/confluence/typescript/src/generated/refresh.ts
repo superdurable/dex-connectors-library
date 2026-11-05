@@ -52,14 +52,6 @@ export const Authorization = {
       ],
       "acceptsMissingTokenType": true,
       "missingExpiry": "reject",
-      "requiredScopes": [
-        "search:confluence",
-        "read:page:confluence",
-        "write:page:confluence",
-        "read:space:confluence",
-        "read:comment:confluence",
-        "write:comment:confluence"
-      ],
       "scopeSeparators": "whitespaceAndComma",
       "storedMissingExpiry": "refresh",
       "terminalErrorCodes": [

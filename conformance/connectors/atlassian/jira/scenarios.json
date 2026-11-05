@@ -768,6 +768,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9520cf0-fafb-5c2d-92b5-98c9e2aa302a",
+          "providerId": "10042",
+          "state": "claimed"
+        },
         "output": {
           "issueId": "10042",
           "issueKey": "OPS-42",
@@ -857,6 +863,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9520cf0-fafb-5c2d-92b5-98c9e2aa302a",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -940,6 +951,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9520cf0-fafb-5c2d-92b5-98c9e2aa302a",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1021,6 +1037,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9520cf0-fafb-5c2d-92b5-98c9e2aa302a",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1104,6 +1125,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9520cf0-fafb-5c2d-92b5-98c9e2aa302a",
+          "state": "claimed"
+        },
         "output": {
           "projectKey": "OPS",
           "summary": "Loading dock light out"
@@ -1473,6 +1499,12 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eed9a34f-2b2f-5b1e-bcfd-6ed9dc53c61b",
+          "providerId": "10501",
+          "state": "claimed"
+        },
         "output": {
           "authorAccountId": "5b10ac8d82e05b22cc7d4ef5",
           "commentId": "10501",
@@ -1541,6 +1573,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eed9a34f-2b2f-5b1e-bcfd-6ed9dc53c61b",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1603,6 +1640,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eed9a34f-2b2f-5b1e-bcfd-6ed9dc53c61b",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1663,6 +1705,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eed9a34f-2b2f-5b1e-bcfd-6ed9dc53c61b",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1725,6 +1772,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eed9a34f-2b2f-5b1e-bcfd-6ed9dc53c61b",
+          "state": "claimed"
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "issueIdOrKey": "OPS-42"
@@ -1868,6 +1920,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9520cf0-fafb-5c2d-92b5-98c9e2aa302a",
+          "providerId": "10042",
+          "state": "claimed"
+        },
         "output": {
           "issueId": "10042",
           "issueKey": "OPS-42",
@@ -2270,6 +2328,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b9520cf0-fafb-5c2d-92b5-98c9e2aa302a",
+          "state": "claimed"
+        },
         "output": {
           "projectKey": "OPS",
           "summary": "Loading dock light out"
@@ -2677,6 +2740,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eed9a34f-2b2f-5b1e-bcfd-6ed9dc53c61b",
+          "state": "claimed"
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "issueIdOrKey": "OPS-42"
@@ -2768,6 +2836,11 @@
       "expected": {
         "branch": "uncertain",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "eed9a34f-2b2f-5b1e-bcfd-6ed9dc53c61b",
+          "state": "claimed"
+        },
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "issueIdOrKey": "OPS-42"
