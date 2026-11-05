@@ -9,6 +9,8 @@ Read-only Dex Query Steps for Bitbucket. The module is `github.com/superdurable/
 The Python package is [`dex-connector-atlassian-bitbucket`](python/README.md), imported as
 `dex_connectors.atlassian_bitbucket`.
 
+The TypeScript package is [`@superdurable/connector-atlassian-bitbucket`](typescript/), with a [runnable Dex Flow](typescript/examples/resource-read/README.md). It implements both read operations through typed Query Steps.
+
 ## Operations
 
 | Factory | Input | Output | Happy branch |

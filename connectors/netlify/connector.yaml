@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listSites, listDeploys]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-netlify'
+      operations: [listSites, listDeploys]
+      triggers: []
   codegen:
     go:
       package: netlify

@@ -8,6 +8,12 @@ metadata:
   version: v0.23.0
 spec:
   provider: snowflake
+  languages:
+    typescript:
+      package: '@superdurable/connector-snowflake'
+      version: v0.1.0
+      operations: [submitStatement, getStatementResult, cancelStatement]
+      triggers: []
   codegen:
     go:
       package: snowflake
