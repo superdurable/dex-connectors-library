@@ -1,0 +1,2356 @@
+{
+  "connector": "microsoft-onedrive",
+  "scenarios": [
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "driveId": "b!teamDriveKey-2",
+              "id": "file-1",
+              "isFolder": false,
+              "mimeType": "text/plain",
+              "name": "report.txt",
+              "parentFolderId": "folder-1",
+              "sizeBytes": 6
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-found",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/drive/root/search(q='report')",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ],
+            "$top": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "files": [],
+          "isIndexedSearch": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "report"
+      },
+      "name": "searchFiles-indexed",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "$skiptoken": [
+              "page2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "driveId": "b!teamDriveKey-2",
+              "id": "file-1",
+              "isFolder": false,
+              "mimeType": "text/plain",
+              "name": "report.txt",
+              "parentFolderId": "folder-1",
+              "sizeBytes": 6
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "pageToken": "http://127.0.0.1:12345/v1.0/drives/b!teamDriveKey-2/items/folder-1/children?$skiptoken=page2",
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-page-token",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"itemNotFound\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-not-found",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"accessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-provider-rejected",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"name\":\"bad\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-invalid-response",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "files": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "bad/id",
+        "name": "report"
+      },
+      "name": "searchFiles-defect",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-retry-429",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-retry-503",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-retry-transport",
+      "operation": "searchFiles"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "driveId": "b!teamDriveKey-2",
+          "id": "file-1",
+          "isFolder": false,
+          "mimeType": "text/plain",
+          "name": "report.txt",
+          "parentFolderId": "folder-1",
+          "quickXorHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "sizeBytes": 6
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "getFile-found",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"itemNotFound\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "isFolder": false,
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "getFile-not-found",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"accessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "isFolder": false,
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "getFile-provider-rejected",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "isFolder": false,
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "getFile-invalid-response",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isFolder": false,
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "bad/id"
+      },
+      "name": "getFile-defect",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "getFile-retry-429",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "getFile-retry-503",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "getFile-retry-transport",
+      "operation": "getFile"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "hello!",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1/content",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "byteCount": 6,
+          "itemId": "file-1",
+          "mimeType": "text/plain",
+          "name": "report.txt",
+          "sizeBytes": 6,
+          "text": "hello!"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-read",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {
+            "Location": "http://127.0.0.1:12345/v1.0/download/file-1"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1/content",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 302
+        },
+        {
+          "body": "hello!",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/download/file-1",
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "byteCount": 6,
+          "itemId": "file-1",
+          "mimeType": "text/plain",
+          "name": "report.txt",
+          "sizeBytes": 6,
+          "text": "hello!"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-redirect",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"itemNotFound\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "byteCount": 0,
+          "itemId": "",
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-not-found",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"folder-2\",\"name\":\"Reports\",\"size\":0,\"folder\":{\"childCount\":0},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "unsupportedContent",
+        "failureKind": "VALIDATION",
+        "output": {
+          "byteCount": 0,
+          "itemId": "folder-2",
+          "name": "Reports",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-unsupported-content",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":1048577,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tooLarge",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "byteCount": 0,
+          "itemId": "file-1",
+          "mimeType": "text/plain",
+          "name": "report.txt",
+          "sizeBytes": 1048577
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-too-large",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"accessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "byteCount": 0,
+          "itemId": "",
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-provider-rejected",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "byteCount": 0,
+          "itemId": "",
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-invalid-response",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "byteCount": 0,
+          "itemId": "",
+          "name": "",
+          "sizeBytes": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "root"
+      },
+      "name": "readFileText-defect",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-retry-429",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-retry-503",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-retry-transport",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uploaded",
+        "failureKind": "",
+        "output": {
+          "item": {
+            "driveId": "b!teamDriveKey-2",
+            "id": "file-1",
+            "isFolder": false,
+            "mimeType": "text/plain",
+            "name": "report.txt",
+            "parentFolderId": "folder-1",
+            "quickXorHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "sizeBytes": 6
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-uploaded",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"nameAlreadyExists\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "CONFLICT",
+        "output": {
+          "item": {
+            "driveId": "b!teamDriveKey-2",
+            "id": "file-1",
+            "isFolder": false,
+            "mimeType": "text/plain",
+            "name": "report.txt",
+            "parentFolderId": "folder-1",
+            "quickXorHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "sizeBytes": 6
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-already-exists",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"accessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "item": {
+            "id": "",
+            "isFolder": false,
+            "name": "",
+            "sizeBytes": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-provider-rejected",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"nameAlreadyExists\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"name\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "item": {
+            "id": "",
+            "isFolder": false,
+            "name": "",
+            "sizeBytes": 0
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-invalid-response",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "item": {
+            "id": "",
+            "isFolder": false,
+            "name": "",
+            "sizeBytes": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "bad/name",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-defect",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"report.txt\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "replace"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uploaded",
+        "failureKind": "",
+        "output": {
+          "item": {
+            "driveId": "b!teamDriveKey-2",
+            "id": "file-1",
+            "isFolder": false,
+            "mimeType": "text/plain",
+            "name": "report.txt",
+            "parentFolderId": "folder-1",
+            "quickXorHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "sizeBytes": 6
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "byteContent": "aGVsbG8h",
+        "conflictBehavior": "replace",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": ""
+      },
+      "name": "uploadFile-binary",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-retry-429",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-retry-503",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/report.txt:/content",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": "hello!",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778f4455-9792-5ff0-9983-cd7fefbbfd7c",
+      "input": {
+        "conflictBehavior": "fail",
+        "driveId": "b!teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "report.txt",
+        "parentFolderId": "folder-1",
+        "textContent": "hello!"
+      },
+      "name": "uploadFile-retry-transport",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"folder-2\",\"name\":\"Reports\",\"size\":0,\"folder\":{\"childCount\":0},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "folder": {
+            "driveId": "b!teamDriveKey-2",
+            "id": "folder-2",
+            "isFolder": true,
+            "name": "Reports",
+            "parentFolderId": "folder-1",
+            "sizeBytes": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-created",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"nameAlreadyExists\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"folder-2\",\"name\":\"Reports\",\"size\":0,\"folder\":{\"childCount\":0},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/Reports",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "folder": {
+            "driveId": "b!teamDriveKey-2",
+            "id": "folder-2",
+            "isFolder": true,
+            "name": "Reports",
+            "parentFolderId": "folder-1",
+            "sizeBytes": 0
+          },
+          "isExistingFolder": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-existing",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"nameAlreadyExists\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"Reports\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"b!teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/Reports",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "nameConflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "folder": {
+            "driveId": "b!teamDriveKey-2",
+            "id": "file-1",
+            "isFolder": false,
+            "mimeType": "text/plain",
+            "name": "Reports",
+            "parentFolderId": "folder-1",
+            "quickXorHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            "sizeBytes": 6
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-name-conflict",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"accessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "folder": {
+            "id": "",
+            "isFolder": false,
+            "name": "",
+            "sizeBytes": 0
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-provider-rejected",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"nameAlreadyExists\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"name\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1:/Reports",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,eTag,cTag,createdDateTime,lastModifiedDateTime,parentReference,file,folder,package,createdBy,lastModifiedBy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "folder": {
+            "id": "",
+            "isFolder": false,
+            "name": "",
+            "sizeBytes": 0
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-invalid-response",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "folder": {
+            "id": "",
+            "isFolder": false,
+            "name": "",
+            "sizeBytes": 0
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "bad/name",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-defect",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-retry-429",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-retry-503",
+      "operation": "createFolder"
+    },
+    {
+      "callId": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/drives/b!teamDriveKey-2/items/folder-1/children",
+          "query": {
+            "@microsoft.graph.conflictBehavior": [
+              "fail"
+            ]
+          },
+          "requestBody": {
+            "@microsoft.graph.conflictBehavior": "fail",
+            "folder": {},
+            "name": "Reports"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bcfda9ce-8e2e-5c76-983f-84873b593567",
+      "input": {
+        "driveId": "b!teamDriveKey-2",
+        "name": "Reports",
+        "parentFolderId": "folder-1"
+      },
+      "name": "createFolder-retry-transport",
+      "operation": "createFolder"
+    }
+  ],
+  "schemaVersion": 1
+}
