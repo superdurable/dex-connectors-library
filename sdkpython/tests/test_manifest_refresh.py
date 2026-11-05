@@ -1170,6 +1170,9 @@ async def test_go_scope_array_graph_prefix_url_origin_and_expiry_cap() -> None:
         body["scopes"] = ["other"]
         with pytest.raises(ReauthorizationRequiredError):
             await driver.refresh(state)
+        body["scopes"] = ["files.read,other"]
+        with pytest.raises(ReauthorizationRequiredError):
+            await driver.refresh(state)
         body["scopes"] = []
         with pytest.raises(ReauthorizationRequiredError):
             await driver.refresh(state)

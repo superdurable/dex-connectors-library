@@ -265,9 +265,9 @@ The core example sends through an in-process HTTP transport.
   exactly.
 
 - `0.6.0`: Manifest refresh follows Go scope and credential URL policies,
-  including HubSpot scope arrays, Microsoft Graph scope prefixes, Zoho expiry
-  caps, monday.com JWT expiry, and private-network token endpoints. Retryable
-  token failures raise `RetryError`.
+  including HubSpot scope arrays whose elements remain whole, Microsoft Graph
+  scope prefixes, Zoho expiry caps, monday.com JWT expiry, and private-network
+  token endpoints. Retryable token failures raise `RetryError`.
 
 - `0.6.0`: Manifest token grants accept `responseScopes: ignore` when the Go
   credential driver does not inspect reported scope values. The default checks

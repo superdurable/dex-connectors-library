@@ -159,6 +159,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             separators = r"[ ,]+" if grant["scope_separators"] == "whitespaceAndComma" else r"\s+"
             reported_scope = token.scope
             has_reported_scope = bool(reported_scope.strip())
+            reported_scope_array: list[str] | None = None
             if grant["response_scope_field"] == "scopesArray":
                 raw_scopes = token.retained_fields.get("scopes")
                 if raw_scopes is not None:
@@ -166,7 +167,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                         not isinstance(scope, str) for scope in raw_scopes
                     ):
                         raise ReauthorizationRequiredError()
-                    reported_scope = " ".join(raw_scopes)
+                    reported_scope_array = raw_scopes
                     has_reported_scope = True
 
             def canonical(
@@ -183,7 +184,10 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 )
                 return stripped.lower() if ignore_case else stripped
 
-            granted_scopes = {canonical(scope) for scope in re.split(separators, reported_scope)} - {""}
+            reported_names = reported_scope_array if reported_scope_array is not None else re.split(
+                separators, reported_scope
+            )
+            granted_scopes = {canonical(scope) for scope in reported_names} - {""}
             accepted_scope_sets = grant.get("accepted_scope_sets") or [required_scopes]
             if grant["kind"] == "refresh":
                 accepted_scope_sets = [
