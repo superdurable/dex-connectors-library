@@ -49,11 +49,13 @@ export const Authorization = {
           }
         ],
         "refresh": {
+          "missingExpiry": "reject",
           "requiredScopes": [
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send"
           ],
           "scopeSeparators": "whitespace",
+          "storedMissingExpiry": "refresh",
           "terminalErrorCodes": [
             "invalid_grant",
             "invalid_client",
@@ -116,6 +118,7 @@ export const Authorization = {
           },
           "keyCredential": "service_account_key",
           "lifetime": "1h",
+          "missingExpiry": "reject",
           "privateKey": {
             "fromKey": "private_key"
           },
@@ -123,6 +126,7 @@ export const Authorization = {
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send"
           ],
+          "storedMissingExpiry": "refresh",
           "subject": {
             "fromCredential": "delegated_user"
           },

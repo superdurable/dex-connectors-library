@@ -61,6 +61,8 @@ export interface Credentials {
   tenantId?: string;
   /**  */
   waitDuration?: number;
+  /** Optional webhook signing key. */
+  webhookSigningKey?: SecretString;
 }
 
 function isAbsoluteCredentialURL(value: string): boolean {
@@ -77,7 +79,7 @@ function isAbsoluteCredentialURL(value: string): boolean {
 export function decodeCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set<string>(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration", "webhook_signing_key"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["client_id"] != null && !(typeof fields["client_id"] === 'string')) throw new TypeError("credential client_id has an invalid type");
@@ -96,6 +98,7 @@ export function decodeCredentials(value: unknown): Credentials {
   if (fields["session_note"] != null && !(typeof fields["session_note"] === 'string')) throw new TypeError("credential session_note has an invalid type");
   if (fields["tenant_id"] != null && !(typeof fields["tenant_id"] === 'string')) throw new TypeError("credential tenant_id has an invalid type");
   if (fields["wait_duration"] != null && !(typeof fields["wait_duration"] === 'number' && Number.isSafeInteger(fields["wait_duration"]))) throw new TypeError("credential wait_duration has an invalid type");
+  if (fields["webhook_signing_key"] != null && !(typeof fields["webhook_signing_key"] === 'string')) throw new TypeError("credential webhook_signing_key has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
   const method = selectedMethod || "google-oauth";
@@ -109,16 +112,17 @@ export function decodeCredentials(value: unknown): Credentials {
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (!fields["refresh_token"]) throw new TypeError("credential refresh_token is required");
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
+    credentials.webhookSigningKey = new SecretString((fields["webhook_signing_key"] ?? '') as string);
   } else if (method === "workspace-service-account") {
     if (!fields["service_account_key"]) throw new TypeError("credential service_account_key is required");
     if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
     if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
-    if (fields["session_note"]) credentials.sessionNote = fields["session_note"] as string;
+    credentials.sessionNote = (fields["session_note"] ?? '') as string;
     if (fields["environment"] && !["production","sandbox"].includes(fields["environment"] as string)) throw new TypeError("credential environment is invalid");
-    if (fields["environment"]) credentials.environment = fields["environment"] as string;
+    credentials.environment = (fields["environment"] ?? '') as string;
     if (fields["login_url"] && !isAbsoluteCredentialURL(fields["login_url"] as string)) throw new TypeError("credential login_url must be an absolute URL");
-    if (fields["login_url"]) credentials.loginUrl = fields["login_url"] as string;
+    credentials.loginUrl = (fields["login_url"] ?? '') as string;
   } else if (method === "typed") {
     if (fields["request_count"] == null || (fields["request_count"] as number) <= 0) throw new TypeError("credential request_count must be positive");
     if (fields["request_count"] != null && (fields["request_count"] as number) < 0) throw new TypeError("credential request_count cannot be negative");
@@ -137,7 +141,7 @@ export function decodeCredentials(value: unknown): Credentials {
     if (fields["client_id"]) credentials.clientId = fields["client_id"] as string;
     if (!fields["client_secret"]) throw new TypeError("credential client_secret is required");
     if (fields["client_secret"]) credentials.clientSecret = new SecretString(fields["client_secret"] as string);
-    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   } else {
     throw new TypeError('credential auth_method is invalid');
   }
@@ -148,7 +152,7 @@ export function decodeCredentials(value: unknown): Credentials {
 export function decodeSharedCredentials(value: unknown): Credentials {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
   const fields = value as { [key: string]: unknown };
-  const allowed = new Set<string>(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration"]);
+  const allowed = new Set<string>(["auth_method", "access_token", "client_id", "client_secret", "delegated_user", "environment", "headers", "labels", "login_url", "oauth_client_id", "oauth_client_secret", "optional_count", "refresh_token", "request_count", "service_account_key", "session_note", "tenant_id", "wait_duration", "webhook_signing_key"]);
   if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
   if (fields["access_token"] != null && !(typeof fields["access_token"] === 'string')) throw new TypeError("credential access_token has an invalid type");
   if (fields["client_id"] != null && !(typeof fields["client_id"] === 'string')) throw new TypeError("credential client_id has an invalid type");
@@ -167,6 +171,7 @@ export function decodeSharedCredentials(value: unknown): Credentials {
   if (fields["session_note"] != null && !(typeof fields["session_note"] === 'string')) throw new TypeError("credential session_note has an invalid type");
   if (fields["tenant_id"] != null && !(typeof fields["tenant_id"] === 'string')) throw new TypeError("credential tenant_id has an invalid type");
   if (fields["wait_duration"] != null && !(typeof fields["wait_duration"] === 'number' && Number.isSafeInteger(fields["wait_duration"]))) throw new TypeError("credential wait_duration has an invalid type");
+  if (fields["webhook_signing_key"] != null && !(typeof fields["webhook_signing_key"] === 'string')) throw new TypeError("credential webhook_signing_key has an invalid type");
   const selectedMethod = fields['auth_method'] ?? '';
   if (typeof selectedMethod !== 'string') throw new TypeError('credential auth_method is invalid');
   const method = selectedMethod || "google-oauth";
@@ -178,16 +183,17 @@ export function decodeSharedCredentials(value: unknown): Credentials {
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
     if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
     if (fields["refresh_token"]) credentials.refreshToken = new SecretString(fields["refresh_token"] as string);
+    credentials.webhookSigningKey = new SecretString((fields["webhook_signing_key"] ?? '') as string);
   } else if (method === "workspace-service-account") {
     if (!fields["service_account_key"]) throw new TypeError("credential service_account_key is required");
     if (fields["service_account_key"]) credentials.serviceAccountKey = new SecretString(fields["service_account_key"] as string);
     if (!fields["delegated_user"]) throw new TypeError("credential delegated_user is required");
     if (fields["delegated_user"]) credentials.delegatedUser = fields["delegated_user"] as string;
-    if (fields["session_note"]) credentials.sessionNote = fields["session_note"] as string;
+    credentials.sessionNote = (fields["session_note"] ?? '') as string;
     if (fields["environment"] && !["production","sandbox"].includes(fields["environment"] as string)) throw new TypeError("credential environment is invalid");
-    if (fields["environment"]) credentials.environment = fields["environment"] as string;
+    credentials.environment = (fields["environment"] ?? '') as string;
     if (fields["login_url"] && !isAbsoluteCredentialURL(fields["login_url"] as string)) throw new TypeError("credential login_url must be an absolute URL");
-    if (fields["login_url"]) credentials.loginUrl = fields["login_url"] as string;
+    credentials.loginUrl = (fields["login_url"] ?? '') as string;
   } else if (method === "typed") {
     if (fields["request_count"] == null || (fields["request_count"] as number) <= 0) throw new TypeError("credential request_count must be positive");
     if (fields["request_count"] != null && (fields["request_count"] as number) < 0) throw new TypeError("credential request_count cannot be negative");
@@ -206,7 +212,7 @@ export function decodeSharedCredentials(value: unknown): Credentials {
     if (fields["client_id"]) credentials.clientId = fields["client_id"] as string;
     if (fields["client_secret"]) credentials.clientSecret = new SecretString(fields["client_secret"] as string);
     if (!fields["access_token"]) throw new TypeError("credential access_token is required");
-    if (fields["access_token"]) credentials.accessToken = new SecretString(fields["access_token"] as string);
+    credentials.accessToken = new SecretString((fields["access_token"] ?? '') as string);
   } else {
     throw new TypeError('credential auth_method is invalid');
   }

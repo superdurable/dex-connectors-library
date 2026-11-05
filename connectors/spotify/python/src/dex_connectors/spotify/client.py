@@ -174,7 +174,7 @@ class ListPlaylistTracksOperation:
                 and hasattr(self.client.credentials, "resolve_after_rejection")
             ):
                 try:
-                    credentials = await self.client.credentials.resolve_after_rejection(call)  # type: ignore[attr-defined]
+                    credentials = await self.client.credentials.resolve_after_rejection(call)
                     if credentials.access_token.reveal():
                         continue
                 except Exception:
