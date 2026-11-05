@@ -13,7 +13,7 @@ import dex_connectors.hubspot as hubspot
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
-from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # noqa: E402
+from connector_scenarios import PythonOperationAdapter, load_scenarios, replay  # type: ignore[import-not-found]  # noqa: E402
 
 SCENARIOS = load_scenarios(ROOT / "conformance/connectors/hubspot/scenarios.json")
 CONNECTION = sdk.ConnectionRef("hubspot", "hubspot-crm")

@@ -46,7 +46,14 @@ async def test_read_contact_retries_and_unwired_rejection_fails(monkeypatch: pyt
             writer.close()
             await writer.wait_closed()
 
-    server = await asyncio.start_server(provider, "127.0.0.1", 0)
+    for provider_port in range(44410, 44500):
+        try:
+            server = await asyncio.start_server(provider, "127.0.0.1", provider_port)
+            break
+        except OSError:
+            continue
+    else:
+        raise RuntimeError("No provider test port is available in 44410-44499")
     port = server.sockets[0].getsockname()[1]
     try:
         with tempfile.TemporaryDirectory(prefix="hubspot-python-dex-") as directory:

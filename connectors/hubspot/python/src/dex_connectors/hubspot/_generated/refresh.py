@@ -3,66 +3,7 @@
 # ruff: noqa
 
 # Validated manifest token grant declaration.
-AUTHORIZATION = {
-    "refreshable": True,
-    "defaultMethod": "private-app-token",
-    "methods": [
-        {
-            "id": "private-app-token",
-            "type": "apiKey",
-            "fields": [{"name": "access_token", "type": "secretString", "required": True}],
-        },
-        {
-            "id": "hubspot-oauth",
-            "type": "oauth2",
-            "fields": [
-                {"name": "oauth_client_id", "type": "string", "required": True},
-                {"name": "oauth_client_secret", "type": "secretString", "required": True},
-                {"name": "access_token", "type": "secretString", "required": True},
-                {"name": "refresh_token", "type": "secretString", "required": True},
-            ],
-            "oauth2": {
-                "tokenEndpoint": "https://api.hubapi.com/oauth/2026-09/token",
-                "clientIDCredential": "oauth_client_id",
-                "clientSecretCredential": "oauth_client_secret",
-                "scopes": [
-                    "oauth",
-                    "crm.objects.contacts.read",
-                    "crm.objects.contacts.write",
-                    "crm.objects.companies.read",
-                    "crm.objects.companies.write",
-                    "crm.objects.deals.read",
-                    "crm.objects.deals.write",
-                    "crm.objects.owners.read",
-                ],
-                "credentialMappings": [
-                    {"credential": "access_token", "source": "access_token"},
-                    {"credential": "refresh_token", "source": "refresh_token"},
-                ],
-                "refresh": {
-                    "scopeSeparators": "whitespaceAndComma",
-                    "requiredScopes": [
-                        "crm.objects.contacts.read",
-                        "crm.objects.contacts.write",
-                        "crm.objects.companies.read",
-                        "crm.objects.companies.write",
-                        "crm.objects.deals.read",
-                        "crm.objects.deals.write",
-                        "crm.objects.owners.read",
-                    ],
-                    "terminalErrorCodes": ["invalid_grant", "invalid_client", "unauthorized_client"],
-                    "missingExpiry": "reject",
-                    "storedMissingExpiry": "refresh",
-                },
-            },
-        },
-    ],
-}
+AUTHORIZATION = {'refreshable': True, 'defaultMethod': 'private-app-token', 'methods': [{'id': 'private-app-token', 'type': 'apiKey', 'fields': [{'name': 'access_token', 'type': 'secretString', 'required': True}]}, {'id': 'hubspot-oauth', 'type': 'oauth2', 'fields': [{'name': 'oauth_client_id', 'type': 'string', 'required': True}, {'name': 'oauth_client_secret', 'type': 'secretString', 'required': True}, {'name': 'access_token', 'type': 'secretString', 'required': True}, {'name': 'refresh_token', 'type': 'secretString', 'required': True}], 'oauth2': {'tokenEndpoint': 'https://api.hubapi.com/oauth/2026-09/token', 'clientIDCredential': 'oauth_client_id', 'clientSecretCredential': 'oauth_client_secret', 'scopes': ['oauth', 'crm.objects.contacts.read', 'crm.objects.contacts.write', 'crm.objects.companies.read', 'crm.objects.companies.write', 'crm.objects.deals.read', 'crm.objects.deals.write', 'crm.objects.owners.read'], 'credentialMappings': [{'credential': 'access_token', 'source': 'access_token'}, {'credential': 'refresh_token', 'source': 'refresh_token'}], 'refresh': {'responseScopeField': 'scopesArray', 'requiredScopes': ['crm.objects.contacts.read', 'crm.objects.contacts.write', 'crm.objects.companies.read', 'crm.objects.companies.write', 'crm.objects.deals.read', 'crm.objects.deals.write', 'crm.objects.owners.read'], 'terminalErrorCodes': ['invalid_grant', 'invalid_client', 'unauthorized_client'], 'missingExpiry': 'reject', 'storedMissingExpiry': 'refresh'}}}]}
 
 # Stored credential names mapped to runtime dataclass fields.
-CREDENTIAL_FIELDS = {
-    "access_token": "access_token",
-    "oauth_client_id": "oauth_client_id",
-    "oauth_client_secret": "oauth_client_secret",
-    "refresh_token": "refresh_token",
-}
+CREDENTIAL_FIELDS = {'access_token': 'access_token', 'oauth_client_id': 'oauth_client_id', 'oauth_client_secret': 'oauth_client_secret', 'refresh_token': 'refresh_token'}

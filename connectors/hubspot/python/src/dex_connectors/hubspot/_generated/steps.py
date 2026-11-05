@@ -17,18 +17,9 @@ from dex_connectors.sdk import (
 )
 
 from ..connection import Connection
-from ..models import (
-    CRMObject,
-    GetObjectInput,
-    ObjectPage,
-    SearchObjectsInput,
-    UpdateObjectInput,
-    UpsertObjectInput,
-    UpsertedObject,
-)
+from ..models import CRMObject, GetObjectInput, ObjectPage, SearchObjectsInput, UpdateObjectInput, UpsertObjectInput, UpsertedObject
 
 StepInput = TypeVar("StepInput")
-
 
 def new_search_objects_step(
     *,
@@ -50,17 +41,11 @@ def new_search_objects_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("HubSpot Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("HubSpot Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "searched": searched,
     }
@@ -84,9 +69,7 @@ def new_search_objects_step(
         )
     )
 
-
-setattr(new_search_objects_step, "__module__", "dex_connectors.hubspot.steps")
-
+setattr(new_search_objects_step, '__module__', 'dex_connectors.hubspot.steps')
 
 def new_get_object_step(
     *,
@@ -109,17 +92,11 @@ def new_get_object_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("HubSpot Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("HubSpot Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "found": found,
     }
@@ -145,9 +122,7 @@ def new_get_object_step(
         )
     )
 
-
-setattr(new_get_object_step, "__module__", "dex_connectors.hubspot.steps")
-
+setattr(new_get_object_step, '__module__', 'dex_connectors.hubspot.steps')
 
 def new_upsert_object_step(
     *,
@@ -170,17 +145,11 @@ def new_upsert_object_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("HubSpot Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("HubSpot Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "upserted": upserted,
     }
@@ -206,9 +175,7 @@ def new_upsert_object_step(
         )
     )
 
-
-setattr(new_upsert_object_step, "__module__", "dex_connectors.hubspot.steps")
-
+setattr(new_upsert_object_step, '__module__', 'dex_connectors.hubspot.steps')
 
 def new_update_object_step(
     *,
@@ -232,17 +199,11 @@ def new_update_object_step(
     if isinstance(annotations, StepAnnotations):
         step_annotations = annotations
     else:
-        if not isinstance(annotations, Mapping) or set(annotations) != {
-            "groupId",
-            "groupLabel",
-            "explanation",
-        }:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
             raise ValueError("HubSpot Step annotations require groupId, groupLabel, and explanation")
         if any(not isinstance(value, str) for value in annotations.values()):
             raise ValueError("HubSpot Step annotations must be strings")
-        step_annotations = StepAnnotations(
-            annotations["groupId"], annotations["groupLabel"], annotations["explanation"]
-        )
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
     branches = {
         "updated": updated,
     }
@@ -270,8 +231,7 @@ def new_update_object_step(
         )
     )
 
-
-setattr(new_update_object_step, "__module__", "dex_connectors.hubspot.steps")
+setattr(new_update_object_step, '__module__', 'dex_connectors.hubspot.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:
