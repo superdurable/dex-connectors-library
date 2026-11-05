@@ -257,7 +257,7 @@ class Client:
             if result.status != 401 or index == 1 or not hasattr(self.credentials, "resolve_after_rejection"):
                 return result
             try:
-                replacement = await self.credentials.resolve_after_rejection(call)  # type: ignore[attr-defined]
+                replacement = await self.credentials.resolve_after_rejection(call)
                 if (
                     not isinstance(replacement, Credentials)
                     or replacement.access_token is None

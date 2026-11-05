@@ -7,10 +7,19 @@ import re
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parseaddr
-from typing import Any
+from typing import Any, Literal, TypeVar, overload
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from dex_connectors.sdk import Call, Failure, FailureKind, MutationAttempt, QueryAttempt, Receipt
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    Failure,
+    FailureKind,
+    IdempotencyKey,
+    MutationAttempt,
+    QueryAttempt,
+    Receipt,
+)
 
 from ._generated.definitions import (
     CREATE_EVENT_DEFINITION,
@@ -307,6 +316,21 @@ def _json(body: bytes) -> Any:
         raise ValueError("provider response is not valid JSON") from error
 
 
+_Output = TypeVar("_Output")
+
+
+@overload
+def _request_failure(
+    error: ProviderRequestError, operation: str, mutation: Literal[False], value: _Output, receipt: Receipt
+) -> QueryAttempt[_Output]: ...
+
+
+@overload
+def _request_failure(
+    error: ProviderRequestError, operation: str, mutation: Literal[True], value: _Output, receipt: Receipt
+) -> MutationAttempt[_Output]: ...
+
+
 def _request_failure(
     error: ProviderRequestError, operation: str, mutation: bool, value: Any, receipt: Receipt
 ) -> Any:
@@ -320,6 +344,18 @@ def _request_failure(
     kind = FailureKind.TRANSPORT if mutation else FailureKind.AVAILABILITY
     message = "provider request failed" if mutation else "provider is unavailable"
     return attempt.retry(failure(kind, operation, message))
+
+
+@overload
+def _status_attempt(
+    response: ProviderResponse, operation: str, mutation: Literal[False], value: _Output, receipt: Receipt
+) -> QueryAttempt[_Output]: ...
+
+
+@overload
+def _status_attempt(
+    response: ProviderResponse, operation: str, mutation: Literal[True], value: _Output, receipt: Receipt
+) -> MutationAttempt[_Output]: ...
 
 
 def _status_attempt(
@@ -548,9 +584,9 @@ class CreateEventOperation:
         """Return the generated createEvent Mutation definition."""
         return CREATE_EVENT_DEFINITION
 
-    def idempotency_key(self, call_id: str, input: CreateEventInput) -> str:
+    def idempotency_key(self, call_id: CallID, input: CreateEventInput) -> IdempotencyKey:
         """Use the supplied event ID or the Call ID without dashes."""
-        return input.event_id or str(call_id).replace("-", "")
+        return IdempotencyKey(input.event_id or str(call_id).replace("-", ""))
 
     async def invoke(self, call: Call, input: CreateEventInput) -> MutationAttempt[CreateEventOutput]:
         """Read, insert, and read back a duplicate stable event ID."""
@@ -703,9 +739,9 @@ class UpdateEventOperation:
         """Return the generated updateEvent Mutation definition."""
         return UPDATE_EVENT_DEFINITION
 
-    def idempotency_key(self, call_id: str, input: UpdateEventInput) -> str:
+    def idempotency_key(self, call_id: CallID, input: UpdateEventInput) -> IdempotencyKey:
         """Use the Call ID; read and comparison make the operation repeatable."""
-        return str(call_id)
+        return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: UpdateEventInput) -> MutationAttempt[UpdateEventOutput]:
         """Read, compare, and conditionally patch one event."""
