@@ -111,6 +111,10 @@ func TestMicrosoftTemplateRulesAgreeOnValidTenantGUID(t *testing.T) {
 					require.Contains(t, agreementCase.Endpoint, "01234567-89ab-cdef-0123-456789abcdef")
 					found["guid"] = true
 				}
+				if strings.Contains(agreementCase.Name, "01234567-89AB-CDEF-0123-456789ABCDEF") {
+					require.Contains(t, strings.ToLower(agreementCase.Endpoint), "01234567-89ab-cdef-0123-456789abcdef")
+					found["mixedGUID"] = true
+				}
 				if strings.Contains(agreementCase.Name, "Manifest.Example.com") {
 					if connector == "entra-id" || connector == "onedrive" {
 						require.Contains(t, agreementCase.Endpoint, "manifest.example.com")
@@ -153,15 +157,31 @@ func TestMicrosoftTemplateRulesAgreeOnValidTenantGUID(t *testing.T) {
 					found["alias"] = true
 				}
 			}
-			require.Equal(t, map[string]bool{"guid": true, "mixed": true, "oversized": true, "nonASCII": true, "alias": true}, found)
+			require.Equal(t, map[string]bool{"guid": true, "mixedGUID": true, "mixed": true, "oversized": true, "nonASCII": true, "alias": true}, found)
 			contents, err := os.ReadFile(filepath.Join("..", "..", "connectors", "microsoft", connector, "connector.yaml"))
 			require.NoError(t, err)
-			broken := strings.Replace(string(contents), "-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$", "-[0-9A-Fa-f]{12})$", 1)
-			require.NotEqual(t, string(contents), broken)
-			brokenManifest, err := schema.Decode(strings.NewReader(broken))
-			require.NoError(t, err)
-			_, err = codegen.GenerateRefreshAgreementCases(brokenManifest, nil)
-			require.ErrorContains(t, err, "rejects valid GUID sample")
+			for _, brokenPattern := range []string{"-[0-9A-Fa-f]{12})$", "-[0-9a-fA-F]{12})$"} {
+				broken := strings.Replace(string(contents), "-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$", brokenPattern, 1)
+				require.NotEqual(t, string(contents), broken)
+				if strings.Contains(brokenPattern, "a-fA-F") {
+					broken = strings.ReplaceAll(broken, "[0-9A-Fa-f]", "[0-9a-fA-F]")
+				}
+				brokenManifest, err := schema.Decode(strings.NewReader(broken))
+				require.NoError(t, err)
+				brokenCasesJSON, err := codegen.GenerateRefreshAgreementCases(brokenManifest, nil)
+				require.NoError(t, err)
+				var brokenCases []codegen.RefreshAgreementCase
+				require.NoError(t, json.Unmarshal(brokenCasesJSON, &brokenCases))
+				foundRejectedGUID := false
+				for _, agreementCase := range brokenCases {
+					if strings.Contains(agreementCase.Name, "with sample "+placeholder+" 01234567-89ab-cdef-0123-456789abcdef") {
+						require.Equal(t, "reauthorization", agreementCase.ExpectedError)
+						require.True(t, agreementCase.MayRefuseWithoutCall)
+						foundRejectedGUID = true
+					}
+				}
+				require.True(t, foundRejectedGUID)
+			}
 		})
 	}
 }

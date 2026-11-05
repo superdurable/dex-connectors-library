@@ -63,6 +63,7 @@ type manifestRefreshRequiredCase struct {
 
 type manifestVariation struct {
 	name                 string
+	endpoint             string
 	response             map[string]any
 	credentials          map[string]string
 	settings             map[string]string
@@ -209,6 +210,9 @@ func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privat
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
 			variationGrant := grant
+			if variation.endpoint != "" {
+				variationGrant.endpoint = variation.endpoint
+			}
 			if variation.settings != nil {
 				variationGrant.settings = variation.settings
 			}

@@ -270,6 +270,9 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		"an unanchored template rule": {edits: []manifestEdit{
 			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {tenant_id: {patterns: [example]}}}`},
 		}, problem: "patterns must use ^(?:...)$"},
+		"top-level alternation outside template group": {edits: []manifestEdit{
+			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {tenant_id: {patterns: ['^(?:a)|(?:b)$']}}}`},
+		}, problem: "patterns must use ^(?:...)$"},
 		"a pattern with inline flags": {edits: []manifestEdit{
 			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {tenant_id: {patterns: ['^(?:(?i)example)$']}}}`},
 		}, problem: "pattern uses non-portable syntax"},

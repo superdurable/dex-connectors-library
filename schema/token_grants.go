@@ -892,7 +892,7 @@ func (grantContext tokenGrantContext) validateValueSource(label string, source V
 				problems = append(problems, label+" templateValueRules "+name+" maxBytes must be positive")
 			}
 			for _, pattern := range rule.Patterns {
-				if !strings.HasPrefix(pattern, "^(?:") || !strings.HasSuffix(pattern, ")$") {
+				if !hasSingleAnchoredTemplateGroup(pattern) {
 					problems = append(problems, label+" templateValueRules "+name+" patterns must use ^(?:...)$")
 				} else if !isPortableTemplatePattern(pattern) {
 					problems = append(problems, label+" templateValueRules "+name+" pattern uses non-portable syntax")
@@ -933,6 +933,35 @@ func isPortableTemplatePattern(pattern string) bool {
 		}
 	}
 	return true
+}
+
+func hasSingleAnchoredTemplateGroup(pattern string) bool {
+	if !strings.HasPrefix(pattern, "^(?:") || !strings.HasSuffix(pattern, ")$") {
+		return false
+	}
+	depth := 1
+	isEscaped := false
+	isCharacterClass := false
+	for index := 4; index < len(pattern)-1; index++ {
+		switch character := pattern[index]; {
+		case isEscaped:
+			isEscaped = false
+		case character == '\\':
+			isEscaped = true
+		case character == '[' && !isCharacterClass:
+			isCharacterClass = true
+		case character == ']' && isCharacterClass:
+			isCharacterClass = false
+		case !isCharacterClass && character == '(':
+			depth++
+		case !isCharacterClass && character == ')':
+			depth--
+			if depth == 0 {
+				return index == len(pattern)-2
+			}
+		}
+	}
+	return false
 }
 
 func validateScopeList(label string, scopes []string) []string {
