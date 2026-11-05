@@ -108,13 +108,32 @@
               "multipart"
             ]
           },
-          "requestBody": "--74f2483f4f557d5931543790e3eeabef5e1996fa4b40fe08738621f9900f\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{\"appProperties\":{\"dexIdempotencyKey\":\"f7b98c49-191c-5162-b113-6c41d099c65d\"},\"mimeType\":\"application/vnd.google-apps.document\",\"name\":\"New policy\",\"parents\":[\"folder123\"]}\r\n--74f2483f4f557d5931543790e3eeabef5e1996fa4b40fe08738621f9900f\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nPolicy\r\n--74f2483f4f557d5931543790e3eeabef5e1996fa4b40fe08738621f9900f--\r\n",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJhcHBQcm9wZXJ0aWVzIjp7ImRleElkZW1wb3RlbmN5S2V5IjoiZjdiOThjNDktMTkxYy01MTYyLWIxMTMtNmM0MWQwOTljNjVkIn0sIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vdm5kLmdvb2dsZS1hcHBzLmRvY3VtZW50IiwibmFtZSI6Ik5ldyBwb2xpY3kiLCJwYXJlbnRzIjpbImZvbGRlcjEyMyJdfQ==",
+                "headers": {
+                  "Content-Type": [
+                    "application/json; charset=UTF-8"
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "UG9saWN5",
+                "headers": {
+                  "Content-Type": [
+                    "text/plain; charset=UTF-8"
+                  ]
+                }
+              }
+            ]
+          },
           "requestHeaders": {
             "Authorization": [
               "Bearer docs-token-SENTINEL"
             ],
             "Content-Type": [
-              "multipart/related; boundary=74f2483f4f557d5931543790e3eeabef5e1996fa4b40fe08738621f9900f"
+              "multipart/related"
             ]
           },
           "status": 200
@@ -123,6 +142,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f7b98c49-191c-5162-b113-6c41d099c65d",
+          "providerId": "newDoc1",
+          "state": "claimed"
+        },
         "output": {
           "document": {
             "createdTime": "2026-10-01T09:00:00Z",
@@ -659,6 +684,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f7b98c49-191c-5162-b113-6c41d099c65d",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -718,6 +748,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f7b98c49-191c-5162-b113-6c41d099c65d",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -775,6 +810,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "f7b98c49-191c-5162-b113-6c41d099c65d",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,

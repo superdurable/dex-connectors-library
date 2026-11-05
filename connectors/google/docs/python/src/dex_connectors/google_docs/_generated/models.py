@@ -5,6 +5,8 @@
 from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 # GetDocumentTextInput identifies the document whose first tab is read.
 @dataclass(frozen=True, slots=True)
 class GetDocumentTextInput:
@@ -80,6 +82,12 @@ class CreatedDocument:
     created_time: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdTime', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # IsTrashed reports that someone moved the document to the trash after an earlier attempt created it.
     is_trashed: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isTrashed', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_time, str):
+            object.__setattr__(self, 'created_time', parse_go_datetime(self.created_time, 'created_time'))
+        elif self.created_time is not None:
+            validate_go_datetime(self.created_time, 'created_time')
 
 
 setattr(CreatedDocument, '__module__', 'dex_connectors.google_docs.models')

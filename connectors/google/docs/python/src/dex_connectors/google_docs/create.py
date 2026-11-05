@@ -3,8 +3,8 @@
 """Duplicate-aware Google Drive document creation."""
 
 import json
+import secrets
 from datetime import UTC, datetime, timedelta
-from email.message import EmailMessage
 from typing import Any
 from urllib.parse import quote
 
@@ -166,7 +166,7 @@ def _create_request(
     }
     if input.parent_folder_id:
         metadata["parents"] = [input.parent_folder_id]
-    metadata_body = json.dumps(metadata, separators=(",", ":"), ensure_ascii=False).encode()
+    metadata_body = json.dumps(metadata, separators=(",", ":"), ensure_ascii=False, sort_keys=True).encode()
     if not input.initial_text:
         url = (
             client.drive_endpoint
@@ -175,19 +175,15 @@ def _create_request(
         )
         return url, metadata_body, "application/json; charset=UTF-8"
     media_type = "text/markdown; charset=UTF-8" if format_name == "markdown" else "text/plain; charset=UTF-8"
-    # A MIME writer gives each invocation a fresh boundary and preserves the two ordered parts.
-    message = EmailMessage()
-    message.set_type("multipart/related")
-    metadata_part = EmailMessage()
-    metadata_part["Content-Type"] = "application/json; charset=UTF-8"
-    metadata_part.set_payload(metadata_body.decode())
-    media_part = EmailMessage()
-    media_part["Content-Type"] = media_type
-    media_part.set_payload(input.initial_text)
-    message.attach(metadata_part)
-    message.attach(media_part)
-    boundary = message.get_boundary()
-    body = message.as_bytes().split(b"\n\n", 1)[-1]
+    boundary = secrets.token_hex(30)
+    delimiter = ("--" + boundary + "\r\n").encode()
+    body = (
+        delimiter + b"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        + metadata_body + b"\r\n"
+        + delimiter + ("Content-Type: " + media_type + "\r\n\r\n").encode()
+        + input.initial_text.encode() + b"\r\n"
+        + ("--" + boundary + "--\r\n").encode()
+    )
     url = (
         client.drive_upload_endpoint
         + "/files?"
@@ -199,7 +195,7 @@ def _create_request(
             }
         )
     )
-    return url, body, "multipart/related; boundary=" + str(boundary)
+    return url, body, "multipart/related; boundary=" + boundary
 
 
 async def create_document(
@@ -434,8 +430,15 @@ async def _after_create(
             parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC)),
         )
     if response.status == 401:
+        if not hasattr(client._credentials, "resolve_after_rejection"):
+            return MutationAttempt.branch_result(
+                "providerRejected", empty, receipt,
+                failure(
+                    "createDocument", FailureKind.AUTHENTICATION, "provider rejected the create credential"
+                ),
+            )
         try:
-            await getattr(client._credentials, "resolve_after_rejection")(call)
+            await client._credentials.resolve_after_rejection(call)
         except Exception:
             return MutationAttempt.branch_result(
                 "providerRejected",

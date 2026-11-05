@@ -4,6 +4,7 @@
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import dex_connectors.sdk as sdk
 import pytest
@@ -22,7 +23,9 @@ ADAPTER = PythonOperationAdapter(
     docs,
     lambda http_client, _: docs.Client(
         docs.Config(docs_endpoint="http://127.0.0.1:41300", drive_endpoint="http://127.0.0.1:41300"),
-        sdk.StaticCredentialProvider({CONNECTION: docs.Credentials(access_token=sdk.SecretString("docs-token-SENTINEL"))}),
+        sdk.StaticCredentialProvider(
+            {CONNECTION: docs.Credentials(access_token=sdk.SecretString("docs-token-SENTINEL"))}
+        ),
         http_client,
     ),
     with_context=True,
@@ -33,7 +36,7 @@ ADAPTER = PythonOperationAdapter(
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     """Match recorded requests, branches, retries, and SDK-encoded outputs."""
 
-    async def invoke(values: dict, recorder: object, context: object) -> object:
+    async def invoke(values: dict[str, Any], recorder: object, context: object) -> object:
         if values["operation"] != "replaceDocumentText" or not values["input"].get("placeholders"):
             return await ADAPTER.invoke(values, recorder, context)
         adapted = {**values, "input": {**values["input"], "placeholders": tuple(
