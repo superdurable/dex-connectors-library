@@ -35,6 +35,11 @@ func TestDecodeColumnValueMapsJSONv2TextWithoutLosingPrecision(t *testing.T) {
 		"timestamp_ltz":         {Column{Type: "timestamp_ltz"}, "1616173619.000000000", "2021-03-19T17:06:59Z"},
 		"timestamp_tz":          {Column{Type: "timestamp_tz"}, "1616173619.000000000 1500", "2021-03-19T18:06:59+01:00"},
 		"variant":               {Column{Type: "variant"}, "{\n  \"amount\": 12345678901234567890\n}", json.RawMessage("{\n  \"amount\": 12345678901234567890\n}")},
+		"variant decimal":       {Column{Type: "variant"}, "1.50", json.RawMessage("1.50")},
+		"variant exponent":      {Column{Type: "variant"}, "1e400", json.RawMessage("1e400")},
+		"object":                {Column{Type: "object"}, "{\"value\":1.50}", json.RawMessage("{\"value\":1.50}")},
+		"array":                 {Column{Type: "array"}, "[12345678901234567890]", json.RawMessage("[12345678901234567890]")},
+		"map":                   {Column{Type: "map"}, "{\"value\":-0}", json.RawMessage("{\"value\":-0}")},
 		"geography":             {Column{Type: "geography"}, "POINT(1 2)", "POINT(1 2)"},
 	} {
 		t.Run(name, func(t *testing.T) {
