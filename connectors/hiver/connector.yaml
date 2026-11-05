@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: hiver
   languages:
+    python:
+      package: dex-connector-hiver
+      version: v0.1.0
+      operations: [listInboxes, listConversations, getConversation, updateConversation, addNote, createSharedDraft]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-hiver"
