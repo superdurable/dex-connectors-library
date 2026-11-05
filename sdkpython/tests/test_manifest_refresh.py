@@ -652,11 +652,17 @@ async def test_manifest_template_rejects_aliases_and_lowercases_valid_tenant() -
                 await refresh(tenant)
         assert requests == []
         await refresh("  Contoso.OnMicrosoft.com  ")
+        auth["methods"][0]["oauth2"]["refresh"]["trimClientID"] = False
+        driver = ManifestCredentialRefreshDriver[Credentials]("Microsoft", auth, FIELDS, client)
+        await refresh("  Contoso.OnMicrosoft.com  ")
     assert str(requests[0].url) == (
         "https://login.microsoftonline.com/contoso.onmicrosoft.com/oauth2/v2.0/token"
     )
     assert base64.b64decode(requests[0].headers["authorization"].split()[1]) == (
         b"Contoso.OnMicrosoft.com:client-secret"
+    )
+    assert base64.b64decode(requests[1].headers["authorization"].split()[1]) == (
+        b"  Contoso.OnMicrosoft.com  :client-secret"
     )
 
 
@@ -712,6 +718,13 @@ async def test_template_value_rules_match_complete_ascii_values_and_validate_at_
         rule["patterns"] = [r"\d+"]
         with pytest.raises(ReauthorizationRequiredError):
             await refresh("١")
+        for invalid_pattern in (r"(?=a)a", r"(a)\1", r"a)|(b", r"\p{L}", r"\Qa\E", r"[[:alpha:]]", r"(?i)a"):
+            rule["patterns"] = [invalid_pattern]
+            with pytest.raises(ValueError, match="pattern is invalid"):
+                driver()
+        rule["patterns"] = [r"\(?x"]
+        driver()
+        rule["patterns"] = [r"[A-Za-z]+"]
         for invalid_rule in ({"patterns": ["(?i)abc"]}, {"reject": [42]}, {"unknown": True}):
             rule.update(invalid_rule)
             with pytest.raises(ValueError):
@@ -1311,7 +1324,44 @@ async def test_go_scope_array_graph_prefix_url_origin_and_expiry_cap() -> None:
             Credentials(SecretString("old"), SecretString("prior"), instance_url="https://example.test/"),
             None, datetime.now(UTC),
         )
-        assert (await driver.refresh(prior_state)).credentials.instance_url == "https://example.test"
+        with pytest.raises(RetryError):
+            await driver.refresh(prior_state)
+        del body["instance_url"]
+        with pytest.raises(RetryError):
+            await driver.refresh(prior_state)
+
+
+@pytest.mark.asyncio
+async def test_zoho_response_url_host_comparison_is_case_sensitive() -> None:
+    """A case-changed Zoho host is refused as Go ValidateAPIDomain requires."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["responseURLValidation"] = {
+        "credential": "instance_url",
+        "allowedHosts": [
+            "www.zohoapis.com", "sandbox.zohoapis.com", "developer.zohoapis.com",
+        ],
+        "forbidPort": True,
+    }
+    body = {
+        "access_token": "next", "token_type": "Bearer", "expires_in": 3600,
+        "instance_url": "https://WWW.zohoapis.com",
+    }
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda _: httpx.Response(200, json=body)
+    )) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Zoho", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior"), instance_url="https://www.zohoapis.com"),
+            None, datetime.now(UTC),
+        )
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
+        body["instance_url"] = "https://www.zohoapis.com"
+        assert (await driver.refresh(state)).credentials.instance_url == "https://www.zohoapis.com"
+        del body["instance_url"]
+        assert (await driver.refresh(state)).credentials.instance_url == "https://www.zohoapis.com"
 
 
 @pytest.mark.asyncio

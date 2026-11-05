@@ -233,10 +233,8 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 has_response = source in token.retained_fields
                 returned = token.retained_fields.get(source)
                 prior = self._credential_value(credentials, destination)
-                if has_response and returned is not None:
-                    value = returned
-                elif returned is None and has_response:
-                    value = prior
+                if has_response:
+                    value = "" if returned is None else returned
                 elif url_rule.get("requireResponse"):
                     value = None
                 else:
@@ -798,12 +796,35 @@ def _validate_template_value_rule(rule: Any) -> None:
     ):
         raise ValueError("manifest template value rule is invalid")
     for pattern in rule.get("patterns", []):
-        if re.search(r"\(\?(?!:)", pattern):
+        _validate_portable_template_value_pattern(pattern)
+
+
+def _validate_portable_template_value_pattern(pattern: str) -> None:
+    is_character_class = False
+    index = 0
+    while index < len(pattern):
+        character = pattern[index]
+        if character == "\\":
+            index += 1
+            if index < len(pattern) and pattern[index] in "123456789pPQEk":
+                raise ValueError("manifest template value pattern is invalid")
+        elif character == "[":
+            if is_character_class and pattern[index + 1:index + 2] == ":":
+                raise ValueError("manifest template value pattern is invalid")
+            is_character_class = True
+        elif character == "]":
+            is_character_class = False
+        elif (
+            not is_character_class and character == "("
+            and pattern[index + 1:index + 2] == "?"
+            and pattern[index + 2:index + 3] != ":"
+        ):
             raise ValueError("manifest template value pattern is invalid")
-        try:
-            re.compile(pattern, flags=re.ASCII)
-        except re.error as error:
-            raise ValueError("manifest template value pattern is invalid") from error
+        index += 1
+    try:
+        re.compile(pattern, flags=re.ASCII)
+    except re.error as error:
+        raise ValueError("manifest template value pattern is invalid") from error
 
 
 def _trim_go_space(value: str) -> str:
@@ -963,8 +984,8 @@ def _validate_response_url(value: str, rule: Mapping[str, Any]) -> str:
     if not (
         (rule.get("allowAnyHTTPS") and parsed.scheme == "https")
         or (rule.get("allowLoopback") and is_loopback)
-        or host in rule.get("allowedHosts", [])
-        or (suffix and (host.lower() == suffix or host.lower().endswith("." + suffix)))
+        or parsed.netloc in rule.get("allowedHosts", [])
+        or (suffix and (parsed.netloc == suffix or parsed.netloc.endswith("." + suffix)))
     ):
         raise ValueError("response URL is invalid")
     return value.rstrip("/")

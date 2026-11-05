@@ -263,6 +263,9 @@ The core example sends through an in-process HTTP transport.
   `templateValueRules` before path escaping. Rules trim Go Unicode whitespace,
   reject names, bound UTF-8 length, accept full-match patterns, and lowercase
   accepted values. Invalid values require reauthorization before a token request.
+  Template patterns use a portable Go and Python subset; lookaround,
+  backreferences, Unicode property escapes, quoted literals, POSIX classes,
+  and inline flags are rejected when the manifest is loaded.
   `trimClientID` on refresh or client-credentials declarations trims the client
   ID sent to the token endpoint when the Go driver does so.
   JWT-bearer grants accept a PEM private key directly from a credential field,
@@ -272,6 +275,8 @@ The core example sends through an in-process HTTP transport.
   Migration: `TokenEndpoint` now accepts uppercase ASCII `HTTP://` and `HTTPS://`
   schemes, while leading whitespace remains invalid. Address-policy refusals
   retain their `AddressRefusal` type so callers can treat them as terminal validation defects.
+  A returned null response URL is invalid and retried; declared host matches
+  preserve case, including Zoho `api_domain` hosts.
 - `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.
   The string mode preserves every supplied fractional digit; the default
   `datetime` mode names a Go-valid value that cannot be represented exactly.
