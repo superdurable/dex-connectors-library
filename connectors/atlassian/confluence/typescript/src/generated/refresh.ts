@@ -41,6 +41,7 @@ export const Authorization = {
     ],
     "refresh": {
       "acceptsMissingTokenType": true,
+      "missingExpiry": "reject",
       "requiredScopes": [
         "search:confluence",
         "read:page:confluence",
@@ -50,6 +51,7 @@ export const Authorization = {
         "write:comment:confluence"
       ],
       "scopeSeparators": "whitespaceAndComma",
+      "storedMissingExpiry": "refresh",
       "terminalErrorCodes": [
         "invalid_grant",
         "invalid_client",
