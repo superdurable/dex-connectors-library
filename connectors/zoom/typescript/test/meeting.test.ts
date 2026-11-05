@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { createRequest, decodeMeeting, pageToken, participantPage, updateRequest, zoomTime } from '../src/meeting.js';
+import { createRequest, decodeMeeting, pageToken, participantPage, responseObject, updateRequest, zoomTime } from '../src/meeting.js';
 
 describe('Zoom provider mapping', () => {
   it('sends only the absolute create fields and a UTC whole-second instant', () => {
@@ -21,6 +21,12 @@ describe('Zoom provider mapping', () => {
     expect(() => createRequest({ topic: 'Consultation', startTime: '2036-02-24T17:00:00.001Z', timeZone: 'UTC', durationMinutes: 30 })).toThrow();
     expect(() => decodeMeeting({ id: 1, topic: 42 })).toThrow();
     expect(() => participantPage({ total_records: 1, participants: [{ duration: '20' }] }, 1)).toThrow();
+  });
+  it('rejects decimal and exponent literals in provider integer fields', () => {
+    for (const literal of ['5.0', '1e3']) {
+      expect(() => decodeMeeting(responseObject(Buffer.from(`{"id":${literal}}`)))).toThrow();
+      expect(() => participantPage(responseObject(Buffer.from(`{"total_records":${literal},"participants":[]}`)), 1)).toThrow();
+    }
   });
   it('keeps an explicitly cleared agenda and rejects non-printable page tokens', () => {
     expect(updateRequest({ meetingId: 1, agenda: '' }, new Date('2026-01-01'))).toEqual({ agenda: '' });

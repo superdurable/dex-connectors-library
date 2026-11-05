@@ -109,8 +109,8 @@ export class PipedriveClient {
 
   private async exchangeOnce(operation: string, session: PipedriveSession, method: string, path: string, query?: URLSearchParams, body?: unknown, signal?: AbortSignal, isSingleDispatch = false): Promise<PipedriveExchange> {
     if (session.signal.aborted || signal?.aborted) return this.failed('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Pipedrive was contacted; no request was sent');
-    const sorted = query ? new URLSearchParams([...query].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)) : undefined;
-    const url = session.endpoint + path + (sorted && [...sorted].length ? `?${sorted.toString()}` : '');
+    const queryString = query ? encodeGoQuery(query) : '';
+    const url = session.endpoint + path + (queryString ? `?${queryString}` : '');
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (session.credentials.authMethodId === 'pipedrive-oauth') headers.Authorization = `Bearer ${session.token}`;
     else headers['X-Api-Token'] = session.token;
@@ -196,4 +196,10 @@ function isExhaustedDailyBudget(value: string): boolean {
   if (!/^[+-]?\d+$/.test(trimmed)) return false;
   const amount = BigInt(trimmed);
   return amount >= -9_223_372_036_854_775_808n && amount <= 0n;
+}
+
+/** Encode query pairs like Go url.Values.Encode, preserving repeated values. */
+export function encodeGoQuery(query: URLSearchParams): string {
+  const escape = (value: string) => encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  return [...query].sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([key, value]) => `${escape(key)}=${escape(value)}`).join('&');
 }

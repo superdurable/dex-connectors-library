@@ -55,7 +55,7 @@ export class SpotifyClient {
     if (market) query.set('market', market);
     query.set('offset', String(offset));
     const path = `/playlists/${playlistId}/items`;
-    const url = `${this.endpoint}${path}?${query.toString()}`;
+    const url = `${this.endpoint}${path}?${encodeGoQuery(query)}`;
     for (let attempt = 0; attempt < 2; attempt++) {
       const request: ProviderRequest = {
         url, method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, 'User-Agent': 'superdurable-dex-spotify-connector/0.1' },
@@ -79,4 +79,10 @@ export class SpotifyClient {
     }
     throw new Error('Spotify credential retry exhausted');
   }
+}
+
+/** Encode query pairs like Go url.Values.Encode, preserving repeated values. */
+export function encodeGoQuery(query: URLSearchParams): string {
+  const escape = (value: string) => encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  return [...query].sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([key, value]) => `${escape(key)}=${escape(value)}`).join('&');
 }

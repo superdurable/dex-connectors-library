@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, SecretString, type Call } from '@superdurable/connectors-sdk';
 import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { MondayClient } from '../src/client.js';
@@ -63,6 +63,44 @@ describe('monday.com input and provider classification', () => {
     expect(await unavailable.getItem().invoke(call('getItem'), { itemId: '9876543210' })).toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
   });
 
+
+  it('keeps the mutation checkpoint alive while a provider request is pending', async () => {
+    vi.useFakeTimers();
+    try {
+      const heartbeats: unknown[] = [];
+      const mutationCall = call('createItem');
+      mutationCall.context.recordHeartbeat = async checkpoint => { heartbeats.push(checkpoint); };
+      let finishRequest: ((response: { status: number; headers: Record<string, string>; body: Uint8Array }) => void) | undefined;
+      const client = new MondayClient({}, personalCredentials(), { send: async () => new Promise(resolve => { finishRequest = resolve; }) });
+      const exchange = client.exchange(mutationCall, 'createItem', { document: 'mutation { create_item { id } }', variables: {}, isMutation: true, requiresCheckpoint: true });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(finishRequest).toBeDefined();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(heartbeats).toHaveLength(3);
+      finishRequest!({ status: 200, headers: {}, body: Buffer.from('{"data":{"create_item":{"id":"1"}}}') });
+      expect((await exchange).outcome).toBe('succeeded');
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(heartbeats).toHaveLength(3);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('does not resend a 401 mutation without the six-second request budget', async () => {
+    const mutationCall = call('createItem');
+    let sends = 0;
+    let deadline = new Date(Date.now() + 30_000);
+    Object.defineProperty(mutationCall.context, 'deadline', { get: () => deadline });
+    const source = { ...personalCredentials(), resolveAfterRejection: async (): Promise<Credentials> => ({ authMethodId: 'monday-oauth', accessToken: new SecretString('replacement-token') }),
+      resolve: async (): Promise<Credentials> => ({ authMethodId: 'monday-oauth', accessToken: new SecretString('initial-token') }),
+      resolveWithRefresh: async (): Promise<Credentials> => ({ authMethodId: 'monday-oauth', accessToken: new SecretString('initial-token') }) };
+    const client = new MondayClient({}, source, { send: async () => {
+      sends++;
+      deadline = new Date(Date.now() + 5_000);
+      return { status: 401, headers: {}, body: Buffer.from('{}') };
+    } });
+    const result = await client.exchange(mutationCall, 'createItem', { document: 'mutation { create_item { id } }', variables: {}, isMutation: true, requiresCheckpoint: true });
+    expect(result).toMatchObject({ outcome: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(sends).toBe(1);
+  });
   it('rejects a wrong-typed item field as an invalid provider response', async () => {
     const client = new MondayClient({}, personalCredentials(), { send: async () => ({ status: 200, headers: {}, body: Buffer.from(JSON.stringify({ data: { items: [{ id: '9876543210', name: 42 }] } })) }) });
     const result = await client.getItem().invoke(call('getItem'), { itemId: '9876543210' });

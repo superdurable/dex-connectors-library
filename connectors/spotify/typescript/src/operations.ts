@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { parseRetryAfter } from '@superdurable/connectors-sdk/providerhttp';
 import { newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { ListPlaylistTracksDefinition } from './generated/definitions.js';
 import type { ListPlaylistTracksInput, PlaylistAlbum, PlaylistArtist, PlaylistTrack, PlaylistTrackPage } from './generated/models.js';
@@ -21,8 +22,11 @@ function stringField(object: Record<string, unknown>, key: string, fallback = ''
 function integerField(object: Record<string, unknown>, key: string): number {
   const value = object[key];
   if (value === undefined || value === null) return 0;
-  if (!Number.isSafeInteger(value)) throw new TypeError('invalid Spotify integer');
-  return value as number;
+  const literal = value && typeof value === 'object' && 'rawJSON' in value ? String(value.rawJSON) : '';
+  if (!/^-?(0|[1-9][0-9]*)$/.test(literal)) throw new TypeError('invalid Spotify integer');
+  const number = Number(literal);
+  if (!Number.isSafeInteger(number)) throw new TypeError('invalid Spotify integer');
+  return number;
 }
 function booleanField(object: Record<string, unknown>, key: string): boolean {
   const value = object[key];
@@ -135,7 +139,9 @@ function track(item: unknown, position: number): PlaylistTrack | undefined {
   return result;
 }
 function decodePage(body: Uint8Array, playlistId: string): PlaylistTrackPage {
-  const provider = record(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)));
+  const rawJSON = (JSON as typeof JSON & { rawJSON(source: string): unknown }).rawJSON;
+  const parseWithSource = JSON.parse as (text: string, reviver: (key: string, value: unknown, context: { source?: string }) => unknown) => unknown;
+  const provider = record(parseWithSource(new TextDecoder('utf-8', { fatal: true }).decode(body), (_key, value, context) => typeof value === 'number' ? rawJSON(context.source!) : value));
   const limit = integerField(provider, 'limit');
   const offset = integerField(provider, 'offset');
   const total = integerField(provider, 'total');
@@ -176,9 +182,7 @@ export class ListPlaylistTracksOperation implements Query<ListPlaylistTracksInpu
     catch { return newQueryRetry(failure('AVAILABILITY', 'Spotify is unavailable')); }
     if (response.isTooLarge) return newQueryBranch('invalidResponse', emptyPage, zeroReceipt(), failure('RESPONSE_TOO_LARGE', 'Spotify playlist response exceeds the configured size limit'));
     if (response.status === 429) {
-      const header = responseHeader(response, 'retry-after').trim();
-      const seconds = /^[+-]?\d+$/.test(header) ? Number(header) : 0;
-      const delay = Number.isSafeInteger(seconds) && seconds > 0 ? seconds * 1000 : 60_000;
+      const delay = parseRetryAfter(responseHeader(response, 'retry-after')) || 60_000;
       return newQueryRetry(failure('RATE_LIMIT', 'Spotify rate limit was reached'), delay);
     }
     if (response.status >= 500) return newQueryRetry(failure('AVAILABILITY', 'Spotify is unavailable'));

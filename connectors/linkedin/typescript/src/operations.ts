@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { parseRetryAfter } from '@superdurable/connectors-sdk/providerhttp';
 import { newQueryBranch, newQueryRetry, zeroReceipt, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { GetAuthenticatedProfileDefinition } from './generated/definitions.js';
 import type { GetAuthenticatedProfileInput, AuthenticatedProfile } from './generated/models.js';
@@ -97,8 +98,7 @@ export class GetAuthenticatedProfileOperation implements Query<GetAuthenticatedP
     if (response.isTooLarge) return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'LinkedIn UserInfo response exceeds the configured size limit', id);
     if (response.status === 429) {
       const value = header(response, 'retry-after');
-      const seconds = /^[+-]?\d+$/.test(value) ? Number(value) : 0;
-      return newQueryRetry(failure('RATE_LIMIT', 'LinkedIn rate limit was reached'), Number.isSafeInteger(seconds) && seconds > 0 ? seconds * 1000 : 60_000);
+      return newQueryRetry(failure('RATE_LIMIT', 'LinkedIn rate limit was reached'), parseRetryAfter(value) || 60_000);
     }
     if (response.status >= 500) return newQueryRetry(failure('AVAILABILITY', 'LinkedIn is unavailable'));
     if (response.status === 401) return branch('authorizationRevoked', 'AUTHENTICATION', 'LinkedIn authorization is invalid or revoked', id);

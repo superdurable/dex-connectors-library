@@ -23,7 +23,7 @@ function response(status: number, body: Uint8Array): ProviderResponse { return {
 
 it('escapes Xero paths and sorted query values like Go', () => {
   expect(escapeGoPath("A/B!?~$&+=:@,;'()*")).toBe('A%2FB%21%3F~$&+=:@%2C%3B%27%28%29%2A');
-  expect(encodeGoQuery({ where: 'a b~!*', IDs: 'a,b' })).toBe('IDs=a%2Cb&where=a+b%7E%21%2A');
+  expect(encodeGoQuery({ where: 'a b~!*', IDs: 'a,b' })).toBe('IDs=a%2Cb&where=a+b~%21%2A');
 });
 
 it('selects and caches the named OAuth tenant without exposing its name in requests', async () => {

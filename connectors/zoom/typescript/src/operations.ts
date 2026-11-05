@@ -6,7 +6,7 @@ import { newFence, CheckpointError, InsufficientTimeError } from '@superdurable/
 import { ZoomClient, zoomFailure, type ZoomExchange } from './client.js';
 import { CreateMeetingDefinition, GetMeetingDefinition, ListMeetingsDefinition, ListPastMeetingParticipantsDefinition, UpdateMeetingDefinition } from './generated/definitions.js';
 import type { CreateMeetingInput, GetMeetingInput, ListMeetingsInput, Meeting, MeetingPage, ListPastMeetingParticipantsInput, ParticipantPage, UpdateMeetingInput, UpdatedMeeting } from './generated/models.js';
-import { createRequest, decodeMeeting, emptyMeeting, emptyMeetingPage, meetingID, meetingSummary, object, pageSize, pageToken, participantPage, responseObject, updateRequest } from './meeting.js';
+import { createRequest, decodeMeeting, emptyMeeting, emptyMeetingPage, integer, meetingID, meetingSummary, object, pageSize, pageToken, participantPage, responseObject, updateRequest } from './meeting.js';
 
 const emptyParticipants: ParticipantPage = { meetingId: 0, participants: [], totalRecords: 0 };
 const emptyUpdate: UpdatedMeeting = { meetingId: 0 };
@@ -14,7 +14,7 @@ const successful = (status: number) => status >= 200 && status < 300;
 
 type Classified = { outcome: 'usable' | 'retry' | 'notFound' | 'rejected' | 'invalid'; failure?: Failure; errorCode: string; retryAfter: number };
 function code(body: Uint8Array): string {
-  try { const value = responseObject(body).code; return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 4_294_967_295 ? String(value) : ''; }
+  try { const value = integer(responseObject(body).code); return value >= 0 && value <= 4_294_967_295 ? String(value) : ''; }
   catch { return ''; }
 }
 function statusMessage(message: string, status: number, errorCode: string): string { return `${message} with HTTP ${status}${errorCode ? ` (code ${errorCode})` : ''}`; }
@@ -68,8 +68,8 @@ export class ListMeetingsOperation implements Query<ListMeetingsInput, MeetingPa
     if (result.outcome === 'invalid') return newQueryBranch('invalidResponse', emptyMeetingPage, receipt, result.failure);
     if (result.outcome !== 'usable') return newQueryBranch('providerRejected', emptyMeetingPage, receipt, result.failure);
     try {
-      const raw = responseObject(exchange.response.body), total = raw.total_records ?? 0, next = raw.next_page_token ?? '';
-      if (typeof total !== 'number' || !Number.isInteger(total) || total < 0 || typeof next !== 'string' || (raw.meetings !== undefined && raw.meetings !== null && !Array.isArray(raw.meetings))) throw new TypeError('invalid page');
+      const raw = responseObject(exchange.response.body), total = integer(raw.total_records), next = raw.next_page_token ?? '';
+      if (total < 0 || typeof next !== 'string' || (raw.meetings !== undefined && raw.meetings !== null && !Array.isArray(raw.meetings))) throw new TypeError('invalid page');
       pageToken(next);
       const meetings = (raw.meetings ?? []).map((item: unknown) => meetingSummary(decodeMeeting(item)));
       return newQueryBranch('listed', { meetings, totalRecords: total, ...(next ? { nextPageToken: next } : {}) }, receipt);

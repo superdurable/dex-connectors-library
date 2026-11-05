@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
@@ -73,8 +73,8 @@ export class SlackClient {
 
   /** Make one Slack HTTP request with Go-compatible body and status handling. */
   async request(method: 'GET' | 'POST', path: string, token: string, query?: URLSearchParams, payload?: Record<string, string>, signal?: AbortSignal): Promise<SlackExchange> {
-    const ordered = query ? new URLSearchParams([...query].sort(([a], [b]) => a.localeCompare(b, 'en'))) : undefined;
-    const url = `${this.endpoint}/${path}${ordered && [...ordered].length ? `?${ordered.toString()}` : ''}`;
+    const queryString = query ? encodeGoQuery(query) : '';
+    const url = `${this.endpoint}/${path}${queryString ? `?${queryString}` : ''}`;
     const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
     if (method === 'POST') headers['Content-Type'] = 'application/json; charset=utf-8';
     const request: ProviderRequest = { url, method, headers, maxResponseBytes: this.maxResponseBytes, addressPolicy: this.endpoint.startsWith('https://slack.com/') ? 'publicHTTPS' : 'privateNetworkHTTP', timeoutMs: 25_000, ...(signal ? { signal } : {}), ...(payload ? { body: Buffer.from(JSON.stringify(payload)) } : {}) };
@@ -123,10 +123,7 @@ export function failure(operation: string, kind: Failure['kind'], message: strin
 
 /** Parse Slack's integer Retry-After seconds without accepting dates. */
 export function retryAfter(response: SlackExchange): number {
-  const value = header(response, 'retry-after');
-  if (!/^[1-9][0-9]*$/.test(value)) return 0;
-  const seconds = Number(value);
-  return Number.isSafeInteger(seconds) ? seconds * 1000 : 0;
+  return parseRetryAfter(header(response, 'retry-after'));
 }
 
 /** Reject wrong-typed provider fields like Go's json.Unmarshal. */
@@ -150,4 +147,10 @@ function isSlackMessage(value: unknown): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const item = value as Record<string, unknown>;
   return ['channel', 'ts', 'thread_ts', 'user', 'text'].every(key => item[key] == null || typeof item[key] === 'string');
+}
+
+/** Encode query pairs like Go url.Values.Encode, preserving repeated values. */
+export function encodeGoQuery(query: URLSearchParams): string {
+  const escape = (value: string) => encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  return [...query].sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([key, value]) => `${escape(key)}=${escape(value)}`).join('&');
 }

@@ -17,10 +17,19 @@ export function object(value: unknown): Record<string, unknown> {
 }
 /** Decode exactly one JSON object. */
 export function responseObject(body: Uint8Array): Record<string, unknown> {
-  return object(JSON.parse(Buffer.from(body).toString('utf8')));
+  const rawJSON = (JSON as typeof JSON & { rawJSON(source: string): unknown }).rawJSON;
+  const parseWithSource = JSON.parse as (text: string, reviver: (key: string, value: unknown, context: { source?: string }) => unknown) => unknown;
+  return object(parseWithSource(Buffer.from(body).toString('utf8'), (_key, value, context) => typeof value === 'number' ? rawJSON(context.source!) : value));
 }
 function string(value: unknown): string { if (value === undefined || value === null) return ''; if (typeof value !== 'string') throw new TypeError('Zoom returned a non-string field'); return value; }
-function integer(value: unknown): number { if (value === undefined || value === null) return 0; if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new TypeError('Zoom returned a non-integer field'); return value; }
+export function integer(value: unknown): number {
+  if (value === undefined || value === null) return 0;
+  const literal = value && typeof value === 'object' && 'rawJSON' in value ? String(value.rawJSON) : '';
+  if (!/^-?(0|[1-9][0-9]*)$/.test(literal)) throw new TypeError('Zoom returned a non-integer field');
+  const number = Number(literal);
+  if (!Number.isSafeInteger(number)) throw new TypeError('Zoom returned a non-integer field');
+  return number;
+}
 function boolean(value: unknown): boolean { if (value === undefined || value === null) return false; if (typeof value !== 'boolean') throw new TypeError('Zoom returned a non-boolean field'); return value; }
 
 /** Parse the RFC 3339 subset accepted by Go time.Parse and return Go's UTC JSON spelling. */

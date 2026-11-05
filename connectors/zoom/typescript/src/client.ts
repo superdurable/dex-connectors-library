@@ -69,8 +69,7 @@ export class ZoomClient {
 
   /** Send one bounded request and refresh once after a rejected credential when allowed. */
   async exchange(call: Call, credentials: Credentials, method: string, path: string, query?: URLSearchParams, payload?: unknown, isFencedWrite = false, signal?: AbortSignal): Promise<ZoomExchange> {
-    const sorted = query ? [...query.entries()].sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))) : [];
-    const queryString = new URLSearchParams(sorted).toString();
+    const queryString = query ? encodeGoQuery(query) : '';
     const url = `${this.endpoint}${path}${queryString ? `?${queryString}` : ''}`;
     for (let attempt = 0; attempt < 2; attempt++) {
       const accessToken = credentials.accessToken.reveal();
@@ -121,4 +120,10 @@ export class ZoomClient {
 /** Construct one secret-free Zoom failure. */
 export function zoomFailure(operation: string, kind: Failure['kind'], message: string): Failure {
   return { kind, provider: 'zoom', operation, message };
+}
+
+/** Encode query pairs like Go url.Values.Encode, preserving repeated values. */
+export function encodeGoQuery(query: URLSearchParams): string {
+  const escape = (value: string) => encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  return [...query].sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([key, value]) => `${escape(key)}=${escape(value)}`).join('&');
 }

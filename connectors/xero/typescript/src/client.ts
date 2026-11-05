@@ -205,7 +205,7 @@ export class XeroClient {
 
 /** Encode query keys and values like Go url.Values.Encode. */
 export function encodeGoQuery(values: Record<string, string>): string {
-  const escape = (value: string) => encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*~]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+  const escape = (value: string) => encodeURIComponent(value).replace(/%20/g, '+').replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
   return Object.keys(values).sort().map(key => `${escape(key)}=${escape(values[key]!)}`).join('&');
 }
 

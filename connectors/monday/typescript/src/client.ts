@@ -95,13 +95,30 @@ export class MondayClient {
       try { await call.context.recordHeartbeat(checkpoint); }
       catch { await this.recordCanResend(call); return failureExchange(operation, 'retry', 'AVAILABILITY', 'dispatch checkpoint could not be recorded'); }
     }
-    let result = await this.sendOnce(call, operation, request, accessToken);
-    if (result.status === 401 && credentials.authMethodId === 'monday-oauth' && 'resolveAfterRejection' in this.credentials) {
-      try {
-        const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-        const replacementToken = replacement.accessToken?.reveal();
-        if (replacementToken && isHeaderSafeCredential(replacementToken)) result = await this.sendOnce(call, operation, request, replacementToken);
-      } catch { /* Go retains the original HTTP 401 when coordinated refresh fails. */ }
+    let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+    let pendingHeartbeat = Promise.resolve();
+    if (request.requiresCheckpoint) {
+      heartbeatTimer = setInterval(() => {
+        pendingHeartbeat = pendingHeartbeat.then(() => call.context.recordHeartbeat(checkpoint)).catch(() => { /* Best effort keepalive. */ });
+      }, 5_000);
+    }
+    let result: MondayExchange;
+    try {
+      result = await this.sendOnce(call, operation, request, accessToken);
+      if (result.status === 401 && credentials.authMethodId === 'monday-oauth' && 'resolveAfterRejection' in this.credentials) {
+        try {
+          const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+          const replacementToken = replacement.accessToken?.reveal();
+          if (replacementToken && isHeaderSafeCredential(replacementToken)) {
+            if (request.requiresCheckpoint && call.context.deadline && call.context.deadline.getTime() - Date.now() < 6_000) {
+              result = failureExchange(operation, 'retry', 'AVAILABILITY', 'not enough time remains to resend the mutation');
+            } else result = await this.sendOnce(call, operation, request, replacementToken);
+          }
+        } catch { /* Go retains the original HTTP 401 when coordinated refresh fails. */ }
+      }
+    } finally {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      await pendingHeartbeat;
     }
     if (request.requiresCheckpoint && result.outcome === 'retry') {
       if (result.status >= 200 && result.status < 300 && (!result.confirmedNotProcessed || result.data !== undefined)) result = { ...result, outcome: 'uncertain' };
