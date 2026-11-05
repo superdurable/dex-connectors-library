@@ -8,7 +8,7 @@ the Go `messageReceived` and `replyReceived` Triggers are not available in Pytho
 ## Install
 
 After release, install `dex-connector-google-gmail==0.1.2`. The package requires
-`dex-connectors-sdk==0.2.0` and `dex-python-sdk>=1.28.0`; the latter provides
+`dex-connectors-sdk==0.4.0` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
 

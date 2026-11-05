@@ -69,6 +69,8 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            missingExpiry: reject
+            storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required]
       - id: app-only
         displayName: App-only (one mailbox)
@@ -112,6 +114,8 @@ spec:
             - "Without Exchange application RBAC, open API permissions > Add a permission > Microsoft Graph > Application permissions, add Calendars.ReadWrite, and choose Grant admin consent; that reaches every mailbox in the tenant, so prefer the scoped assignment. Application access policies are being replaced by RBAC and should not be created."
             - "Enter the tenant ID and the mailbox, and leave access_token blank: the application requests a token on its first Microsoft Graph call, and the calendar picker works once it has. To revoke access, delete the client secret or the role assignment."
         clientCredentials:
+          missingExpiry: reject
+          storedMissingExpiry: refresh
           tokenEndpoint: {template: "https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token"}
           clientIDCredential: client_id
           clientSecretCredential: client_secret
