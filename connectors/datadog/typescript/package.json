@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-datadog",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Datadog connector for Dex TypeScript applications",
   "repository": {
@@ -40,7 +40,7 @@
     "integration:metrics-lookup": "tsx examples/metrics-lookup/integration.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.1.0",
+    "@superdurable/connectors-sdk": "0.1.1",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
