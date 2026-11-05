@@ -1,7 +1,7 @@
 # OpenAI connector for Python
 
 Install with `pip install dex-connector-openai==0.1.0`. The package requires
-`dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and implements the
+`dex-connectors-sdk==0.2.0` and `dex-python-sdk>=1.28.0`, and implements the
 manifest operations `createResponse` (Mutation) and `retrieveResponse` (Query)
 with the same branches, defaults, and failure classification as the Go module.
 
@@ -64,6 +64,11 @@ a project containing the `openai-api` connection.
 `openaimock.Mock` scripts both operations and defaults to the manifest's
 default answers. Run `uv run pytest tests` for fencing, streaming, read-back,
 and manifest contract checks. With `dexcli dev` running, run
-`DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 uv run pytest integration` to drive the
-example through a real Dex Worker with a scripted provider transport. The Go module's mock request and structured
-answer checks are not yet ported.
+`DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:34701 uv run pytest integration` to drive the
+example through a real Dex Worker with a scripted provider transport. The
+Python mock checks create requests and strict structured answers with the SDK
+text generation validator, matching the Go connector's mock contract.
+
+`uv run pytest tests/test_conformance.py` replays the Go-recorded provider
+scenarios for both operations. Live OpenAI authorization and provider behavior
+have not been verified.

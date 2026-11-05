@@ -577,7 +577,7 @@ class CreateResponseOperation:
         self, call: Call, response_id: str, poll_deadline: float
     ) -> _StoredResponseRead:
         request = await self.client.build_request(
-            call, "GET", "/responses/" + quote(response_id, safe=""), "", None
+            call, "GET", "/responses/" + quote(response_id, safe="-._~$&+=:@"), "", None
         )
         if isinstance(request, Failure):
             return _StoredResponseRead(
@@ -673,7 +673,7 @@ class RetrieveResponseOperation:
                 openai_failure(FailureKind.VALIDATION, operation, "response ID is required"),
             )
         request = await self.client.build_request(
-            call, "GET", "/responses/" + quote(input.response_id, safe=""), "", None
+            call, "GET", "/responses/" + quote(input.response_id, safe="-._~$&+=:@"), "", None
         )
         if isinstance(request, Failure):
             return QueryAttempt.branch_result(DEFECT, Response(), Receipt(), request)

@@ -888,6 +888,12 @@
       "expected": {
         "branch": "created",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "providerId": "double-charge",
+          "state": "claimed"
+        },
         "output": {
           "conversation": {
             "channel": {
@@ -983,6 +989,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "state": "claimed"
+        },
         "output": {
           "conversation": {
             "channel": {
@@ -1068,6 +1079,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,
@@ -1142,6 +1158,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -1214,6 +1235,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "89c68dc5-67cd-58fa-8fd9-fbf13ddbacf6",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -1813,6 +1839,11 @@
       "expected": {
         "branch": "replied",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": "double-charge",
           "message": {
@@ -1875,6 +1906,11 @@
       "expected": {
         "branch": "providerRejected",
         "failureKind": "AUTHENTICATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": "",
           "message": {
@@ -1936,6 +1972,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 60000,
@@ -1987,6 +2028,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "state": "canResend"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2036,6 +2082,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "state": "canResend"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2087,6 +2138,11 @@
       "expected": {
         "branch": "notFound",
         "failureKind": "NOT_FOUND",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "6a98d84c-1ae1-56e1-b710-a14e062badff",
+          "state": "claimed"
+        },
         "output": {
           "conversationId": "",
           "message": {
