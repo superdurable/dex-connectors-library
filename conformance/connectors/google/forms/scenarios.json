@@ -1,0 +1,1677 @@
+{
+  "connector": "google-forms",
+  "scenarios": [
+    {
+      "callId": "828b02df-abc9-58bb-a920-8a3330a168be",
+      "exchanges": [
+        {
+          "body": "{\"formId\":\"form_123\",\"info\":{\"title\":\"Vendor intake\",\"documentTitle\":\"Vendor intake\"},\"items\":[{\"itemId\":\"item_1\",\"title\":\"Company\",\"questionItem\":{\"question\":{\"questionId\":\"question_1\",\"textQuestion\":{}}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "documentTitle": "Vendor intake",
+          "formId": "form_123",
+          "items": [
+            {
+              "itemId": "item_1",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": false,
+                  "itemId": "item_1",
+                  "questionId": "question_1",
+                  "title": "Company",
+                  "type": "shortText"
+                }
+              ],
+              "title": "Company"
+            }
+          ],
+          "title": "Vendor intake"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123"
+      },
+      "name": "getForm-success",
+      "operation": "getForm"
+    },
+    {
+      "callId": "9c4b3571-a7dc-5266-abd8-2c3e1410257c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"NOT_FOUND\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123"
+      },
+      "name": "getForm-not-found",
+      "operation": "getForm"
+    },
+    {
+      "callId": "5f459e1b-bd77-53c0-8d77-8041580d6c66",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123"
+      },
+      "name": "getForm-provider-rejected",
+      "operation": "getForm"
+    },
+    {
+      "callId": "37ac90e6-0733-5704-b7b1-47955b6b1387",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123"
+      },
+      "name": "getForm-invalid-response",
+      "operation": "getForm"
+    },
+    {
+      "callId": "d262bfa4-7680-5381-9cc5-1b23e5525af1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123"
+      },
+      "name": "getForm-rate-limited",
+      "operation": "getForm"
+    },
+    {
+      "callId": "b8710398-1f00-5ec8-b1bf-256e1e97f5fc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123"
+      },
+      "name": "getForm-unavailable",
+      "operation": "getForm"
+    },
+    {
+      "callId": "5d0945ba-e1b6-577d-88d3-9b81eabbd86e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123"
+      },
+      "name": "getForm-transport",
+      "operation": "getForm"
+    },
+    {
+      "callId": "91fa1580-8287-5d52-afc0-47a5883bb35b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "formId": "",
+          "items": [],
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad/id"
+      },
+      "name": "getForm-defect",
+      "operation": "getForm"
+    },
+    {
+      "callId": "ee65b526-0713-59dc-afad-c7bddbf681ce",
+      "exchanges": [
+        {
+          "body": "{\"responses\":[{\"responseId\":\"response_1\",\"formId\":\"form_123\",\"lastSubmittedTime\":\"2026-09-01T12:30:00Z\",\"answers\":{\"question_1\":{\"textAnswers\":{\"answers\":[{\"value\":\"Acme\"}]}}}}],\"nextPageToken\":\"next_2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "formId": "form_123",
+          "nextPageToken": "next_2",
+          "responses": [
+            {
+              "answers": [
+                {
+                  "questionId": "question_1",
+                  "values": [
+                    "Acme"
+                  ]
+                }
+              ],
+              "formId": "form_123",
+              "lastSubmittedAt": "2026-09-01T12:30:00Z",
+              "responseId": "response_1"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-success",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "125f55f2-dadc-513d-8c4c-802261c8bde0",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"NOT_FOUND\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-not-found",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "72a0ec67-4b39-53ed-aa7a-fc3d01a0a9f7",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-provider-rejected",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "10e196b8-7b19-5e91-b8c6-e666036afae5",
+      "exchanges": [
+        {
+          "body": "{\"responses\":[{\"responseId\":\"response_1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-invalid-response",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "0d983b35-befb-5ace-bf6b-ca7ad520880b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-rate-limited",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "9f8dbf3e-2fb1-5e23-8d6e-5617c835c5fc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-unavailable",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "b30f3b4a-aad5-5e80-8c5a-46a03f285c37",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-transport",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "15fa24a0-e862-50c7-a9cd-f71fcae0412d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad/id",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-defect",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "902e0b34-7d89-5ef0-b93d-df16f7b3bfed",
+      "exchanges": [
+        {
+          "body": "{\"responseId\":\"response_1\",\"formId\":\"form_123\",\"lastSubmittedTime\":\"2026-09-01T12:30:00Z\",\"answers\":{\"question_1\":{\"textAnswers\":{\"answers\":[{\"value\":\"Acme\"}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses/response_1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "answers": [
+            {
+              "questionId": "question_1",
+              "values": [
+                "Acme"
+              ]
+            }
+          ],
+          "formId": "form_123",
+          "lastSubmittedAt": "2026-09-01T12:30:00Z",
+          "responseId": "response_1"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-success",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "8570ca54-018e-5476-bf05-c074c927eb51",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"NOT_FOUND\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses/response_1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-not-found",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "ba04a9c6-4f8e-5678-b9b9-f34c9b864573",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"PERMISSION_DENIED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses/response_1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-provider-rejected",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "3d6161a7-a6c6-5805-aeaa-9872e6cd7c14",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses/response_1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-invalid-response",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "6be8087e-e814-5211-ad2e-2511b542b876",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"RESOURCE_EXHAUSTED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses/response_1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-rate-limited",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "62b79246-f1a6-53c2-9c20-65679c8fae8b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAVAILABLE\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses/response_1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-unavailable",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "e9d21043-c78a-509d-9e88-94e8787eb3a4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses/response_1",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-transport",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "3af4f5e4-308c-587d-8ebd-5cba928b998c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "answers": [],
+          "formId": "",
+          "lastSubmittedAt": "0001-01-01T00:00:00Z",
+          "responseId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "bad/id",
+        "responseId": "response_1"
+      },
+      "name": "getResponse-defect",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "c87720ae-091c-5fad-bb40-fc1688c2db79",
+      "exchanges": [
+        {
+          "body": "{\"responses\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e= 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "50"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "formId": "form_123",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "submittedAtOrAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-inclusive-filter",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "15638084-8dc6-5659-b325-9b7a2746a12b",
+      "exchanges": [
+        {
+          "body": "{\"formId\":\"1FAIpQLintake\",\"info\":{\"title\":\"Vendor intake\",\"documentTitle\":\"Vendor intake (2026)\",\"description\":\"New vendor request\"},\"settings\":{\"quizSettings\":{\"isQuiz\":true},\"emailCollectionType\":\"VERIFIED\"},\"revisionId\":\"00000042\",\"responderUri\":\"https://docs.google.com/forms/d/e/1FAIpQLSresponder/viewform\",\"linkedSheetId\":\"sheet_1\",\"publishSettings\":{\"publishState\":{\"isPublished\":true,\"isAcceptingResponses\":true}},\"items\":[{\"itemId\":\"it_name\",\"title\":\"Company name\",\"questionItem\":{\"question\":{\"questionId\":\"q_name\",\"required\":true,\"textQuestion\":{}}}},{\"itemId\":\"it_notes\",\"title\":\"Notes\",\"description\":\"Anything else\",\"questionItem\":{\"question\":{\"questionId\":\"q_notes\",\"textQuestion\":{\"paragraph\":true}}}},{\"itemId\":\"it_tier\",\"title\":\"Tier\",\"questionItem\":{\"question\":{\"questionId\":\"q_tier\",\"grading\":{\"pointValue\":2},\"choiceQuestion\":{\"type\":\"RADIO\",\"options\":[{\"value\":\"Gold\"},{\"value\":\"Silver\"},{\"isOther\":true}]}}}},{\"itemId\":\"it_regions\",\"title\":\"Regions\",\"questionItem\":{\"question\":{\"questionId\":\"q_regions\",\"choiceQuestion\":{\"type\":\"CHECKBOX\",\"options\":[{\"value\":\"EU\"},{\"value\":\"US\"}]}}}},{\"itemId\":\"it_country\",\"title\":\"Country\",\"questionItem\":{\"question\":{\"questionId\":\"q_country\",\"choiceQuestion\":{\"type\":\"DROP_DOWN\",\"options\":[{\"value\":\"DE\"}]}}}},{\"itemId\":\"it_section\",\"title\":\"Details\",\"pageBreakItem\":{}},{\"itemId\":\"it_risk\",\"title\":\"Risk\",\"questionItem\":{\"question\":{\"questionId\":\"q_risk\",\"scaleQuestion\":{\"low\":1,\"high\":5,\"lowLabel\":\"Low\",\"highLabel\":\"High\"}}}},{\"itemId\":\"it_start\",\"title\":\"Start date\",\"questionItem\":{\"question\":{\"questionId\":\"q_start\",\"dateQuestion\":{\"includeYear\":true}}}},{\"itemId\":\"it_call\",\"title\":\"Call length\",\"questionItem\":{\"question\":{\"questionId\":\"q_call\",\"timeQuestion\":{\"duration\":true}}}},{\"itemId\":\"it_contract\",\"title\":\"Contract\",\"questionItem\":{\"question\":{\"questionId\":\"q_contract\",\"fileUploadQuestion\":{\"folderId\":\"fld_uploads\",\"maxFiles\":1}}}},{\"itemId\":\"it_rating\",\"title\":\"Rating\",\"questionItem\":{\"question\":{\"questionId\":\"q_rating\",\"ratingQuestion\":{\"ratingScaleLevel\":5,\"iconType\":\"STAR\"}}}},{\"itemId\":\"it_grid\",\"title\":\"Certifications\",\"questionGroupItem\":{\"grid\":{\"columns\":{\"type\":\"CHECKBOX\",\"options\":[{\"value\":\"ISO\"},{\"value\":\"SOC2\"}]}},\"questions\":[{\"questionId\":\"q_grid_eu\",\"rowQuestion\":{\"title\":\"EU entity\"}},{\"questionId\":\"q_grid_us\",\"required\":true,\"rowQuestion\":{\"title\":\"US entity\"}}]}},{\"itemId\":\"it_logo\",\"imageItem\":{\"image\":{\"altText\":\"Logo\"}}},{\"itemId\":\"it_video\",\"title\":\"Intro\",\"videoItem\":{\"video\":{\"youtubeUri\":\"https://youtu.be/x\"}}},{\"itemId\":\"it_info\",\"title\":\"Thanks\",\"textItem\":{}},{\"itemId\":\"it_future\",\"title\":\"Future item\",\"futureItem\":{}},{\"itemId\":\"it_future_q\",\"title\":\"Future question\",\"questionItem\":{\"question\":{\"questionId\":\"q_future\",\"futureQuestion\":{}}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/1FAIpQLintake",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "description": "New vendor request",
+          "documentTitle": "Vendor intake (2026)",
+          "emailCollectionType": "VERIFIED",
+          "formId": "1FAIpQLintake",
+          "isQuiz": true,
+          "items": [
+            {
+              "itemId": "it_name",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": true,
+                  "itemId": "it_name",
+                  "questionId": "q_name",
+                  "title": "Company name",
+                  "type": "shortText"
+                }
+              ],
+              "title": "Company name"
+            },
+            {
+              "description": "Anything else",
+              "itemId": "it_notes",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": false,
+                  "itemId": "it_notes",
+                  "questionId": "q_notes",
+                  "title": "Notes",
+                  "type": "paragraph"
+                }
+              ],
+              "title": "Notes"
+            },
+            {
+              "itemId": "it_tier",
+              "kind": "question",
+              "questions": [
+                {
+                  "choices": [
+                    {
+                      "value": "Gold"
+                    },
+                    {
+                      "value": "Silver"
+                    },
+                    {
+                      "isOther": true,
+                      "value": ""
+                    }
+                  ],
+                  "isRequired": false,
+                  "itemId": "it_tier",
+                  "pointValue": 2,
+                  "questionId": "q_tier",
+                  "title": "Tier",
+                  "type": "radio"
+                }
+              ],
+              "title": "Tier"
+            },
+            {
+              "itemId": "it_regions",
+              "kind": "question",
+              "questions": [
+                {
+                  "choices": [
+                    {
+                      "value": "EU"
+                    },
+                    {
+                      "value": "US"
+                    }
+                  ],
+                  "isRequired": false,
+                  "itemId": "it_regions",
+                  "questionId": "q_regions",
+                  "title": "Regions",
+                  "type": "checkbox"
+                }
+              ],
+              "title": "Regions"
+            },
+            {
+              "itemId": "it_country",
+              "kind": "question",
+              "questions": [
+                {
+                  "choices": [
+                    {
+                      "value": "DE"
+                    }
+                  ],
+                  "isRequired": false,
+                  "itemId": "it_country",
+                  "questionId": "q_country",
+                  "title": "Country",
+                  "type": "dropDown"
+                }
+              ],
+              "title": "Country"
+            },
+            {
+              "itemId": "it_section",
+              "kind": "pageBreak",
+              "title": "Details"
+            },
+            {
+              "itemId": "it_risk",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": false,
+                  "itemId": "it_risk",
+                  "questionId": "q_risk",
+                  "scale": {
+                    "high": 5,
+                    "highLabel": "High",
+                    "low": 1,
+                    "lowLabel": "Low"
+                  },
+                  "title": "Risk",
+                  "type": "scale"
+                }
+              ],
+              "title": "Risk"
+            },
+            {
+              "itemId": "it_start",
+              "kind": "question",
+              "questions": [
+                {
+                  "includesYear": true,
+                  "isRequired": false,
+                  "itemId": "it_start",
+                  "questionId": "q_start",
+                  "title": "Start date",
+                  "type": "date"
+                }
+              ],
+              "title": "Start date"
+            },
+            {
+              "itemId": "it_call",
+              "kind": "question",
+              "questions": [
+                {
+                  "isDuration": true,
+                  "isRequired": false,
+                  "itemId": "it_call",
+                  "questionId": "q_call",
+                  "title": "Call length",
+                  "type": "time"
+                }
+              ],
+              "title": "Call length"
+            },
+            {
+              "itemId": "it_contract",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": false,
+                  "itemId": "it_contract",
+                  "questionId": "q_contract",
+                  "title": "Contract",
+                  "type": "fileUpload"
+                }
+              ],
+              "title": "Contract"
+            },
+            {
+              "itemId": "it_rating",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": false,
+                  "itemId": "it_rating",
+                  "questionId": "q_rating",
+                  "ratingScaleLevel": 5,
+                  "title": "Rating",
+                  "type": "rating"
+                }
+              ],
+              "title": "Rating"
+            },
+            {
+              "itemId": "it_grid",
+              "kind": "questionGroup",
+              "questions": [
+                {
+                  "choices": [
+                    {
+                      "value": "ISO"
+                    },
+                    {
+                      "value": "SOC2"
+                    }
+                  ],
+                  "isRequired": false,
+                  "itemId": "it_grid",
+                  "questionId": "q_grid_eu",
+                  "title": "EU entity",
+                  "type": "checkboxGrid"
+                },
+                {
+                  "choices": [
+                    {
+                      "value": "ISO"
+                    },
+                    {
+                      "value": "SOC2"
+                    }
+                  ],
+                  "isRequired": true,
+                  "itemId": "it_grid",
+                  "questionId": "q_grid_us",
+                  "title": "US entity",
+                  "type": "checkboxGrid"
+                }
+              ],
+              "title": "Certifications"
+            },
+            {
+              "itemId": "it_logo",
+              "kind": "image"
+            },
+            {
+              "itemId": "it_video",
+              "kind": "video",
+              "title": "Intro"
+            },
+            {
+              "itemId": "it_info",
+              "kind": "text",
+              "title": "Thanks"
+            },
+            {
+              "itemId": "it_future",
+              "kind": "unknown",
+              "title": "Future item"
+            },
+            {
+              "itemId": "it_future_q",
+              "kind": "question",
+              "questions": [
+                {
+                  "isRequired": false,
+                  "itemId": "it_future_q",
+                  "questionId": "q_future",
+                  "title": "Future question",
+                  "type": "unknown"
+                }
+              ],
+              "title": "Future question"
+            }
+          ],
+          "linkedSheetId": "sheet_1",
+          "publishState": {
+            "isAcceptingResponses": true,
+            "isPublished": true
+          },
+          "responderUri": "https://docs.google.com/forms/d/e/1FAIpQLSresponder/viewform",
+          "revisionId": "00000042",
+          "title": "Vendor intake"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "1FAIpQLintake"
+      },
+      "name": "getForm-go-provider-rich",
+      "operation": "getForm"
+    },
+    {
+      "callId": "f551ff1e-f323-5530-9936-018ccfe9d966",
+      "exchanges": [
+        {
+          "body": "{\"responses\":[{\"responseId\":\"ACYDBNj_r1\",\"createTime\":\"2026-09-30T08:00:00.123Z\",\"lastSubmittedTime\":\"2026-09-30T09:15:00.123456Z\",\"respondentEmail\":\"buyer@example.com\",\"totalScore\":2,\"answers\":{\"q_tier\":{\"questionId\":\"q_tier\",\"grade\":{\"score\":2,\"correct\":true},\"textAnswers\":{\"answers\":[{\"value\":\"Gold\"}]}},\"q_regions\":{\"questionId\":\"q_regions\",\"textAnswers\":{\"answers\":[{\"value\":\"EU\"},{\"value\":\"US\"}]}},\"q_contract\":{\"questionId\":\"q_contract\",\"fileUploadAnswers\":{\"answers\":[{\"fileId\":\"file_msa\",\"fileName\":\"MSA.pdf\",\"mimeType\":\"application/pdf\"}]}}}},{\"responseId\":\"ACYDBNj_r2\",\"createTime\":\"2026-09-30T10:00:00Z\",\"lastSubmittedTime\":\"2026-09-30T10:00:00Z\",\"answers\":{}}],\"nextPageToken\":\"page-2\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/f1/responses",
+          "query": {
+            "pageSize": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "formId": "f1",
+          "nextPageToken": "page-2",
+          "responses": [
+            {
+              "answers": [
+                {
+                  "files": [
+                    {
+                      "fileId": "file_msa",
+                      "fileName": "MSA.pdf",
+                      "mimeType": "application/pdf"
+                    }
+                  ],
+                  "questionId": "q_contract"
+                },
+                {
+                  "questionId": "q_regions",
+                  "values": [
+                    "EU",
+                    "US"
+                  ]
+                },
+                {
+                  "grade": {
+                    "isCorrect": true,
+                    "score": 2
+                  },
+                  "questionId": "q_tier",
+                  "values": [
+                    "Gold"
+                  ]
+                }
+              ],
+              "createdAt": "2026-09-30T08:00:00.123Z",
+              "formId": "f1",
+              "lastSubmittedAt": "2026-09-30T09:15:00.123456Z",
+              "respondentEmail": "buyer@example.com",
+              "responseId": "ACYDBNj_r1",
+              "totalScore": 2
+            },
+            {
+              "answers": [],
+              "createdAt": "2026-09-30T10:00:00Z",
+              "formId": "f1",
+              "lastSubmittedAt": "2026-09-30T10:00:00Z",
+              "responseId": "ACYDBNj_r2"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "f1",
+        "pageSize": 2
+      },
+      "name": "listResponses-go-provider-rich",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "2016f114-0055-5fee-9621-ec5b5e275a99",
+      "exchanges": [
+        {
+          "body": "{\"formId\":\"f1\",\"responseId\":\"r_edited\",\"createTime\":\"2026-09-29T08:00:00Z\",\"lastSubmittedTime\":\"2026-09-30T08:30:00.5+02:00\",\"answers\":{\"q_name\":{\"questionId\":\"q_name\",\"textAnswers\":{\"answers\":[{\"value\":\"Acme GmbH\"}]}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/f1/responses/r_edited",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "answers": [
+            {
+              "questionId": "q_name",
+              "values": [
+                "Acme GmbH"
+              ]
+            }
+          ],
+          "createdAt": "2026-09-29T08:00:00Z",
+          "formId": "f1",
+          "lastSubmittedAt": "2026-09-30T06:30:00.5Z",
+          "responseId": "r_edited"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "f1",
+        "responseId": "r_edited"
+      },
+      "name": "getResponse-go-provider-rich",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "80a83573-529d-5cfe-ac99-b4713895f0f6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"details\":[{\"reason\":\"RATE_LIMIT_EXCEEDED\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-forbidden-rate-limit",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "20d705ef-f825-54f5-9a91-a388bd3149bd",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-request-timeout",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "7292d84f-fc3c-521f-a663-c907600ef1e2",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"INVALID_ARGUMENT\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-expired-page-token",
+      "operation": "listResponses"
+    },
+    {
+      "callId": "a0d17b10-81aa-53d9-91bd-d5aa91014182",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"status\":\"UNAUTHENTICATED\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/forms/form_123/responses",
+          "query": {
+            "filter": [
+              "timestamp \u003e 2026-09-01T12:00:00Z"
+            ],
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next_1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "formId": "",
+          "responses": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "formId": "form_123",
+        "pageSize": 2,
+        "pageToken": "next_1",
+        "submittedAfter": "2026-09-01T12:00:00Z"
+      },
+      "name": "listResponses-unauthenticated",
+      "operation": "listResponses"
+    }
+  ],
+  "schemaVersion": 1
+}

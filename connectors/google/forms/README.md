@@ -304,3 +304,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 
 The re-dispatch test interrupts the Worker while the fake provider is handling
 a listing request.
+
+## TypeScript package
+
+[`@superdurable/connector-google-forms`](typescript/README.md) provides the three read operations for TypeScript Dex Flows. Its [response recorder example](typescript/examples/response-recorder/README.md) uses all three operations through a real Dex Worker in integration tests. Google OAuth and Workspace delegation use generated refresh wiring. Live Google authorization, Forms requests, and the Drive picker remain unverified for the TypeScript port.
