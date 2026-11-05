@@ -15,6 +15,13 @@ Dex Steps. It has two operations:
   transaction, commits it, and returns the rows affected, the last insert ID,
   the warning count, and any bounded MariaDB `RETURNING` rows.
 
+The [TypeScript package](typescript/README.md) provides the same `query` and
+`execute` operation identities through the native `mysql2` driver. Its
+checked-in [refund lookup example](typescript/examples/lookup-refund/README.md)
+uses a static Dex connection name. TypeScript native database integration runs
+in CI's MySQL service container; live TypeScript behavior against a user-owned
+database or managed provider has not yet been verified.
+
 The connector is built on the pure-Go `github.com/go-sql-driver/mysql`
 driver, pinned at v1.10.1, and uses it below `database/sql` so that it owns
 the transaction and the read bounds. Each operation opens one connection, runs
