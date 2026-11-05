@@ -450,3 +450,7 @@ answer 204; whether the comments list returns `plainText`; whether an
 unchanged `PATCH` triggers workflows; whether every 429 is returned before a
 write is applied; the credit headers; and the **Setup > Developer Space > API**
 path to the organization ID.
+
+## TypeScript
+
+The TypeScript package under `typescript/` implements all five ticket operations with generated OAuth refresh wiring. Its [runnable search Flow](typescript/examples/search-tickets/README.md) uses the static `zoho-desk-helpdesk` connection. Go-recorded replay covers provider requests, branches, retry, uncertainty, and heartbeat behavior. Live Zoho authorization and provider calls have not been verified for this language port.

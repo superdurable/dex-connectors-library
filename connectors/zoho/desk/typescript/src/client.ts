@@ -47,6 +47,7 @@ export class ZohoDeskClient {
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
   private readonly apiBaseURL?: string;
   private readonly now: () => Date;
+  private readonly operationSignals = new WeakMap<Call, AbortSignal>();
   private readonly refreshDriver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Zoho', auth: Authorization, credentialFields: CredentialFields });
 
   /** Validate startup configuration without contacting the provider. */
@@ -83,7 +84,7 @@ export class ZohoDeskClient {
   /** Resolve an OAuth credential before the first provider request. */
   async startSession(call: Call, operation: string): Promise<{ credentials: Credentials; baseURL: string } | ExchangeFailure> {
     let credentials: Credentials;
-    try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
+    try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, this.operationSignal(call)); }
     catch (error) {
       if (error instanceof ReauthorizationRequiredError) return this.failure('rejected', operation, 'AUTHENTICATION', 'Zoho authorization is revoked or expired; reconnect the connection');
       return this.failure('unavailable', operation, 'AUTHENTICATION', 'Zoho credentials are temporarily unavailable');
@@ -101,11 +102,14 @@ export class ZohoDeskClient {
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', 'Zoho Desk request could not be built') }; }
     const target = session.baseURL + path + (query && Object.keys(query).length ? '?' + encodeGoQuery(query) : '');
     for (let attempt = 0; attempt < 2; attempt++) {
+      let observedStatus = 0;
+      let observedHeaders: ProviderResponse['headers'] = {};
       const token = session.credentials.accessToken.reveal();
       const request: ProviderRequest = {
         url: target, method, headers: { Authorization: `Zoho-oauthtoken ${token}`, orgId: this.orgId, Accept: 'application/json', ...(encoded ? { 'Content-Type': 'application/json' } : {}) },
         ...(encoded ? { body: encoded } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
-        ignoreErrorBodyReadFailure: true, timeoutMs: 10_000, signal: call.context.cancellationSignal,
+        timeoutMs: 10_000, signal: this.operationSignal(call),
+        onResponseChunk: (_chunk, status, headers) => { observedStatus = status; observedHeaders = headers; },
         addressPolicy: this.apiBaseURL ? 'privateNetworkHTTP' : 'publicHTTPS',
       };
       let response: ProviderResponse;
@@ -115,13 +119,17 @@ export class ZohoDeskClient {
           const responseWithoutBody = error.status === undefined ? undefined : { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
           return { outcome: this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Zoho Desk response exceeds the configured maxResponseBytes limit', 0, responseWithoutBody) };
         }
+        if (observedStatus !== 0) {
+          const partialResponse = { status: observedStatus, headers: observedHeaders, body: new Uint8Array() };
+          return { outcome: this.failure('unavailable', operation, 'TRANSPORT', 'Zoho Desk response could not be read', 0, partialResponse) };
+        }
         if (error instanceof ProviderTransportError && error.isProvablyNotSent) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'Zoho Desk could not be reached; no request was sent') };
         if (error instanceof AddressRefusal) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'Zoho Desk could not be reached; no request was sent') };
         return { outcome: this.failure('unavailable', operation, 'TRANSPORT', 'Zoho Desk request failed before a response arrived') };
       }
       if (response.status === 401 && attempt === 0 && 'resolveAfterRejection' in this.credentials) {
         try {
-          const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+          const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, this.operationSignal(call));
           if (this.hasValidCredentials(replacement) && replacement.authMethodId === session.credentials.authMethodId) { session.credentials = replacement; continue; }
         } catch { /* The original 401 remains authoritative when refresh fails. */ }
       }
@@ -141,6 +149,14 @@ export class ZohoDeskClient {
       !!credentials.oauthClientId && !!credentials.oauthClientSecret?.reveal() && !!credentials.refreshToken?.reveal();
   }
 
+  private operationSignal(call: Call): AbortSignal {
+    const existing = this.operationSignals.get(call);
+    if (existing) return existing;
+    const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(30_000)]);
+    this.operationSignals.set(call, signal);
+    return signal;
+  }
+
   private failure(disposition: ExchangeFailure['disposition'], operation: string, kind: Failure['kind'], message: string, retryAfterMs = 0, response?: ProviderResponse): ExchangeFailure {
     return { disposition, failure: { kind, provider: 'zoho-desk', operation, message }, retryAfterMs, ...(response ? { response } : {}) };
   }
@@ -151,8 +167,8 @@ function header(response: ProviderResponse | undefined, name: string): string {
   return Array.isArray(value) ? value[0] ?? '' : typeof value === 'string' ? value : '';
 }
 function safeCreditCount(value: string): string { return /^[0-9]{1,12}$/.test(value) ? value : ''; }
-function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*~]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase()).replace(/%20/g, '+'); }
-function encodeGoQuery(query: Record<string, string>): string { return Object.keys(query).sort().map(key => `${queryEscape(key)}=${queryEscape(query[key] ?? '')}`).join('&'); }
+export function queryEscape(value: string): string { return encodeURIComponent(value).replace(/[!'()*]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase()).replace(/%20/g, '+'); }
+export function encodeGoQuery(query: Record<string, string>): string { return Object.keys(query).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(key => `${queryEscape(key)}=${queryEscape(query[key] ?? '')}`).join('&'); }
 function classifyStatus(response: ProviderResponse, operation: string, now: Date): ExchangeFailure {
   const status = response.status;
   const summary = describeError(response.body);

@@ -5,7 +5,7 @@ import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBran
 import type { ZohoDeskClient, ExchangeFailure, ExchangeResult } from './client.js';
 import { SearchTicketsDefinition, GetTicketDefinition, CreateTicketDefinition, UpdateTicketDefinition, AddCommentDefinition } from './generated/definitions.js';
 import type { SearchTicketsInput, SearchTicketsOutput, GetTicketInput, TicketDetails, CreateTicketInput, CreateTicketOutput, UpdateTicketInput, UpdateTicketOutput, AddCommentInput, AddCommentOutput, Ticket } from './generated/models.js';
-import { decodeComment, decodeList, decodeObject, decodeThread, decodeTicket, timestamp } from './ticket.js';
+import { count, decodeComment, decodeList, decodeObject, decodeThread, decodeTicket, timestamp } from './ticket.js';
 
 const zeroTime = '0001-01-01T00:00:00Z';
 const zeroTicket: Ticket = { id: '', status: '', createdAt: zeroTime, modifiedAt: zeroTime };
@@ -39,7 +39,7 @@ function validateId(name: string, value: string | undefined, optional = false): 
   if (!value || !numericId.test(value)) throw new Error(`${name} must be a numeric Zoho Desk ID`);
 }
 function validatePicklist(name: string, value: string): void {
-  if (!value || value.trim() !== value || [...value].length > 120 || /[,*$\{\}\p{Cc}\p{Cf}]/u.test(value)) throw new Error(`${name} must be 1 to 120 characters without surrounding spaces or search wildcards`);
+  if (!value || value.trim() !== value || [...value].length > 120 || /[,*${}\p{Cc}\p{Cf}]/u.test(value)) throw new Error(`${name} must be 1 to 120 characters without surrounding spaces or search wildcards`);
 }
 function validateText(name: string, value: string, limit: number): void {
   if (!value?.trim()) throw new Error(`${name} is required`);
@@ -51,9 +51,14 @@ function validateEmail(value: string): boolean {
   const at = value.lastIndexOf('@');
   if (at <= 0 || at === value.length - 1 || value.indexOf('@') !== at) return false;
   const local = value.slice(0, at), domain = value.slice(at + 1);
-  return /^[^\s\x00-\x1f\x7f]+$/u.test(local) && (/^(?:[^.\s]+\.)*[^.\s]+$/u.test(domain) || /^\[[^\]\s]+\]$/.test(domain));
+  return [...local].every(character => !/\s/u.test(character) && character.codePointAt(0)! > 31 && character.codePointAt(0)! !== 127) && (/^(?:[^.\s]+\.)*[^.\s]+$/u.test(domain) || /^\[[^\]\s]+\]$/.test(domain));
 }
-function ticketPath(id: string): string { return `/tickets/${id}`; }
+export function goPathEscape(value: string): string {
+  return encodeURIComponent(value)
+    .replace(/[!'()*]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase())
+    .replace(/%(24|26|2B|3D|3A|40)/gi, encoded => String.fromCharCode(parseInt(encoded.slice(1), 16)));
+}
+function ticketPath(id: string): string { return `/tickets/${goPathEscape(id)}`; }
 
 /** Search a single Zoho Desk ticket page. */
 export class SearchTicketsOperation implements Query<SearchTicketsInput, SearchTicketsOutput> {
@@ -212,10 +217,7 @@ export class AddCommentOperation implements Mutation<AddCommentInput, AddComment
 
 function errorMessage(error: unknown): string { return error instanceof Error ? error.message : 'invalid value'; }
 function parseCount(value: unknown): number {
-  if (value === undefined || value === null || value === '') return 0;
-  const count = typeof value === 'number' ? value : typeof value === 'string' && /^[0-9]+$/.test(value) ? Number(value) : NaN;
-  if (!Number.isSafeInteger(count) || count < 0) throw new Error('count is not a non-negative integer');
-  return count;
+  return count(value);
 }
 function buildSearchQuery(input: SearchTicketsInput, now: Date): Record<string, string> {
   if (input.statuses?.length && input.statusTypes?.length) throw new Error('set statuses or statusTypes, not both');
@@ -273,7 +275,7 @@ async function clearDispatch(call: Call): Promise<void> {
   try { await call.context.recordHeartbeat(undefined); } catch { /* A failed clear preserves uncertainty on the next attempt. */ }
 }
 async function singleDispatchOutcome<T>(call: Call, outcome: ExchangeFailure, zero: T, receipt: ReceiptDraft, notFound = 'providerRejected'): Promise<MutationAttempt<T>> {
-  if (outcome.disposition === 'rateLimited' || outcome.disposition === 'notSent') { await clearDispatch(call); return newMutationRetry(outcome.failure, outcome.retryAfterMs); }
+  if (outcome.disposition === 'rateLimited' || outcome.disposition === 'notSent' || outcome.response?.status === 503) { await clearDispatch(call); return newMutationRetry(outcome.failure, outcome.retryAfterMs); }
   if (outcome.disposition === 'unavailable' || outcome.disposition === 'invalid') return newMutationUncertain(zero, outcome.failure, receipt);
   if (outcome.disposition === 'defect') { await clearDispatch(call); return newMutationBranch('defect', zero, receipt, outcome.failure); }
   return newMutationBranch(outcome.disposition === 'notFound' ? notFound : 'providerRejected', zero, receipt, outcome.failure);

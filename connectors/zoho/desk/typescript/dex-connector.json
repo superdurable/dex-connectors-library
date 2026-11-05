@@ -1,6 +1,6 @@
 {
   "connectorId": "zoho-desk",
-  "releaseTag": "connectors/zoho/desk/go/v0.24.0",
+  "releaseTag": "connectors/zoho/desk/go/v0.24.1",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-zoho-desk",

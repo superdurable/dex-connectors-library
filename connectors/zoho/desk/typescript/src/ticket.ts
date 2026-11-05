@@ -5,26 +5,34 @@ import type { Ticket, TicketComment, TicketContact, TicketThread } from './gener
 
 type Wire = Record<string, unknown>;
 const numericId = /^[0-9]{1,20}$/;
+class GoJSONNumber {
+  constructor(readonly source: string) {}
+}
 
 /** Decode a provider JSON object without coercing wrong-typed fields. */
 export function decodeObject(body: Uint8Array): Wire {
-  const value: unknown = JSON.parse(Buffer.from(body).toString('utf8'));
+  const value: unknown = JSON.parse(Buffer.from(body).toString('utf8'), (_key: string, parsed: unknown, context?: { source?: string }) => {
+    if (typeof parsed !== 'number') return parsed;
+    const source = context?.source;
+    if (source === undefined) throw new Error('JSON numeric source is unavailable');
+    return /^[0-9]+$/.test(source) && Number.isSafeInteger(parsed) ? parsed : new GoJSONNumber(source);
+  });
   return object(value);
 }
 function object(value: unknown): Wire { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('response is not an object'); return value as Wire; }
 function text(value: unknown): string { if (value === undefined || value === null) return ''; if (typeof value !== 'string') throw new Error('field is not a string'); return value; }
 function id(value: unknown): string {
   if (value === undefined || value === null) return '';
-  const result = typeof value === 'string' ? value : typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : '';
+  const result = typeof value === 'string' ? value : value instanceof GoJSONNumber ? value.source : typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : '';
   if (result && numericId.test(result)) return result;
   if (result === '' && (value === '' || value === null || value === undefined)) return '';
   throw new Error('ID is not a numeric Zoho Desk ID');
 }
-function count(value: unknown): number {
+export function count(value: unknown): number {
   if (value === undefined || value === null || value === '') return 0;
-  const result = typeof value === 'number' ? value : typeof value === 'string' && /^[0-9]+$/.test(value) ? Number(value) : NaN;
+  const result = typeof value === 'number' ? value : typeof value === 'string' && /^[+-]?[0-9]+$/.test(value) ? Number(value) : value instanceof GoJSONNumber && /^-?[0-9]+$/.test(value.source) ? Number(value.source) : NaN;
   if (!Number.isSafeInteger(result) || result < 0) throw new Error('count is not a non-negative integer');
-  return result;
+  return result === 0 ? 0 : result;
 }
 function flag(value: unknown): boolean {
   if (value === undefined || value === null || value === '' || value === false || value === 'false') return false;
@@ -46,7 +54,10 @@ export function timestamp(field: string, value: unknown): string {
   if (month < 1 || month > 12 || day < 1 || day > days[month - 1]! || Number(match[4]) > 23 || Number(match[5]) > 59 || Number(match[6]) > 59 || Number(match[10]) > 99 || Number(match[11]) > 59) throw new Error(`${field} is not an ISO 8601 timestamp`);
   const offset = match[8] === 'Z' ? 0 : (match[9] === '+' ? 1 : -1) * (Number(match[10]) * 60 + Number(match[11]));
   if (Math.abs(offset) >= 1440) throw new Error(`${field} is not an ISO 8601 timestamp`);
-  const milliseconds = Date.UTC(year, month - 1, day, Number(match[4]), Number(match[5]), Number(match[6])) - offset * 60_000;
+  const instant = new Date(0);
+  instant.setUTCFullYear(year, month - 1, day);
+  instant.setUTCHours(Number(match[4]), Number(match[5]), Number(match[6]), 0);
+  const milliseconds = instant.getTime() - offset * 60_000;
   if (!Number.isFinite(milliseconds)) throw new Error(`${field} is not an ISO 8601 timestamp`);
   const date = new Date(milliseconds);
   const fraction = (match[7] ?? '').slice(0, 9).padEnd(9, '0');
