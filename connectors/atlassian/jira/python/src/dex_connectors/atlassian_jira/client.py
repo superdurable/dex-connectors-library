@@ -51,8 +51,15 @@ def path_escape(value: str) -> str:
 
 
 def query_escape(value: str) -> str:
-    """Escape a query component like Go url.QueryEscape, including tilde."""
+    """Escape a query component like Go url.QueryEscape, leaving tilde literal."""
     return quote_plus(value, safe="")
+
+
+def query_encode(values: dict[str, str]) -> str:
+    """Encode sorted query pairs as Go url.Values.Encode does."""
+    return "&".join(
+        f"{query_escape(key)}={query_escape(value)}" for key, value in sorted(values.items())
+    )
 
 
 def failure(operation: str, kind: FailureKind, message: str) -> Failure:
@@ -293,9 +300,7 @@ class Client:
             url += f"/ex/jira/{path_escape(cloud_id)}/rest/api/3"
         url += path
         if query:
-            url += "?" + "&".join(
-                f"{query_escape(key)}={query_escape(value)}" for key, value in sorted(query.items())
-            )
+            url += "?" + query_encode(query)
         try:
             body = (
                 json.dumps(payload, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()

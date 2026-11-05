@@ -28,9 +28,16 @@ def test_go_path_escape(value: str, escaped: str) -> None:
     assert _path_escape(value) == escaped
 
 
-def test_go_query_escape_and_key_order() -> None:
-    """Encode sorted keys and plus-spaces like Go url.Values."""
-    assert _query({"z": "a b~*", "a": "x"}) == "a=x&z=a+b~%2A"
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"z": "a b*~!+'()/&", "a": "x"}, "a=x&z=a+b%2A~%21%2B%27%28%29%2F%26"),
+        ({"space-id": "123", "title": "Résumé & ~"}, "space-id=123&title=R%C3%A9sum%C3%A9+%26+~"),
+        ({"q": "/?:@#$,;[]"}, "q=%2F%3F%3A%40%23%24%2C%3B%5B%5D"),
+    ],
+)
+def test_query_encode_matches_go_values(values: dict[str, str], expected: str) -> None:
+    assert _query(values) == expected
 
 
 def test_provider_url_escapes_path_and_fragment_like_go() -> None:

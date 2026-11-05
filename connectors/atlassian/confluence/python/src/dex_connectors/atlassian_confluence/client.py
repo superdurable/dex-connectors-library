@@ -55,6 +55,11 @@ def path_escape(value: str) -> str:
     return quote(value, safe="-._~$&+=:@")
 
 
+def query_encode(values: dict[str, str]) -> str:
+    """Encode sorted query pairs as Go url.Values.Encode does."""
+    return urlencode(sorted(values.items()))
+
+
 def decode_object(response: Exchange) -> dict[str, Any]:
     """Decode only a complete provider JSON object."""
     value = json.loads(response.body)
@@ -284,7 +289,7 @@ class Client:
         )
         target = self.endpoint + prefix + path
         if query:
-            target += "?" + urlencode(sorted(query.items()))
+            target += "?" + query_encode(query)
         try:
             body = (
                 json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode()

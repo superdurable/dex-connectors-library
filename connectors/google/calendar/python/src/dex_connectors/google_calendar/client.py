@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, quote_plus, urlsplit
 
 import httpx
 from dex_connectors.sdk import Call, CredentialProvider, Failure, FailureKind, Receipt
@@ -57,6 +57,14 @@ def failure(kind: FailureKind, operation: str, message: str) -> Failure:
 def path_escape(value: str) -> str:
     """Match Go url.PathEscape for Calendar identifiers."""
     return quote(value, safe="-._~$&+=:@")
+
+
+def query_encode(values: dict[str, str]) -> str:
+    """Encode sorted query pairs as Go url.Values.Encode does."""
+    return "&".join(
+        f"{quote_plus(key, safe='')}={quote_plus(value, safe='')}"
+        for key, value in sorted(values.items())
+    )
 
 
 def calendar_path(calendar_id: str) -> str:
@@ -210,15 +218,7 @@ class Client:
         if_match: str = "",
     ) -> ProviderResponse:
         """Send one authenticated Calendar request and refresh once after 401."""
-        from urllib.parse import quote_plus
-
-        def query_escape(value: str) -> str:
-            return quote_plus(value, safe="")
-
-        encoded_query = "&".join(
-            f"{query_escape(key)}={query_escape(value)}"
-            for key, value in sorted((query or {}).items())
-        )
+        encoded_query = query_encode(query or {})
         target = self.endpoint + path + ("?" + encoded_query if encoded_query else "")
         data = None
         if payload is not None:

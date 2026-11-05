@@ -7,7 +7,7 @@ import pytest
 from dex_connectors.sdk import ConnectionRef, SecretString, StaticCredentialProvider
 
 from dex_connectors.atlassian_confluence import Client, Config, Credentials, PageSearchFilter
-from dex_connectors.atlassian_confluence.client import Exchange, path_escape
+from dex_connectors.atlassian_confluence.client import Exchange, path_escape, query_encode
 from dex_connectors.atlassian_confluence.operations import _build_cql, _page, _page_summary
 
 _CONNECTION = ConnectionRef("atlassian", "confluence-pages")
@@ -22,6 +22,18 @@ _CREDENTIALS = Credentials(
 def test_path_escape_matches_go_reserved_characters() -> None:
     """Keep URL path segments byte-for-byte compatible with Go url.PathEscape."""
     assert path_escape("A~$&+=:@ /?!'()*,;") == "A~$&+=:@%20%2F%3F%21%27%28%29%2A%2C%3B"
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"z": "a b*~!+'()/&", "a": "x"}, "a=x&z=a+b%2A~%21%2B%27%28%29%2F%26"),
+        ({"space-id": "123", "title": "Résumé & ~"}, "space-id=123&title=R%C3%A9sum%C3%A9+%26+~"),
+        ({"q": "/?:@#$,;[]"}, "q=%2F%3F%3A%40%23%24%2C%3B%5B%5D"),
+    ],
+)
+def test_query_encode_matches_go_values(values: dict[str, str], expected: str) -> None:
+    assert query_encode(values) == expected
 
 
 def test_cql_rejects_outer_order_by_but_accepts_quoted_words() -> None:

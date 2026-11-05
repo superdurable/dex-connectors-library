@@ -53,6 +53,14 @@ def failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, "calendly", operation, message)
 
 
+def query_encode(values: dict[str, str]) -> str:
+    """Encode sorted query pairs as Go url.Values.Encode does."""
+    return "&".join(
+        f"{quote_plus(key, safe='')}={quote_plus(value, safe='')}"
+        for key, value in sorted(values.items())
+    )
+
+
 class Client:
     """Run Calendly API operations with a call-time credential source."""
 
@@ -175,10 +183,7 @@ class Client:
         """Send one call, forcing one OAuth refresh after a 401 when available."""
         target = API_BASE + path
         if query:
-            target += "?" + "&".join(
-                f"{quote_plus(key, safe='-._')}={quote_plus(value, safe='-._')}"
-                for key, value in sorted(query.items())
-            )
+            target += "?" + query_encode(query)
         body = None
         if payload is not None:
             try:

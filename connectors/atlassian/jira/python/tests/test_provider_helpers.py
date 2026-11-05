@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from dex_connectors.atlassian_jira.client import path_escape, query_escape
+from dex_connectors.atlassian_jira.client import path_escape, query_encode, query_escape
 from dex_connectors.atlassian_jira.operations import _equal_fold, _exact_json_value, _issue_json, _timestamp
 
 
@@ -24,6 +24,18 @@ def test_path_escape_matches_go(value: str, escaped: str) -> None:
 
 def test_query_escape_matches_go_values_encode() -> None:
     assert query_escape("a b*~+/&") == "a+b%2A~%2B%2F%26"
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"z": "a b*~!+'()/&", "a": "x"}, "a=x&z=a+b%2A~%21%2B%27%28%29%2F%26"),
+        ({"space-id": "123", "title": "Résumé & ~"}, "space-id=123&title=R%C3%A9sum%C3%A9+%26+~"),
+        ({"q": "/?:@#$,;[]"}, "q=%2F%3F%3A%40%23%24%2C%3B%5B%5D"),
+    ],
+)
+def test_query_encode_matches_go_values(values: dict[str, str], expected: str) -> None:
+    assert query_encode(values) == expected
 
 
 @pytest.mark.parametrize(

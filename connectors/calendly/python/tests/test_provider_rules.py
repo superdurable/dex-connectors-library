@@ -6,7 +6,20 @@ from datetime import UTC, datetime
 
 import pytest
 
+from dex_connectors.calendly.client import query_encode
 from dex_connectors.calendly.operations import _email, _event, _timestamp
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"z": "a b*~!+'()/&", "a": "x"}, "a=x&z=a+b%2A~%21%2B%27%28%29%2F%26"),
+        ({"space-id": "123", "title": "Résumé & ~"}, "space-id=123&title=R%C3%A9sum%C3%A9+%26+~"),
+        ({"q": "/?:@#$,;[]"}, "q=%2F%3F%3A%40%23%24%2C%3B%5B%5D"),
+    ],
+)
+def test_query_encode_matches_go_values(values: dict[str, str], expected: str) -> None:
+    assert query_encode(values) == expected
 
 
 @pytest.mark.parametrize(
