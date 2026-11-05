@@ -82,13 +82,13 @@ describe('Snowflake SQL API adapter', () => {
         { name: 'VARIANT', type: 'variant' }, { name: 'OBJECT', type: 'object' },
         { name: 'ARRAY', type: 'array' }, { name: 'MAP', type: 'map' }, { name: 'SCALAR', type: 'variant' },
         { name: 'EXPONENT', type: 'variant' }, { name: 'TZ', type: 'timestamp_tz' },
-      ] }, data: [['{"large":12345678901234567890,"decimal":1.50,"negativeZero":-0}', '{"value":1.50}', '[12345678901234567890]', '{"value":-0}', '1.50', '1e400', '1700000000.123456789 1440']],
+      ] }, data: [['{"amount":12345678901234567890,"decimal":1.50,"nested":[1.25,-0]}', '{"value":1.50}', '[12345678901234567890]', '{"value":-0}', '1.50', '1e400', '1700000000.123456789 1440']],
     })) }) });
     const result = await client.getStatementResult().invoke(call, { statementHandle: handle });
     expect(result.kind).toBe('branch');
     if (result.kind === 'branch') {
       expect(result.branch).toBe('completed');
-      expect(JSON.stringify(result.value.rows?.[0])).toBe('{"VARIANT":{"large":12345678901234567890,"decimal":1.50,"negativeZero":-0},"OBJECT":{"value":1.50},"ARRAY":[12345678901234567890],"MAP":{"value":-0},"SCALAR":1.50,"EXPONENT":1e400,"TZ":"2023-11-14T22:13:20.123456789Z"}');
+      expect(JSON.stringify(result.value.rows?.[0])).toBe('{"VARIANT":{"amount":12345678901234567890,"decimal":1.50,"nested":[1.25,-0]},"OBJECT":{"value":1.50},"ARRAY":[12345678901234567890],"MAP":{"value":-0},"SCALAR":1.50,"EXPONENT":1e400,"TZ":"2023-11-14T22:13:20.123456789Z"}');
     }
   });
 });
