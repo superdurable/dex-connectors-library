@@ -19,6 +19,7 @@ from ..credentials import (
     ReauthorizationRequiredError,
     SecretString,
 )
+from ..errors import Failure, FailureKind, RetryError
 from . import (
     ClientAuthenticationMethod,
     ClientCredentials,
@@ -117,7 +118,12 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             refresh_field = grant.get("refresh_field", "")
             if refresh_field and not self._credential_value(credentials, refresh_field):
                 continue
-            token, copies = await self._exchange(grant, credentials)
+            try:
+                token, copies = await self._exchange(grant, credentials)
+            except (OSError, ValueError) as error:
+                raise RetryError(Failure(
+                    FailureKind.PROTOCOL, self._provider_name, "refreshCredentials", str(error)
+                )) from error
             required_scopes = self._scopes(grant["scopes"])
             if grant["kind"] == "refresh":
                 required_scopes = [scope for scope in required_scopes if scope != "offline_access"]

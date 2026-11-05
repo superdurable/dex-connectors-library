@@ -17,7 +17,7 @@ import pytest
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError, SecretString
+from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError, RetryError, SecretString
 from dex_connectors.sdk.oauthtoken import (
     ClientAuthenticationMethod,
     ClientCredentials,
@@ -100,7 +100,7 @@ async def test_manifest_default_method_scope_and_missing_expiry_match_go() -> No
         with pytest.raises(ReauthorizationRequiredError):
             await driver.refresh(state)
         response = {"access_token": "next", "token_type": "Bearer", "scope": "files.read"}
-        with pytest.raises(ValueError, match="required fields"):
+        with pytest.raises(RetryError, match="required fields"):
             await driver.refresh(state)
     assert len(requests) == 4
 
@@ -368,7 +368,7 @@ async def test_manifest_refresh_preserves_unreturned_refresh_token_and_classifie
         with pytest.raises(ReauthorizationRequiredError):
             await driver.refresh(state)
         status, response = 400, {"error": "invalid_scope"}
-        with pytest.raises(OSError):
+        with pytest.raises(RetryError):
             await driver.refresh(state)
 
 
@@ -453,7 +453,7 @@ async def test_stored_missing_expiry_refreshes_but_response_requires_expires_in(
         result = await driver.refresh(state)
         assert result.credentials.access_token.reveal() == "next"
         response.pop("expires_in")
-        with pytest.raises(ValueError, match="omitted required fields"):
+        with pytest.raises(RetryError, match="omitted required fields"):
             await driver.refresh(state)
         assert len(requests) == 2
 
@@ -515,7 +515,7 @@ async def test_manifest_missing_token_type_requires_declaration() -> None:
             Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
         )
         strict = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
-        with pytest.raises(ValueError):
+        with pytest.raises(RetryError):
             await strict.refresh(state)
         auth["methods"][0]["oauth2"]["refresh"]["acceptsMissingTokenType"] = True
         allowed = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
@@ -530,7 +530,7 @@ async def test_manifest_missing_token_type_requires_declaration() -> None:
             "exactScopes": False,
         }]
         overridden = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
-        with pytest.raises(ValueError, match="required fields"):
+        with pytest.raises(RetryError, match="required fields"):
             await overridden.refresh(state)
         refresh["grants"][0]["acceptsMissingTokenType"] = True
         response["scope"] = "files.read extra"
@@ -679,7 +679,7 @@ async def test_manifest_standard_error_code_matrix(
         state = CredentialRefreshState(
             Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
         )
-        with pytest.raises(ReauthorizationRequiredError if is_terminal else OSError):
+        with pytest.raises(ReauthorizationRequiredError if is_terminal else RetryError):
             await driver.refresh(state)
 
 
@@ -932,7 +932,7 @@ async def test_manifest_jwt_bearer_resolves_key_sources_and_copies_identity() ->
         retryable = ManifestCredentialRefreshDriver[DelegatedCredentials](
             "Example", auth, fields, client
         )
-        with pytest.raises(OSError, match="unavailable"):
+        with pytest.raises(RetryError, match="unavailable"):
             await retryable.refresh(CredentialRefreshState(credentials, None, datetime.now(UTC)))
 
 
@@ -1039,7 +1039,7 @@ async def test_client_credentials_rejects_missing_positive_expiry_without_reauth
                 response.pop("expires_in", None)
             else:
                 response["expires_in"] = expiry
-            with pytest.raises(ValueError, match="omitted required fields"):
+            with pytest.raises(RetryError, match="omitted required fields"):
                 await driver.refresh(state)
         response["expires_in"] = 3600
         assert (await driver.refresh(state)).credentials.access_token.reveal() == "next"
@@ -1112,7 +1112,7 @@ async def test_go_agreement_scope_expiry_and_client_secret_decisions() -> None:
             await driver.refresh(state)
         response["scope"] = "files.read"
         response.pop("expires_in")
-        with pytest.raises(ValueError, match="omitted required fields"):
+        with pytest.raises(RetryError, match="omitted required fields"):
             await driver.refresh(state)
         assert len(requests) == 2
         no_secret = CredentialRefreshState(
