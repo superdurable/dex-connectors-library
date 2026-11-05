@@ -383,3 +383,19 @@ whether a 503 is cached under an idempotency key; JSON number formatting of
 amounts in live responses; `If-Modified-Since` parsing; Xero's
 `EmailAddress` filter with `==`; the developer portal labels in the setup
 guidance; and the response to an invoice number reused by another invoice.
+
+## Python package
+
+`connectors/xero/python` publishes `dex-connector-xero` v0.1.0 with all six
+operations and no Triggers. Its public models and Step factories are generated
+from this manifest; its HTTP client and operation invocations retain Xero's
+exact-decimal amounts and Call ID based Idempotency-Key behavior. Both Custom
+Connection and OAuth web app credentials use the generated durable refresh
+wiring and the same Dex Web setup above.
+
+The runnable [contact lookup example](python/examples/contact_lookup/README.md)
+binds the static `xero-books` connection and routes only the `found` branch.
+The [Python package README](python/README.md) covers installation and targeted
+verification. The Go-recorded provider replay and the real Dex Worker/Client
+example use inert local stand-ins. Live Xero authorization, tenant selection,
+and Accounting API behavior are unverified for the Python package.
