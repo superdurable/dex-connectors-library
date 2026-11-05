@@ -25,7 +25,7 @@ func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	require.NoError(t, err)
 	var cases []codegen.RefreshAgreementCase
 	require.NoError(t, json.Unmarshal(encoded, &cases))
-	require.Len(t, cases, 10)
+	require.Len(t, cases, 11)
 	require.Equal(t, "google-oauth refresh", cases[0].Name)
 	require.Equal(t, "https://oauth2.googleapis.com/token", cases[0].Endpoint)
 	require.Equal(t, "manifest-client-id", cases[0].Parameters["client_id"])
@@ -33,10 +33,10 @@ func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	require.Equal(t, "manifest-refresh-token-2", cases[0].Updates["refresh_token"])
 	require.Equal(t, "retryable", cases[1].ExpectedError)
 	require.Equal(t, "reauthorization", cases[3].ExpectedError)
-	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[5].Name)
-	require.Equal(t, "private_key", cases[5].PrivateKeyMember)
-	require.Equal(t, "manifest-issuer@example.com", cases[5].Assertion.Issuer)
-	require.Equal(t, int64(3600), cases[5].Assertion.LifetimeSeconds)
+	require.Equal(t, "workspace-domain-delegation jwtBearer", cases[6].Name)
+	require.Equal(t, "private_key", cases[6].PrivateKeyMember)
+	require.Equal(t, "manifest-issuer@example.com", cases[6].Assertion.Issuer)
+	require.Equal(t, int64(3600), cases[6].Assertion.LifetimeSeconds)
 }
 
 func TestGenerateRefreshAgreementCasesEncodeTerminalCodesAsArrays(t *testing.T) {
@@ -54,9 +54,9 @@ func TestGenerateRefreshAgreementCasesEncodeTerminalCodesAsArrays(t *testing.T) 
 		require.IsType(t, []any{}, agreementCase["terminalErrorCodes"], agreementCase["name"])
 	}
 	require.Contains(t, string(codegen.GeneratePythonRefreshAgreementTest("atlassian_jira")),
-		`case.get("terminalErrorCodes") or []`)
+		`terminal_code in case["terminalErrorCodes"]`)
 	require.Contains(t, string(codegen.GenerateTypeScriptRefreshAgreementTest()),
-		`agreement.terminalErrorCodes ?? []`)
+		`agreement.terminalErrorCodes?.includes(terminalCode)`)
 }
 
 func TestGenerateRefreshAgreementCasesCoverAlternativeScopes(t *testing.T) {
@@ -113,9 +113,69 @@ func TestGenerateRefreshAgreementCasesCoverGrantResponses(t *testing.T) {
 	require.NotEmpty(t, cases)
 	require.Equal(t, "bot", cases[0].Response["token_type"])
 	require.Equal(t, "client_secret_basic", cases[0].ClientAuth)
-	require.Equal(t, "reauthorization", cases[3].ExpectedError)
-	require.Equal(t, "manifest-ungranted-scope", cases[3].Response["scope"])
-	require.Equal(t, "reauthorization", cases[4].ExpectedError)
+	for _, agreementCase := range cases {
+		if strings.Contains(agreementCase.Name, "different reported scope") {
+			require.Equal(t, "reauthorization", agreementCase.ExpectedError)
+			require.Equal(t, "manifest-ungranted-scope", agreementCase.Response["scope"])
+		}
+	}
+}
+
+func TestReportedScopeVariationFollowsGoPolicy(t *testing.T) {
+	for _, connector := range []struct {
+		path          string
+		expectedError string
+	}{{"calendly", ""}, {"google/gmail", "reauthorization"}} {
+		manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", connector.path, "connector.yaml"))
+		require.NoError(t, err)
+		manifest, err := schema.Decode(manifestFile)
+		require.NoError(t, err)
+		require.NoError(t, manifestFile.Close())
+		encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+		require.NoError(t, err)
+		var cases []codegen.RefreshAgreementCase
+		require.NoError(t, json.Unmarshal(encoded, &cases))
+		found := false
+		for _, agreementCase := range cases {
+			if strings.Contains(agreementCase.Name, "different reported scope") {
+				require.Equal(t, connector.expectedError, agreementCase.ExpectedError)
+				found = true
+			}
+		}
+		require.True(t, found, connector.path)
+	}
+}
+
+func TestLanguageAgreementCoversExpiryAndRefreshTokenRetention(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "schema", "testdata", "token-grants.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []codegen.RefreshAgreementCase
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	foundLifetime, foundKeep, foundRetainedToken := false, false, false
+	for _, agreementCase := range cases {
+		if strings.Contains(agreementCase.Name, "without expires_in") && agreementCase.ExpectedExpiryMilliseconds != nil {
+			switch *agreementCase.ExpectedExpiryMilliseconds {
+			case 7_200_000:
+				foundLifetime = true
+			case 0:
+				foundKeep = true
+			default:
+				t.Fatalf("unexpected expiry policy for %s", agreementCase.Name)
+			}
+		}
+		if strings.Contains(agreementCase.Name, "without refresh_token") {
+			require.NotContains(t, agreementCase.Updates, "refresh_token")
+			foundRetainedToken = true
+		}
+	}
+	require.True(t, foundLifetime)
+	require.True(t, foundKeep)
+	require.True(t, foundRetainedToken)
 }
 
 const refreshAgreementGoldenPath = "testdata/tokengrants/" + codegen.RefreshAgreementTestOutputFile
@@ -157,7 +217,7 @@ func TestGenerateRefreshAgreementTestDeclaresEveryGrant(t *testing.T) {
 func TestGenerateRefreshAgreementTestReplaysResponseVariations(t *testing.T) {
 	generated := string(generateTokenGrantsAgreement(t, nil))
 	for _, suffix := range []string{
-		"with unaccepted token type", "without token type", "with partial scopes",
+		"with unaccepted token type", "without token type", "with different reported scope",
 		"without expires_in",
 	} {
 		require.Contains(t, generated, `name: " `+suffix+`"`)

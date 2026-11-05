@@ -65,26 +65,28 @@ type RefreshAgreementSample struct {
 
 // RefreshAgreementCase is one language-neutral token exchange derived from the Go agreement generator's samples.
 type RefreshAgreementCase struct {
-	Name                 string                     `json:"name"`
-	ExpectedError        string                     `json:"expectedError,omitempty"`
-	MethodID             string                     `json:"methodId,omitempty"`
-	Credentials          map[string]string          `json:"credentials"`
-	Settings             map[string]string          `json:"settings,omitempty"`
-	Endpoint             string                     `json:"endpoint"`
-	Encoding             string                     `json:"encoding"`
-	ClientAuth           string                     `json:"clientAuth"`
-	ClientID             string                     `json:"clientId,omitempty"`
-	ClientSecret         string                     `json:"clientSecret,omitempty"`
-	Parameters           map[string]string          `json:"parameters"`
-	Response             map[string]any             `json:"response"`
-	Updates              map[string]string          `json:"updates"`
-	TerminalErrorCodes   []string                   `json:"terminalErrorCodes"`
-	KeyCredential        string                     `json:"keyCredential,omitempty"`
-	PrivateKeyCredential string                     `json:"privateKeyCredential,omitempty"`
-	PrivateKeyMember     string                     `json:"privateKeyMember,omitempty"`
-	KeyMembers           map[string]string          `json:"keyMembers,omitempty"`
-	Assertion            *RefreshAgreementAssertion `json:"assertion,omitempty"`
-	MayRefuseWithoutCall bool                       `json:"mayRefuseWithoutCall,omitempty"`
+	Name                       string                     `json:"name"`
+	ExpectedError              string                     `json:"expectedError,omitempty"`
+	MethodID                   string                     `json:"methodId,omitempty"`
+	Credentials                map[string]string          `json:"credentials"`
+	Settings                   map[string]string          `json:"settings,omitempty"`
+	Endpoint                   string                     `json:"endpoint"`
+	Encoding                   string                     `json:"encoding"`
+	ClientAuth                 string                     `json:"clientAuth"`
+	ClientID                   string                     `json:"clientId,omitempty"`
+	ClientSecret               string                     `json:"clientSecret,omitempty"`
+	Parameters                 map[string]string          `json:"parameters"`
+	Response                   map[string]any             `json:"response"`
+	Updates                    map[string]string          `json:"updates"`
+	TerminalErrorCodes         []string                   `json:"terminalErrorCodes"`
+	StoredMissingExpiry        string                     `json:"storedMissingExpiry"`
+	ExpectedExpiryMilliseconds *float64                   `json:"expectedExpiryMilliseconds,omitempty"`
+	KeyCredential              string                     `json:"keyCredential,omitempty"`
+	PrivateKeyCredential       string                     `json:"privateKeyCredential,omitempty"`
+	PrivateKeyMember           string                     `json:"privateKeyMember,omitempty"`
+	KeyMembers                 map[string]string          `json:"keyMembers,omitempty"`
+	Assertion                  *RefreshAgreementAssertion `json:"assertion,omitempty"`
+	MayRefuseWithoutCall       bool                       `json:"mayRefuseWithoutCall,omitempty"`
 }
 
 // RefreshAgreementAssertion records the JWT claims and lifetime checked by the Go agreement harness.
@@ -162,6 +164,7 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 				result := RefreshAgreementCase{Name: name, MethodID: grant.method.ID, Credentials: credentials,
 					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
 					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: append([]string{}, grant.terminalCodes...),
+					StoredMissingExpiry:  defaultString(grant.storedMissingExpiry, schema.StoredMissingExpiryKeep),
 					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
 				if result.MayRefuseWithoutCall {
 					result.ExpectedError = "reauthorization"
@@ -230,6 +233,10 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 			variation.Response[name] = value
 		}
 		variation.TerminalErrorCodes = []string{}
+		variation.Updates = make(map[string]string, len(base.Updates))
+		for name, value := range base.Updates {
+			variation.Updates[name] = value
+		}
 		return variation
 	}
 	var variations []RefreshAgreementCase
@@ -242,7 +249,7 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		missingType.ExpectedError = ""
 	}
 	variations = append(variations, missingType)
-	if grant.checksResponseScopes && len(grant.responseScopes) > 0 {
+	if grant.responseScopesPolicy != schema.ResponseScopesIgnore && len(grant.responseScopes) > 0 {
 		if len(grant.acceptedScopeSets) > 0 && grant.scopeSeparators == schema.ScopeSeparatorsWhitespaceAndComma {
 			comma := clone(" with comma-separated scopes", "")
 			comma.Response["scope"] = strings.Join(grant.responseScopes, ",") + ",manifest-extra-scope"
@@ -256,19 +263,40 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 			alternative.Response["scope"] = strings.Join(scopeSet, " ")
 			variations = append(variations, alternative)
 		}
-		partial := clone(" with partial scopes", "reauthorization")
-		partial.Response["scope"] = "manifest-ungranted-scope"
-		variations = append(variations, partial)
 		if grant.exactScopes {
 			extra := clone(" with extra scopes", "reauthorization")
 			extra.Response["scope"] = strings.Join(grant.responseScopes, " ") + " manifest-extra-scope"
 			variations = append(variations, extra)
 		}
 	}
+	differentScope := clone(" with different reported scope", "")
+	differentScope.Response["scope"] = "manifest-ungranted-scope"
+	if grant.responseScopesPolicy != schema.ResponseScopesIgnore && len(grant.responseScopes) > 0 {
+		differentScope.ExpectedError = "reauthorization"
+	}
+	variations = append(variations, differentScope)
+	missingExpiry := clone(" without expires_in", "")
+	delete(missingExpiry.Response, "expires_in")
 	if grant.missingExpiry == nil || grant.missingExpiry.Reject {
-		missingExpiry := clone(" without expires_in", "retryable")
-		delete(missingExpiry.Response, "expires_in")
-		variations = append(variations, missingExpiry)
+		missingExpiry.ExpectedError = "retryable"
+	} else {
+		milliseconds := float64(0)
+		if grant.missingExpiry.Lifetime != "" {
+			lifetime, err := time.ParseDuration(grant.missingExpiry.Lifetime)
+			if err != nil {
+				missingExpiry.ExpectedError = "retryable"
+			} else {
+				milliseconds = float64(lifetime) / float64(time.Millisecond)
+			}
+		}
+		missingExpiry.ExpectedExpiryMilliseconds = &milliseconds
+	}
+	variations = append(variations, missingExpiry)
+	if grant.refreshToken != "" {
+		keptRefreshToken := clone(" without refresh_token", "")
+		delete(keptRefreshToken.Response, "refresh_token")
+		delete(keptRefreshToken.Updates, grant.refreshToken)
+		variations = append(variations, keptRefreshToken)
 	}
 	return variations
 }
@@ -297,11 +325,11 @@ type declaredGrant struct {
 	acceptsMissingTokenType bool
 	exactScopes             bool
 	allowsPublicClient      bool
-	// Authorization scopes alone do not prove that a Go driver checks returned scopes.
-	checksResponseScopes bool
-	missingExpiry        *schema.MissingExpiry
-	additional           map[string]string
-	jwtBearer            *schema.JWTBearerGrant
+	responseScopesPolicy    string
+	storedMissingExpiry     string
+	missingExpiry           *schema.MissingExpiry
+	additional              map[string]string
+	jwtBearer               *schema.JWTBearerGrant
 }
 
 // HasDeclaredTokenGrants reports whether any method of manifest refreshes or mints a token.
@@ -440,9 +468,10 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 					terminalCodes: defaultStrings(refresh.TerminalErrorCodes, "invalid_grant"), missingExpiry: refresh.MissingExpiry, additional: refresh.AdditionalParameters,
 					acceptedTokenTypes: acceptedTokenTypes, acceptsMissingTokenType: acceptsMissingTokenType, exactScopes: exactScopes,
 					acceptedScopeSets:    refresh.AcceptedScopeSets,
+					responseScopesPolicy: refresh.ResponseScopes,
+					storedMissingExpiry:  refresh.StoredMissingExpiry,
 					scopeSeparators:      refresh.ScopeSeparators,
 					allowsPublicClient:   refresh.AllowsPublicClient,
-					checksResponseScopes: len(refresh.RequiredScopes) > 0 || len(refresh.AcceptedScopeSets) > 0 || refresh.ExactScopes || refreshGrant.ExactScopes != nil || refresh.ScopeSeparators != "",
 				})
 			}
 		}
@@ -454,6 +483,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				requestScopes: clientCredentials.Scopes, responseScopes: clientCredentials.Scopes,
 				terminalCodes: defaultStrings(clientCredentials.TerminalErrorCodes, "invalid_client"), missingExpiry: clientCredentials.MissingExpiry, additional: clientCredentials.AdditionalParameters,
 				acceptedTokenTypes: defaultStrings(clientCredentials.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: clientCredentials.AcceptsMissingTokenType,
+				responseScopesPolicy: clientCredentials.ResponseScopes, storedMissingExpiry: clientCredentials.StoredMissingExpiry,
 			})
 		}
 		if method.ServiceAccount != nil && method.ServiceAccount.JWTBearer != nil {
@@ -468,7 +498,7 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 				requestScopes: jwtBearer.Scopes, responseScopes: responseScopes, acceptedScopeSets: jwtBearer.AcceptedScopeSets, scopeSeparators: jwtBearer.ScopeSeparators, terminalCodes: defaultStrings(jwtBearer.TerminalErrorCodes, "invalid_grant"),
 				missingExpiry: jwtBearer.MissingExpiry, jwtBearer: jwtBearer,
 				acceptedTokenTypes: defaultStrings(jwtBearer.AcceptedTokenTypes, "Bearer"), acceptsMissingTokenType: jwtBearer.AcceptsMissingTokenType,
-				checksResponseScopes: true,
+				responseScopesPolicy: jwtBearer.ResponseScopes, storedMissingExpiry: jwtBearer.StoredMissingExpiry,
 			})
 		}
 	}

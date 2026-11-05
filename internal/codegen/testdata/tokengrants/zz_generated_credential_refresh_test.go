@@ -393,6 +393,9 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "refresh_token": "manifest-refresh-token-2", "scope": "files.read", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "refresh_token": "manifest-refresh-token-2", "scope": "files.read"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com", "refresh_token": "manifest-refresh-token-2", "scope": "files.read", "token_type": "Bearer"}, expectedError: ""},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "scope": "files.read", "token_type": "Bearer"}, expectedError: ""},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com", "refresh_token": "manifest-refresh-token-2"},
 			refreshToken:       "refresh_token",
@@ -423,6 +426,9 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "chat.write", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "chat.write"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "chat.write", "token_type": "Bearer"}, expectedError: ""},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "chat.write", "token_type": "Bearer"}, expectedError: ""},
 			},
 			updates:            map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"},
 			refreshToken:       "bot_refresh_token",
@@ -452,6 +458,9 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "history.read", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "history.read"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "history.read", "token_type": "Bearer"}, expectedError: ""},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "history.read", "token_type": "Bearer"}, expectedError: ""},
 			},
 			updates:            map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"},
 			refreshToken:       "user_refresh_token",
@@ -479,6 +488,7 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://api.example.com/.default", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://api.example.com/.default"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "scope": "https://api.example.com/.default", "token_type": "Bearer"}, expectedError: "retryable"},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2"},
@@ -505,7 +515,7 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://api.example.com/mail.read", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://api.example.com/mail.read"}, expectedError: "retryable"},
-				{name: " with partial scopes", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: "reauthorization"},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "scope": "https://api.example.com/mail.read", "token_type": "Bearer"}, expectedError: "retryable"},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "primary_email": "manifest-user@example.com"},
@@ -534,6 +544,8 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com", "token_type": "Bearer"}, expectedError: ""},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com"},
 			terminalErrorCodes: []string{"invalid_grant", "invalid_client"},
@@ -562,6 +574,8 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com", "token_type": "Bearer"}, expectedError: ""},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com"},
 			terminalErrorCodes: []string{"invalid_grant", "invalid_client"},
@@ -590,6 +604,8 @@ func manifestGrants() []manifestGrant {
 			variations: []manifestVariation{
 				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "token_type": "manifest-unaccepted-token-type"}, expectedError: "retryable"},
 				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com"}, expectedError: "retryable"},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "instance_url": "https://manifest-instance-url.example.com", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, expectedError: ""},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com", "token_type": "Bearer"}, expectedError: ""},
 			},
 			updates:            map[string]string{"access_token": "manifest-access-token-2", "instance_url": "https://manifest-instance-url.example.com"},
 			terminalErrorCodes: []string{"invalid_grant", "invalid_client"},

@@ -99,6 +99,25 @@ func TestGrantExactScopesFalseSurvivesJSONEncoding(t *testing.T) {
 	require.Contains(t, string(encoded), `"exactScopes":false`)
 }
 
+func TestResponseScopePolicyAndScopeSetValidation(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "connectors", "salesforce", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	refresh := manifest.Spec.Auth.Methods[0].OAuth2.Refresh
+	refresh.ResponseScopes = schema.ResponseScopesIgnore
+	require.NoError(t, manifest.Validate())
+	refresh.ResponseScopes = "unknown"
+	require.ErrorContains(t, manifest.Validate(), "responseScopes must be ignore")
+	refresh.ResponseScopes = ""
+	refresh.AcceptedScopeSets = [][]string{{"api", "full"}, {"full", "api"}}
+	require.ErrorContains(t, manifest.Validate(), "must not repeat a scope set")
+	refresh.AcceptedScopeSets = [][]string{{"api"}}
+	refresh.RequiredScopes = []string{"api"}
+	require.ErrorContains(t, manifest.Validate(), "cannot combine requiredScopes and acceptedScopeSets")
+}
+
 func TestInvalidRefreshScopeSeparatorsAreRejected(t *testing.T) {
 	contents, err := os.ReadFile("../connectors/atlassian/jira/connector.yaml")
 	require.NoError(t, err)

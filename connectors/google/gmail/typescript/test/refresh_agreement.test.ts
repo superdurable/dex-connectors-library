@@ -5,7 +5,7 @@
 import { generateKeyPairSync, verify, type KeyObject } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ReauthorizationRequiredError, SecretString } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, RetryError, SecretString } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from '../src/generated/refresh.js';
 
@@ -24,6 +24,8 @@ interface AgreementCase {
   response: Record<string, unknown>;
   updates: Record<string, string>;
   terminalErrorCodes?: string[] | null;
+  storedMissingExpiry: 'keep' | 'refresh';
+  expectedExpiryMilliseconds?: number;
   keyCredential?: string;
   privateKeyCredential?: string;
   privateKeyMember?: string;
@@ -108,7 +110,9 @@ describe('generated Go manifest refresh agreement', () => {
       settings: agreement.settings ?? {}, fetch: transport,
     });
     const state = { credentials, expiresAt: new Date(0), now: new Date() };
+    expect(driver.refreshRequired({ credentials, now: state.now })).toBe(agreement.storedMissingExpiry === 'refresh');
     let result: Awaited<ReturnType<typeof driver.refresh>> | undefined;
+    const startedAt = Date.now();
     try { result = await driver.refresh(state, new AbortController().signal); }
     catch (error) {
       if (agreement.mayRefuseWithoutCall && requests.length === 0) {
@@ -118,24 +122,36 @@ describe('generated Go manifest refresh agreement', () => {
       if (agreement.mayRefuseWithoutCall) throw new TypeError('a blank client secret reached the provider');
       expect(agreement.expectedError).toBeDefined();
       if (agreement.expectedError === 'reauthorization') expect(error).toBeInstanceOf(ReauthorizationRequiredError);
-      else expect(error).not.toBeInstanceOf(ReauthorizationRequiredError);
+      else expect(error).toBeInstanceOf(RetryError);
       expect(requests).toHaveLength(1);
       checkRequest(agreement, requests[0]!, keyPair?.publicKey);
       return;
     }
     if (!result) throw new TypeError('refresh result is missing');
+    const finishedAt = Date.now();
     expect(agreement.expectedError).toBeUndefined();
     expect(requests).toHaveLength(1);
     checkRequest(agreement, requests[0]!, keyPair?.publicKey);
     const expected = { ...initial };
     for (const [name, value] of Object.entries(agreement.updates)) expected[CredentialFields[name]!] = value;
     expect(credentialValues(result.credentials)).toEqual(expected);
-    expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
-    for (const terminalCode of agreement.terminalErrorCodes ?? []) {
+    if (agreement.expectedExpiryMilliseconds === 0) expect(result.expiresAt.getTime()).toBe(0);
+    else if (agreement.expectedExpiryMilliseconds !== undefined) {
+      expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(startedAt + agreement.expectedExpiryMilliseconds - 1);
+      expect(result.expiresAt.getTime()).toBeLessThanOrEqual(finishedAt + agreement.expectedExpiryMilliseconds + 1);
+    }
+    else expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    const standardCodes = ['invalid_request', 'invalid_client', 'invalid_grant', 'unauthorized_client',
+      'unsupported_grant_type', 'invalid_scope', 'access_denied', 'interaction_required',
+      'consent_required', 'temporarily_unavailable', 'server_error'];
+    const codesToCheck = agreement.terminalErrorCodes?.length
+      ? new Set([...standardCodes, ...agreement.terminalErrorCodes]) : [];
+    for (const terminalCode of codesToCheck) {
       requests.length = 0;
       response = { error: terminalCode };
       status = 400;
-      await expect(driver.refresh(state, new AbortController().signal)).rejects.toBeInstanceOf(ReauthorizationRequiredError);
+      const expectedError = agreement.terminalErrorCodes?.includes(terminalCode) ? ReauthorizationRequiredError : RetryError;
+      await expect(driver.refresh(state, new AbortController().signal)).rejects.toBeInstanceOf(expectedError);
       expect(requests).toHaveLength(1);
     }
   });

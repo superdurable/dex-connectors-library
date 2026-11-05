@@ -6,7 +6,7 @@
 import base64
 import json
 from dataclasses import fields, make_dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import parse_qs
@@ -16,7 +16,7 @@ import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
-from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError, SecretString
+from dex_connectors.sdk import CredentialRefreshState, ReauthorizationRequiredError, RetryError, SecretString
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 
 from dex_connectors.{{PACKAGE}}._generated.refresh import AUTHORIZATION, CREDENTIAL_FIELDS
@@ -126,6 +126,9 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             "Agreement", AUTHORIZATION, CREDENTIAL_FIELDS, client, settings=case.get("settings", {})
         )
         state = CredentialRefreshState(credentials, datetime(2000, 1, 1, tzinfo=UTC), datetime.now(UTC))
+        undated_state = CredentialRefreshState(credentials, None, state.now)
+        assert driver.refresh_required(undated_state) == (case["storedMissingExpiry"] == "refresh")
+        started_at = datetime.now(UTC)
         try:
             result = await driver.refresh(state)
         except Exception as error:
@@ -138,21 +141,38 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             if case["expectedError"] == "reauthorization":
                 assert isinstance(error, ReauthorizationRequiredError)
             else:
-                assert not isinstance(error, ReauthorizationRequiredError)
+                assert isinstance(error, RetryError)
             assert len(requests) == 1
             request_parameters(case, requests[0], private_key.public_key() if private_key else None)
             return
         assert not case.get("expectedError"), "refresh unexpectedly succeeded"
+        finished_at = datetime.now(UTC)
         assert len(requests) == 1
         request_parameters(case, requests[0], private_key.public_key() if private_key else None)
         for name, value in case["updates"].items():
             initial[CREDENTIAL_FIELDS[name]] = value
         assert credential_values(result.credentials) == initial
-        assert result.expires_at > state.now
-        for terminal_code in case.get("terminalErrorCodes") or []:
+        expected_expiry = case.get("expectedExpiryMilliseconds")
+        if expected_expiry == 0:
+            assert result.expires_at == datetime.min.replace(tzinfo=UTC)
+        elif expected_expiry is not None:
+            lifetime = timedelta(milliseconds=expected_expiry)
+            assert started_at + lifetime <= result.expires_at <= finished_at + lifetime
+        else:
+            assert result.expires_at > state.now
+        standard_codes = (
+            "invalid_request", "invalid_client", "invalid_grant", "unauthorized_client",
+            "unsupported_grant_type", "invalid_scope", "access_denied", "interaction_required",
+            "consent_required", "temporarily_unavailable", "server_error",
+        )
+        codes_to_check = (dict.fromkeys((*standard_codes, *case["terminalErrorCodes"]))
+                          if case.get("terminalErrorCodes") else ())
+        for terminal_code in codes_to_check:
             requests.clear()
             response_body = {"error": terminal_code}
             response_status = 400
-            with pytest.raises(ReauthorizationRequiredError):
+            expected_error = (ReauthorizationRequiredError if terminal_code in case["terminalErrorCodes"]
+                              else RetryError)
+            with pytest.raises(expected_error):
                 await driver.refresh(state)
             assert len(requests) == 1
