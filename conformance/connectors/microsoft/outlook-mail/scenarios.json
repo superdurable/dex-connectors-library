@@ -1,0 +1,2697 @@
+{
+  "connector": "microsoft/outlook-mail",
+  "scenarios": [
+    {
+      "callId": "23694036-fe4e-5305-89cf-1567810d39c2",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"AAMkAGI2MDEyMzQ1AAABC002\",\"subject\":\"Refund request\",\"receivedDateTime\":\"2026-09-28T09:00:00Z\",\"parentFolderId\":\"inbox\",\"from\":{\"emailAddress\":{\"name\":\"Jane Smith\",\"address\":\"jane@acme.example.com\"}},\"toRecipients\":[{\"emailAddress\":{\"address\":\"support@contoso.example\"}}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$filter": [
+              "receivedDateTime ge 2026-09-28T00:00:00Z and receivedDateTime lt 2026-09-29T00:00:00Z and from/emailAddress/address eq 'jane@acme.example.com' and isRead eq false and contains(subject,'Refund')"
+            ],
+            "$orderby": [
+              "receivedDateTime desc"
+            ],
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview"
+            ],
+            "$top": [
+              "7"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "folder": "inbox",
+          "hasMore": false,
+          "messages": [
+            {
+              "flagStatus": "notFlagged",
+              "folderId": "inbox",
+              "from": {
+                "address": "jane@acme.example.com",
+                "name": "Jane Smith"
+              },
+              "hasAttachments": false,
+              "id": "AAMkAGI2MDEyMzQ1AAABC002",
+              "isRead": false,
+              "receivedAt": "2026-09-28T09:00:00Z",
+              "subject": "Refund request",
+              "to": [
+                {
+                  "address": "support@contoso.example"
+                }
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "jane@acme.example.com",
+        "isUnread": true,
+        "limit": 7,
+        "receivedAfter": "2026-09-28T00:00:00Z",
+        "receivedBefore": "2026-09-29T00:00:00Z",
+        "subjectContains": "Refund"
+      },
+      "name": "searchMessages-searched",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "0c5b5094-fc44-5a15-8e67-ca600baa3de9",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$skip": [
+              "7"
+            ],
+            "$top": [
+              "7"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "folder": "inbox",
+          "hasMore": false,
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "pageCursor": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=7\u0026$skip=7"
+      },
+      "name": "searchMessages-page-cursor",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "9aa5e71b-9f9a-59cf-9cd1-aa1e15988c6f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1AAABC002\",\"subject\":\"Refund request\",\"receivedDateTime\":\"2026-09-28T09:00:00Z\",\"parentFolderId\":\"inbox\",\"from\":{\"emailAddress\":{\"name\":\"Jane Smith\",\"address\":\"jane@acme.example.com\"}},\"toRecipients\":[{\"emailAddress\":{\"address\":\"support@contoso.example\"}}],\"body\":{\"contentType\":\"text\",\"content\":\"Please help.\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "flagStatus": "notFlagged",
+          "folderId": "inbox",
+          "from": {
+            "address": "jane@acme.example.com",
+            "name": "Jane Smith"
+          },
+          "hasAttachments": false,
+          "id": "AAMkAGI2MDEyMzQ1AAABC002",
+          "isRead": false,
+          "receivedAt": "2026-09-28T09:00:00Z",
+          "subject": "Refund request",
+          "text": "Please help.",
+          "textSource": "text",
+          "to": [
+            {
+              "address": "support@contoso.example"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "getMessage-found",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1DRAFT001\",\"isDraft\":true,\"subject\":\"Refund request\",\"toRecipients\":[{\"emailAddress\":{\"address\":\"jane@acme.example.com\"}}],\"createdDateTime\":\"2026-09-28T09:01:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages",
+          "requestBody": {
+            "bccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "blind@contoso.example",
+                  "name": ""
+                }
+              }
+            ],
+            "body": {
+              "content": "The refund is ready.",
+              "contentType": "text"
+            },
+            "ccRecipients": [
+              {
+                "emailAddress": {
+                  "address": "copy@contoso.example",
+                  "name": ""
+                }
+              }
+            ],
+            "replyTo": [
+              {
+                "emailAddress": {
+                  "address": "reply@contoso.example",
+                  "name": ""
+                }
+              }
+            ],
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey",
+                "value": "dex-7804e272-780d-51f7-a524-8ab33185028d"
+              }
+            ],
+            "subject": "Refund update",
+            "toRecipients": [
+              {
+                "emailAddress": {
+                  "address": "jane@acme.example.com",
+                  "name": ""
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1DRAFT001/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "outlookMailSendPhase": "sendDispatched"
+        },
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d",
+          "messageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "recipients": [
+            "jane@acme.example.com"
+          ],
+          "subject": "Refund request"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "blind@contoso.example"
+        ],
+        "cc": [
+          "copy@contoso.example"
+        ],
+        "replyTo": [
+          "reply@contoso.example"
+        ],
+        "subject": "Refund update",
+        "text": "The refund is ready.",
+        "to": [
+          "jane@acme.example.com"
+        ]
+      },
+      "name": "sendMessage-sent",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1DRAFT001\",\"isDraft\":true,\"subject\":\"Refund request\",\"toRecipients\":[{\"emailAddress\":{\"address\":\"jane@acme.example.com\"}}],\"createdDateTime\":\"2026-09-28T09:01:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002/createReplyAll",
+          "requestBody": {
+            "comment": "We can help."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1DRAFT001",
+          "requestBody": {
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey",
+                "value": "dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1DRAFT001/send",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "outlookMailSendPhase": "sendDispatched"
+        },
+        "output": {
+          "idempotencyMarker": "dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+          "messageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "recipients": [
+            "jane@acme.example.com"
+          ],
+          "subject": "Refund request"
+        },
+        "requestCount": 4,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+        "text": "We can help."
+      },
+      "name": "replyToMessage-sent",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1AAABC002\",\"subject\":\"Refund request\",\"receivedDateTime\":\"2026-09-28T09:00:00Z\",\"parentFolderId\":\"inbox\",\"from\":{\"emailAddress\":{\"name\":\"Jane Smith\",\"address\":\"jane@acme.example.com\"}},\"toRecipients\":[{\"emailAddress\":{\"address\":\"support@contoso.example\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1FOLDERARCH\",\"displayName\":\"Archive\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/archive",
+          "query": {
+            "$select": [
+              "id,displayName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1AAABC002\",\"subject\":\"Refund request\",\"receivedDateTime\":\"2026-09-28T09:00:00Z\",\"parentFolderId\":\"AAMkAGI2MDEyMzQ1FOLDERARCH\",\"from\":{\"emailAddress\":{\"name\":\"Jane Smith\",\"address\":\"jane@acme.example.com\"}},\"toRecipients\":[{\"emailAddress\":{\"address\":\"support@contoso.example\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002/move",
+          "requestBody": {
+            "destinationId": "AAMkAGI2MDEyMzQ1FOLDERARCH"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "moved",
+        "failureKind": "",
+        "output": {
+          "destinationFolderId": "AAMkAGI2MDEyMzQ1FOLDERARCH",
+          "destinationFolderName": "Archive",
+          "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "moveMessage-moved",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1AAABC002\",\"subject\":\"Refund request\",\"receivedDateTime\":\"2026-09-28T09:00:00Z\",\"parentFolderId\":\"AAMkAGI2MDEyMzQ1FOLDERARCH\",\"from\":{\"emailAddress\":{\"name\":\"Jane Smith\",\"address\":\"jane@acme.example.com\"}},\"toRecipients\":[{\"emailAddress\":{\"address\":\"support@contoso.example\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1FOLDERARCH\",\"displayName\":\"Archive\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/archive",
+          "query": {
+            "$select": [
+              "id,displayName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "moved",
+        "failureKind": "",
+        "output": {
+          "destinationFolderId": "AAMkAGI2MDEyMzQ1FOLDERARCH",
+          "destinationFolderName": "Archive",
+          "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+          "wasAlreadyMoved": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "moveMessage-already-moved",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1AAABC002\",\"subject\":\"Refund request\",\"receivedDateTime\":\"2026-09-28T09:00:00Z\",\"parentFolderId\":\"inbox\",\"from\":{\"emailAddress\":{\"name\":\"Jane Smith\",\"address\":\"jane@acme.example.com\"}},\"toRecipients\":[{\"emailAddress\":{\"address\":\"support@contoso.example\"}}],\"isRead\":false,\"flag\":{\"flagStatus\":\"notFlagged\"},\"categories\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "requestBody": {
+            "categories": [
+              "Customer"
+            ],
+            "flag": {
+              "flagStatus": "flagged"
+            },
+            "isRead": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "categories": [
+            "Customer"
+          ],
+          "flagStatus": "flagged",
+          "isRead": true,
+          "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-updated",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1AAABC002\",\"subject\":\"Refund request\",\"receivedDateTime\":\"2026-09-28T09:00:00Z\",\"parentFolderId\":\"inbox\",\"from\":{\"emailAddress\":{\"name\":\"Jane Smith\",\"address\":\"jane@acme.example.com\"}},\"toRecipients\":[{\"emailAddress\":{\"address\":\"support@contoso.example\"}}],\"isRead\":true,\"flag\":{\"flagStatus\":\"flagged\"},\"categories\":[\"Customer\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "categories": [
+            "Customer"
+          ],
+          "flagStatus": "flagged",
+          "isRead": true,
+          "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-already-applied",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "085e534f-541e-51d6-86b3-6b2920d11e0c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorThrottled\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$filter": [
+              "receivedDateTime ge 2026-09-28T00:00:00Z and receivedDateTime lt 2026-09-29T00:00:00Z and from/emailAddress/address eq 'jane@acme.example.com' and isRead eq false and contains(subject,'Refund')"
+            ],
+            "$orderby": [
+              "receivedDateTime desc"
+            ],
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview"
+            ],
+            "$top": [
+              "7"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "jane@acme.example.com",
+        "isUnread": true,
+        "limit": 7,
+        "receivedAfter": "2026-09-28T00:00:00Z",
+        "receivedBefore": "2026-09-29T00:00:00Z",
+        "subjectContains": "Refund"
+      },
+      "name": "searchMessages-429",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "c6464f03-fc15-5494-b7ef-42ed5e24308c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$filter": [
+              "receivedDateTime ge 2026-09-28T00:00:00Z and receivedDateTime lt 2026-09-29T00:00:00Z and from/emailAddress/address eq 'jane@acme.example.com' and isRead eq false and contains(subject,'Refund')"
+            ],
+            "$orderby": [
+              "receivedDateTime desc"
+            ],
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview"
+            ],
+            "$top": [
+              "7"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "jane@acme.example.com",
+        "isUnread": true,
+        "limit": 7,
+        "receivedAfter": "2026-09-28T00:00:00Z",
+        "receivedBefore": "2026-09-29T00:00:00Z",
+        "subjectContains": "Refund"
+      },
+      "name": "searchMessages-503",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "4a7e3370-207c-5e9d-b479-bfa2c411957f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$filter": [
+              "receivedDateTime ge 2026-09-28T00:00:00Z and receivedDateTime lt 2026-09-29T00:00:00Z and from/emailAddress/address eq 'jane@acme.example.com' and isRead eq false and contains(subject,'Refund')"
+            ],
+            "$orderby": [
+              "receivedDateTime desc"
+            ],
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview"
+            ],
+            "$top": [
+              "7"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "jane@acme.example.com",
+        "isUnread": true,
+        "limit": 7,
+        "receivedAfter": "2026-09-28T00:00:00Z",
+        "receivedBefore": "2026-09-29T00:00:00Z",
+        "subjectContains": "Refund"
+      },
+      "name": "searchMessages-transport",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "a922fe89-f771-5c62-9074-240cfe27cee3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "folder": "",
+          "hasMore": false,
+          "messages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 51
+      },
+      "name": "searchMessages-defect",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "bfd752b4-5dc6-5638-9b42-97f719eea778",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$filter": [
+              "receivedDateTime ge 2026-09-28T00:00:00Z and receivedDateTime lt 2026-09-29T00:00:00Z and from/emailAddress/address eq 'jane@acme.example.com' and isRead eq false and contains(subject,'Refund')"
+            ],
+            "$orderby": [
+              "receivedDateTime desc"
+            ],
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview"
+            ],
+            "$top": [
+              "7"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "folder": "",
+          "hasMore": false,
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "jane@acme.example.com",
+        "isUnread": true,
+        "limit": 7,
+        "receivedAfter": "2026-09-28T00:00:00Z",
+        "receivedBefore": "2026-09-29T00:00:00Z",
+        "subjectContains": "Refund"
+      },
+      "name": "searchMessages-provider-rejected",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "8c54d8bd-0053-56ae-8417-0a14b90bae96",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorThrottled\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "getMessage-429",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "2c6497a2-d6a9-5c63-a95a-bdcb27f67942",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "getMessage-503",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "e9ae15f6-c02c-5d87-936c-b21e2bc57911",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "getMessage-transport",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "bec12e1d-5f48-5a1f-9710-cd75da4a15af",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "flagStatus": "",
+          "hasAttachments": false,
+          "id": "",
+          "isRead": false,
+          "receivedAt": "0001-01-01T00:00:00Z",
+          "subject": "",
+          "text": "",
+          "textSource": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": ""
+      },
+      "name": "getMessage-defect",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "e3084961-ab68-56b3-8667-6d6b29aa94c1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "flagStatus": "",
+          "hasAttachments": false,
+          "id": "",
+          "isRead": false,
+          "receivedAt": "0001-01-01T00:00:00Z",
+          "subject": "",
+          "text": "",
+          "textSource": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "getMessage-provider-rejected",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorThrottled\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "blind@contoso.example"
+        ],
+        "cc": [
+          "copy@contoso.example"
+        ],
+        "replyTo": [
+          "reply@contoso.example"
+        ],
+        "subject": "Refund update",
+        "text": "The refund is ready.",
+        "to": [
+          "jane@acme.example.com"
+        ]
+      },
+      "name": "sendMessage-429",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "blind@contoso.example"
+        ],
+        "cc": [
+          "copy@contoso.example"
+        ],
+        "replyTo": [
+          "reply@contoso.example"
+        ],
+        "subject": "Refund update",
+        "text": "The refund is ready.",
+        "to": [
+          "jane@acme.example.com"
+        ]
+      },
+      "name": "sendMessage-503",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "blind@contoso.example"
+        ],
+        "cc": [
+          "copy@contoso.example"
+        ],
+        "replyTo": [
+          "reply@contoso.example"
+        ],
+        "subject": "Refund update",
+        "text": "The refund is ready.",
+        "to": [
+          "jane@acme.example.com"
+        ]
+      },
+      "name": "sendMessage-transport",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "idempotencyMarker": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "subject": "S",
+        "text": "T",
+        "to": []
+      },
+      "name": "sendMessage-defect",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-7804e272-780d-51f7-a524-8ab33185028d')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "blind@contoso.example"
+        ],
+        "cc": [
+          "copy@contoso.example"
+        ],
+        "replyTo": [
+          "reply@contoso.example"
+        ],
+        "subject": "Refund update",
+        "text": "The refund is ready.",
+        "to": [
+          "jane@acme.example.com"
+        ]
+      },
+      "name": "sendMessage-provider-rejected",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorThrottled\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+        "text": "We can help."
+      },
+      "name": "replyToMessage-429",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+        "text": "We can help."
+      },
+      "name": "replyToMessage-503",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+        "text": "We can help."
+      },
+      "name": "replyToMessage-transport",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "idempotencyMarker": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "messageId": "",
+        "text": "T"
+      },
+      "name": "replyToMessage-defect",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "idempotencyMarker": "dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+        "text": "We can help."
+      },
+      "name": "replyToMessage-provider-rejected",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorThrottled\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "moveMessage-429",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "moveMessage-503",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "moveMessage-transport",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "destinationFolderId": "",
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": ""
+      },
+      "name": "moveMessage-defect",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "destinationFolderId": "",
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "moveMessage-provider-rejected",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorThrottled\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-429",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-503",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-transport",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "flagStatus": "",
+          "isRead": false,
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-defect",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "flagStatus": "",
+          "isRead": false,
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-provider-rejected",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "d12d108b-ffb2-5c17-9dfb-7318e0e04ce8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$filter": [
+              "receivedDateTime ge 2026-09-28T00:00:00Z and receivedDateTime lt 2026-09-29T00:00:00Z and from/emailAddress/address eq 'jane@acme.example.com' and isRead eq false and contains(subject,'Refund')"
+            ],
+            "$orderby": [
+              "receivedDateTime desc"
+            ],
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview"
+            ],
+            "$top": [
+              "7"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "folder": "",
+          "hasMore": false,
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "jane@acme.example.com",
+        "isUnread": true,
+        "limit": 7,
+        "receivedAfter": "2026-09-28T00:00:00Z",
+        "receivedBefore": "2026-09-29T00:00:00Z",
+        "subjectContains": "Refund"
+      },
+      "name": "searchMessages-invalid-response",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "27ff6a7b-8559-52b0-9f14-14fcaf4b16c8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "flagStatus": "",
+          "hasAttachments": false,
+          "id": "",
+          "isRead": false,
+          "receivedAt": "0001-01-01T00:00:00Z",
+          "subject": "",
+          "text": "",
+          "textSource": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "getMessage-invalid-response",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "1c45739d-dde8-5aa7-9799-b216fc720d44",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorItemNotFound\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "flagStatus": "",
+          "hasAttachments": false,
+          "id": "",
+          "isRead": false,
+          "receivedAt": "0001-01-01T00:00:00Z",
+          "subject": "",
+          "text": "",
+          "textSource": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "getMessage-not-found",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorItemNotFound\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,parentFolderId"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "destinationFolderId": "",
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2173bf36-d58f-5b33-9122-105176a0dfab",
+      "input": {
+        "destinationFolder": "archive",
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "moveMessage-not-found",
+      "operation": "moveMessage"
+    },
+    {
+      "callId": "df82e228-805e-5cac-92d4-957881469890",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorItemNotFound\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002",
+          "query": {
+            "$select": [
+              "id,isRead,flag,categories"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "flagStatus": "",
+          "isRead": false,
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "df82e228-805e-5cac-92d4-957881469890",
+      "input": {
+        "categories": [
+          "Customer"
+        ],
+        "flagStatus": "flagged",
+        "isRead": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002"
+      },
+      "name": "setMessageFlags-not-found",
+      "operation": "setMessageFlags"
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {194d4363-ceb1-4554-8c26-1077f4961682} Name DexStepIdempotencyKey' and ep/value eq 'dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd')"
+            ],
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"ErrorItemNotFound\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1AAABC002/createReplyAll",
+          "requestBody": {
+            "comment": "We can help."
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "idempotencyMarker": "dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+        "text": "We can help."
+      },
+      "name": "replyToMessage-not-found",
+      "operation": "replyToMessage"
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1DRAFT001\",\"isDraft\":true,\"subject\":\"Refund request\",\"toRecipients\":[{\"emailAddress\":{\"address\":\"jane@acme.example.com\"}}],\"createdDateTime\":\"2026-09-28T09:01:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1DRAFT001",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "idempotencyMarker": "dex-7804e272-780d-51f7-a524-8ab33185028d",
+          "messageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "recipients": [
+            "jane@acme.example.com"
+          ],
+          "subject": "Refund request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "blind@contoso.example"
+        ],
+        "cc": [
+          "copy@contoso.example"
+        ],
+        "replyTo": [
+          "reply@contoso.example"
+        ],
+        "subject": "Refund update",
+        "text": "The refund is ready.",
+        "to": [
+          "jane@acme.example.com"
+        ]
+      },
+      "name": "sendMessage-uncertain",
+      "operation": "sendMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "outlookMailSendConfirmations": 2,
+          "outlookMailSendPhase": "sendDispatched"
+        }
+      }
+    },
+    {
+      "callId": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"AAMkAGI2MDEyMzQ1DRAFT001\",\"isDraft\":true,\"subject\":\"Refund request\",\"toRecipients\":[{\"emailAddress\":{\"address\":\"jane@acme.example.com\"}}],\"createdDateTime\":\"2026-09-28T09:01:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/AAMkAGI2MDEyMzQ1DRAFT001",
+          "query": {
+            "$select": [
+              "id,isDraft,subject,toRecipients,ccRecipients,bccRecipients,internetMessageId,conversationId,parentFolderId,createdDateTime,sentDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "idempotencyMarker": "dex-e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+          "messageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "recipients": [
+            "jane@acme.example.com"
+          ],
+          "subject": "Refund request"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "e767fef3-fd0a-5a47-89d2-83d0869c6afd",
+      "input": {
+        "isReplyAll": true,
+        "messageId": "AAMkAGI2MDEyMzQ1AAABC002",
+        "text": "We can help."
+      },
+      "name": "replyToMessage-uncertain",
+      "operation": "replyToMessage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "outlookMailDraftMessageId": "AAMkAGI2MDEyMzQ1DRAFT001",
+          "outlookMailSendConfirmations": 2,
+          "outlookMailSendPhase": "sendDispatched"
+        }
+      }
+    }
+  ],
+  "schemaVersion": 1
+}
