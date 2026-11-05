@@ -6,7 +6,9 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
-from dex_connectors.sdk import RFC3339NanoTimestamp, format_rfc3339_nano
+from dex_connectors.sdk import format_rfc3339_nano
+
+from .timestamps import canonical_go_timestamp
 
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
@@ -52,13 +54,11 @@ class IssueSearchFilter:
     def __post_init__(self) -> None:
         if self.updated_after is not None:
             timestamp = self.updated_after
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'updated_after'))
             object.__setattr__(self, 'updated_after', canonical)
         if self.created_after is not None:
             timestamp = self.created_after
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_after'))
             object.__setattr__(self, 'created_after', canonical)
 
 
@@ -145,18 +145,15 @@ class IssueSummary:
     def __post_init__(self) -> None:
         if self.created_at is not None:
             timestamp = self.created_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
             object.__setattr__(self, 'created_at', canonical)
         if self.updated_at is not None:
             timestamp = self.updated_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'updated_at'))
             object.__setattr__(self, 'updated_at', canonical)
         if self.archived_at is not None:
             timestamp = self.archived_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'archived_at'))
             object.__setattr__(self, 'archived_at', canonical)
 
 
@@ -322,33 +319,27 @@ class Issue:
     def __post_init__(self) -> None:
         if self.created_at is not None:
             timestamp = self.created_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
             object.__setattr__(self, 'created_at', canonical)
         if self.updated_at is not None:
             timestamp = self.updated_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'updated_at'))
             object.__setattr__(self, 'updated_at', canonical)
         if self.archived_at is not None:
             timestamp = self.archived_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'archived_at'))
             object.__setattr__(self, 'archived_at', canonical)
         if self.started_at is not None:
             timestamp = self.started_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'started_at'))
             object.__setattr__(self, 'started_at', canonical)
         if self.completed_at is not None:
             timestamp = self.completed_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'completed_at'))
             object.__setattr__(self, 'completed_at', canonical)
         if self.canceled_at is not None:
             timestamp = self.canceled_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'canceled_at'))
             object.__setattr__(self, 'canceled_at', canonical)
 
 
@@ -474,8 +465,7 @@ class AddCommentOutput:
     def __post_init__(self) -> None:
         if self.created_at is not None:
             timestamp = self.created_at
-            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)
-                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))
+            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime) else canonical_go_timestamp(timestamp, 'created_at'))
             object.__setattr__(self, 'created_at', canonical)
 
 
