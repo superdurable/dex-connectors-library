@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -257,6 +259,12 @@ class Note:
     author_email: str = _dataclass_field(default='', metadata={'dex_json_name': 'authorEmail', 'dex_json_omit_default': True})
     # CreatedAt is when Hiver created the note, in UTC.
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime(self.created_at, 'created_at'))
+        elif self.created_at is not None:
+            validate_go_datetime(self.created_at, 'created_at')
 
 
 setattr(Note, '__module__', 'dex_connectors.hiver.models')

@@ -95,6 +95,16 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Typeform stored credential does not match the connector credential fields")
+        if set(material) - set(('access_token', 'webhook_secret', 'auth_method')):
+            raise ValueError("Typeform stored credential does not match the connector credential fields")
+        access_token = material.get("access_token")
+        if access_token is not None and not (isinstance(access_token, str)):
+            raise ValueError("Typeform credential access_token has an invalid type")
+        webhook_secret = material.get("webhook_secret")
+        if webhook_secret is not None and not (isinstance(webhook_secret, str)):
+            raise ValueError("Typeform credential webhook_secret has an invalid type")
         selected_method = material.get('auth_method')
         if selected_method is None:
             selected_method = ''
@@ -103,18 +113,11 @@ class _ProjectCredentialSource:
         method = selected_method or "personal-access-token"
         values: dict[str, Any] = {'auth_method_id': method}
         if method == "personal-access-token":
-            access_token = material.get("access_token")
-            if access_token is not None and not isinstance(access_token, str):
-                raise ValueError("Typeform credential access_token has an invalid type")
             if not access_token:
                 raise ValueError("Typeform credential access_token is required")
             if access_token:
                 values["access_token"] = SecretString(access_token)
-            webhook_secret = material.get("webhook_secret")
-            if webhook_secret is not None and not isinstance(webhook_secret, str):
-                raise ValueError("Typeform credential webhook_secret has an invalid type")
-            if webhook_secret:
-                values["webhook_secret"] = SecretString(webhook_secret)
+            values["webhook_secret"] = SecretString(webhook_secret or '')
         else:
             raise ValueError("Typeform credential auth_method is invalid")
         return Credentials(**values)

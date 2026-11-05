@@ -361,6 +361,16 @@ transports, clocks, test hooks, and idempotency functions are constructor
 options. Secret and OAuth fields belong in generated Credentials and are
 resolved through `CredentialProvider[C]`.
 
+For declared token grants, generation also emits a Python or TypeScript
+authorization value and credential field map for the SDK's manifest refresh
+driver. The SDK owns token exchange, refresh admission stays with the project
+credential provider, and generated agreement cases replay the Go driver's
+manifest samples in both languages. Project constructors use separate private
+and shared credential decoders; an empty stored `auth_method` selects the
+manifest default method. Scope matching and token-type acceptance are explicit
+manifest declarations. Connector-specific checks may wrap the generic driver
+without storing renewal material in Flow state.
+
 `Config` holds every `spec.configuration` field and then every auth method's
 configuration field as one flat struct. A method configuration field is always
 optional in Go: `Config.Validate` checks its type, such as an enum value or an
@@ -415,13 +425,24 @@ func (credentials Credentials) Validate() error {
 }
 ```
 
-Generated Python project connections and TypeScript `decodeCredentials` select
-one method from the stored `auth_method`, then the manifest default when that
-field is absent, null, or empty. The connection's `authMethodId` does not select
-the method. They require only the selected method's credential fields, treat
-null as missing, and leave other methods' fields unset. Generated
-Python `Config` and TypeScript `ConfigSchema` include method-specific settings
-as optional fields; Dex Web enforces their selected-method requirements.
+Generated Python project connections and TypeScript `decodeCredentials` reject
+unknown credential fields and invalid types for single- and multi-method
+manifests. Multi-method decoders select one method from the stored
+`auth_method`, then the manifest default when that field is absent, null, or
+empty. The connection's `authMethodId` does not select the method. They require
+only the selected method's credential fields and leave other methods' fields
+unset. Single-method decoders reject `auth_method` and return empty strings or
+`SecretString` values for absent optional fields, matching generated Go
+credentials. Both paths treat null as missing, and validate enum and absolute
+URL fields. For a shared connection, Python detects the broker source and
+TypeScript decoders expose `decodeSharedCredentials`; both omit host-kept fields
+from required validation and require an access token minted by a
+client-credentials or JWT-bearer grant.
+TypeScript ports must pass
+`decodeSharedCredentials` to `newCredentialProvider` when using shared
+connections. Generated Python `Config` and TypeScript `ConfigSchema` include
+method-specific settings as optional fields; Dex Web enforces their
+selected-method requirements.
 
 `SecretString` has private storage, redacted formatting, and rejects JSON,
 YAML, and text serialization. Connector-specific credential types prevent a

@@ -76,6 +76,9 @@ spec:
         - {credential: refresh_token, source: refresh_token}
       pkce: true
       refresh:
+        responseScopes: ignore
+        missingExpiry: reject
+        storedMissingExpiry: refresh
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required]
   studio:
     setup:

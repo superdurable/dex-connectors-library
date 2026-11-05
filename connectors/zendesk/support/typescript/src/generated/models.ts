@@ -3,7 +3,42 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
+
+const goTimeJSONPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|([+-])(\d{2}):(\d{2}))$/;
+
+/** Match the timestamp strings accepted by Go time.Time.UnmarshalJSON. */
+function isGoTimeJSON(value: string): boolean {
+  const match = goTimeJSONPattern.exec(value);
+  if (!match) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const monthDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= monthDays[month - 1]!
+    && Number(hourText) <= 23 && Number(minuteText) <= 59 && Number(secondText) <= 59
+    && (zone === 'Z' || (Number(zoneHourText) <= 24 && Number(zoneMinuteText) <= 60));
+}
+
+/** Reproduce Go time.Time.MarshalJSON for timestamps it can marshal. */
+function canonicalGoTimeJSON(value: string): string {
+  const match = goTimeJSONPattern.exec(value)!;
+  const [, year, month, day, hour, minute, second, fraction, zone, sign, zoneHour, zoneMinute] = match;
+  const clock = year + '-' + month + '-' + day + 'T' + hour!.padStart(2, '0') + ':' + minute + ':' + second;
+  const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
+  const offsetMinutes = zone === 'Z' ? 0 : (Number(zoneHour) * 60 + Number(zoneMinute)) * (sign === '+' ? 1 : -1);
+  if (Math.abs(offsetMinutes) >= 1440) return value;
+  const offset = offsetMinutes === 0 ? 'Z' : (offsetMinutes > 0 ? '+' : '-')
+    + String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0') + ':'
+    + String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+  return clock + (digits ? '.' + digits : '') + offset;
+}
+
+/** Go time.Time JSON input schema, including Go's accepted legacy spellings. */
+const GoTimeJSONSchema = z.string().refine(isGoTimeJSON, 'invalid Go time.Time JSON timestamp').transform(canonicalGoTimeJSON);
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -25,6 +60,22 @@ export interface Credentials {
   apiToken: SecretString;
   /** Non-secret email address of the Zendesk agent or administrator the connector acts as, listed at https://{subdomain}.zendesk.com/admin under People > Team > Team members; enter one bare address such as agent@example.com. Tickets and comments the connector writes are authored by this user, and it can only read and change tickets that user can. It is stored with the API token, so replacing both takes effect without an application restart. */
   email: string;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["api_token", "email"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["api_token"] != null && !(typeof fields["api_token"] === 'string')) throw new TypeError("credential api_token has an invalid type");
+  if (fields["email"] != null && !(typeof fields["email"] === 'string')) throw new TypeError("credential email has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["email"]) throw new TypeError("credential email is required");
+  credentials.email = (fields["email"] ?? '') as string;
+  if (!fields["api_token"]) throw new TypeError("credential api_token is required");
+  credentials.apiToken = new SecretString((fields["api_token"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */
@@ -263,9 +314,9 @@ export const TicketSchema = z.strictObject({
   "tags": z.array(z.string()).optional(),
   "externalId": z.string().optional(),
   "channel": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeJSONSchema,
+  "updatedAt": GoTimeJSONSchema,
+  "dueAt": GoTimeJSONSchema.nullable().optional(),
 }) satisfies z.ZodType<Ticket>;
 
 /** Runtime validator for SearchTicketsOutput. */
@@ -295,7 +346,7 @@ export const TicketCommentSchema = z.strictObject({
   "isPublic": z.boolean(),
   "body": z.string(),
   "isBodyTruncated": z.boolean().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeJSONSchema,
 }) satisfies z.ZodType<TicketComment>;
 
 /** Runtime validator for TicketDetails. */
