@@ -26,6 +26,7 @@ from dex_connectors.sdk.providerhttp import (
     ProviderTransportError,
     RequestTrace,
     address_policy,
+    encode_query_values,
     is_header_safe_credential,
     new_provider_http_client,
     parse_retry_after,
@@ -34,6 +35,15 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
+
+
+def test_query_values_match_go_url_values_encode() -> None:
+    """Go-derived keys, repeated values, punctuation, Unicode, and empty lists match exactly."""
+    assert encode_query_values({"z": ["~ * ! ' ( ) + / ? & = ☃"], "a": ["one", "two"]}) == (
+        "a=one&a=two&z=~+%2A+%21+%27+%28+%29+%2B+%2F+%3F+%26+%3D+%E2%98%83"
+    )
+    assert encode_query_values({"é": ["café"], "a": ["雪"]}) == "a=%E9%9B%AA&%C3%A9=caf%C3%A9"
+    assert encode_query_values({"empty": [], "x": [""]}) == "x="
 
 
 @pytest.mark.parametrize(
@@ -451,6 +461,9 @@ async def test_bounded_reader_closes_stream_on_overflow_and_transport_error() ->
     assert overflow.closed
     failed = Stream(True)
     with pytest.raises(ProviderTransportError) as caught:
-        await read_bounded_body(httpx.Response(200, stream=failed), 4)
+        await read_bounded_body(httpx.Response(200, headers={"X-Request-ID": "received"}, stream=failed), 4)
     assert failed.closed
+    assert caught.value.status_code == 200
+    assert caught.value.headers is not None
+    assert caught.value.headers["X-Request-ID"] == "received"
     assert "private provider" not in str(caught.value)

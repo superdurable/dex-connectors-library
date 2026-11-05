@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Manifest refresh contracts against a fake provider token endpoint."""
 
+import asyncio
 import base64
 import json
 import pickle
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime, timedelta
@@ -77,6 +79,35 @@ AUTH = {
 FIELDS = {
     name: name for name in ("access_token", "refresh_token", "client_id", "client_secret", "instance_url")
 }
+
+
+@pytest.mark.asyncio
+async def test_manifest_refresh_token_exchange_timeout_is_retryable() -> None:
+    """The declared exchange deadline aborts the request and remains retryable."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["refresh"]["tokenExchangeTimeout"] = "10ms"
+
+    class SlowStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            await asyncio.sleep(0.1)
+            yield b"{}"
+
+        async def aclose(self) -> None:
+            pass
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda _request: httpx.Response(200, stream=SlowStream())
+    )) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
+    auth["methods"][0]["oauth2"]["refresh"]["tokenExchangeTimeout"] = "-1s"
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError, match="tokenExchangeTimeout"):
+            ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
 
 
 @pytest.mark.asyncio

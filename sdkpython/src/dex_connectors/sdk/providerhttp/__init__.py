@@ -5,11 +5,12 @@
 import ipaddress
 import json
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote_plus, urlsplit, urlunsplit
 
 import httpx
 
@@ -40,11 +41,24 @@ class BodyTooLargeError(ValueError):
 
 
 class ProviderTransportError(OSError):
-    """Secret-safe transport failure with positive not-sent evidence when available."""
+    """Secret-safe transport failure with dispatch evidence and available response metadata."""
 
-    def __init__(self, provably_not_sent: bool) -> None:
+    def __init__(
+        self, provably_not_sent: bool, status_code: int | None = None, headers: httpx.Headers | None = None
+    ) -> None:
         self.provably_not_sent = provably_not_sent
+        self.status_code = status_code
+        self.headers = headers.copy() if headers is not None else None
         super().__init__("provider request failed")
+
+
+def encode_query_values(values: Mapping[str, Sequence[str]]) -> str:
+    """Encode a string multimap like Go net/url.Values.Encode, omitting empty value lists."""
+    return "&".join(
+        f"{quote_plus(key)}={quote_plus(value)}"
+        for key in sorted(values, key=lambda item: item.encode("utf-8"))
+        for value in values[key]
+    )
 
 
 @dataclass(slots=True)
@@ -137,7 +151,7 @@ async def read_bounded_body(response: httpx.Response, maximum_bytes: int) -> byt
                 raise BodyTooLargeError(response.status_code, response.headers)
             chunks.append(chunk)
     except httpx.HTTPError:
-        raise ProviderTransportError(False) from None
+        raise ProviderTransportError(False, response.status_code, response.headers) from None
     finally:
         await response.aclose()
     return b"".join(chunks)

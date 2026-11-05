@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Manifest-declared OAuth and service-account token grants for connector credentials."""
 
+import asyncio
 import base64
 import json
 import re
@@ -344,6 +345,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     ),
                     "refresh_when_credential_blank": refresh.get("refreshWhenCredentialBlank", ""),
                     "expiry_cap": refresh.get("expiryCap", ""),
+                    "token_exchange_timeout": refresh.get("tokenExchangeTimeout", ""),
                     "access_token_jwt_expiry_fallback": refresh.get("accessTokenJWTExpiryFallback", ""),
                     "declares_accepted_scope_sets": "acceptedScopeSets" in refresh,
                     "terminal_codes": refresh.get("terminalErrorCodes") or ["invalid_grant"],
@@ -560,6 +562,15 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             ClientAuthenticationMethod(method),
         )
         if grant["kind"] == "refresh":
+            if grant["token_exchange_timeout"]:
+                try:
+                    timeout_seconds = _parse_duration(grant["token_exchange_timeout"]).total_seconds()
+                    async with asyncio.timeout(timeout_seconds):
+                        return await endpoint.exchange_refresh_token(
+                            client, SecretString(self._credential_value(credentials, grant["refresh_field"]))
+                        ), []
+                except TimeoutError:
+                    raise OSError("token endpoint is unavailable") from None
             return await endpoint.exchange_refresh_token(
                 client, SecretString(self._credential_value(credentials, grant["refresh_field"]))
             ), []
@@ -644,6 +655,9 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             raise ValueError("manifest accessTokenJWTExpiryFallback must be positive")
         if grant["expiry_cap"] and _parse_duration(grant["expiry_cap"]) <= timedelta(0):
             raise ValueError("manifest expiryCap must be positive")
+        timeout = grant.get("token_exchange_timeout")
+        if timeout and _parse_duration(timeout) <= timedelta(0):
+            raise ValueError("manifest tokenExchangeTimeout must be positive")
         if grant["response_scopes"] not in ("check", "ignore"):
             raise ValueError("manifest responseScopes must be check or ignore")
         policy = grant.get("missing_expiry_policy")
