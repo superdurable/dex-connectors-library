@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -98,6 +100,12 @@ class Record:
     # Fields maps each non-empty field, by field name, to its cell value.
     # Airtable omits empty fields, so a missing key means the field is empty.
     fields: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_time, str):
+            object.__setattr__(self, 'created_time', parse_go_datetime(self.created_time, 'created_time'))
+        elif self.created_time is not None:
+            validate_go_datetime(self.created_time, 'created_time')
 
 
 setattr(Record, '__module__', 'dex_connectors.airtable.models')

@@ -111,12 +111,21 @@ names to apply the same guard.
 (including named byte elements) are base64 strings. `json.RawMessage` or `any` is unknown. A named
 type with both `MarshalJSON` and `UnmarshalJSON` is an opaque JSON value;
 unsupported tag options and other custom marshalers stop generation.
+Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`: they accept
+comma fractions, fractional precision beyond nine digits (which Go truncates),
+and offsets with minute `60` or hour `24`. For values Go can marshal, generated
+string models emit the exact `time.Time.MarshalJSON` spelling. Go itself cannot
+marshal offsets of 24 hours or more; string models retain those accepted inputs.
 
 Python packages that need all nine fractional timestamp digits set
 `spec.languages.python.timestampFormat: rfc3339Nano`. Generated `time.Time`
 fields then use RFC 3339 strings. The generated constructor accepts aware
 `datetime` values at runtime and formats them as Go does; strings retain all
-nanoseconds and are validated and canonicalized. Result decoding retains the
+nanoseconds and are validated and canonicalized. Default `datetime` models
+also parse Go-accepted strings at construction, but raise a field-named error
+for year zero, offsets of 24 hours or more, or nonzero precision beyond six
+fractional digits because Python `datetime` cannot preserve those values.
+Result decoding retains the
 canonical string. A defaulted zero time is `0001-01-01T00:00:00Z`. This is an
 opt-in public model type change; existing packages keep their `datetime` fields
 until their own release chooses it. TypeScript already uses ISO datetime strings

@@ -5,6 +5,8 @@
 from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 
+from .timestamps import parse_go_datetime, validate_go_datetime
+
 # CreateCardCheckoutSessionInput is one hosted card Checkout request.
 # Its fields have the same meanings and validation as CreateACHCheckoutSessionInput.
 @dataclass(frozen=True, slots=True)
@@ -27,6 +29,12 @@ class CreateCardCheckoutSessionInput:
     metadata: dict[str, str] = _dataclass_field(default_factory=dict, metadata={'dex_json_omit_default': True})
     # ExpiresAt optionally requests a provider expiration timestamp.
     expires_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'expiresAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.expires_at, str):
+            object.__setattr__(self, 'expires_at', parse_go_datetime(self.expires_at, 'expires_at'))
+        elif self.expires_at is not None:
+            validate_go_datetime(self.expires_at, 'expires_at')
 
 
 setattr(CreateCardCheckoutSessionInput, '__module__', 'dex_connectors.stripe.models')
@@ -56,6 +64,12 @@ class CheckoutSession:
     # Metadata contains the bounded non-sensitive application metadata supplied at creation.
     metadata: dict[str, str] = _dataclass_field(default_factory=dict, metadata={'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.expires_at, str):
+            object.__setattr__(self, 'expires_at', parse_go_datetime(self.expires_at, 'expires_at'))
+        elif self.expires_at is not None:
+            validate_go_datetime(self.expires_at, 'expires_at')
+
 
 setattr(CheckoutSession, '__module__', 'dex_connectors.stripe.models')
 
@@ -81,6 +95,12 @@ class CreateACHCheckoutSessionInput:
     metadata: dict[str, str] = _dataclass_field(default_factory=dict, metadata={'dex_json_omit_default': True})
     # ExpiresAt optionally requests a provider expiration timestamp.
     expires_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'expiresAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.expires_at, str):
+            object.__setattr__(self, 'expires_at', parse_go_datetime(self.expires_at, 'expires_at'))
+        elif self.expires_at is not None:
+            validate_go_datetime(self.expires_at, 'expires_at')
 
 
 setattr(CreateACHCheckoutSessionInput, '__module__', 'dex_connectors.stripe.models')
