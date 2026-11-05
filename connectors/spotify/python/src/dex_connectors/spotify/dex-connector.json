@@ -1,0 +1,59 @@
+{
+  "connectorId": "spotify",
+  "releaseTag": "connectors/spotify/go/v0.24.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-spotify",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_playlist_tracks_step",
+      "kind": "query",
+      "operationId": "listPlaylistTracks",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorization_revoked",
+          "optional": true
+        },
+        {
+          "id": "accessDenied",
+          "field": "access_denied",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,579 @@
+{
+  "connector": "spotify",
+  "scenarios": [
+    {
+      "callId": "c383f2ea-24c6-5c49-889c-2d6a19f92590",
+      "exchanges": [
+        {
+          "body": "{\"limit\":2,\"offset\":5,\"total\":9,\"next\":\"https://api.spotify.com/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items?offset=7\",\"items\":[{\"added_at\":\"2026-09-01T12:30:00Z\",\"added_by\":{\"id\":\"playlist-owner\"},\"is_local\":false,\"item\":{\"id\":\"4iV5W9uYEdYUVa79Axb7Rh\",\"uri\":\"spotify:track:4iV5W9uYEdYUVa79Axb7Rh\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh\"},\"name\":\"A Song\",\"type\":\"track\",\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"name\":\"An Artist\"}],\"album\":{\"id\":\"1ATL5GLyefJaxhQzSPVrLX\",\"uri\":\"spotify:album:1ATL5GLyefJaxhQzSPVrLX\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX\"},\"name\":\"An Album\",\"release_date\":\"2026-08-14\",\"release_date_precision\":\"day\",\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"name\":\"An Artist\"}]},\"duration_ms\":213000,\"explicit\":true,\"is_playable\":true,\"is_local\":false,\"disc_number\":1,\"track_number\":2}},{\"item\":null}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "limit": 2,
+          "nextOffset": 7,
+          "offset": 5,
+          "playlistId": "3cEYpjA9oz9GiPac4AsH4n",
+          "skippedItems": 1,
+          "total": 9,
+          "tracks": [
+            {
+              "addedAt": "2026-09-01T12:30:00Z",
+              "addedByUserId": "playlist-owner",
+              "album": {
+                "artists": [
+                  {
+                    "id": "0OdUWJ0sBjDrqHygGUXeCF",
+                    "name": "An Artist",
+                    "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+                    "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+                  }
+                ],
+                "id": "1ATL5GLyefJaxhQzSPVrLX",
+                "name": "An Album",
+                "releaseDate": "2026-08-14",
+                "releaseDatePrecision": "day",
+                "spotifyUrl": "https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX",
+                "uri": "spotify:album:1ATL5GLyefJaxhQzSPVrLX"
+              },
+              "artists": [
+                {
+                  "id": "0OdUWJ0sBjDrqHygGUXeCF",
+                  "name": "An Artist",
+                  "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
+                  "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+                }
+              ],
+              "discNumber": 1,
+              "durationMilliseconds": 213000,
+              "explicit": true,
+              "id": "4iV5W9uYEdYUVa79Axb7Rh",
+              "isLocal": false,
+              "isPlayable": true,
+              "name": "A Song",
+              "position": 5,
+              "spotifyUrl": "https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh",
+              "trackNumber": 2,
+              "uri": "spotify:track:4iV5W9uYEdYUVa79Axb7Rh"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "listed-page",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "f63c5212-8f96-5404-a7fb-7a7490102758",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "playlistId": "",
+          "skippedItems": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "authorization-revoked",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "fffd70c0-fdaa-59ae-b850-5db5a288f713",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "accessDenied",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "playlistId": "",
+          "skippedItems": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "access-denied",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "b8d01454-4531-580b-ad99-395dca818728",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "playlistId": "",
+          "skippedItems": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "not-found",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "1bd6f592-79d5-5926-9c01-b6eaef4730be",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "playlistId": "",
+          "skippedItems": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "provider-rejected",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "2b15b600-69f1-5d8a-b588-e7bb708b9320",
+      "exchanges": [
+        {
+          "body": "{\"limit\":2,\"offset\":5,\"total\":9,\"items\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "playlistId": "",
+          "skippedItems": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "invalid-response",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "09e13d17-1090-50c8-85f2-123f96e7b193",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "retry-429",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "615c6abe-4787-5b5a-9e5c-dd7a01668cad",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "retry-503",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "c6bacc98-4483-5d75-8c3e-9e7648201ffb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "market": [
+              "US"
+            ],
+            "offset": [
+              "5"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer one-use-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-spotify-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "market": "us",
+        "offset": 5,
+        "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
+      },
+      "name": "retry-transport",
+      "operation": "listPlaylistTracks"
+    },
+    {
+      "callId": "9dad5ba8-06d8-5480-ab8c-f59f6e9ff275",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "limit": 0,
+          "offset": 0,
+          "playlistId": "",
+          "skippedItems": 0,
+          "total": 0,
+          "tracks": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "playlistId": "bad"
+      },
+      "name": "defect-invalid-id",
+      "operation": "listPlaylistTracks"
+    }
+  ],
+  "schemaVersion": 1
+}
