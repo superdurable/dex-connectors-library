@@ -34,7 +34,7 @@ describe('NewsAPI manifest and TypeScript contract', () => {
     };
     expect(manifest.metadata.name).toBe('newsapi');
     expect(manifest.spec.provider).toBe('newsapi');
-    expect(manifest.spec.languages.typescript.version).toBe('v0.1.0');
+    expect(manifest.spec.languages.typescript.version).toBe('v0.1.1');
     expect(manifest.spec.operations).toHaveLength(1);
 
     const operation = manifest.spec.operations[0];

@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {"name":"leap day", "format":"date-time", "value":"2024-02-29T12:34:56Z", "valid":true},
+    {"name":"non-leap February", "format":"date-time", "value":"2023-02-29T00:00:00Z", "valid":false},
+    {"name":"February day thirty", "format":"date-time", "value":"2024-02-30T00:00:00Z", "valid":false},
+    {"name":"hour twenty four", "format":"date-time", "value":"2024-01-01T24:00:00Z", "valid":false},
+    {"name":"one-digit hour", "format":"date-time", "value":"2024-01-01T0:00:00Z", "valid":true},
+    {"name":"comma fraction", "format":"date-time", "value":"2024-01-01T00:00:00,5Z", "valid":true},
+    {"name":"positive offset hour twenty four", "format":"date-time", "value":"2024-01-01T00:00:00+24:00", "valid":true},
+    {"name":"positive offset minute sixty", "format":"date-time", "value":"2024-01-01T00:00:00+05:60", "valid":true},
+    {"name":"invalid offset hour", "format":"date-time", "value":"2024-01-01T00:00:00+25:00", "valid":false},
+    {"name":"invalid offset minute", "format":"date-time", "value":"2024-01-01T00:00:00+05:61", "valid":false},
+    {"name":"year zero", "format":"date-time", "value":"0000-01-01T00:00:00Z", "valid":true},
+    {"name":"valid leap date", "format":"date", "value":"2024-02-29", "valid":true},
+    {"name":"invalid leap date", "format":"date", "value":"2023-02-29", "valid":false},
+    {"name":"one-digit clock hour", "format":"time", "value":"1:00:00Z", "valid":true},
+    {"name":"clock comma fraction", "format":"time", "value":"12:00:00,5Z", "valid":true},
+    {"name":"clock offset hour twenty four", "format":"time", "value":"12:00:00+24:00", "valid":true},
+    {"name":"clock offset minute sixty", "format":"time", "value":"12:00:00+23:60", "valid":true},
+    {"name":"clock hour twenty four", "format":"time", "value":"24:00:00Z", "valid":false},
+    {"name":"clock second sixty", "format":"time", "value":"12:00:60Z", "valid":false},
+    {"name":"valid UUID", "format":"uuid", "value":"123e4567-e89b-12d3-a456-426614174000", "valid":true},
+    {"name":"invalid UUID", "format":"uuid", "value":"123e4567-e89b-12d3-a456-42661417400g", "valid":false}
+  ]
+}

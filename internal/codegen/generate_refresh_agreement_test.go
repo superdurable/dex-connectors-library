@@ -39,6 +39,26 @@ func TestGenerateRefreshAgreementCasesReusesGoSamples(t *testing.T) {
 	require.Equal(t, int64(3600), cases[5].Assertion.LifetimeSeconds)
 }
 
+func TestGenerateRefreshAgreementCasesEncodeTerminalCodesAsArrays(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "atlassian", "jira", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []map[string]any
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	require.NotEmpty(t, cases)
+	for _, agreementCase := range cases {
+		require.IsType(t, []any{}, agreementCase["terminalErrorCodes"], agreementCase["name"])
+	}
+	require.Contains(t, string(codegen.GeneratePythonRefreshAgreementTest("atlassian_jira")),
+		`case.get("terminalErrorCodes") or []`)
+	require.Contains(t, string(codegen.GenerateTypeScriptRefreshAgreementTest()),
+		`agreement.terminalErrorCodes ?? []`)
+}
+
 func TestGenerateRefreshAgreementCasesCoverAlternativeScopes(t *testing.T) {
 	for _, connector := range []string{"google/youtube", "salesforce"} {
 		manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", connector, "connector.yaml"))

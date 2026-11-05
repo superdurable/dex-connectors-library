@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: webflow
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-webflow"
+      operations: [listCollectionItems, getCollectionItem]
+      triggers: []
     python:
       version: v0.1.0
       operations: [listCollectionItems, getCollectionItem]
