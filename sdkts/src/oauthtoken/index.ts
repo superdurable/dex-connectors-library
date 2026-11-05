@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { sendProviderRequest } from '../providerhttp/index.js';
 import { createPrivateKey, sign, type KeyObject } from 'node:crypto';
 import { ReauthorizationRequiredError } from '../errors.js';
 import { SecretString } from '../credentials.js';
@@ -62,6 +63,7 @@ export interface TokenEndpointOptions {
   /** Permit a declared HTTP endpoint, including private-network identity servers. */ allowsPlainHTTP?: boolean;
   /** Fixed non-secret grant parameters that cannot override OAuth grant fields. */ additionalRequestParameters?: Readonly<Record<string, string>>;
   /** Caller-owned fetch implementation for a proxy or local test. */ fetch?: typeof fetch;
+  /** DNS-pinned address policy for configurable token endpoints. */ addressPolicy?: 'privateNetworkHTTP';
 }
 
 /** Provider-neutral OAuth refresh and client-credentials exchanges. */
@@ -114,7 +116,7 @@ export class TokenEndpoint {
 
   async #exchange(parameters: Record<string, string>, basicClient: ClientCredentials | undefined, signal: AbortSignal | undefined): Promise<TokenResponse> {
     const options = this.#options;
-    validateEndpointURL(options.url, options.allowsPlainHTTP ?? false, options.providerName);
+    validateEndpointURL(options.url, options.allowsPlainHTTP ?? options.addressPolicy === 'privateNetworkHTTP', options.providerName);
     for (const field of options.retainedResponseFields ?? []) {
       if (standardResponseFields.has(field)) throw new TypeError(`${options.providerName} token endpoint cannot retain the standard ${field} field`);
     }
@@ -134,7 +136,14 @@ export class TokenEndpoint {
     if (basicClient) headers.Authorization = `Basic ${Buffer.from(`${basicClient.id}:${basicClient.secret?.reveal() ?? ''}`).toString('base64')}`;
     let response: Response;
     try {
-      response = await (options.fetch ?? fetch)(options.url, { method: 'POST', headers, body, redirect: 'manual', ...(signal ? { signal } : {}) });
+      if (options.addressPolicy === 'privateNetworkHTTP' && !options.fetch) {
+        const providerResponse = await sendProviderRequest({ url: options.url, method: 'POST', headers,
+          body: new TextEncoder().encode(body), maxResponseBytes: 1 << 20,
+          addressPolicy: 'privateNetworkHTTP', ...(signal ? { signal } : {}) });
+        response = new Response(Buffer.from(providerResponse.body), { status: providerResponse.status });
+      } else {
+        response = await (options.fetch ?? fetch)(options.url, { method: 'POST', headers, body, redirect: 'manual', ...(signal ? { signal } : {}) });
+      }
     } catch {
       throw new Error(`${options.providerName} token endpoint is unavailable`);
     }
