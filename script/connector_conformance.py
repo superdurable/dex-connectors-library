@@ -451,10 +451,15 @@ def main() -> None:
         print(json.dumps({"include": email_ci_matrix(paths)}))
         return
     if arguments.mutation_self_test:
-        connectors = changed_connectors(changed_paths(arguments.base, arguments.head)) if arguments.base else sorted(
-            ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
-            for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json")
-        )
+        if arguments.connector:
+            connectors = sorted({(ROOT / path).resolve() for path in arguments.connector})
+        elif arguments.base:
+            connectors = changed_connectors(changed_paths(arguments.base, arguments.head))
+        else:
+            connectors = sorted(
+                ROOT / "connectors" / fixture.relative_to(ROOT / "conformance/connectors").parent
+                for fixture in (ROOT / "conformance/connectors").rglob("scenarios.json")
+            )
         mutation_self_test([connector for connector in connectors
                             if str(connector.relative_to(ROOT)) not in exemptions])
         return

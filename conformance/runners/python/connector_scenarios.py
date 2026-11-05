@@ -77,6 +77,8 @@ def _keys(value: object, required: set[str], optional: set[str], where: str) -> 
 
 
 def _same_json_value(actual: object, expected: object) -> bool:
+    if isinstance(actual, (int, float)) and not isinstance(actual, bool):
+        return isinstance(expected, (int, float)) and not isinstance(expected, bool) and actual == expected
     if type(actual) is not type(expected):
         return False
     if isinstance(actual, dict):
@@ -525,7 +527,7 @@ async def replay(
             f"{scenario['name']}: heartbeat write differs from Go recording"
         )
         if "heartbeat" in intermediate:
-            _assert_recorded_heartbeat(scenario["name"], context, intermediate["heartbeat"])
+            assert_recorded_heartbeat(scenario["name"], context, intermediate["heartbeat"])
         context.attempt += 1
     context.has_written_heartbeat = False
     attempt = await invoke(scenario, recorder, context)
@@ -538,10 +540,11 @@ async def replay(
         f"{scenario['name']}: heartbeat write differs from Go recording"
     )
     if "heartbeat" in expected:
-        _assert_recorded_heartbeat(scenario["name"], context, expected["heartbeat"])
+        assert_recorded_heartbeat(scenario["name"], context, expected["heartbeat"])
 
 
-def _assert_recorded_heartbeat(name: str, context: HeartbeatContext, recorded: object) -> None:
+def assert_recorded_heartbeat(name: str, context: HeartbeatContext, recorded: object) -> None:
+    """Match the connector's persisted heartbeat to one Go-recorded checkpoint."""
     is_clear = (isinstance(recorded, dict) and set(recorded) == {"cleared"}
                 and recorded["cleared"] is True)
     assert context.has_heartbeat_value != is_clear, f"{name}: heartbeat clear differs from Go recording"
