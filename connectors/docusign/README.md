@@ -317,7 +317,3 @@ The integration run needs `dexcli dev`. The void probe repeats Execute after
 an accepted provider call, and the example's tests send an envelope, resume it from a signed Connect event
 and its duplicates, survive a Worker replacement during the wait, resume from
 the fallback status poll, and void at the signing deadline.
-
-## TypeScript package
-
-The `typescript/` package publishes `@superdurable/connector-docusign` v0.1.0 with the five eSignature operations: create from template, read an envelope, list recipients, void an envelope, and digest a combined PDF. It uses the manifest's production and developer OAuth methods with generated refresh wiring. The Connect trigger is Go-only. See the [TypeScript package guide](typescript/README.md) and its [runnable envelope status Flow](typescript/examples/envelope-status/README.md).
