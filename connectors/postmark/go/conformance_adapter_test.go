@@ -16,12 +16,11 @@ const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
-		testConnection: {APIKey: sdkgo.NewSecretString("test-secret-token")},
-	}, WithHTTPClient(transport))
+	connection := sdkgo.ConnectionRef{Provider: "postmark", Name: "postmark"}
+	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{connection: {APIKey: sdkgo.NewSecretString("test-secret-token")}}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listOutboundMessages": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListOutboundMessages(), testConnection),
-		"getMessageDetails":    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetMessageDetails(), testConnection),
+		"listOutboundMessages": newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.ListOutboundMessages(), connection),
+		"getMessageDetails":    newConformanceQueryInvocation(t, scenario.Input, providerTestContext{}, client.GetMessageDetails(), connection),
 	}}
 }

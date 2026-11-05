@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Replay Go-recorded Postmark provider scenarios through the Python package."""
+"""Replay Go-recorded postmark provider exchanges."""
 
 import sys
 from pathlib import Path
@@ -8,7 +8,7 @@ from pathlib import Path
 import dex_connectors.sdk as sdk
 import pytest
 
-import dex_connectors.postmark as postmark
+import dex_connectors.postmark as connector
 
 ROOT = Path(__file__).parents[4]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
@@ -19,18 +19,18 @@ CONNECTION = sdk.ConnectionRef("postmark", "postmark")
 ADAPTER = conformance.PythonOperationAdapter(
     "postmark",
     CONNECTION,
-    postmark,
-    lambda client, _: postmark.Client(
-        postmark.Config(base_url="http://127.0.0.1:8848"),
+    connector,
+    lambda http_client, recorder: connector.Client(
+        connector.Config(base_url="http://127.0.0.1:12345"),
         conformance.static_credentials(
-            CONNECTION, postmark.Credentials(sdk.SecretString("test-secret-token"))
+            CONNECTION, connector.Credentials(api_key=sdk.SecretString("test-secret-token"))
         ),
-        client,
+        http_client,
     ),
 )
 
 
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
-    """Check provider requests and query outcomes against Go."""
+    """Compare provider requests and SDK outcomes with Go."""
     await conformance.replay(scenario, ADAPTER.invoke)

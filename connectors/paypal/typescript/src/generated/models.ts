@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
-import type { CredentialProvider, SecretString } from '@superdurable/connectors-sdk';
+import { SecretString } from '@superdurable/connectors-sdk';
+import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
 export interface Config {
@@ -28,6 +29,22 @@ export interface Credentials {
   clientId: string;
   /** Secret of the REST app at https://developer.paypal.com/dashboard/applications/live > the app > Secret. PayPal exchanges it for a short-lived bearer token; blank prevents calls. */
   clientSecret: SecretString;
+}
+
+/** Decode private credential fields for the connector. */
+export function decodeCredentials(value: unknown): Credentials {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('credential fields are invalid');
+  const fields = value as { [key: string]: unknown };
+  const allowed = new Set<string>(["client_id", "client_secret"]);
+  if (Object.keys(fields).some(key => !allowed.has(key))) throw new TypeError('stored credential does not match the connector credential fields');
+  if (fields["client_id"] != null && !(typeof fields["client_id"] === 'string')) throw new TypeError("credential client_id has an invalid type");
+  if (fields["client_secret"] != null && !(typeof fields["client_secret"] === 'string')) throw new TypeError("credential client_secret has an invalid type");
+  const credentials = {} as Credentials;
+  if (!fields["client_id"]) throw new TypeError("credential client_id is required");
+  credentials.clientId = (fields["client_id"] ?? '') as string;
+  if (!fields["client_secret"]) throw new TypeError("credential client_secret is required");
+  credentials.clientSecret = new SecretString((fields["client_secret"] ?? '') as string);
+  return credentials;
 }
 
 /** Host-owned source of private connector credentials. */

@@ -79,8 +79,14 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Cloudflare stored credential does not match the connector credential fields")
+        if set(material) - set(('api_token',)):
+            raise ValueError("Cloudflare stored credential does not match the connector credential fields")
         api_token = material.get("api_token")
-        if not isinstance(api_token, str) or not api_token:
+        if api_token is not None and not (isinstance(api_token, str)):
+            raise ValueError("Cloudflare credential api_token has an invalid type")
+        if not api_token:
             raise ValueError("Cloudflare credential api_token is required")
         return Credentials(SecretString(api_token))
 

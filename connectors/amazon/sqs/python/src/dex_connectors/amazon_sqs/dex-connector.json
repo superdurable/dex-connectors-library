@@ -1,0 +1,115 @@
+{
+  "connectorId": "amazon-sqs",
+  "releaseTag": "connectors/amazon/sqs/go/v0.3.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-amazon-sqs",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_receive_messages_step",
+      "kind": "mutation",
+      "operationId": "receiveMessages",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "received",
+          "field": "received",
+          "optional": false
+        },
+        {
+          "id": "empty",
+          "field": "empty",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_delete_message_step",
+      "kind": "mutation",
+      "operationId": "deleteMessage",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "deleted",
+          "field": "deleted",
+          "optional": false
+        },
+        {
+          "id": "receiptHandleInvalid",
+          "field": "receipt_handle_invalid",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "new_change_message_visibility_step",
+      "kind": "mutation",
+      "operationId": "changeMessageVisibility",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "changed",
+          "field": "changed",
+          "optional": false
+        },
+        {
+          "id": "receiptHandleInvalid",
+          "field": "receipt_handle_invalid",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
