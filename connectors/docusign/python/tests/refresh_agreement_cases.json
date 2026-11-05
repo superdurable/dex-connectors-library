@@ -1,0 +1,270 @@
+[
+  {
+    "name": "docusign-oauth refresh",
+    "methodId": "docusign-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_request",
+      "invalid_client",
+      "invalid_grant",
+      "unauthorized_client"
+    ]
+  },
+  {
+    "name": "docusign-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "docusign-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "docusign-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "docusign-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "docusign-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "docusign-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "docusign-developer-oauth refresh",
+    "methodId": "docusign-developer-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account-d.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_request",
+      "invalid_client",
+      "invalid_grant",
+      "unauthorized_client"
+    ]
+  },
+  {
+    "name": "docusign-developer-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "docusign-developer-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account-d.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "docusign-developer-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "docusign-developer-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account-d.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  },
+  {
+    "name": "docusign-developer-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "docusign-developer-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "connect_hmac_key": "manifest-connect_hmac_key",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://account-d.docusign.com/oauth/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "signature extended",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": []
+  }
+]

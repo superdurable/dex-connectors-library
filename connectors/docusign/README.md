@@ -304,6 +304,17 @@ uses the defaults:
 	})
 ```
 
+## Python package
+
+The [Python package](python/README.md) at `v0.1.0` implements all five
+operations with generated OAuth refresh and credential decoding. The Connect
+Trigger remains Go-only. The runnable
+[envelope status Flow](python/examples/envelope_status/flow.py) uses the
+static `docusign-esignature` connection and has a real Dex Worker and Client
+integration test. Go-recorded provider conformance covers its operation
+branches, retries, transport failures, and exact safe outputs. Live DocuSign
+authorization and provider calls remain unverified.
+
 ## Verification
 
 ```bash

@@ -1,0 +1,3061 @@
+{
+  "connector": "docusign",
+  "scenarios": [
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopeId\": \"93be49ab-1111-2222-3333-f752070d71ec\", \"status\": \"created\", \"statusDateTime\": \"2026-10-04T12:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+                },
+                {
+                  "name": "dexSigningRequestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "opp-123"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign",
+            "emailSubject": "Meridian MSA",
+            "status": "created",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@meridian.example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+          "status": "created",
+          "statusChangedAt": "2026-10-04T12:00:00Z"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create draft",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"TEMPLATE_ID_INVALID\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+                },
+                {
+                  "name": "dexSigningRequestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "opp-123"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign",
+            "emailSubject": "Meridian MSA",
+            "status": "created",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@meridian.example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create provider rejected",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"BURST_APIINVOCATION_LIMIT_EXCEEDED\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+                },
+                {
+                  "name": "dexSigningRequestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "opp-123"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign",
+            "emailSubject": "Meridian MSA",
+            "status": "created",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@meridian.example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create rate limited",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"SERVICE_UNAVAILABLE\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+                },
+                {
+                  "name": "dexSigningRequestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "opp-123"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign",
+            "emailSubject": "Meridian MSA",
+            "status": "created",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@meridian.example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"envelopes\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create server uncertain",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+                },
+                {
+                  "name": "dexSigningRequestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "opp-123"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign",
+            "emailSubject": "Meridian MSA",
+            "status": "created",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@meridian.example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create transport before send",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "templateId": "invalid",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer"
+          }
+        ]
+      },
+      "name": "create invalid input",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"envelopeId\": \"93be49ab-1111-2222-3333-f752070d71ec\", \"status\": \"completed\", \"emailSubject\": \"Meridian MSA\", \"createdDateTime\": \"2026-10-04T10:00:00Z\", \"customFields\": {\"textCustomFields\": [{\"name\": \"dexSigningRequestId\", \"value\": \"opp-123\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-10-04T10:00:00Z",
+          "customFields": [
+            {
+              "name": "dexSigningRequestId",
+              "value": "opp-123"
+            }
+          ],
+          "emailSubject": "Meridian MSA",
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+          "status": "completed"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "get found",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ENVELOPE_DOES_NOT_EXIST\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "get not found",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ACCOUNT_LACKS_PERMISSIONS\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "get provider rejected",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "get invalid response",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "envelopeId": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "bad"
+      },
+      "name": "get invalid input",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"currentRoutingOrder\": \"1\", \"signers\": [{\"recipientId\": \"1\", \"name\": \"Priya Raman\", \"email\": \"priya@meridian.example.com\", \"roleName\": \"Customer\", \"routingOrder\": \"1\", \"status\": \"completed\", \"signedDateTime\": \"2026-10-04T11:00:00Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/recipients",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "currentRoutingOrder": 1,
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+          "recipients": [
+            {
+              "email": "priya@meridian.example.com",
+              "name": "Priya Raman",
+              "recipientId": "1",
+              "roleName": "Customer",
+              "routingOrder": 1,
+              "signedAt": "2026-10-04T11:00:00Z",
+              "status": "completed",
+              "type": "signer"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "list recipients",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ENVELOPE_DOES_NOT_EXIST\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/recipients",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "envelopeId": "",
+          "recipients": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "list not found",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ACCOUNT_LACKS_PERMISSIONS\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/recipients",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "envelopeId": "",
+          "recipients": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "list provider rejected",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"signers\":[{\"recipientId\":\"1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/recipients",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "envelopeId": "",
+          "recipients": []
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "list invalid response",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "envelopeId": "",
+          "recipients": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "bad"
+      },
+      "name": "list invalid input",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "voided",
+        "failureKind": "",
+        "output": {
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "voided",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ENVELOPE_INVALID_STATUS\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"envelopeId\": \"93be49ab-1111-2222-3333-f752070d71ec\", \"status\": \"voided\", \"voidedReason\": \"Earlier\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "voided",
+        "failureKind": "",
+        "output": {
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+          "status": "voided",
+          "voidedReason": "Earlier",
+          "wasAlreadyVoided": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "void already voided",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ENVELOPE_INVALID_STATUS\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"envelopeId\": \"93be49ab-1111-2222-3333-f752070d71ec\", \"status\": \"completed\", \"emailSubject\": \"Meridian MSA\", \"createdDateTime\": \"2026-10-04T10:00:00Z\", \"customFields\": {\"textCustomFields\": [{\"name\": \"dexSigningRequestId\", \"value\": \"opp-123\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notVoidable",
+        "failureKind": "CONFLICT",
+        "output": {
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+          "status": "completed"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "void not voidable",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ENVELOPE_DOES_NOT_EXIST\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "envelopeId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "void not found",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ACCOUNT_LACKS_PERMISSIONS\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "envelopeId": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "void provider rejected",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ENVELOPE_INVALID_STATUS\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "envelopeId": ""
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "void invalid response",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "envelopeId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": ""
+      },
+      "name": "void invalid input",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "%PDF-1.7\nHello signed PDF\n%%EOF\n",
+          "headers": {
+            "Content-Type": "application/pdf"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "downloaded",
+        "failureKind": "",
+        "output": {
+          "byteCount": 32,
+          "contentType": "application/pdf",
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+          "includesCertificate": true,
+          "sha256": "a2a818137d58b3c05765f8c725833c9890bf4fe2d84e200531519b0c23079d24"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "downloaded",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"DOCUMENT_DOES_NOT_EXIST\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "byteCount": 0,
+          "contentType": "",
+          "envelopeId": "",
+          "sha256": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "download not found",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"ACCOUNT_LACKS_PERMISSIONS\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "byteCount": 0,
+          "contentType": "",
+          "envelopeId": "",
+          "sha256": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "download provider rejected",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "not PDF",
+          "headers": {
+            "Content-Type": "text/plain"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "byteCount": 0,
+          "contentType": "",
+          "envelopeId": "",
+          "sha256": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "download invalid response",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "%PDF-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "Content-Type": "application/pdf"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "tooLarge",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "byteCount": 0,
+          "contentType": "",
+          "envelopeId": "",
+          "sha256": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "download too large",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "byteCount": 0,
+          "contentType": "",
+          "envelopeId": "",
+          "sha256": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "bad",
+        "includeCertificate": true
+      },
+      "name": "download invalid input",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"BURST_APIINVOCATION_LIMIT_EXCEEDED\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "getEnvelope 429",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"SERVICE_UNAVAILABLE\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "getEnvelope 5xx",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "query": {
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "getEnvelope transport",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"BURST_APIINVOCATION_LIMIT_EXCEEDED\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/recipients",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "listEnvelopeRecipients 429",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"SERVICE_UNAVAILABLE\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/recipients",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "listEnvelopeRecipients 5xx",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/recipients",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "listEnvelopeRecipients transport",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"BURST_APIINVOCATION_LIMIT_EXCEEDED\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "voidEnvelope 429",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"SERVICE_UNAVAILABLE\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "voidEnvelope 5xx",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec",
+          "requestBody": {
+            "status": "voided",
+            "voidedReason": "Signing deadline passed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "voidEnvelope transport",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"BURST_APIINVOCATION_LIMIT_EXCEEDED\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 30000,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "downloadCombinedDocument 429",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errorCode\": \"SERVICE_UNAVAILABLE\", \"message\": \"SENTINEL provider message text\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "downloadCombinedDocument 5xx",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"accounts\": [{\"account_id\": \"a4ec37d6-1111-2222-3333-143885c220e1\", \"is_default\": true, \"base_uri\": \"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes/93be49ab-1111-2222-3333-f752070d71ec/documents/combined",
+          "query": {
+            "certificate": [
+              "true"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/pdf"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "downloadCombinedDocument transport",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create account 5xx retry",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"BURST_APIINVOCATION_LIMIT_EXCEEDED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "createEnvelopeFromTemplate account 429",
+      "operation": "createEnvelopeFromTemplate"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"BURST_APIINVOCATION_LIMIT_EXCEEDED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "getEnvelope account 429",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "getEnvelope account 503",
+      "operation": "getEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"BURST_APIINVOCATION_LIMIT_EXCEEDED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "listEnvelopeRecipients account 429",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec"
+      },
+      "name": "listEnvelopeRecipients account 503",
+      "operation": "listEnvelopeRecipients"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"BURST_APIINVOCATION_LIMIT_EXCEEDED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "voidEnvelope account 429",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "49861d0e-ff22-52b9-ab40-610b4fa564db",
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "voidedReason": "Signing deadline passed"
+      },
+      "name": "voidEnvelope account 503",
+      "operation": "voidEnvelope"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"BURST_APIINVOCATION_LIMIT_EXCEEDED\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3600000,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "downloadCombinedDocument account 429",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "a5e14bae-f11c-5ec8-9d20-6d6f96e02b43",
+      "exchanges": [
+        {
+          "body": "{\"errorCode\":\"SERVICE_UNAVAILABLE\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+        "includeCertificate": true
+      },
+      "name": "downloadCombinedDocument account 503",
+      "operation": "downloadCombinedDocument"
+    },
+    {
+      "callId": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"account_id\":\"a4ec37d6-1111-2222-3333-143885c220e1\",\"is_default\":true,\"base_uri\":\"https://na3.docusign.net\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/oauth/userinfo",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "requestBody": {
+            "customFields": {
+              "textCustomFields": [
+                {
+                  "name": "dexIdempotencyKey",
+                  "required": "false",
+                  "show": "false",
+                  "value": "7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+                },
+                {
+                  "name": "dexSigningRequestId",
+                  "required": "false",
+                  "show": "false",
+                  "value": "opp-123"
+                }
+              ]
+            },
+            "emailBlurb": "Please sign",
+            "emailSubject": "Meridian MSA",
+            "status": "created",
+            "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+            "templateRoles": [
+              {
+                "email": "priya@meridian.example.com",
+                "name": "Priya Raman",
+                "roleName": "Customer",
+                "routingOrder": "1"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"envelopes\": [{\"envelopeId\": \"93be49ab-1111-2222-3333-f752070d71ec\", \"status\": \"created\", \"customFields\": {\"textCustomFields\": [{\"name\": \"dexIdempotencyKey\", \"value\": \"7145ac3d-37c7-5ba3-8e89-08e4423dc941\"}]}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/restapi/v2.1/accounts/a4ec37d6-1111-2222-3333-143885c220e1/envelopes",
+          "query": {
+            "custom_field": [
+              "dexIdempotencyKey=7145ac3d-37c7-5ba3-8e89-08e4423dc941"
+            ],
+            "from_date": [
+              "2026-10-04T11:00:00Z"
+            ],
+            "include": [
+              "custom_fields"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-DOCUSIGN-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "envelopeId": "93be49ab-1111-2222-3333-f752070d71ec",
+          "status": "created",
+          "wasRecovered": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7145ac3d-37c7-5ba3-8e89-08e4423dc941",
+      "input": {
+        "customFields": [
+          {
+            "name": "dexSigningRequestId",
+            "value": "opp-123"
+          }
+        ],
+        "emailBlurb": "Please sign",
+        "emailSubject": "Meridian MSA",
+        "isDraft": true,
+        "templateId": "8c9f5a8b-1111-2222-3333-4f5e6d7c8b9a",
+        "templateRoles": [
+          {
+            "email": "priya@meridian.example.com",
+            "name": "Priya Raman",
+            "roleName": "Customer",
+            "routingOrder": 1
+          }
+        ]
+      },
+      "name": "create accepted unreadable response recovered",
+      "operation": "createEnvelopeFromTemplate"
+    }
+  ],
+  "schemaVersion": 1
+}
