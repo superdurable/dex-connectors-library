@@ -40,6 +40,15 @@ export const Authorization = {
       }
     ],
     "refresh": {
+      "acceptedScopeSets": [
+        [
+          "read:servicedesk-request",
+          "write:servicedesk-request",
+          "manage:servicedesk-customer",
+          "read:jira-work",
+          "write:jira-work"
+        ]
+      ],
       "acceptsMissingTokenType": true,
       "missingExpiry": "reject",
       "scopeSeparators": "whitespaceAndComma",
