@@ -279,6 +279,8 @@ operation in one Flow started from Dex Web: it reads an approval-policy table,
 decides a spending request, appends the decision to a decision log keyed by
 request ID, writes the latest decision to a summary range, and reads it back.
 
+The [TypeScript example](typescript/examples/approval-decision/README.md) exposes the same four connector operations through typed Dex Flows with the static `approvals` connection. Its real Dex integration test uses an inert Graph fixture, and its Go-recorded provider conformance fixture covers every operation branch, retry, transport failure, and the append checkpoint. The TypeScript package is `@superdurable/connector-microsoft-excel` v0.1.0 and uses Connector SDK 0.7.0. It adds no new React, Connector Studio, directory UI, or authorization fields. Live Microsoft OAuth and workbook requests remain unverified for this port. Go's independent eight second token refresh deadline awaits the separate Connector SDK 0.8.0 manifest timeout follow-up.
+
 ## Not in this release
 
 - **Triggers.** A change Trigger would need either Graph change notifications,
