@@ -2692,10 +2692,10 @@
       "priorHeartbeat": {
         "attempt": 1,
         "value": {
-          "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
-          "operation": "createTask",
           "attempt": 1,
-          "objectId": "1204567890123456"
+          "callId": "6072a0ce-9ddb-5937-8998-675e48cfa406",
+          "objectId": "1204567890123456",
+          "operation": "createTask"
         }
       }
     },
@@ -2757,10 +2757,10 @@
       "priorHeartbeat": {
         "attempt": 1,
         "value": {
-          "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
-          "operation": "addComment",
           "attempt": 1,
-          "objectId": "1205000000000001"
+          "callId": "148c4499-4299-5d5c-ba50-80c52f8508b9",
+          "objectId": "1205000000000001",
+          "operation": "addComment"
         }
       }
     },
