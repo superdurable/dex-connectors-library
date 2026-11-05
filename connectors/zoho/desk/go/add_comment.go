@@ -57,9 +57,8 @@ func (AddCommentOperation) IdempotencyKey(callID sdkgo.CallID, _ AddCommentInput
 	return sdkgo.IdempotencyKey(callID)
 }
 
-// Invoke sends POST /api/v1/tickets/{id}/comments at most once per Step execution. Only a 429 or a
-// connection that never opened is retried; any other unconfirmed outcome selects uncertain without
-// resending, because a repeated public comment is shown to the customer twice.
+// Invoke sends POST /api/v1/tickets/{id}/comments once per safe attempt. A 429, 503, or request
+// that never left the process retries; other unconfirmed outcomes select uncertain without resending.
 func (operation AddCommentOperation) Invoke(call sdkgo.Call, input AddCommentInput) sdkgo.MutationAttempt[AddCommentOutput] {
 	branches := singleDispatchBranches{notFound: AddCommentBranchNotFound, providerRejected: AddCommentBranchProviderRejected, defect: AddCommentBranchDefect}
 	if err := validateAddCommentInput(input); err != nil {
