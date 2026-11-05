@@ -40,6 +40,12 @@ export const Authorization = {
       }
     ],
     "refresh": {
+      "acceptedScopeSets": [
+        [
+          "read:jira-work",
+          "write:jira-work"
+        ]
+      ],
       "acceptsMissingTokenType": true,
       "missingExpiry": "reject",
       "scopeSeparators": "whitespaceAndComma",
