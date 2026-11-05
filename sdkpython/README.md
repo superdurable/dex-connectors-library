@@ -265,6 +265,8 @@ The core example sends through an in-process HTTP transport.
   accepted values. Invalid values require reauthorization before a token request.
   `trimClientID` on refresh or client-credentials declarations trims the client
   ID sent to the token endpoint when the Go driver does so.
+  JWT-bearer grants accept a PEM private key directly from a credential field,
+  as Salesforce declares, without requiring a JSON key credential.
   Private-network HTTP token endpoints reject fragments and non-printable or
   non-ASCII URL text before transport.
 - `0.6.0`: Generated timestamp inputs follow Go `time.Time.UnmarshalJSON`.

@@ -417,7 +417,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "endpoint": bearer["tokenEndpoint"],
                     "token_endpoint_network_policy": "",
                     "encoding": "form",
-                    "key_credential": bearer["keyCredential"],
+                    "key_credential": bearer.get("keyCredential", ""),
                     "assertion": bearer,
                     "mappings": bearer["credentialMappings"],
                     "copies": bearer.get("credentialCopies", []),
@@ -466,7 +466,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         self, grant: Mapping[str, Any], credentials: Credential, http_client: httpx.AsyncClient
     ) -> tuple[Any, list[dict[str, str]]]:
         key: dict[str, Any] = {}
-        if grant["kind"] == "jwt_bearer":
+        if grant["kind"] == "jwt_bearer" and grant["key_credential"]:
             try:
                 parsed = json.loads(self._credential_value(credentials, grant["key_credential"]))
                 key_fields = {
