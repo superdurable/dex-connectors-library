@@ -12,6 +12,7 @@ describe('Go time.Time JSON input parity', () => {
   it.each(cases)('$input', ({ input, accepted, output, marshalError }) => {
     const parsed = GoTimeJSONSchema.safeParse(input);
     expect(parsed.success).toBe(accepted);
+    if (parsed.success && marshalError) expect(parsed.data).toBe(input);
     if (parsed.success && !marshalError) expect(JSON.stringify(parsed.data)).toBe(JSON.stringify(output));
   });
 });
