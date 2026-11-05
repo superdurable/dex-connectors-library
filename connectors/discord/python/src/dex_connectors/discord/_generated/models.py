@@ -46,7 +46,7 @@ setattr(Channel, '__module__', 'dex_connectors.discord.models')
 
 
 # ListChannelMessagesInput selects one page of a channel's messages.
-# 
+#
 # Discord returns messages newest first. Set at most one of BeforeMessageID
 # and AfterMessageID: blank both reads the newest page, BeforeMessageID pages
 # toward older messages, and AfterMessageID reads messages newer than it.
@@ -124,7 +124,7 @@ setattr(MessagePage, '__module__', 'dex_connectors.discord.models')
 
 
 # CreateMessageInput sends one text message to a channel as the bot.
-# 
+#
 # Every mention is disabled, so text such as @everyone or <@id> renders but
 # notifies nobody.
 @dataclass(frozen=True, slots=True)

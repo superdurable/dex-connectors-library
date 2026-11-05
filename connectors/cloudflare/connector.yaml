@@ -10,7 +10,7 @@ spec:
   provider: cloudflare
   languages:
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       operations: [purgeCacheByURLs, listZones]
       triggers: []
     python:
