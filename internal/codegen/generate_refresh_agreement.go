@@ -49,6 +49,7 @@ const (
 	sampleAccessToken     = "manifest-access-token"
 	sampleSubject         = "manifest-user@example.com"
 	sampleTemplateValue   = "manifest.example.com"
+	sampleTenantGUID      = "01234567-89ab-cdef-0123-456789abcdef"
 	sampleTokenEndpoint   = "https://manifest.example.com/token"
 	sampleExpiresInSecond = 3600
 	offlineAccessScope    = "offline_access"
@@ -114,6 +115,9 @@ type RefreshAgreementAssertion struct {
 // GenerateRefreshAgreementCases returns the Go agreement's sample cases for Python and TypeScript replay.
 func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]RefreshAgreementSample) ([]byte, error) {
 	agreement := &refreshAgreementGenerator{manifest: manifest, samples: samples}
+	if err := agreement.validateTemplateGUIDSamples(); err != nil {
+		return nil, err
+	}
 	var cases []RefreshAgreementCase
 	for _, grant := range declaredGrants(manifest) {
 		for _, variant := range agreement.variants(grant) {
@@ -182,7 +186,7 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: append([]string{}, grant.terminalCodes...),
 					StoredMissingExpiry:  defaultString(grant.storedMissingExpiry, schema.StoredMissingExpiryKeep),
 					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
-				result.RefreshRequiredCases = agreement.refreshRequiredCases(grant)
+				result.RefreshRequiredCases = agreement.refreshRequiredCases(grant, credentials)
 				if result.MayRefuseWithoutCall {
 					result.ExpectedError = "reauthorization"
 					result.TerminalErrorCodes = []string{}
@@ -244,9 +248,13 @@ func (agreement *refreshAgreementGenerator) sampleAssertion(grant declaredGrant,
 		Scope: strings.Join(jwt.Scopes, " "), LifetimeSeconds: int64(lifetime / time.Second)}, nil
 }
 
-func (agreement *refreshAgreementGenerator) refreshRequiredCases(grant declaredGrant) []RefreshRequiredCase {
+func (agreement *refreshAgreementGenerator) refreshRequiredCases(grant declaredGrant, credentials map[string]string) []RefreshRequiredCase {
+	refreshWhenBlank := grant.refreshWhenCredentialBlank != "" && credentials[grant.refreshWhenCredentialBlank] == ""
+	if rule := grant.responseURLValidation; rule != nil && rule.RefreshWhenInvalid && credentials[rule.Credential] == "" {
+		refreshWhenBlank = true
+	}
 	refreshCases := []RefreshRequiredCase{
-		{Name: "fresh token", ExpiresAt: "fresh", Expected: false},
+		{Name: "fresh token", ExpiresAt: "fresh", Expected: refreshWhenBlank},
 		{Name: "expired token", ExpiresAt: "expired", Expected: true},
 	}
 	undatedRefresh := grant.storedMissingExpiry == schema.StoredMissingExpiryRefresh ||
@@ -267,13 +275,22 @@ func (agreement *refreshAgreementGenerator) refreshRequiredCases(grant declaredG
 	if grant.storedMissingExpiry == schema.StoredMissingExpiryRefreshIfPossible && grant.refreshToken != "" {
 		refreshCases = append(refreshCases, RefreshRequiredCase{Name: "undated token without refresh token", Credentials: map[string]string{grant.refreshToken: ""}, ExpiresAt: "missing", Expected: false})
 	}
-	if grant.refreshWhenCredentialBlank != "" {
+	if grant.refreshWhenCredentialBlank != "" && credentials[grant.refreshWhenCredentialBlank] != "" {
 		refreshCases = append(refreshCases, RefreshRequiredCase{Name: "blank mapped credential", Credentials: map[string]string{grant.refreshWhenCredentialBlank: ""}, ExpiresAt: "fresh", Expected: true})
 	}
 	if rule := grant.responseURLValidation; rule != nil && rule.RefreshWhenInvalid {
 		refreshCases = append(refreshCases, RefreshRequiredCase{Name: "invalid stored provider URL", Credentials: map[string]string{rule.Credential: "https://foreign.example.invalid"}, ExpiresAt: "fresh", Expected: true})
 	}
 	return refreshCases
+}
+
+func goRefreshRequiredCases(cases []RefreshRequiredCase) string {
+	values := make([]string, 0, len(cases))
+	for _, refreshCase := range cases {
+		values = append(values, fmt.Sprintf("{name: %q, credentials: %s, expiresAt: %q, expected: %t, jwtAccessTokenCredential: %q, jwtExpiry: %q}",
+			refreshCase.Name, goStringMap(refreshCase.Credentials), refreshCase.ExpiresAt, refreshCase.Expected, refreshCase.JWTAccessTokenCredential, refreshCase.JWTExpiry))
+	}
+	return "[]manifestRefreshRequiredCase{" + strings.Join(values, ", ") + "}"
 }
 
 func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgreementCase, grant declaredGrant) []RefreshAgreementCase {
@@ -517,6 +534,9 @@ func (agreement *refreshAgreementGenerator) responseVariations(base RefreshAgree
 		delete(keptRefreshToken.Updates, grant.refreshToken)
 		variations = append(variations, keptRefreshToken)
 	}
+	for index := range variations {
+		variations[index].RefreshRequiredCases = agreement.refreshRequiredCases(grant, variations[index].Credentials)
+	}
 	return variations
 }
 
@@ -574,6 +594,9 @@ func GenerateRefreshAgreementTest(manifest schema.Manifest, connectorImportPath 
 	}
 	connector := manifest.Spec.Codegen.Go.Package
 	agreement := &refreshAgreementGenerator{manifest: manifest, connector: connector, samples: samples}
+	if err := agreement.validateTemplateGUIDSamples(); err != nil {
+		return nil, err
+	}
 	generation := &generator{}
 	generation.mustWrite("// Code generated by connectorctl generate; DO NOT EDIT.\n")
 	generation.mustWrite("// Copyright (c) 2026 Super Durable\n// SPDX-License-Identifier: MIT\n\n")
@@ -623,6 +646,25 @@ type refreshAgreementGenerator struct {
 	manifest  schema.Manifest
 	connector string
 	samples   map[string]RefreshAgreementSample
+}
+
+func (agreement *refreshAgreementGenerator) validateTemplateGUIDSamples() error {
+	for _, grant := range declaredGrants(agreement.manifest) {
+		for _, source := range agreement.sources(grant) {
+			for placeholder, rule := range source.TemplateValueRules {
+				for _, pattern := range rule.Patterns {
+					compiled, err := regexp.Compile(pattern)
+					if err != nil {
+						return fmt.Errorf("%s templateValueRules %s pattern: %w", grant.name, placeholder, err)
+					}
+					if strings.Contains(pattern, "[0-9A-Fa-f]{8}") && !compiled.MatchString(sampleTenantGUID) {
+						return fmt.Errorf("%s templateValueRules %s rejects valid GUID sample", grant.name, placeholder)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // grantVariant fixes the value of one credential field or setting that a values map translates.
@@ -784,6 +826,12 @@ func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []gran
 		}
 		for _, source := range agreement.sources(grant) {
 			for name, rule := range source.TemplateValueRules {
+				for _, pattern := range rule.Patterns {
+					if regexp.MustCompile(pattern).MatchString(sampleTenantGUID) {
+						variants = append(variants, grantVariant{field: name, value: sampleTenantGUID})
+						break
+					}
+				}
 				if rule.TrimSpace {
 					variants = append(variants, grantVariant{field: name, value: "  " + sampleTemplateValue + "  "})
 				}
@@ -903,7 +951,7 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 	}
 	generation.mustWrite("\t\t\t\treturn credentials\n\t\t\t},\n")
 	generation.mustWrite("\t\t\trefreshRequiredCases: []manifestRefreshRequiredCase{\n")
-	for _, refreshCase := range agreement.refreshRequiredCases(grant) {
+	for _, refreshCase := range agreement.refreshRequiredCases(grant, credentials) {
 		generation.mustWrite("\t\t\t\t{name: %q, credentials: %s, expiresAt: %q, expected: %t, jwtAccessTokenCredential: %q, jwtExpiry: %q},\n",
 			refreshCase.Name, goStringMap(refreshCase.Credentials), refreshCase.ExpiresAt, refreshCase.Expected, refreshCase.JWTAccessTokenCredential, refreshCase.JWTExpiry)
 	}
@@ -943,8 +991,12 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 			if variation.MayRefuseWithoutCall {
 				beforeRequest = ", beforeRequest: true"
 			}
-			generation.mustWrite("\t\t\t\t{name: %q, response: %s, credentials: %s, updates: %s, expectedError: %q, expectedExpiry: time.Duration(%d), checkExpiry: %t%s},\n",
-				variation.Name, goAnyMap(variation.Response), goStringMap(credentialsOverride), goStringMap(variation.Updates), variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)), variation.ExpectedExpiryMilliseconds != nil, beforeRequest)
+			refreshRequiredCases := ""
+			if len(credentialsOverride) > 0 {
+				refreshRequiredCases = ", refreshRequiredCases: " + goRefreshRequiredCases(variation.RefreshRequiredCases)
+			}
+			generation.mustWrite("\t\t\t\t{name: %q, response: %s, credentials: %s, updates: %s%s, expectedError: %q, expectedExpiry: time.Duration(%d), checkExpiry: %t%s},\n",
+				variation.Name, goAnyMap(variation.Response), goStringMap(credentialsOverride), goStringMap(variation.Updates), refreshRequiredCases, variation.ExpectedError, int64(expectedExpiry*float64(time.Millisecond)), variation.ExpectedExpiryMilliseconds != nil, beforeRequest)
 		}
 		generation.mustWrite("\t\t\t},\n")
 	}
@@ -1361,7 +1413,7 @@ func applyTemplateValueRule(value string, rule schema.TemplateValueRule) (string
 		return "", fmt.Errorf("value exceeds %d bytes", rule.MaxBytes)
 	}
 	for _, rejected := range rule.Reject {
-		if strings.EqualFold(value, rejected) {
+		if strings.ToLower(value) == strings.ToLower(rejected) {
 			return "", fmt.Errorf("value is rejected")
 		}
 	}

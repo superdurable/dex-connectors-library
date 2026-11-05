@@ -46,6 +46,7 @@ type manifestVariation struct {
 	response map[string]any
 	credentials map[string]string
 	updates map[string]string
+	refreshRequiredCases []manifestRefreshRequiredCase
 	expectedError string
 	expectedExpiry time.Duration
 	checkExpiry bool
@@ -137,12 +138,19 @@ func TestCredentialRefreshDriverAgreesWithTheManifest(t *testing.T) {
 }
 
 func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKeyPEM string) {
+	requireManifestRefreshRequiredCases(t, grant, privateKeyPEM, nil, grant.refreshRequiredCases)
+}
+
+func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, privateKeyPEM string, baseOverrides map[string]string, refreshCases []manifestRefreshRequiredCase) {
 	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
 	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
-	for _, refreshCase := range grant.refreshRequiredCases {
+	for _, refreshCase := range refreshCases {
 		t.Run(refreshCase.name, func(t *testing.T) {
 			now := time.Now().UTC()
 				overrides := map[string]string{}
+			for name, value := range baseOverrides {
+				overrides[name] = value
+			}
 				for name, value := range refreshCase.credentials {
 					overrides[name] = value
 				}
@@ -179,6 +187,9 @@ func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKe
 func requireManifestResponseVariations(t *testing.T, grant manifestGrant, privateKeyPEM string) {
 	for _, variation := range grant.variations {
 		t.Run(variation.name, func(t *testing.T) {
+			if len(variation.credentials) > 0 {
+				requireManifestRefreshRequiredCases(t, grant, privateKeyPEM, variation.credentials, variation.refreshRequiredCases)
+			}
 			startedAt := time.Now().UTC()
 			result, endpoint, err := grant.refreshWithOverrides(t, privateKeyPEM, http.StatusOK, variation.response, variation.credentials)
 			if variation.beforeRequest {

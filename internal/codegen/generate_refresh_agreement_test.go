@@ -88,6 +88,65 @@ func TestGenerateRefreshAgreementCasesEncodeTerminalCodesAsArrays(t *testing.T) 
 		`agreement.terminalErrorCodes?.includes(terminalCode)`)
 }
 
+func TestMicrosoftTemplateRulesAgreeOnValidTenantGUID(t *testing.T) {
+	for _, connector := range []string{"entra-id", "onedrive", "outlook-calendar", "outlook-mail"} {
+		t.Run(connector, func(t *testing.T) {
+			manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "microsoft", connector, "connector.yaml"))
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+			manifest, err := schema.Decode(manifestFile)
+			require.NoError(t, err)
+			encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+			require.NoError(t, err)
+			var cases []codegen.RefreshAgreementCase
+			require.NoError(t, json.Unmarshal(encoded, &cases))
+			found := false
+			for _, agreementCase := range cases {
+				if strings.Contains(agreementCase.Name, "01234567-89ab-cdef-0123-456789abcdef") {
+					require.Contains(t, agreementCase.Endpoint, "01234567-89ab-cdef-0123-456789abcdef")
+					found = true
+				}
+			}
+			require.True(t, found, "the agreement must exercise a valid GUID tenant")
+			contents, err := os.ReadFile(filepath.Join("..", "..", "connectors", "microsoft", connector, "connector.yaml"))
+			require.NoError(t, err)
+			broken := strings.Replace(string(contents), "-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$", "-[0-9A-Fa-f]{12})$", 1)
+			require.NotEqual(t, string(contents), broken)
+			brokenManifest, err := schema.Decode(strings.NewReader(broken))
+			require.NoError(t, err)
+			_, err = codegen.GenerateRefreshAgreementCases(brokenManifest, nil)
+			require.ErrorContains(t, err, "rejects valid GUID sample")
+		})
+	}
+}
+
+func TestZohoBlankStoredAPIDomainRequiresRefresh(t *testing.T) {
+	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "zoho", "crm", "connector.yaml"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+	require.NoError(t, err)
+	var cases []codegen.RefreshAgreementCase
+	require.NoError(t, json.Unmarshal(encoded, &cases))
+	foundBlank := false
+	for _, agreementCase := range cases {
+		if !strings.Contains(agreementCase.Name, "without provider or stored URL") {
+			continue
+		}
+		foundBlank = true
+		require.Empty(t, agreementCase.Credentials["api_domain"])
+		for _, refreshCase := range agreementCase.RefreshRequiredCases {
+			if refreshCase.Name == "fresh token" {
+				require.True(t, refreshCase.Expected, agreementCase.Name)
+			}
+			require.NotEqual(t, "blank mapped credential", refreshCase.Name, agreementCase.Name)
+		}
+	}
+	require.True(t, foundBlank)
+}
+
 func TestHubSpotCommaInsideArrayScopeRequiresAtomicMatching(t *testing.T) {
 	manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", "hubspot", "connector.yaml"))
 	require.NoError(t, err)

@@ -269,7 +269,13 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		}, problem: "templateValueRules other must name a template placeholder"},
 		"an unanchored template rule": {edits: []manifestEdit{
 			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {tenant_id: {patterns: [example]}}}`},
-		}, problem: "patterns must be anchored"},
+		}, problem: "patterns must use ^(?:...)$"},
+		"a pattern with inline flags": {edits: []manifestEdit{
+			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {tenant_id: {patterns: ['^(?:(?i)example)$']}}}`},
+		}, problem: "pattern uses non-portable syntax"},
+		"a pattern with Go Unicode properties": {edits: []manifestEdit{
+			{`tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token"}`, `tokenEndpoint: {template: "https://login.example.com/{tenant_id}/token", templateValueRules: {tenant_id: {patterns: ['^(?:\pL+)$']}}}`},
+		}, problem: "pattern uses non-portable syntax"},
 		"a template that fills the host": {edits: []manifestEdit{
 			{"https://login.example.com/{tenant_id}/token", "https://{tenant_id}.example.com/token"},
 		}, problem: "template must start with a fixed HTTPS origin"},

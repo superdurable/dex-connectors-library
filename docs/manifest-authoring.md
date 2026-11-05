@@ -821,7 +821,11 @@ match against at least one anchored `patterns` expression when listed. The
 accepted value is then `lowercase`d when requested and path-escaped. Invalid
 values require reauthorization before a token request. Use explicit rules for
 provider tenant identifiers instead of relying on URL escaping to make them
-valid. Patterns must use syntax shared by Go, JavaScript, and Python.
+valid. Patterns must have the form `^(?:...)$` and use syntax shared by Go RE2,
+JavaScript, and Python. Inline flags such as `(?i)`, named groups, Unicode
+properties, Go-specific escapes, and POSIX character classes are invalid.
+Character classes `\d`, `\w`, and `\s` have ASCII semantics; Python consumers
+must compile patterns with ASCII mode.
 Set `refresh.trimClientID` or `clientCredentials.trimClientID` only when the Go
 driver trims the client ID in its token request; it leaves the stored value intact.
 

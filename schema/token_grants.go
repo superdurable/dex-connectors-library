@@ -881,8 +881,10 @@ func (grantContext tokenGrantContext) validateValueSource(label string, source V
 				problems = append(problems, label+" templateValueRules "+name+" maxBytes must be positive")
 			}
 			for _, pattern := range rule.Patterns {
-				if !strings.HasPrefix(pattern, "^") || !strings.HasSuffix(pattern, "$") {
-					problems = append(problems, label+" templateValueRules "+name+" patterns must be anchored")
+				if !strings.HasPrefix(pattern, "^(?:") || !strings.HasSuffix(pattern, ")$") {
+					problems = append(problems, label+" templateValueRules "+name+" patterns must use ^(?:...)$")
+				} else if !isPortableTemplatePattern(pattern) {
+					problems = append(problems, label+" templateValueRules "+name+" pattern uses non-portable syntax")
 				} else if _, err := regexp.Compile(pattern); err != nil {
 					problems = append(problems, label+" templateValueRules "+name+" pattern is invalid")
 				}
@@ -901,6 +903,25 @@ func (grantContext tokenGrantContext) validateValueSource(label string, source V
 		}
 	}
 	return problems
+}
+
+func isPortableTemplatePattern(pattern string) bool {
+	if strings.Contains(pattern, "[[:") {
+		return false
+	}
+	for index := 0; index < len(pattern); index++ {
+		if pattern[index] == '\\' && index+1 < len(pattern) {
+			index++
+			if !strings.ContainsRune(`dDsSwWbBfnrtvx.^$*+?{}[]()|\/-`, rune(pattern[index])) || pattern[index] == 'x' && index+1 < len(pattern) && pattern[index+1] == '{' {
+				return false
+			}
+			continue
+		}
+		if pattern[index] == '(' && index+1 < len(pattern) && pattern[index+1] == '?' && (index+2 >= len(pattern) || pattern[index+2] != ':') {
+			return false
+		}
+	}
+	return true
 }
 
 func validateScopeList(label string, scopes []string) []string {

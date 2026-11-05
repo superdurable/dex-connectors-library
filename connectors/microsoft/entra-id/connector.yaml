@@ -84,8 +84,8 @@ spec:
                 lowercase: true
                 maxBytes: 253
                 patterns:
-                  - '^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$'
-                  - '^(?:[A-Za-z0-9Kſ](?:[A-Za-z0-9Kſ-]{0,61}[A-Za-z0-9Kſ])?)(?:\.[A-Za-z0-9Kſ](?:[A-Za-z0-9Kſ-]{0,61}[A-Za-z0-9Kſ])?)+$'
+                  - '^(?:[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$'
+                  - '^(?:(?:[A-Za-z0-9Kſ](?:[A-Za-z0-9Kſ-]{0,61}[A-Za-z0-9Kſ])?)(?:\.[A-Za-z0-9Kſ](?:[A-Za-z0-9Kſ-]{0,61}[A-Za-z0-9Kſ])?)+)$'
                 reject: [common, organizations, consumers]
           clientIDCredential: client_id
           clientSecretCredential: client_secret
