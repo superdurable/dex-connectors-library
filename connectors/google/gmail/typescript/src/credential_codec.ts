@@ -2,20 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 import { SecretString } from '@superdurable/connectors-sdk';
-import { z } from 'zod';
-import { GoogleOAuthAuthMethodID, WorkspaceDomainDelegationAuthMethodID, type Credentials } from './models.js';
-
-const StoredCredentialsSchema = z.object({
-  auth_method: z.string().optional(), oauth_client_id: z.string().optional(), oauth_client_secret: z.string().optional(),
-  access_token: z.string().optional(), refresh_token: z.string().optional(), primary_email: z.string().optional(),
-  service_account_key: z.string().optional(), delegated_user: z.string().optional(),
-});
+import { decodeCredentials, decodeSharedCredentials, type Credentials as GeneratedCredentials } from './generated/models.js';
+import { GoogleOAuthAuthMethodID, type Credentials } from './models.js';
 
 /** Decode a private project connection using the manifest's credential field names. */
-export function decodeGmailCredentials(value: unknown): Credentials { return decodeCredentialFields(value, false); }
+export function decodeGmailCredentials(value: unknown): Credentials { return completeCredentials(decodeGmailFields(value, false)); }
 
 /** Decode a brokered connection whose host retains its refresh material. */
-export function decodeGmailSharedCredentials(value: unknown): Credentials { return decodeCredentialFields(value, true); }
+export function decodeGmailSharedCredentials(value: unknown): Credentials { return completeCredentials(decodeGmailFields(value, true)); }
 
 /** Encode complete replacement credentials only for the private project store. */
 export function encodeGmailCredentials(credentials: Credentials): Record<string, string> {
@@ -29,25 +23,26 @@ export function encodeGmailCredentials(credentials: Credentials): Record<string,
   return fields;
 }
 
-function decodeCredentialFields(value: unknown, isShared: boolean): Credentials {
-  const fields = StoredCredentialsSchema.safeParse(value);
-  if (!fields.success) throw new TypeError('Gmail credential fields are invalid');
-  const stored = fields.data;
-  const credentials: Credentials = {
-    authMethodId: stored.auth_method || GoogleOAuthAuthMethodID,
-    oauthClientId: stored.oauth_client_id ?? '', oauthClientSecret: new SecretString(stored.oauth_client_secret ?? ''),
-    accessToken: new SecretString(stored.access_token ?? ''), refreshToken: new SecretString(stored.refresh_token ?? ''),
-    primaryEmail: stored.primary_email ?? '', serviceAccountKey: new SecretString(stored.service_account_key ?? ''),
-    delegatedUser: stored.delegated_user ?? '',
+function completeCredentials(decoded: GeneratedCredentials): Credentials {
+  return {
+    authMethodId: decoded.authMethodId ?? GoogleOAuthAuthMethodID,
+    oauthClientId: decoded.oauthClientId ?? '', oauthClientSecret: decoded.oauthClientSecret ?? new SecretString(''),
+    accessToken: decoded.accessToken ?? new SecretString(''), refreshToken: decoded.refreshToken ?? new SecretString(''),
+    primaryEmail: decoded.primaryEmail ?? '', serviceAccountKey: decoded.serviceAccountKey ?? new SecretString(''),
+    delegatedUser: decoded.delegatedUser ?? '',
   };
-  if (credentials.authMethodId === GoogleOAuthAuthMethodID) {
-    if (!credentials.oauthClientId || !credentials.primaryEmail || (!isShared && (!credentials.oauthClientSecret?.reveal() || !credentials.refreshToken?.reveal())) || !credentials.accessToken.reveal()) {
-      throw new TypeError('Gmail OAuth connection credentials are incomplete');
+}
+
+function decodeGmailFields(value: unknown, isShared: boolean): GeneratedCredentials {
+  try { return isShared ? decodeSharedCredentials(value) : decodeCredentials(value); }
+  catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('is required')) {
+      const method = value && typeof value === 'object' && 'auth_method' in value ? value.auth_method : '';
+      throw new TypeError(method === 'workspace-domain-delegation'
+        ? 'Gmail Workspace connection credentials are incomplete' : 'Gmail OAuth connection credentials are incomplete');
     }
-  } else if (credentials.authMethodId === WorkspaceDomainDelegationAuthMethodID) {
-    if (!credentials.delegatedUser || (isShared ? !credentials.accessToken.reveal() : !credentials.serviceAccountKey?.reveal())) {
-      throw new TypeError('Gmail Workspace connection credentials are incomplete');
-    }
-  } else throw new TypeError('Gmail authorization method is invalid');
-  return credentials;
+    if (message.includes('auth_method is invalid')) throw new TypeError('Gmail authorization method is invalid');
+    throw new TypeError('Gmail credential fields are invalid');
+  }
 }

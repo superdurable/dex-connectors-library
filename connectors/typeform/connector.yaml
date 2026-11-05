@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: typeform
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-typeform
+      operations: [listForms, getForm, listResponses, upsertWebhook]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-typeform"

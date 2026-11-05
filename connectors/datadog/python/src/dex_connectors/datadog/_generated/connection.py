@@ -79,11 +79,19 @@ class _ProjectCredentialSource:
 
     async def resolve(self, call: Call) -> Credentials:
         material = await self.project.resolve_credential(self.key, str(call.id))
+        if not isinstance(material, dict):
+            raise ValueError("Datadog stored credential does not match the connector credential fields")
+        if set(material) - set(('api_key', 'application_key')):
+            raise ValueError("Datadog stored credential does not match the connector credential fields")
         api_key = material.get("api_key")
-        if not isinstance(api_key, str) or not api_key:
-            raise ValueError("Datadog credential api_key is required")
+        if api_key is not None and not (isinstance(api_key, str)):
+            raise ValueError("Datadog credential api_key has an invalid type")
         application_key = material.get("application_key")
-        if not isinstance(application_key, str) or not application_key:
+        if application_key is not None and not (isinstance(application_key, str)):
+            raise ValueError("Datadog credential application_key has an invalid type")
+        if not api_key:
+            raise ValueError("Datadog credential api_key is required")
+        if not application_key:
             raise ValueError("Datadog credential application_key is required")
         return Credentials(SecretString(api_key), SecretString(application_key))
 
