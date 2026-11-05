@@ -78,6 +78,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-eu-oauth
@@ -105,6 +106,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-in-oauth
@@ -132,6 +134,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-au-oauth
@@ -159,6 +162,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-jp-oauth
@@ -186,6 +190,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-ca-oauth
@@ -213,6 +218,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-sa-oauth
@@ -240,6 +246,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-sg-oauth
@@ -267,6 +274,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
       - id: zoho-ae-oauth
@@ -294,6 +302,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
   studio:

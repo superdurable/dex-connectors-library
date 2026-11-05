@@ -42,6 +42,21 @@ func TestPythonRefreshDeclarationUsesDecodedManifest(t *testing.T) {
 	}
 }
 
+func TestPythonSalesforceBlankStoredMethodUsesDeclaredDefault(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "salesforce", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{}, Triggers: []string{}}}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "salesforce", MockPackageName: "salesforcemock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["connection.py"], `method = selected_method or "salesforce-oauth"`) {
+		t.Fatal("blank Salesforce auth_method must select the production OAuth method")
+	}
+}
+
 func TestPythonCodegenGoldenBitbucketMockUsesProviderIdentity(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "connectors", "atlassian", "bitbucket", "connector.yaml")
 	manifest, err := load(manifestPath)

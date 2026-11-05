@@ -49,6 +49,7 @@ export const Authorization = {
           }
         ],
         "refresh": {
+          "missingExpiry": "reject",
           "requiredScopes": [
             "https://www.googleapis.com/auth/gmail.readonly",
             "https://www.googleapis.com/auth/gmail.send"
@@ -117,6 +118,7 @@ export const Authorization = {
           },
           "keyCredential": "service_account_key",
           "lifetime": "1h",
+          "missingExpiry": "reject",
           "privateKey": {
             "fromKey": "private_key"
           },

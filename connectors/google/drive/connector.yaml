@@ -93,6 +93,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
       - id: workspace-domain-delegation
@@ -126,11 +127,13 @@ spec:
             - Enter one managed Workspace user as delegated_user; personal @gmail.com accounts and users outside the administrator's domain cannot use this method.
         serviceAccount:
           jwtBearer:
+            missingExpiry: reject
             storedMissingExpiry: refresh
             keyCredential: service_account_key
             privateKey: {fromKey: private_key}
             issuer: {fromKey: client_email}
             subject: {fromCredential: delegated_user}
+            subjectValidation: goMailAddress
             audience: {fromKey: token_uri}
             tokenEndpoint: {fromKey: token_uri}
             scopes: [https://www.googleapis.com/auth/drive.readonly, https://www.googleapis.com/auth/drive.file]

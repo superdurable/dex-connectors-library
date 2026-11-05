@@ -51,6 +51,47 @@ func TestDecodedProviderTokenResponseRules(t *testing.T) {
 	}
 }
 
+func TestOAuthAlternativeScopesAndDelegatedSubjectDeclarations(t *testing.T) {
+	decodeConnector := func(directory string) schema.Manifest {
+		manifestFile, err := os.Open(filepath.Join("..", "connectors", directory, "connector.yaml"))
+		require.NoError(t, err)
+		defer manifestFile.Close()
+		manifest, err := schema.Decode(manifestFile)
+		require.NoError(t, err)
+		return manifest
+	}
+	youtube := decodeConnector("google/youtube")
+	readOnly := youtube.Spec.Auth.Methods[0].OAuth2.Refresh
+	require.Equal(t, [][]string{{"https://www.googleapis.com/auth/youtube.readonly"}, {"https://www.googleapis.com/auth/youtube"}}, readOnly.AcceptedScopeSets)
+	salesforce := decodeConnector("salesforce")
+	require.Equal(t, [][]string{{"api"}, {"full"}}, salesforce.Spec.Auth.Methods[0].OAuth2.Refresh.AcceptedScopeSets)
+	require.Equal(t, [][]string{{"api"}, {"full"}}, salesforce.Spec.Auth.Methods[2].ServiceAccount.JWTBearer.AcceptedScopeSets)
+	for _, connector := range []string{"calendar", "docs", "drive", "forms"} {
+		manifest := decodeConnector("google/" + connector)
+		for _, method := range manifest.Spec.Auth.Methods {
+			if method.ServiceAccount != nil {
+				require.Equal(t, "goMailAddress", method.ServiceAccount.JWTBearer.SubjectValidation)
+			}
+		}
+	}
+}
+
+func TestMissingExpiryRejectRoundTrips(t *testing.T) {
+	var policy schema.MissingExpiry
+	require.NoError(t, json.Unmarshal([]byte(`"reject"`), &policy))
+	require.True(t, policy.Reject)
+	encoded, err := json.Marshal(policy)
+	require.NoError(t, err)
+	require.JSONEq(t, `"reject"`, string(encoded))
+	require.ErrorContains(t, json.Unmarshal([]byte(`"unknown"`), &policy), "missingExpiry")
+	manifestFile, err := os.Open(filepath.Join("..", "connectors", "helpscout", "connector.yaml"))
+	require.NoError(t, err)
+	defer manifestFile.Close()
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	require.True(t, manifest.Spec.Auth.ClientCredentials.MissingExpiry.Reject)
+}
+
 func TestGrantExactScopesFalseSurvivesJSONEncoding(t *testing.T) {
 	falseValue := false
 	encoded, err := json.Marshal(schema.OAuthRefreshGrant{ExactScopes: &falseValue})
@@ -154,7 +195,7 @@ func TestTokenGrantDeclarationsRejectInvalidReferences(t *testing.T) {
 		}, problem: "tokenRequestEncoding must be form or json"},
 		"a missing expiry that is neither keep nor a lifetime": {edits: []manifestEdit{
 			{"missingExpiry: keep", "missingExpiry: refresh"},
-		}, problem: "missingExpiry must be keep or {lifetime: <duration>}"},
+		}, problem: "missingExpiry must be reject, keep, or {lifetime: <duration>}"},
 		"an unknown stored missing expiry policy": {edits: []manifestEdit{
 			{"storedMissingExpiry: refresh", "storedMissingExpiry: never"},
 		}, problem: "storedMissingExpiry must be keep or refresh"},
