@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: pipedrive
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-pipedrive'
+      operations: [searchObjects, getObject, listObjects, upsertObject, createObject, updateObject]
+      triggers: []
   codegen:
     go:
       package: pipedrive
