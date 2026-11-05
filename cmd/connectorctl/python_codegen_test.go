@@ -934,6 +934,39 @@ func TestPythonPublishedModelNamesPreventExternalNameCollision(t *testing.T) {
 	}
 }
 
+func TestPythonNanosecondTimestampFieldsKeepStringWireValues(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages.Python.TimestampFormat = "rfc3339Nano"
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{Name: "TimestampFixture", Fields: []gomodel.Field{
+			{Name: "submittedAt", Type: gomodel.Type{Kind: gomodel.Time}, Optional: true},
+			{Name: "updatedAt", Type: gomodel.Type{Kind: gomodel.Time, Nullable: true}, Optional: true},
+		}}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := generated["models.py"]
+	for _, want := range []string{
+		"submitted_at: str = _dataclass_field(default='0001-01-01T00:00:00Z'",
+		"updated_at: str | None = _dataclass_field(default=None",
+		"RFC3339NanoTimestamp.from_wire(timestamp)",
+		"format_rfc3339_nano(timestamp)",
+	} {
+		if !strings.Contains(models, want) {
+			t.Errorf("nanosecond model omits %q:\n%s", want, models)
+		}
+	}
+	if strings.Contains(models, "dex_json_format") {
+		t.Error("Dex datetime codec would truncate a nine-digit timestamp")
+	}
+}
+
 func TestPythonGeneratedModelCommentsDoNotEndInWhitespace(t *testing.T) {
 	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
 	if err != nil {

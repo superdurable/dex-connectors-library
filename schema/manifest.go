@@ -62,6 +62,8 @@ type LanguagePackage struct {
 	Version string `yaml:"version" json:"version"`
 	// Package overrides the distribution name derived from the connector directory.
 	Package string `yaml:"package,omitempty" json:"package,omitempty"`
+	// TimestampFormat selects lossless RFC 3339 nanosecond strings for Python time.Time models.
+	TimestampFormat string `yaml:"timestampFormat,omitempty" json:"timestampFormat,omitempty"`
 	// Operations lists exactly the operation factories implemented by this package.
 	Operations []string `yaml:"operations" json:"operations"`
 	// Triggers lists exactly the Trigger factories implemented by this package.
@@ -525,9 +527,15 @@ func (manifest Manifest) Validate() error {
 			if language.Package != "" && !pythonPackagePattern.MatchString(language.Package) {
 				problems = append(problems, "spec.languages.python.package must be a normalized PyPI distribution name")
 			}
+			if language.TimestampFormat != "" && language.TimestampFormat != "rfc3339Nano" {
+				problems = append(problems, "spec.languages.python.timestampFormat must be rfc3339Nano")
+			}
 			problems = append(problems, validateLanguageCapabilities("python", language, manifest.Spec)...)
 		}
 		if language := manifest.Spec.Languages.TypeScript; language != nil {
+			if language.TimestampFormat != "" {
+				problems = append(problems, "spec.languages.typescript.timestampFormat is Python-only")
+			}
 			if !versionPattern.MatchString(language.Version) {
 				problems = append(problems, "spec.languages.typescript.version must be a stable semantic version with a v prefix")
 			}

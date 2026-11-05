@@ -11,6 +11,9 @@ payload = json.load(sys.stdin)
 manifest = payload["manifest"]
 metadata = manifest["metadata"]
 spec = manifest["spec"]
+nanosecond_timestamps = (
+    spec["languages"]["python"].get("timestampFormat") == "rfc3339Nano"
+)
 auth_methods = spec["auth"].get("methods", [])
 
 
@@ -147,8 +150,9 @@ def python_type(
             "int64": ("int", "0"),
             "float": ("float", "0.0"),
             "time": (
-                "datetime",
-                "_dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))",
+                ("str", "'0001-01-01T00:00:00Z'")
+                if nanosecond_timestamps else
+                ("datetime", "_dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC))")
             ),
             "bytes": ("str", "''"),
             "unknown": ("Any", "None"),
@@ -251,6 +255,7 @@ def render_models():
             lines.append("    pass")
         has_default_field = False
         nullable_list_fields = []
+        timestamp_fields = []
         for field_info in model["fields"]:
             python_name = python_field_name(field_info["jsonName"])
             field_type, default = python_type(
@@ -266,8 +271,10 @@ def render_models():
                 metadata["dex_json_name"] = wire_name
             if field_info["omitEmpty"]:
                 metadata["dex_json_omit_default"] = True
-            if field_info["irType"]["Kind"] == "time":
+            if field_info["irType"]["Kind"] == "time" and not nanosecond_timestamps:
                 metadata["dex_json_format"] = "rfc3339"
+            if field_info["irType"]["Kind"] == "time" and nanosecond_timestamps:
+                timestamp_fields.append(python_name)
             if field_info.get("description"):
                 for comment_line in field_info["description"].strip().splitlines():
                     lines.append("    # " + comment_line if comment_line else "    #")
@@ -302,8 +309,16 @@ def render_models():
                 and not field_info["hasPresence"]
             ):
                 nullable_list_fields.append((python_name, field_info["irType"]))
-        if nullable_list_fields:
+        if nullable_list_fields or timestamp_fields:
             lines.extend(["", "    def __post_init__(self) -> None:"])
+            for python_name in timestamp_fields:
+                lines.extend([
+                    f"        if self.{python_name} is not None:",
+                    f"            timestamp = self.{python_name}",
+                    "            canonical = (format_rfc3339_nano(timestamp) if isinstance(timestamp, datetime)",
+                    "                         else str(RFC3339NanoTimestamp.from_wire(timestamp)))",
+                    f"            object.__setattr__(self, {python_name!r}, canonical)",
+                ])
             for python_name, type_info in nullable_list_fields:
                 lines.append(
                     f"        object.__setattr__(self, {python_name!r}, "
@@ -340,6 +355,8 @@ def render_models():
         header.append("from typing import " + ", ".join(typing_imports))
     if "SecretString" in body:
         header += ["", "from dex_connectors.sdk import SecretString"]
+    if nanosecond_timestamps and "RFC3339NanoTimestamp" in body:
+        header += ["", "from dex_connectors.sdk import RFC3339NanoTimestamp, format_rfc3339_nano"]
     return "\n".join(header) + "\n\n" + body
 
 
@@ -1128,6 +1145,8 @@ class MockOutputExpression:
                 + "}"
             )
         if kind == "time":
+            if nanosecond_timestamps:
+                return repr(value)
             return f"datetime.fromisoformat({quoted(value)}.replace('Z', '+00:00'))"
         if kind != "ref":
             return repr(value)

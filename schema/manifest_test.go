@@ -83,6 +83,9 @@ func TestLanguageManifestVersionAndPackageValidation(t *testing.T) {
 		problem       string
 	}{
 		{name: "valid independent versions", languageBlock: "  languages:\n    python: {version: v0.2.0, package: dex-connector-google-sheets, operations: [appendRows], triggers: []}\n    typescript: {version: v1.0.0, package: '@superdurable/connector-google-sheets', operations: [appendRows], triggers: []}\n"},
+		{name: "valid nanosecond timestamps", languageBlock: "  languages:\n    python: {version: v0.2.0, timestampFormat: rfc3339Nano, operations: [appendRows], triggers: []}\n    typescript: {version: v1.0.0, operations: [appendRows], triggers: []}\n"},
+		{name: "invalid Python timestamp format", languageBlock: "  languages:\n    python: {version: v0.2.0, timestampFormat: milliseconds, operations: [appendRows], triggers: []}\n", problem: "spec.languages.python.timestampFormat"},
+		{name: "TypeScript timestamp format", languageBlock: "  languages:\n    typescript: {version: v1.0.0, timestampFormat: rfc3339Nano, operations: [], triggers: []}\n", problem: "spec.languages.typescript.timestampFormat"},
 		{name: "invalid Python version", languageBlock: "  languages:\n    python: {version: 0.2.0}\n", problem: "spec.languages.python.version"},
 		{name: "invalid npm name", languageBlock: "  languages:\n    typescript: {version: v0.2.0, package: invalid, operations: [appendRows], triggers: []}\n", problem: "spec.languages.typescript.package"},
 		{name: "missing lists", languageBlock: "  languages:\n    python: {version: v0.2.0}\n", problem: "spec.languages.python.operations is required"},
