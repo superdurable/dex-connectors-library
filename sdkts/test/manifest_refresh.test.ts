@@ -45,6 +45,22 @@ const credentials = (): Credentials => ({
 const state = () => ({ credentials: credentials(), now: new Date(), expiresAt: new Date(0) });
 
 describe('manifest credential refresh', () => {
+  it('limits a refresh exchange independently of the caller deadline', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    const refresh = (method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>;
+    refresh.tokenExchangeTimeout = '15ms';
+    const caller = new AbortController();
+    const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields, fetch: async (_url, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      }) });
+    await expect(driver.refresh(state(), caller.signal)).rejects.toBeInstanceOf(RetryError);
+    expect(caller.signal.aborted).toBe(false);
+    refresh.tokenExchangeTimeout = '-1s';
+    expect(() => new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+      credentialFields })).toThrow('tokenExchangeTimeout');
+  });
   it('uses the default method and follows Go scope and missing-expiry rules', async () => {
     const configured = structuredClone(auth) as Record<string, unknown>;
     const method = (configured.methods as Record<string, unknown>[])[0]!;

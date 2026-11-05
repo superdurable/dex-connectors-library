@@ -9,7 +9,7 @@ import { createServer as createTCPServer, type Socket } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AddressRefusal, BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter,
-  readBoundedBody, readErrorTokens, sendProviderRequest, validateBaseURL,
+  encodeQueryValues, readBoundedBody, readErrorTokens, sendProviderRequest, validateBaseURL,
 } from '../src/providerhttp/index.js';
 import { isAllowedProviderIPAddress, isLocalStorageHost, isPrivateBrokerHost } from '../src/netpolicy.js';
 
@@ -17,6 +17,12 @@ const servers: ReturnType<typeof createServer>[] = [];
 afterEach(async () => { await Promise.all(servers.splice(0).map(server => new Promise<void>(resolve => server.close(() => resolve())))); });
 
 describe('provider HTTP', () => {
+  it('encodes query values byte for byte like Go url.Values.Encode', () => {
+    expect(encodeQueryValues({ z: ["~ * ! ' ( ) + / ? & = ☃"], a: ['one', 'two'] }))
+      .toBe('a=one&a=two&z=~+%2A+%21+%27+%28+%29+%2B+%2F+%3F+%26+%3D+%E2%98%83');
+    expect(encodeQueryValues({ é: ['café'], a: ['雪'] })).toBe('a=%E9%9B%AA&%C3%A9=caf%C3%A9');
+    expect(encodeQueryValues({ empty: [], x: [''] })).toBe('x=');
+  });
   it('matches Go public HTTPS address admission', () => {
     const cases: Array<[string, boolean]> = [
       ['8.8.8.8', true], ['2001:4860:4860::8888', true], ['::ffff:8.8.8.8', true],
@@ -86,6 +92,22 @@ describe('provider HTTP', () => {
     const url = `http://127.0.0.1:${address.port}`;
     await expect(sendProviderRequest({ url: `${url}/large`, method: 'GET', maxResponseBytes: 4, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: BodyTooLargeError.name, status: 429, headers: { 'retry-after': '7' } });
     await expect(sendProviderRequest({ url: `${url}/drip`, method: 'GET', maxResponseBytes: 10_000, timeoutMs: 40, addressPolicy: 'privateNetworkHTTP' })).rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false });
+  });
+
+  it('preserves response metadata when a successful body is interrupted', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'X-Request-ID': 'received' });
+      response.write('partial');
+      setTimeout(() => response.destroy(), 10);
+    });
+    servers.push(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('server address unavailable');
+    await expect(sendProviderRequest({ url: `http://127.0.0.1:${address.port}/`, method: 'POST',
+      maxResponseBytes: 1024, addressPolicy: 'privateNetworkHTTP' }))
+      .rejects.toMatchObject({ name: ProviderTransportError.name, isProvablyNotSent: false,
+        status: 200, headers: { 'x-request-id': 'received' } });
   });
 
   it('drains an oversized response to EOF without retaining or observing later chunks', async () => {

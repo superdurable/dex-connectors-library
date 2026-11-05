@@ -34,7 +34,9 @@ export class AddressRefusal extends Error {
 /** Sanitized transport failure with positive evidence about dispatch. */
 export class ProviderTransportError extends Error {
   /** True only when the request failed before a usable connection could send HTTP bytes. */
-  constructor(readonly isProvablyNotSent: boolean) {
+  constructor(readonly isProvablyNotSent: boolean,
+    /** HTTP status when response headers arrived before the failure. */ readonly status?: number,
+    /** HTTP headers when response headers arrived before the failure. */ readonly headers?: http.IncomingHttpHeaders) {
     super('provider request failed in transport');
     this.name = 'ProviderTransportError';
   }
@@ -80,6 +82,17 @@ export interface ProviderResponse {
   /** Numeric HTTP status. */ status: number;
   /** Response headers. */ headers: http.IncomingHttpHeaders;
   /** Bounded response bytes. */ body: Uint8Array;
+}
+
+/** Encode a multimap with Go net/url.Values.Encode ordering and escaping. Empty value lists are omitted. */
+export function encodeQueryValues(values: Readonly<Record<string, readonly string[]>>): string {
+  const escape = (value: string): string => encodeURIComponent(value).replace(/[!'()*]/g, character =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
+  const fields: string[] = [];
+  for (const key of Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))) {
+    for (const value of values[key] ?? []) fields.push(`${escape(key)}=${escape(value)}`);
+  }
+  return fields.join('&');
 }
 
 /** Parse RFC 9110 delay-seconds or an HTTP-date, capped at one hour. */
@@ -234,7 +247,8 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
             } else if (request.ignoreErrorBodyReadFailure && ((response.statusCode ?? 0) < 200 || (response.statusCode ?? 0) >= 300)) {
               resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
             } else {
-              reject(error instanceof BodyTooLargeError || error instanceof ProviderStalledError ? error : new ProviderTransportError(false));
+              reject(error instanceof BodyTooLargeError || error instanceof ProviderStalledError ? error :
+                new ProviderTransportError(false, response.statusCode ?? 0, response.headers));
             }
           } finally { if (stallTimer) clearTimeout(stallTimer); }
         })();
