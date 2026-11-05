@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from dex_connectors.sdk.timestamps import parse_go_datetime_input
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -64,6 +66,14 @@ class Member:
     # LastChangedAt is when the contact's information last changed, or nil.
     last_changed_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'lastChangedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.signed_up_at, str):
+            object.__setattr__(self, 'signed_up_at', parse_go_datetime_input(self.signed_up_at, 'signed_up_at'))
+        if isinstance(self.opted_in_at, str):
+            object.__setattr__(self, 'opted_in_at', parse_go_datetime_input(self.opted_in_at, 'opted_in_at'))
+        if isinstance(self.last_changed_at, str):
+            object.__setattr__(self, 'last_changed_at', parse_go_datetime_input(self.last_changed_at, 'last_changed_at'))
+
 
 setattr(Member, '__module__', 'dex_connectors.intuit_mailchimp.models')
 
@@ -84,6 +94,12 @@ class ListMembersInput:
     page_size: int = _dataclass_field(default=0, metadata={'dex_json_name': 'pageSize', 'dex_json_omit_default': True})
     # Offset is the number of matching contacts to skip; use the previous page's NextOffset.
     offset: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.changed_since, str):
+            object.__setattr__(self, 'changed_since', parse_go_datetime_input(self.changed_since, 'changed_since'))
+        if isinstance(self.opted_in_since, str):
+            object.__setattr__(self, 'opted_in_since', parse_go_datetime_input(self.opted_in_since, 'opted_in_since'))
 
 
 setattr(ListMembersInput, '__module__', 'dex_connectors.intuit_mailchimp.models')
@@ -240,6 +256,12 @@ class Campaign:
     created_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # SentAt is when the campaign was sent, or nil.
     sent_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'sentAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime_input(self.created_at, 'created_at'))
+        if isinstance(self.sent_at, str):
+            object.__setattr__(self, 'sent_at', parse_go_datetime_input(self.sent_at, 'sent_at'))
 
 
 setattr(Campaign, '__module__', 'dex_connectors.intuit_mailchimp.models')

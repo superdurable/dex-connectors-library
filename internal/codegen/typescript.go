@@ -126,6 +126,17 @@ func generateTypeScriptModels(manifest schema.Manifest, models []gomodel.Model) 
 	var output bytes.Buffer
 	output.WriteString(typeScriptHeader())
 	output.WriteString("import { z } from 'zod';\n")
+	hasTimestampModelField := false
+	for _, model := range models {
+		for _, field := range model.Fields {
+			if typeScriptTypeContainsTime(field.Type) {
+				hasTimestampModelField = true
+			}
+		}
+	}
+	if hasTimestampModelField {
+		output.WriteString("import { GoTimeInputSchema } from '@superdurable/connectors-sdk';\n")
+	}
 	providerType := "CredentialProvider"
 	if manifest.Spec.Auth.Refreshable {
 		providerType = "RefreshingCredentialProvider"
@@ -361,6 +372,13 @@ func typeScriptJSDoc(comment string) string {
 	return strings.Join(lines, "\n")
 }
 
+func typeScriptTypeContainsTime(value gomodel.Type) bool {
+	if value.Kind == gomodel.Time {
+		return true
+	}
+	return value.Elem != nil && typeScriptTypeContainsTime(*value.Elem)
+}
+
 func typeScriptSchema(value gomodel.Type) string {
 	var result string
 	switch value.Kind {
@@ -373,7 +391,7 @@ func typeScriptSchema(value gomodel.Type) string {
 	case gomodel.Float:
 		result = "z.number()"
 	case gomodel.Time:
-		result = "z.iso.datetime({ offset: true })"
+		result = "GoTimeInputSchema"
 	case gomodel.Bytes:
 		result = "z.base64()"
 	case gomodel.Unknown:

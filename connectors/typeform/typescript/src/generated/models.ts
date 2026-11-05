@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -346,8 +347,8 @@ export const FormSummarySchema = z.strictObject({
   "title": z.string(),
   "isPublic": z.boolean(),
   "displayUrl": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "lastUpdatedAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeInputSchema.optional(),
+  "lastUpdatedAt": GoTimeInputSchema.optional(),
 }) satisfies z.ZodType<FormSummary>;
 
 /** Runtime validator for FormPage. */
@@ -396,8 +397,8 @@ export const FormSchema = z.strictObject({
 export const ListResponsesInputSchema = z.strictObject({
   "formId": z.string(),
   "pageSize": z.number().int().optional(),
-  "since": z.iso.datetime({ offset: true }).optional(),
-  "until": z.iso.datetime({ offset: true }).optional(),
+  "since": GoTimeInputSchema.optional(),
+  "until": GoTimeInputSchema.optional(),
   "before": z.string().optional(),
   "after": z.string().optional(),
 }) satisfies z.ZodType<ListResponsesInput>;
@@ -471,8 +472,8 @@ export const FormVariableSchema = z.strictObject({
 /** Runtime validator for FormResponse. */
 export const FormResponseSchema = z.strictObject({
   "token": z.string(),
-  "landedAt": z.iso.datetime({ offset: true }).optional(),
-  "submittedAt": z.iso.datetime({ offset: true }).optional(),
+  "landedAt": GoTimeInputSchema.optional(),
+  "submittedAt": GoTimeInputSchema.optional(),
   "answers": z.array(FormAnswerSchema).nullable(),
   "hiddenFields": z.record(z.string(), z.string()).optional(),
   "variables": z.array(FormVariableSchema).optional(),
@@ -505,6 +506,6 @@ export const WebhookSchema = z.strictObject({
   "url": z.string(),
   "isEnabled": z.boolean(),
   "eventTypes": z.array(z.string()).nullable(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).optional(),
+  "createdAt": GoTimeInputSchema.optional(),
+  "updatedAt": GoTimeInputSchema.optional(),
 }) satisfies z.ZodType<Webhook>;

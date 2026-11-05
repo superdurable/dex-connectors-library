@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -331,7 +332,7 @@ export const NoteSchema = z.strictObject({
   "conversationId": z.string().optional(),
   "authorId": z.string().optional(),
   "authorEmail": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeInputSchema,
 }) satisfies z.ZodType<Note>;
 
 /** Runtime validator for AddNoteOutput. */

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from dex_connectors.sdk.timestamps import parse_go_datetime_input
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -105,6 +107,12 @@ class Conversation:
     last_staff_message_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'lastStaffMessageAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
     def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime_input(self.created_at, 'created_at'))
+        if isinstance(self.last_customer_message_at, str):
+            object.__setattr__(self, 'last_customer_message_at', parse_go_datetime_input(self.last_customer_message_at, 'last_customer_message_at'))
+        if isinstance(self.last_staff_message_at, str):
+            object.__setattr__(self, 'last_staff_message_at', parse_go_datetime_input(self.last_staff_message_at, 'last_staff_message_at'))
         object.__setattr__(self, 'tags', _replace_nil_slices(self.tags, 1))
 
 
@@ -165,6 +173,10 @@ class ConversationMessage:
     author: ConversationParticipant | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
     # CreatedAt is when the message was created.
     created_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'createdAt', 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime_input(self.created_at, 'created_at'))
 
 
 setattr(ConversationMessage, '__module__', 'dex_connectors.reamaze.models')

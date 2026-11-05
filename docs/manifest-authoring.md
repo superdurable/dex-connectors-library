@@ -116,10 +116,13 @@ Python packages that need all nine fractional timestamp digits set
 `spec.languages.python.timestampFormat: rfc3339Nano`. Generated `time.Time`
 fields then use RFC 3339 strings. The generated constructor accepts aware
 `datetime` values at runtime and formats them as Go does; strings retain all
-nanoseconds and are validated and canonicalized. Result decoding retains the
+fractional digits and are validated against Go `time.Time` JSON input, including
+comma fractions and unusual offsets. Default `datetime` fields also accept
+strings when every component is exactly representable; otherwise construction
+fails with the field name. Result decoding retains the
 canonical string. A defaulted zero time is `0001-01-01T00:00:00Z`. This is an
 opt-in public model type change; existing packages keep their `datetime` fields
-until their own release chooses it. TypeScript already uses ISO datetime strings
+until their own release chooses it. TypeScript uses Go timestamp input strings
 and keeps all fractional digits.
 Go `int64` values use TypeScript `number`; applications must keep them within
 JavaScript's exact integer range (±(2^53−1)). Generated definitions, branch IDs, operation-specific object

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -289,8 +290,8 @@ export const ListTasksInputSchema = z.strictObject({
   "projectId": z.string().optional(),
   "sectionId": z.string().optional(),
   "isIncompleteOnly": z.boolean().optional(),
-  "completedSince": z.iso.datetime({ offset: true }).nullable().optional(),
-  "modifiedSince": z.iso.datetime({ offset: true }).nullable().optional(),
+  "completedSince": GoTimeInputSchema.nullable().optional(),
+  "modifiedSince": GoTimeInputSchema.nullable().optional(),
   "pageSize": z.number().int().optional(),
   "offset": z.string().optional(),
 }) satisfies z.ZodType<ListTasksInput>;
@@ -355,10 +356,10 @@ export const TaskSchema = z.strictObject({
   "name": z.string(),
   "resourceSubtype": z.string().optional(),
   "isCompleted": z.boolean(),
-  "completedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "completedAt": GoTimeInputSchema.nullable().optional(),
   "assignee": UserReferenceSchema.optional(),
   "dueOn": z.string().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueAt": GoTimeInputSchema.nullable().optional(),
   "startOn": z.string().optional(),
   "memberships": z.array(TaskMembershipSchema).optional(),
   "parent": TaskReferenceSchema.optional(),
@@ -367,8 +368,8 @@ export const TaskSchema = z.strictObject({
   "isNotesTruncated": z.boolean().optional(),
   "customFields": z.array(CustomFieldValueSchema).optional(),
   "permalinkUrl": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "modifiedAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeInputSchema,
+  "modifiedAt": GoTimeInputSchema,
 }) satisfies z.ZodType<Task>;
 
 /** Runtime validator for ListTasksOutput. */
@@ -411,7 +412,7 @@ export const CreateTaskOutputSchema = z.strictObject({
   "sectionId": z.string().optional(),
   "workspaceId": z.string().optional(),
   "permalinkUrl": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<CreateTaskOutput>;
 
 /** Runtime validator for UpdateTaskInput. */
@@ -442,5 +443,5 @@ export const AddCommentOutputSchema = z.strictObject({
   "taskId": z.string(),
   "commentId": z.string().optional(),
   "author": UserReferenceSchema.optional(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<AddCommentOutput>;

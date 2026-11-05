@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -183,7 +184,7 @@ export const SubmitStatementInputSchema = z.strictObject({
 /** Runtime validator for StatementSubmission. */
 export const StatementSubmissionSchema = z.strictObject({
   "statementHandle": z.string(),
-  "submittedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "submittedAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<StatementSubmission>;
 
 /** Runtime validator for Column. */
@@ -221,7 +222,7 @@ export const StatementResultSchema = z.strictObject({
   "totalRowCount": z.number().int().optional(),
   "truncated": z.boolean().optional(),
   "stats": StatementStatsSchema.optional(),
-  "submittedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "submittedAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<StatementResult>;
 
 /** Runtime validator for CancelStatementInput. */

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -249,8 +250,8 @@ export const ListCardsInputSchema = z.strictObject({
   "boardId": z.string().optional(),
   "listId": z.string().optional(),
   "status": z.string().optional(),
-  "dueBefore": z.iso.datetime({ offset: true }).nullable().optional(),
-  "dueAfter": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueBefore": GoTimeInputSchema.nullable().optional(),
+  "dueAfter": GoTimeInputSchema.nullable().optional(),
   "hasDueDate": z.boolean().optional(),
   "isDueComplete": z.boolean().optional(),
   "pageSize": z.number().int().optional(),
@@ -282,9 +283,9 @@ export const CardSchema = z.strictObject({
   "listId": z.string(),
   "listName": z.string().optional(),
   "isClosed": z.boolean(),
-  "due": z.iso.datetime({ offset: true }).nullable().optional(),
+  "due": GoTimeInputSchema.nullable().optional(),
   "isDueComplete": z.boolean(),
-  "start": z.iso.datetime({ offset: true }).nullable().optional(),
+  "start": GoTimeInputSchema.nullable().optional(),
   "labelIds": z.array(z.string()).optional(),
   "labels": z.array(LabelSchema).optional(),
   "hasMoreLabels": z.boolean().optional(),
@@ -293,7 +294,7 @@ export const CardSchema = z.strictObject({
   "position": z.number(),
   "url": z.string().optional(),
   "shortUrl": z.string().optional(),
-  "lastActivityAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "lastActivityAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<Card>;
 
 /** Runtime validator for ListCardsOutput. */
@@ -313,7 +314,7 @@ export const CreateCardInputSchema = z.strictObject({
   "listId": z.string(),
   "name": z.string(),
   "description": z.string().optional(),
-  "due": z.iso.datetime({ offset: true }).nullable().optional(),
+  "due": GoTimeInputSchema.nullable().optional(),
   "labelIds": z.array(z.string()).optional(),
   "memberIds": z.array(z.string()).optional(),
   "position": z.string().optional(),
@@ -337,7 +338,7 @@ export const UpdateCardInputSchema = z.strictObject({
   "boardId": z.string().optional(),
   "position": z.string().optional(),
   "isClosed": z.boolean().optional(),
-  "due": z.iso.datetime({ offset: true }).nullable().optional(),
+  "due": GoTimeInputSchema.nullable().optional(),
   "shouldClearDue": z.boolean().optional(),
   "isDueComplete": z.boolean().optional(),
   "labelIds": z.array(z.string()).nullable().optional(),
@@ -363,5 +364,5 @@ export const AddCommentOutputSchema = z.strictObject({
   "cardId": z.string(),
   "commentId": z.string().optional(),
   "authorMemberId": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<AddCommentOutput>;

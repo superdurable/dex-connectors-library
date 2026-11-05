@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -329,13 +330,13 @@ export const TicketSchema = z.strictObject({
   "language": z.string().optional(),
   "isSpam": z.boolean().optional(),
   "messageCount": z.number().int().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
-  "lastReceivedMessageAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "lastMessageAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "closedAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "snoozedUntil": z.iso.datetime({ offset: true }).nullable().optional(),
-  "trashedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema,
+  "updatedAt": GoTimeInputSchema,
+  "lastReceivedMessageAt": GoTimeInputSchema.nullable().optional(),
+  "lastMessageAt": GoTimeInputSchema.nullable().optional(),
+  "closedAt": GoTimeInputSchema.nullable().optional(),
+  "snoozedUntil": GoTimeInputSchema.nullable().optional(),
+  "trashedAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<Ticket>;
 
 /** Runtime validator for SearchTicketsOutput. */
@@ -373,9 +374,9 @@ export const TicketMessageSchema = z.strictObject({
   "body": z.string(),
   "isBodyTruncated": z.boolean().optional(),
   "externalId": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "sentAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "failedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema,
+  "sentAt": GoTimeInputSchema.nullable().optional(),
+  "failedAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<TicketMessage>;
 
 /** Runtime validator for TicketDetails. */

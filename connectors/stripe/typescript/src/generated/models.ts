@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -191,7 +192,7 @@ export const CreateCardCheckoutSessionInputSchema = z.strictObject({
   "unitAmount": z.number().int(),
   "productName": z.string(),
   "metadata": z.record(z.string(), z.string()).optional(),
-  "expiresAt": z.iso.datetime({ offset: true }).optional(),
+  "expiresAt": GoTimeInputSchema.optional(),
 }) satisfies z.ZodType<CreateCardCheckoutSessionInput>;
 
 /** Runtime validator for CheckoutSession. */
@@ -204,7 +205,7 @@ export const CheckoutSessionSchema = z.strictObject({
   "paymentIntentId": z.string().optional(),
   "currency": z.string().optional(),
   "amountTotal": z.number().int().optional(),
-  "expiresAt": z.iso.datetime({ offset: true }).optional(),
+  "expiresAt": GoTimeInputSchema.optional(),
   "metadata": z.record(z.string(), z.string()).optional(),
 }) satisfies z.ZodType<CheckoutSession>;
 
@@ -218,7 +219,7 @@ export const CreateACHCheckoutSessionInputSchema = z.strictObject({
   "unitAmount": z.number().int(),
   "productName": z.string(),
   "metadata": z.record(z.string(), z.string()).optional(),
-  "expiresAt": z.iso.datetime({ offset: true }).optional(),
+  "expiresAt": GoTimeInputSchema.optional(),
 }) satisfies z.ZodType<CreateACHCheckoutSessionInput>;
 
 /** Runtime validator for GetCheckoutSessionInput. */

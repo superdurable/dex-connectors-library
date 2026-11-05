@@ -5,6 +5,8 @@
 from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 
+from dex_connectors.sdk.timestamps import parse_go_datetime_input
+
 # ListObjectsInput selects one page of a bucket listing. Keys are listed in UTF-8 binary order.
 @dataclass(frozen=True, slots=True)
 class ListObjectsInput:
@@ -40,6 +42,10 @@ class ObjectSummary:
     last_modified: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'lastModified', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # StorageClass is the S3 storage class, such as STANDARD.
     storage_class: str = _dataclass_field(default='', metadata={'dex_json_name': 'storageClass', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.last_modified, str):
+            object.__setattr__(self, 'last_modified', parse_go_datetime_input(self.last_modified, 'last_modified'))
 
 
 setattr(ObjectSummary, '__module__', 'dex_connectors.amazon_s3.models')
@@ -115,6 +121,10 @@ class ObjectMetadata:
     # MissingMetadataCount is the number of metadata entries S3 could not return as HTTP headers.
     missing_metadata_count: int = _dataclass_field(default=0, metadata={'dex_json_name': 'missingMetadataCount', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.last_modified, str):
+            object.__setattr__(self, 'last_modified', parse_go_datetime_input(self.last_modified, 'last_modified'))
+
 
 setattr(ObjectMetadata, '__module__', 'dex_connectors.amazon_s3.models')
 
@@ -151,6 +161,10 @@ class ObjectText:
     size_bytes: int = _dataclass_field(default=0, metadata={'dex_json_name': 'sizeBytes'})
     # Text is the complete object content, unchanged, including any byte order mark.
     text: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.last_modified, str):
+            object.__setattr__(self, 'last_modified', parse_go_datetime_input(self.last_modified, 'last_modified'))
 
 
 setattr(ObjectText, '__module__', 'dex_connectors.amazon_s3.models')
@@ -202,6 +216,10 @@ class StoredObject:
     # IsFromEarlierAttempt reports that a create-only write found the object an earlier attempt of the same
     # Step execution stored, so this attempt wrote nothing.
     is_from_earlier_attempt: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isFromEarlierAttempt', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.last_modified, str):
+            object.__setattr__(self, 'last_modified', parse_go_datetime_input(self.last_modified, 'last_modified'))
 
 
 setattr(StoredObject, '__module__', 'dex_connectors.amazon_s3.models')

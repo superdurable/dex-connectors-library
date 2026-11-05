@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -360,8 +361,8 @@ export const MessageSummarySchema = z.strictObject({
   "to": z.array(EmailAddressSchema).optional(),
   "cc": z.array(EmailAddressSchema).optional(),
   "subject": z.string(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
-  "receivedAt": z.iso.datetime({ offset: true }),
+  "sentAt": GoTimeInputSchema.optional(),
+  "receivedAt": GoTimeInputSchema,
   "isSeen": z.boolean(),
   "isFlagged": z.boolean(),
   "isAnswered": z.boolean(),
@@ -403,8 +404,8 @@ export const MessageSchema = z.strictObject({
   "to": z.array(EmailAddressSchema).optional(),
   "cc": z.array(EmailAddressSchema).optional(),
   "subject": z.string(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
-  "receivedAt": z.iso.datetime({ offset: true }),
+  "sentAt": GoTimeInputSchema.optional(),
+  "receivedAt": GoTimeInputSchema,
   "isSeen": z.boolean(),
   "isFlagged": z.boolean(),
   "isAnswered": z.boolean(),
@@ -436,7 +437,7 @@ export const SentMessageSchema = z.strictObject({
   "subject": z.string(),
   "inReplyTo": z.string().optional(),
   "references": z.array(z.string()).optional(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
+  "sentAt": GoTimeInputSchema.optional(),
 }) satisfies z.ZodType<SentMessage>;
 
 /** Runtime validator for ReplyToMessageInput. */

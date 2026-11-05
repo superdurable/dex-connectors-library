@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -306,7 +307,7 @@ export const SearchConversationsInputSchema = z.strictObject({
   "statuses": z.array(z.string()).optional(),
   "recipientEmail": z.string().optional(),
   "assigneeId": z.string().optional(),
-  "activityAfter": z.iso.datetime({ offset: true }).nullable().optional(),
+  "activityAfter": GoTimeInputSchema.nullable().optional(),
   "pageSize": z.number().int().optional(),
   "pageToken": z.string().optional(),
 }) satisfies z.ZodType<SearchConversationsInput>;
@@ -347,10 +348,10 @@ export const ConversationSchema = z.strictObject({
   "tags": z.array(TagSchema).optional(),
   "isPrivate": z.boolean().optional(),
   "isSnoozed": z.boolean().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "waitingSince": z.iso.datetime({ offset: true }).nullable().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema,
+  "updatedAt": GoTimeInputSchema.nullable().optional(),
+  "waitingSince": GoTimeInputSchema.nullable().optional(),
+  "dueAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<Conversation>;
 
 /** Runtime validator for SearchConversationsOutput. */
@@ -380,7 +381,7 @@ export const MessageSchema = z.strictObject({
   "isBodyTruncated": z.boolean().optional(),
   "author": TeammateSchema.optional(),
   "recipients": z.array(RecipientSchema).optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeInputSchema,
 }) satisfies z.ZodType<Message>;
 
 /** Runtime validator for Comment. */
@@ -390,7 +391,7 @@ export const CommentSchema = z.strictObject({
   "isBodyTruncated": z.boolean().optional(),
   "author": TeammateSchema.optional(),
   "isPinned": z.boolean().optional(),
-  "postedAt": z.iso.datetime({ offset: true }),
+  "postedAt": GoTimeInputSchema,
 }) satisfies z.ZodType<Comment>;
 
 /** Runtime validator for ConversationDetails. */
@@ -457,7 +458,7 @@ export const ContactSchema = z.strictObject({
   "handles": z.array(ContactHandleSchema).optional(),
   "listNames": z.array(z.string()).optional(),
   "isPrivate": z.boolean().optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "updatedAt": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<Contact>;
 
 /** Runtime validator for FindContactByEmailOutput. */

@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from dex_connectors.sdk.timestamps import parse_go_datetime_input
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -129,6 +131,10 @@ class ListEmployeeChangesInput:
     # Limit is the most changes to return, 1 to 1000; zero uses DefaultEmployeeChangeLimit.
     limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.since, str):
+            object.__setattr__(self, 'since', parse_go_datetime_input(self.since, 'since'))
+
 
 setattr(ListEmployeeChangesInput, '__module__', 'dex_connectors.bamboohr.models')
 
@@ -143,6 +149,10 @@ class EmployeeChange:
     # LastChanged is when the employee last changed, in UTC.
     last_changed: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'lastChanged', 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.last_changed, str):
+            object.__setattr__(self, 'last_changed', parse_go_datetime_input(self.last_changed, 'last_changed'))
+
 
 setattr(EmployeeChange, '__module__', 'dex_connectors.bamboohr.models')
 
@@ -156,6 +166,10 @@ class EmployeeChangeCursor:
     # AfterEmployeeID is the last employee ID already returned at Since; empty includes every
     # change at Since.
     after_employee_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'afterEmployeeId', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.since, str):
+            object.__setattr__(self, 'since', parse_go_datetime_input(self.since, 'since'))
 
 
 setattr(EmployeeChangeCursor, '__module__', 'dex_connectors.bamboohr.models')
@@ -239,6 +253,12 @@ class TimeOffRequest:
     status_updated_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'statusUpdatedAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
     # DailyAmounts is the amount requested on each day, in Unit.
     daily_amounts: tuple[TimeOffDailyAmount, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'dailyAmounts', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.requested_at, str):
+            object.__setattr__(self, 'requested_at', parse_go_datetime_input(self.requested_at, 'requested_at'))
+        if isinstance(self.status_updated_at, str):
+            object.__setattr__(self, 'status_updated_at', parse_go_datetime_input(self.status_updated_at, 'status_updated_at'))
 
 
 setattr(TimeOffRequest, '__module__', 'dex_connectors.bamboohr.models')

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -313,7 +314,7 @@ export const SearchTasksInputSchema = z.strictObject({
   "statuses": z.array(z.string()).optional(),
   "assigneeIds": z.array(z.number().int()).optional(),
   "tags": z.array(z.string()).optional(),
-  "updatedAfter": z.iso.datetime({ offset: true }).nullable().optional(),
+  "updatedAfter": GoTimeInputSchema.nullable().optional(),
   "isClosedIncluded": z.boolean().optional(),
   "areSubtasksIncluded": z.boolean().optional(),
   "orderBy": z.string().optional(),
@@ -350,11 +351,11 @@ export const TaskSchema = z.strictObject({
   "status": TaskStatusSchema,
   "priority": z.number().int().optional(),
   "priorityName": z.string().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "startAt": z.iso.datetime({ offset: true }).nullable().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).optional(),
-  "updatedAt": z.iso.datetime({ offset: true }).optional(),
-  "closedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueAt": GoTimeInputSchema.nullable().optional(),
+  "startAt": GoTimeInputSchema.nullable().optional(),
+  "createdAt": GoTimeInputSchema.optional(),
+  "updatedAt": GoTimeInputSchema.optional(),
+  "closedAt": GoTimeInputSchema.nullable().optional(),
   "isArchived": z.boolean().optional(),
   "creator": UserSchema.optional(),
   "assignees": z.array(UserSchema).nullable(),
@@ -397,7 +398,7 @@ export const CreateTaskInputSchema = z.strictObject({
   "markdownDescription": z.string().optional(),
   "status": z.string().optional(),
   "priority": z.number().int().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueAt": GoTimeInputSchema.nullable().optional(),
   "assigneeIds": z.array(z.number().int()).optional(),
   "tags": z.array(z.string()).optional(),
   "parentTaskId": z.string().optional(),
@@ -420,7 +421,7 @@ export const UpdateTaskInputSchema = z.strictObject({
   "markdownDescription": z.string().optional(),
   "status": z.string().optional(),
   "priority": z.number().int().optional(),
-  "dueAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "dueAt": GoTimeInputSchema.nullable().optional(),
   "addAssigneeIds": z.array(z.number().int()).optional(),
   "removeAssigneeIds": z.array(z.number().int()).optional(),
 }) satisfies z.ZodType<UpdateTaskInput>;
@@ -455,7 +456,7 @@ export const AddCommentInputSchema = z.strictObject({
 export const AddCommentOutputSchema = z.strictObject({
   "taskId": z.string(),
   "commentId": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema.nullable().optional(),
   "wasAlreadyApplied": z.boolean().optional(),
 }) satisfies z.ZodType<AddCommentOutput>;
 

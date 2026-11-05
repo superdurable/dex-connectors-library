@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -277,10 +278,10 @@ export const TicketSchema = z.strictObject({
   "tags": z.array(z.string()).optional(),
   "isEscalated": z.boolean().optional(),
   "isSpam": z.boolean().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
-  "dueBy": z.iso.datetime({ offset: true }).nullable().optional(),
-  "firstResponseDueBy": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema,
+  "updatedAt": GoTimeInputSchema,
+  "dueBy": GoTimeInputSchema.nullable().optional(),
+  "firstResponseDueBy": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<Ticket>;
 
 /** Runtime validator for SearchTicketsOutput. */
@@ -313,7 +314,7 @@ export const TicketConversationSchema = z.strictObject({
   "isIncoming": z.boolean().optional(),
   "body": z.string(),
   "isBodyTruncated": z.boolean().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeInputSchema,
 }) satisfies z.ZodType<TicketConversation>;
 
 /** Runtime validator for TicketDetails. */

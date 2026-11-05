@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -184,8 +185,8 @@ export const MessageSchema = z.strictObject({
   "receiptHandle": z.string(),
   "body": z.string(),
   "md5OfBody": z.string(),
-  "sentAt": z.iso.datetime({ offset: true }).optional(),
-  "firstReceivedAt": z.iso.datetime({ offset: true }).optional(),
+  "sentAt": GoTimeInputSchema.optional(),
+  "firstReceivedAt": GoTimeInputSchema.optional(),
   "receiveCount": z.number().int(),
   "messageGroupId": z.string().optional(),
   "messageDeduplicationId": z.string().optional(),
@@ -226,5 +227,5 @@ export const ChangedMessageVisibilitySchema = z.strictObject({
   "queueUrl": z.string(),
   "messageId": z.string().optional(),
   "visibilityTimeoutSeconds": z.number().int(),
-  "visibleAfter": z.iso.datetime({ offset: true }),
+  "visibleAfter": GoTimeInputSchema,
 }) satisfies z.ZodType<ChangedMessageVisibility>;

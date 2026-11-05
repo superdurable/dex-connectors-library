@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from dex_connectors.sdk.timestamps import parse_go_datetime_input
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -38,6 +40,12 @@ class ListCardsInput:
     # Before continues a previous list with the same filters from its NextBefore; blank reads the newest
     # cards first.
     before: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.due_before, str):
+            object.__setattr__(self, 'due_before', parse_go_datetime_input(self.due_before, 'due_before'))
+        if isinstance(self.due_after, str):
+            object.__setattr__(self, 'due_after', parse_go_datetime_input(self.due_after, 'due_after'))
 
 
 setattr(ListCardsInput, '__module__', 'dex_connectors.atlassian_trello.models')
@@ -120,6 +128,14 @@ class Card:
     # LastActivityAt is when the card last changed.
     last_activity_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'lastActivityAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.due, str):
+            object.__setattr__(self, 'due', parse_go_datetime_input(self.due, 'due'))
+        if isinstance(self.start, str):
+            object.__setattr__(self, 'start', parse_go_datetime_input(self.start, 'start'))
+        if isinstance(self.last_activity_at, str):
+            object.__setattr__(self, 'last_activity_at', parse_go_datetime_input(self.last_activity_at, 'last_activity_at'))
+
 
 setattr(Card, '__module__', 'dex_connectors.atlassian_trello.models')
 
@@ -170,6 +186,10 @@ class CreateCardInput:
     member_ids: tuple[str, ...] = _dataclass_field(default=(), metadata={'dex_json_name': 'memberIds', 'dex_json_omit_default': True})
     # Position is top, bottom, or a positive number; blank keeps Trello's default position.
     position: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.due, str):
+            object.__setattr__(self, 'due', parse_go_datetime_input(self.due, 'due'))
 
 
 setattr(CreateCardInput, '__module__', 'dex_connectors.atlassian_trello.models')
@@ -230,6 +250,10 @@ class UpdateCardInput:
     # removes every member, and nil leaves them.
     member_ids: tuple[str, ...] | None = _dataclass_field(default=None, metadata={'dex_json_name': 'memberIds', 'dex_json_omit_default': True})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.due, str):
+            object.__setattr__(self, 'due', parse_go_datetime_input(self.due, 'due'))
+
 
 setattr(UpdateCardInput, '__module__', 'dex_connectors.atlassian_trello.models')
 
@@ -270,6 +294,10 @@ class AddCommentOutput:
     author_member_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'authorMemberId', 'dex_json_omit_default': True})
     # CreatedAt is when Trello stored the comment.
     created_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime_input(self.created_at, 'created_at'))
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.atlassian_trello.models')

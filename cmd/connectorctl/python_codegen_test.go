@@ -967,6 +967,32 @@ func TestPythonNanosecondTimestampFieldsKeepStringWireValues(t *testing.T) {
 	}
 }
 
+func TestPythonDefaultTimestampFieldsValidateGoInput(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{
+		Manifest: manifest,
+		Models: []gomodel.Model{{Name: "TimestampFixture", Fields: []gomodel.Field{
+			{Name: "updatedSince", Type: gomodel.Type{Kind: gomodel.Time, Nullable: true}, Optional: true},
+		}}},
+		PackageName: "newsapi", MockPackageName: "newsapimock",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := generated["models.py"]
+	for _, want := range []string{
+		"from dex_connectors.sdk.timestamps import parse_go_datetime_input",
+		"parse_go_datetime_input(self.updated_since, 'updated_since')",
+	} {
+		if !strings.Contains(models, want) {
+			t.Errorf("default timestamp model omits %q:\n%s", want, models)
+		}
+	}
+}
+
 func TestPythonGeneratedModelCommentsDoNotEndInWhitespace(t *testing.T) {
 	manifest, err := load(filepath.Join("..", "..", "connectors", "newsapi", "connector.yaml"))
 	if err != nil {

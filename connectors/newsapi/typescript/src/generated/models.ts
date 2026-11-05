@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -143,7 +144,7 @@ export const ArticleSchema = z.strictObject({
   "description": z.string().nullable(),
   "url": z.string(),
   "urlToImage": z.string().nullable(),
-  "publishedAt": z.iso.datetime({ offset: true }),
+  "publishedAt": GoTimeInputSchema,
   "content": z.string().nullable(),
 }) satisfies z.ZodType<Article>;
 

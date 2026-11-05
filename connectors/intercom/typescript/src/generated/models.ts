@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -323,10 +324,10 @@ export const ConversationSchema = z.strictObject({
   "source": ConversationSourceSchema,
   "contacts": z.array(ConversationContactSchema).optional(),
   "tags": z.array(ConversationTagSchema).optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
-  "waitingSince": z.iso.datetime({ offset: true }).nullable().optional(),
-  "snoozedUntil": z.iso.datetime({ offset: true }).nullable().optional(),
+  "createdAt": GoTimeInputSchema,
+  "updatedAt": GoTimeInputSchema,
+  "waitingSince": GoTimeInputSchema.nullable().optional(),
+  "snoozedUntil": GoTimeInputSchema.nullable().optional(),
 }) satisfies z.ZodType<Conversation>;
 
 /** Runtime validator for SearchConversationsOutput. */
@@ -349,7 +350,7 @@ export const ConversationPartSchema = z.strictObject({
   "body": z.string().optional(),
   "isBodyTruncated": z.boolean().optional(),
   "author": ConversationAuthorSchema,
-  "createdAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeInputSchema,
 }) satisfies z.ZodType<ConversationPart>;
 
 /** Runtime validator for ConversationDetails. */
@@ -403,8 +404,8 @@ export const ContactSchema = z.strictObject({
   "email": z.string().optional(),
   "name": z.string().optional(),
   "externalId": z.string().optional(),
-  "createdAt": z.iso.datetime({ offset: true }),
-  "updatedAt": z.iso.datetime({ offset: true }),
+  "createdAt": GoTimeInputSchema,
+  "updatedAt": GoTimeInputSchema,
 }) satisfies z.ZodType<Contact>;
 
 /** Runtime validator for FindContactByEmailOutput. */

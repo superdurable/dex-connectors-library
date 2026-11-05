@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -235,7 +236,7 @@ export const ListRecordsInputSchema = z.strictObject({
 /** Runtime validator for Record. */
 export const RecordSchema = z.strictObject({
   "id": z.string(),
-  "createdTime": z.iso.datetime({ offset: true }),
+  "createdTime": GoTimeInputSchema,
   "fields": z.record(z.string(), z.unknown().nullable()).nullable(),
 }) satisfies z.ZodType<Record>;
 

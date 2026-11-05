@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { RefreshingCredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -220,7 +221,7 @@ export const MessageSchema = z.strictObject({
   "textBody": z.string().optional(),
   "htmlBody": z.string().optional(),
   "snippet": z.string().optional(),
-  "receivedAt": z.iso.datetime({ offset: true }),
+  "receivedAt": GoTimeInputSchema,
   "labelIds": z.array(z.string()).optional(),
 }) satisfies z.ZodType<Message>;
 

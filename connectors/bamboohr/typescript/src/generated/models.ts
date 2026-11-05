@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -312,7 +313,7 @@ export const FindEmployeeByEmailOutputSchema = z.strictObject({
 
 /** Runtime validator for ListEmployeeChangesInput. */
 export const ListEmployeeChangesInputSchema = z.strictObject({
-  "since": z.iso.datetime({ offset: true }),
+  "since": GoTimeInputSchema,
   "afterEmployeeId": z.string().optional(),
   "changeType": z.string().optional(),
   "limit": z.number().int().optional(),
@@ -322,12 +323,12 @@ export const ListEmployeeChangesInputSchema = z.strictObject({
 export const EmployeeChangeSchema = z.strictObject({
   "employeeId": z.string(),
   "action": z.string(),
-  "lastChanged": z.iso.datetime({ offset: true }),
+  "lastChanged": GoTimeInputSchema,
 }) satisfies z.ZodType<EmployeeChange>;
 
 /** Runtime validator for EmployeeChangeCursor. */
 export const EmployeeChangeCursorSchema = z.strictObject({
-  "since": z.iso.datetime({ offset: true }),
+  "since": GoTimeInputSchema,
   "afterEmployeeId": z.string().optional(),
 }) satisfies z.ZodType<EmployeeChangeCursor>;
 
@@ -364,8 +365,8 @@ export const TimeOffRequestSchema = z.strictObject({
   "amount": z.number(),
   "unit": z.string(),
   "status": z.string(),
-  "requestedAt": z.iso.datetime({ offset: true }),
-  "statusUpdatedAt": z.iso.datetime({ offset: true }).nullable().optional(),
+  "requestedAt": GoTimeInputSchema,
+  "statusUpdatedAt": GoTimeInputSchema.nullable().optional(),
   "dailyAmounts": z.array(TimeOffDailyAmountSchema).optional(),
 }) satisfies z.ZodType<TimeOffRequest>;
 

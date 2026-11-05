@@ -6,6 +6,8 @@ from dataclasses import dataclass, field as _dataclass_field
 from datetime import UTC, datetime
 from typing import Any
 
+from dex_connectors.sdk.timestamps import parse_go_datetime_input
+
 def _replace_nil_slices(value: Any, depth: int) -> Any:
     if value is None:
         return ()
@@ -34,6 +36,12 @@ class ListTasksInput:
     # Offset continues a previous list with the same filters; blank reads the first page. Asana expires
     # offset tokens after some time.
     offset: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.completed_since, str):
+            object.__setattr__(self, 'completed_since', parse_go_datetime_input(self.completed_since, 'completed_since'))
+        if isinstance(self.modified_since, str):
+            object.__setattr__(self, 'modified_since', parse_go_datetime_input(self.modified_since, 'modified_since'))
 
 
 setattr(ListTasksInput, '__module__', 'dex_connectors.asana.models')
@@ -189,6 +197,16 @@ class Task:
     # ModifiedAt is when the task, or an association such as a project or comment, last changed.
     modified_at: datetime = _dataclass_field(default_factory=lambda: datetime.min.replace(tzinfo=UTC), metadata={'dex_json_name': 'modifiedAt', 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.completed_at, str):
+            object.__setattr__(self, 'completed_at', parse_go_datetime_input(self.completed_at, 'completed_at'))
+        if isinstance(self.due_at, str):
+            object.__setattr__(self, 'due_at', parse_go_datetime_input(self.due_at, 'due_at'))
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime_input(self.created_at, 'created_at'))
+        if isinstance(self.modified_at, str):
+            object.__setattr__(self, 'modified_at', parse_go_datetime_input(self.modified_at, 'modified_at'))
+
 
 setattr(Task, '__module__', 'dex_connectors.asana.models')
 
@@ -284,6 +302,10 @@ class CreateTaskOutput:
     # CreatedAt is when Asana created the task.
     created_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
 
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime_input(self.created_at, 'created_at'))
+
 
 setattr(CreateTaskOutput, '__module__', 'dex_connectors.asana.models')
 
@@ -350,6 +372,10 @@ class AddCommentOutput:
     author: UserReference | None = _dataclass_field(default=None, metadata={'dex_json_omit_default': True})
     # CreatedAt is when Asana stored the comment.
     created_at: datetime | None = _dataclass_field(default=None, metadata={'dex_json_name': 'createdAt', 'dex_json_omit_default': True, 'dex_json_format': 'rfc3339'})
+
+    def __post_init__(self) -> None:
+        if isinstance(self.created_at, str):
+            object.__setattr__(self, 'created_at', parse_go_datetime_input(self.created_at, 'created_at'))
 
 
 setattr(AddCommentOutput, '__module__', 'dex_connectors.asana.models')

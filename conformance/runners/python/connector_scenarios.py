@@ -21,6 +21,7 @@ import httpx
 from dex import CodecRegistry
 from dex_connectors import sdk
 from dex_connectors.sdk.singledispatch import Marker
+from dex_connectors.sdk.timestamps import parse_go_datetime_input
 
 
 class SyntheticRandomSource:
@@ -482,7 +483,7 @@ class PythonOperationAdapter:
             for key, value in scenario["input"].items():
                 field = fields_by_wire_name[key]
                 if field.metadata.get("dex_json_format") == "rfc3339" and isinstance(value, str):
-                    value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                    value = parse_go_datetime_input(value, field.name)
                 input_arguments[field.name] = value
             input_value = input_type(**input_arguments)
             call_arguments = {"context": context} if self.with_context else {}

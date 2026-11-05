@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import { SecretString } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
@@ -242,7 +243,7 @@ export const ObjectSummarySchema = z.strictObject({
   "key": z.string(),
   "sizeBytes": z.number().int(),
   "eTag": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeInputSchema.optional(),
   "storageClass": z.string().optional(),
 }) satisfies z.ZodType<ObjectSummary>;
 
@@ -274,7 +275,7 @@ export const ObjectMetadataSchema = z.strictObject({
   "contentLanguage": z.string().optional(),
   "contentDisposition": z.string().optional(),
   "cacheControl": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeInputSchema.optional(),
   "versionId": z.string().optional(),
   "storageClass": z.string().optional(),
   "serverSideEncryption": z.string().optional(),
@@ -295,7 +296,7 @@ export const ObjectTextSchema = z.strictObject({
   "contentType": z.string().optional(),
   "eTag": z.string().optional(),
   "versionId": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeInputSchema.optional(),
   "sizeBytes": z.number().int(),
   "text": z.string().optional(),
 }) satisfies z.ZodType<ObjectText>;
@@ -319,6 +320,6 @@ export const StoredObjectSchema = z.strictObject({
   "versionId": z.string().optional(),
   "sizeBytes": z.number().int(),
   "contentType": z.string().optional(),
-  "lastModified": z.iso.datetime({ offset: true }).optional(),
+  "lastModified": GoTimeInputSchema.optional(),
   "isFromEarlierAttempt": z.boolean().optional(),
 }) satisfies z.ZodType<StoredObject>;

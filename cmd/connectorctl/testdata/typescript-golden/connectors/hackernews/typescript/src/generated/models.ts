@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 import { z } from 'zod';
+import { GoTimeInputSchema } from '@superdurable/connectors-sdk';
 import type { CredentialProvider } from '@superdurable/connectors-sdk';
 
 /** Connector configuration; omitted fields use manifest defaults. */
@@ -103,7 +104,7 @@ export const ListStoryIDsInputSchema = z.strictObject({
 export const StoryIDsSchema = z.strictObject({
   "ids": z.array(z.number().int()).nullable(),
   "hasMore": z.boolean(),
-  "observedAt": z.iso.datetime({ offset: true }),
+  "observedAt": GoTimeInputSchema,
 }) satisfies z.ZodType<StoryIDs>;
 
 /** Runtime validator for GetItemInput. */
