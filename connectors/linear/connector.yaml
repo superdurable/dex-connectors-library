@@ -13,6 +13,8 @@ spec:
       version: v0.1.0
       package: dex-connector-linear
       timestampFormat: rfc3339Nano
+      operations: [searchIssues, getIssue, createIssue, updateIssue, addComment, findUserByEmail, listWorkflowStates]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-linear"

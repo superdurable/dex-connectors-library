@@ -12,3 +12,16 @@ from .connection import new_project_connection as new_project_connection
 from .models import AuthenticatedProfile as AuthenticatedProfile
 from .models import GetAuthenticatedProfileInput as GetAuthenticatedProfileInput
 from .steps import new_get_authenticated_profile_step as new_get_authenticated_profile_step
+
+__all__ = [
+    "AuthenticatedProfile",
+    "Client",
+    "Config",
+    "Connection",
+    "Credentials",
+    "GetAuthenticatedProfileInput",
+    "new_connection",
+    "new_connection_with_operations",
+    "new_get_authenticated_profile_step",
+    "new_project_connection",
+]

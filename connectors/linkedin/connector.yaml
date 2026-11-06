@@ -12,6 +12,8 @@ spec:
     python:
       version: v0.1.0
       package: dex-connector-linkedin
+      operations: [getAuthenticatedProfile]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-linkedin'

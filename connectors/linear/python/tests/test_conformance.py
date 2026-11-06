@@ -19,7 +19,7 @@ SCENARIOS = load_scenarios(ROOT / "conformance/connectors/linear/scenarios.json"
 CONNECTION = sdk.ConnectionRef("linear", "linear-test")
 CREDENTIAL = linear.Credentials(
     auth_method_id="personal-api-key",
-    api_key=sdk.SecretString("lin_" + "api_" + "SENTINELKEY0123456789abcdefghijklmnopqrst"),
+    api_key=sdk.SecretString("linear-conformance-key"),
 )
 ADAPTER = PythonOperationAdapter(
     "linear",
