@@ -269,6 +269,8 @@ exists only to render the connection status and this picker from the shared
 **Start Flow** example that resolves a file by exact name, reads its text,
 uploads a text copy, and reads the copy back.
 
+## Python package
+
 The [Python package](python/README.md) implements the same four operations at
 `v0.1.0` and includes a runnable Dex Worker and Client
 [text copy Flow](python/examples/text_copy). Its OAuth and Workspace token

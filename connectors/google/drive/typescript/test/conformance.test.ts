@@ -18,7 +18,7 @@ async function invokeDriveAttempt(scenario: Scenario, recorder: ExchangeRecorder
   const driver: CredentialRefreshDriver<Credentials> = { refreshRequired: () => false,
     refresh: async () => { recorder.mismatches.push('unexpected credential refresh'); throw new Error('unexpected refresh'); } };
   const transport = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
-  const client = new DriveClient({ endpoint: 'http://localhost' },
+  const client = new DriveClient({ endpoint: 'http://localhost', maxTextBytes: 8 },
     new StaticCredentialProvider([[connection, credentials]]), { refreshDriver: driver, transport, now: () => new Date('2026-03-04T09:15:00Z') });
   const call = scenarioCall(scenario, connection, 'google-drive', context) as Call;
   if (scenario.operation === 'searchFiles') return client.searchFiles().invoke(call, scenario.input);

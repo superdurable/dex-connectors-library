@@ -121,6 +121,8 @@ export class DriveClient {
     }
     const { response, requestId } = result;
     const receipt = this.receipt(call, requestId);
+    if (response.status >= 200 && response.status < 300 && response.body.length > limit)
+      return { outcome: { branch: tooLarge, failure: failure('RESPONSE_TOO_LARGE', operation, 'provider response exceeds the configured limit'), retryAfterMs: 0, receipt } };
     if (response.status >= 200 && response.status < 300) return { result };
     const reasons = readErrorTokens(response.body, ['/error/errors/0/reason', '/error/status']);
     const kind = statusFailureKind(response.status, reasons);

@@ -14,7 +14,7 @@ it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario,
 
 async function invokeYouTube(scenario: Scenario, recorder: ExchangeRecorder) {
   const send = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
-  const credentials = new StaticCredentialProvider([[connection, { authMethodId: 'google-oauth-manage', accessToken: new SecretString('one-use-token'), oauthClientId: 'client.apps.googleusercontent.com', oauthClientSecret: new SecretString('secret'), refreshToken: new SecretString('refresh') }]]);
+  const credentials = new StaticCredentialProvider([[connection, { authMethodId: 'google-oauth-manage', accessToken: new SecretString('youtube-token'), oauthClientId: 'client.apps.googleusercontent.com', oauthClientSecret: new SecretString('secret'), refreshToken: new SecretString('refresh') }]]);
   const client = new YouTubeClient({ endpoint: 'http://127.0.0.1:42501/youtube/v3' }, credentials, { send });
   const call = scenarioCall(scenario, connection, 'google-youtube', { flowId: 'youtube-conformance', cancellationSignal: new AbortController().signal }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
   switch (scenario.operation) {

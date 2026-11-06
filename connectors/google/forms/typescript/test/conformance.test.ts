@@ -13,8 +13,13 @@ const connection = { provider: 'google', name: 'google-forms-intake' };
 it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeGoogleForms));
 
 async function invokeGoogleForms(scenario: Scenario, recorder: ExchangeRecorder) {
-  const send = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
-  const credentials = new StaticCredentialProvider([[connection, { accessToken: new SecretString('one-use-token') }]]);
+  const send = (request: ProviderRequest) => {
+    const fixtureURL = new URL(request.url);
+    // Go's conformance adapter removes the client-owned /v1 prefix from fixture paths.
+    fixtureURL.pathname = fixtureURL.pathname.replace(/^\/v1(?=\/)/, '');
+    return answerRecordedRequest(recorder, { ...request, url: fixtureURL.toString() }, before => new ProviderTransportError(before));
+  };
+  const credentials = new StaticCredentialProvider([[connection, { accessToken: new SecretString('forms-token-SENTINEL') }]]);
   const client = new GoogleFormsClient({ endpoint: 'http://127.0.0.1:41801' }, credentials, { send });
   const call = scenarioCall(scenario, connection, 'google-forms', {
     flowId: 'forms-conformance', cancellationSignal: new AbortController().signal,

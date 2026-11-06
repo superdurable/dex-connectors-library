@@ -153,10 +153,19 @@ function header(headers: ProviderResponse['headers'], name: string): string { co
 function goFormatValue(value: unknown): string {
   if (value === null) return '<nil>';
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'number') return formatGoFloat(value);
+  if (typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) return `[${value.map(goFormatValue).join(' ')}]`;
   if (typeof value === 'object') return `map[${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, field]) => `${key}:${goFormatValue(field)}`).join(' ')}]`;
   return '<nil>';
+}
+
+function formatGoFloat(value: number): string {
+  if (Object.is(value, -0)) return '-0';
+  const magnitude = Math.abs(value);
+  if (magnitude !== 0 && (magnitude < 1e-4 || magnitude >= 1e6))
+    return value.toExponential().replace(/e([+-])(\d)$/, (_match, sign: string, exponent: string) => `e${sign}0${exponent}`);
+  return String(value);
 }
 
 /** Encode query keys in Go byte order and values in insertion order. */

@@ -18,7 +18,7 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 
 async function invokeWorkspaceAdmin(scenario: Scenario, recorder: ExchangeRecorder) {
   const sender = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
-  const client = new WorkspaceAdminClient({ endpoint: 'http://127.0.0.1:12345', ...(scenario.name.endsWith('oversized') ? { maxResponseBytes: 1 } : {}) }, {
+  const client = new WorkspaceAdminClient({ endpoint: 'http://127.0.0.1:12345', maxResponseBytes: scenario.name.endsWith('oversized') ? 1 : 512 }, {
     resolve: async () => ({ accessToken: new SecretString('directory-token') }),
     resolveWithRefresh: async () => ({ accessToken: new SecretString('directory-token') }),
   }, { send: sender, randomBytes: length => new Uint8Array(length).fill(0x42) });
