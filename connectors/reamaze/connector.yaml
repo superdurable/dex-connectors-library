@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: reamaze
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-reamaze'
+      operations: [searchConversations, getConversation, createConversation, updateConversation, replyToConversation, findContactByEmail]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-reamaze
