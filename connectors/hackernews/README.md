@@ -16,6 +16,11 @@ The connector ID is `hacker-news-daily`.
 The Python package is [`dex-connector-hackernews`](python/README.md), imported as
 `dex_connectors.hackernews`.
 
+The TypeScript package is [`@superdurable/connector-hackernews`](typescript/README.md).
+Its [top-story Flow](typescript/examples/top-story/README.md) binds the static
+`hackernews-public` connection and uses both generated Query Step factories.
+Go-recorded provider scenarios replay through the Python and TypeScript packages.
+
 ## Operations
 
 | Factory | Input | Required branch | Optional branches |
