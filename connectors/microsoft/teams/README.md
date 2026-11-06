@@ -2,6 +2,12 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/teams/go@v0.24.0`.
 
+The TypeScript package `@superdurable/connector-microsoft-teams@0.1.0`
+implements all four operations with the generated manifest OAuth refresh
+declaration. See its [runnable thread-reply example](typescript/examples/list-thread-replies/README.md)
+and [package guide](typescript/README.md). The example passed against a real
+local Dex stack and a Graph stand-in; live Microsoft authorization and Graph
+requests remain unverified.
 The Python package `dex-connector-microsoft-teams==0.1.0` implements all four
 operations. See its [runnable thread-reply example](python/examples/list_thread_replies/README.md)
 and [package guide](python/README.md). It uses the manifest's generated OAuth

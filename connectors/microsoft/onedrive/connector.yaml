@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: microsoft
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-microsoft-onedrive"
+      operations: [searchFiles, getFile, readFileText, uploadFile, createFolder]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-microsoft-onedrive

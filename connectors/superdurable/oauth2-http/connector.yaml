@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: oauth2-http
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-superdurable-oauth2-http"
+      operations: [sendRequest]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-superdurable-oauth2-http

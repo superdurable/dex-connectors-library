@@ -1,0 +1,44 @@
+{
+  "connectorId": "oauth2-http",
+  "releaseTag": "connectors/superdurable/oauth2-http/go/v0.2.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-superdurable-oauth2-http",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newSendRequestStep",
+      "kind": "mutation",
+      "operationId": "sendRequest",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "rejected",
+          "field": "rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
