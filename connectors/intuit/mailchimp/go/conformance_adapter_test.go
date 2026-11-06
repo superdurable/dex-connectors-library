@@ -16,12 +16,17 @@ import (
 const conformanceEndpointPath, conformanceFixturePathPrefix = "/3.0", "/3.0"
 const conformanceAPIKey = "mailchimpfixturekey-us6"
 
-// The fixture's before-send event represents a dial refusal, which Go classifies by net.OpError.
-type conformanceDialTransport struct{ next http.RoundTripper }
+// A before-send event represents a dial refusal, which Go classifies by net.OpError.
+type conformanceDialTransport struct {
+	next http.RoundTripper
+	recorder *conformanceRecorder
+}
 
 func (transport conformanceDialTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	index := transport.recorder.requestCount
 	response, err := transport.next.RoundTrip(request)
-	if err != nil && request.Method == http.MethodPost {
+	if err != nil && index < len(transport.recorder.scenario.Exchanges) &&
+		transport.recorder.scenario.Exchanges[index].TransportFailure == "before-send" {
 		return nil, &net.OpError{Op: "dial", Net: "tcp", Err: err}
 	}
 	return response, err
@@ -29,9 +34,7 @@ func (transport conformanceDialTransport) RoundTrip(request *http.Request) (*htt
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	if scenario.Name == "sendCampaign-send-before-send" {
-		transport.Transport = conformanceDialTransport{next: transport.Transport}
-	}
+	transport.Transport = conformanceDialTransport{next: transport.Transport, recorder: transport.Transport.(*conformanceRecorder)}
 	client, err := mailchimp.New(mailchimp.Config{}, testCredentialProvider(conformanceAPIKey),
 		mailchimp.WithHTTPClient(transport), mailchimp.WithAPIBaseURL(endpoint))
 	require.NoError(t, err)

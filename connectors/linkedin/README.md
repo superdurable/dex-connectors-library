@@ -98,3 +98,7 @@ An opt-in live test is available with a dedicated test member:
 ```bash
 GOWORK=off LINKEDIN_CONNECTOR_TEST_TOKEN=... go test -tags=live ./...
 ```
+
+## TypeScript package
+
+[`@superdurable/connector-linkedin`](typescript/README.md) implements `getAuthenticatedProfile` with manifest-generated OAuth refresh, private and shared credential decoding, and the static `linkedin-signup` example connection. The TypeScript [authenticated-profile Flow](typescript/examples/authenticated-profile/flow/workflow.ts) runs on a real Dex Worker and persists only bounded UserInfo claims. Go-recorded [conformance scenarios](../../conformance/connectors/linkedin/scenarios.json) cover provider branches, retries, transport failure, and missing credentials. Live LinkedIn OAuth and UserInfo behavior remains unverified.

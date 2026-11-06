@@ -1,0 +1,3925 @@
+{
+  "connector": "linear",
+  "scenarios": [
+    {
+      "callId": "1e514395-51ad-5629-8b26-324c2a43597f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}],\"pageInfo\":{\"hasNextPage\":true,\"endCursor\":\"page-3\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearSearchIssues",
+            "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
+            "variables": {
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "issues": [
+            {
+              "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+              "createdAt": "2026-01-28T10:00:00Z",
+              "dueDate": "2026-02-18",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "identifier": "ENG-7",
+              "labelIds": [
+                "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+              ],
+              "priority": 2,
+              "state": {
+                "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "name": "Todo",
+                "type": "unstarted"
+              },
+              "team": {
+                "id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "key": "ENG",
+                "name": "Engineering"
+              },
+              "title": "Fire panel wiring",
+              "updatedAt": "2026-01-28T10:05:00Z",
+              "url": "https://linear.app/acme/issue/ENG-7"
+            }
+          ],
+          "nextCursor": "page-3"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
+      },
+      "name": "searchIssues-success",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "53a17722-3e63-530c-86b6-022a1c9bcb3c",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearSearchIssues",
+            "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
+            "variables": {
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
+      },
+      "name": "searchIssues-429",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "893af7b9-8d02-512b-ad5e-93fdeba1ef19",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearSearchIssues",
+            "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
+            "variables": {
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
+      },
+      "name": "searchIssues-503",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "831d31b8-0b35-5f25-9773-9d430448315b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearSearchIssues",
+            "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
+            "variables": {
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
+      },
+      "name": "searchIssues-transport",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "3222a4a5-6597-5116-813f-1a280bf7990b",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearSearchIssues",
+            "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
+            "variables": {
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
+      },
+      "name": "searchIssues-provider-rejected",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "57656117-3f7f-58dd-97ef-9ce58993bfc1",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearSearchIssues",
+            "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
+            "variables": {
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
+      },
+      "name": "searchIssues-invalid-response",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "d97751ed-a881-593c-a729-9bab8b24fcb0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 101
+      },
+      "name": "searchIssues-defect",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "133fd0d0-b56b-5149-90bb-22101f4b647a",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"},\"number\":7,\"priorityLabel\":\"High\",\"estimate\":3,\"description\":\"Inspect panel\",\"branchName\":\"eng-7-panel\",\"trashed\":false,\"creator\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\",\"name\":\"Alice\",\"displayName\":\"Alice\"},\"labels\":{\"nodes\":[{\"id\":\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\",\"name\":\"Bug\",\"color\":\"#ff0000\"}]},\"project\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"name\":\"Safety\"},\"cycle\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"number\":4,\"name\":\"Sprint 4\"},\"parent\":{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-1\"},\"startedAt\":null,\"completedAt\":null,\"canceledAt\":null}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "assignee": {
+            "id": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+          },
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "branchName": "eng-7-panel",
+          "createdAt": "2026-01-28T10:00:00Z",
+          "creator": {
+            "displayName": "Alice",
+            "id": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+            "name": "Alice"
+          },
+          "cycle": {
+            "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+            "name": "Sprint 4",
+            "number": 4
+          },
+          "description": "Inspect panel",
+          "dueDate": "2026-02-18",
+          "estimate": 3,
+          "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+          "identifier": "ENG-7",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labels": [
+            {
+              "color": "#ff0000",
+              "id": "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a",
+              "name": "Bug"
+            }
+          ],
+          "number": 7,
+          "parent": {
+            "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+            "identifier": "ENG-1"
+          },
+          "priority": 2,
+          "priorityLabel": "High",
+          "project": {
+            "id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+            "name": "Safety"
+          },
+          "state": {
+            "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+            "name": "Todo",
+            "type": "unstarted"
+          },
+          "team": {
+            "id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+            "key": "ENG",
+            "name": "Engineering"
+          },
+          "title": "Fire panel wiring",
+          "updatedAt": "2026-01-28T10:05:00Z",
+          "url": "https://linear.app/acme/issue/ENG-7"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-success",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "e63f531f-a704-51ee-be5c-f3eb1fca95bd",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-429",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "09c0f366-8b69-5f47-a691-1f1fb9373de8",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-503",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "d1aa2466-65f4-563c-a36e-0fc7febac305",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-transport",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "ff01dc58-0913-5d48-b9a8-c0e45c0f7b6f",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "identifier": "",
+          "number": 0,
+          "priority": 0,
+          "state": {
+            "id": "",
+            "name": "",
+            "type": ""
+          },
+          "team": {
+            "id": "",
+            "key": "",
+            "name": ""
+          },
+          "title": "",
+          "updatedAt": "0001-01-01T00:00:00Z",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-provider-rejected",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "1b074ee3-2208-57af-b723-0e798225cc4e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "identifier": "",
+          "number": 0,
+          "priority": 0,
+          "state": {
+            "id": "",
+            "name": "",
+            "type": ""
+          },
+          "team": {
+            "id": "",
+            "key": "",
+            "name": ""
+          },
+          "title": "",
+          "updatedAt": "0001-01-01T00:00:00Z",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-invalid-response",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "e67a1b7c-8786-5a53-b465-c25323a54e28",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "identifier": "",
+          "number": 0,
+          "priority": 0,
+          "state": {
+            "id": "",
+            "name": "",
+            "type": ""
+          },
+          "team": {
+            "id": "",
+            "key": "",
+            "name": ""
+          },
+          "title": "",
+          "updatedAt": "0001-01-01T00:00:00Z",
+          "url": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "bad"
+      },
+      "name": "getIssue-defect",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"issueCreate\":{\"success\":true,\"issue\":{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "issue": {
+            "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+            "createdAt": "2026-01-28T10:00:00Z",
+            "dueDate": "2026-02-18",
+            "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+            "identifier": "ENG-7",
+            "labelIds": [
+              "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+            ],
+            "priority": 2,
+            "state": {
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+              "name": "Todo",
+              "type": "unstarted"
+            },
+            "team": {
+              "id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+              "key": "ENG",
+              "name": "Engineering"
+            },
+            "title": "Fire panel wiring",
+            "updatedAt": "2026-01-28T10:05:00Z",
+            "url": "https://linear.app/acme/issue/ENG-7"
+          },
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "New issue"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-success",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-429",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-503",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-transport",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "New issue"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-provider-rejected",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-invalid-response",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "teamId": "bad",
+          "title": "New issue"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "bad",
+        "title": "New issue"
+      },
+      "name": "createIssue-defect",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"issueUpdate\":{\"success\":true,\"issue\":{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearUpdateIssue",
+            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "input": {
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "issue": {
+            "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+            "createdAt": "2026-01-28T10:00:00Z",
+            "dueDate": "2026-02-18",
+            "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+            "identifier": "ENG-7",
+            "labelIds": [
+              "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+            ],
+            "priority": 2,
+            "state": {
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+              "name": "Todo",
+              "type": "unstarted"
+            },
+            "team": {
+              "id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+              "key": "ENG",
+              "name": "Engineering"
+            },
+            "title": "Fire panel wiring",
+            "updatedAt": "2026-01-28T10:05:00Z",
+            "url": "https://linear.app/acme/issue/ENG-7"
+          },
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
+      },
+      "name": "updateIssue-success",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearUpdateIssue",
+            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "input": {
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
+      },
+      "name": "updateIssue-429",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearUpdateIssue",
+            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "input": {
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
+      },
+      "name": "updateIssue-503",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearUpdateIssue",
+            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "input": {
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
+      },
+      "name": "updateIssue-transport",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearUpdateIssue",
+            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "input": {
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
+      },
+      "name": "updateIssue-provider-rejected",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearUpdateIssue",
+            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "input": {
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
+      },
+      "name": "updateIssue-invalid-response",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issueId": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "bad",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
+      },
+      "name": "updateIssue-defect",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-429",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-503",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-transport",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-provider-rejected",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-invalid-response",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issueId": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "bad"
+      },
+      "name": "addComment-defect",
+      "operation": "addComment"
+    },
+    {
+      "callId": "c428d74c-17df-57b7-9dd8-ec0d8b3d7d09",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"users\":{\"nodes\":[{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\",\"name\":\"Alice\",\"displayName\":\"Alice\",\"email\":\"Alice@Example.com\",\"active\":true,\"admin\":true,\"guest\":false,\"url\":\"https://linear.app/alice\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "active": true,
+          "admin": true,
+          "displayName": "Alice",
+          "email": "Alice@Example.com",
+          "id": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "name": "Alice",
+          "url": "https://linear.app/alice"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-success",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "e8577e0c-116d-5114-8915-ff5e2894cd08",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-429",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "9b6a79cb-f2a6-50ca-b515-cb2a087c3905",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-503",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "ebde29ad-3c4b-569b-9573-822cb5d49717",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-transport",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "6717c270-40ec-50b0-b43f-2ff54791d38c",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "active": false,
+          "displayName": "",
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-provider-rejected",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "e16cb2a9-41dc-584b-981c-d379d4040bd2",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "active": false,
+          "displayName": "",
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-invalid-response",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "e16c1ede-2c16-548c-9f8b-9a0db6debcfe",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "active": false,
+          "displayName": "",
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "bad",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-defect",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "74f2be98-e58e-5f90-aa7e-22fe117abd5f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"workflowStates\":{\"nodes\":[{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\",\"position\":2.0,\"color\":\"#333333\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\"}}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearListWorkflowStates",
+            "query": "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}",
+            "variables": {
+              "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "states": [
+            {
+              "color": "#333333",
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+              "name": "Todo",
+              "position": 2,
+              "type": "unstarted"
+            }
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+      },
+      "name": "listWorkflowStates-success",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "74110523-0822-505f-8a61-bcb4c63dadac",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearListWorkflowStates",
+            "query": "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}",
+            "variables": {
+              "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+      },
+      "name": "listWorkflowStates-429",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "3938c56f-6bf7-5c06-8f89-4e651f672954",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearListWorkflowStates",
+            "query": "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}",
+            "variables": {
+              "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+      },
+      "name": "listWorkflowStates-503",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "9cb9055a-0004-5fc1-b0d3-d682bfec44a7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearListWorkflowStates",
+            "query": "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}",
+            "variables": {
+              "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+      },
+      "name": "listWorkflowStates-transport",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "5cd59b4f-52d0-5ec3-a5c8-609cd7c7830c",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearListWorkflowStates",
+            "query": "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}",
+            "variables": {
+              "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "states": [],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+      },
+      "name": "listWorkflowStates-provider-rejected",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "e7d08346-03b5-5ffb-a399-5f2f64a41f55",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearListWorkflowStates",
+            "query": "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}",
+            "variables": {
+              "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "states": [],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+      },
+      "name": "listWorkflowStates-invalid-response",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "926861c6-2d5c-53bd-9eb1-a57244335804",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "states": [],
+          "teamId": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "bad"
+      },
+      "name": "listWorkflowStates-defect",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "6dcabfd1-f921-5abe-be02-e7b9bcca38cc",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "identifier": "",
+          "number": 0,
+          "priority": 0,
+          "state": {
+            "id": "",
+            "name": "",
+            "type": ""
+          },
+          "team": {
+            "id": "",
+            "key": "",
+            "name": ""
+          },
+          "title": "",
+          "updatedAt": "0001-01-01T00:00:00Z",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-not-found",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "8ef28e2d-69ac-5024-b809-6b8331b3501d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"users\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "active": false,
+          "displayName": "",
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-not-found",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "20a6fb1c-58fb-5226-8d44-3ef63a3747de",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"workflowStates\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearListWorkflowStates",
+            "query": "query LinearListWorkflowStates($teamId: ID!) {\n  workflowStates(filter: { team: { id: { eq: $teamId } } }, first: 100) {\n    nodes { id name type position color team { id } }\n  }\n}",
+            "variables": {
+              "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "states": [],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+      },
+      "name": "listWorkflowStates-not-found",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"INPUT_ERROR\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearUpdateIssue",
+            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "input": {
+                "assigneeId": null,
+                "dueDate": null
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "clearsDueDate": true,
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "unassigns": true
+      },
+      "name": "updateIssue-not-found",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"INPUT_ERROR\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"data\":{\"comments\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-not-found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"commentCreate\":{\"success\":true,\"comment\":{\"id\":\"d1307927-9444-4d6c-86e3-7721a2174197\",\"url\":\"https://linear.app/acme/issue/ENG-7#comment\",\"createdAt\":\"2026-02-01T10:00:00Z\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "d1307927-9444-4d6c-86e3-7721a2174197",
+          "createdAt": "2026-02-01T10:00:00Z",
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+          "url": "https://linear.app/acme/issue/ENG-7#comment"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-added",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"data\":{\"comments\":{\"nodes\":[{\"id\":\"d1307927-9444-4d6c-86e3-7721a2174197\",\"url\":\"https://linear.app/acme/issue/ENG-7#comment\",\"createdAt\":\"2026-02-01T10:00:00Z\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "d1307927-9444-4d6c-86e3-7721a2174197",
+          "createdAt": "2026-02-01T10:00:00Z",
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+          "replayed": true,
+          "url": "https://linear.app/acme/issue/ENG-7#comment"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-replayed",
+      "operation": "addComment"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"db86c48a-1573-4c1d-b6cd-630eddbc2f01\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "issue": {
+            "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+            "createdAt": "2026-01-28T10:00:00Z",
+            "dueDate": "2026-02-18",
+            "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+            "identifier": "ENG-7",
+            "labelIds": [
+              "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+            ],
+            "priority": 2,
+            "state": {
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+              "name": "Todo",
+              "type": "unstarted"
+            },
+            "team": {
+              "id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+              "key": "ENG",
+              "name": "Engineering"
+            },
+            "title": "Fire panel wiring",
+            "updatedAt": "2026-01-28T10:05:00Z",
+            "url": "https://linear.app/acme/issue/ENG-7"
+          },
+          "issueId": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+          "replayed": true,
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "New issue"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-replayed",
+      "operation": "createIssue"
+    }
+  ],
+  "schemaVersion": 1
+}

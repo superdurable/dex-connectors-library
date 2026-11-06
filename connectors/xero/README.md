@@ -345,6 +345,19 @@ flow := NewFlow(mock.Connection())
 This snippet comes from
 [`workflow_mock_integration_test.go`](go/examples/approved-order/flow/workflow_mock_integration_test.go).
 
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements all six operations at
+`@superdurable/connector-xero` version `0.1.0`. Its generated OAuth wiring
+refreshes Custom Connection and web-app credentials, including rotating OAuth
+refresh tokens. The [list contacts example](typescript/examples/list-contacts/README.md)
+is a runnable Dex Flow with a real Dex integration test and the static
+`xero-contacts` connection. Go-recorded scenarios in
+[`conformance/connectors/xero`](../../conformance/connectors/xero) check the
+TypeScript requests, branches, retries, uncertainty, and outputs.
+
+Live provider behavior remains unverified for this TypeScript port.
+
 ## Verification
 
 ```bash

@@ -1,0 +1,3971 @@
+{
+  "connector": "calendly",
+  "scenarios": [
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [{\"uri\": \"https://api.calendly.com/scheduled_events/EVT00001\", \"status\": \"active\", \"start_time\": \"2026-11-10T10:00:00Z\", \"end_time\": \"2026-11-10T10:30:00Z\"}], \"pagination\": {\"next_page_token\": \"page-two\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "invitee_email": [
+              "hana@example.com"
+            ],
+            "max_start_time": [
+              "2026-12-01T00:00:00.000000Z"
+            ],
+            "min_start_time": [
+              "2026-11-01T00:00:00.000000Z"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "start_time:desc"
+            ],
+            "status": [
+              "active"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "endTime": "2026-11-10T10:30:00Z",
+              "inviteesCounter": {
+                "active": 0,
+                "limit": 0,
+                "total": 0
+              },
+              "location": {},
+              "startTime": "2026-11-10T10:00:00Z",
+              "status": "active",
+              "uri": "https://api.calendly.com/scheduled_events/EVT00001"
+            }
+          ],
+          "maxStartTime": "2026-12-01T00:00:00Z",
+          "minStartTime": "2026-11-01T00:00:00Z",
+          "nextPageToken": "page-two",
+          "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+          "userUri": "https://api.calendly.com/users/USER0001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "listScheduledEvents-success",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "invitee_email": [
+              "hana@example.com"
+            ],
+            "max_start_time": [
+              "2026-12-01T00:00:00.000000Z"
+            ],
+            "min_start_time": [
+              "2026-11-01T00:00:00.000000Z"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "start_time:desc"
+            ],
+            "status": [
+              "active"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "events": [],
+          "maxStartTime": "0001-01-01T00:00:00Z",
+          "minStartTime": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "listScheduledEvents-provider-rejected",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "invitee_email": [
+              "hana@example.com"
+            ],
+            "max_start_time": [
+              "2026-12-01T00:00:00.000000Z"
+            ],
+            "min_start_time": [
+              "2026-11-01T00:00:00.000000Z"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "start_time:desc"
+            ],
+            "status": [
+              "active"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": [],
+          "maxStartTime": "0001-01-01T00:00:00Z",
+          "minStartTime": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "listScheduledEvents-invalid-response",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "events": [],
+          "maxStartTime": "0001-01-01T00:00:00Z",
+          "minStartTime": "0001-01-01T00:00:00Z"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "invalid",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "listScheduledEvents-defect",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "invitee_email": [
+              "hana@example.com"
+            ],
+            "max_start_time": [
+              "2026-12-01T00:00:00.000000Z"
+            ],
+            "min_start_time": [
+              "2026-11-01T00:00:00.000000Z"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "start_time:desc"
+            ],
+            "status": [
+              "active"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "listScheduledEvents-rate-limit",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "invitee_email": [
+              "hana@example.com"
+            ],
+            "max_start_time": [
+              "2026-12-01T00:00:00.000000Z"
+            ],
+            "min_start_time": [
+              "2026-11-01T00:00:00.000000Z"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "start_time:desc"
+            ],
+            "status": [
+              "active"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "listScheduledEvents-server-unavailable",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "invitee_email": [
+              "hana@example.com"
+            ],
+            "max_start_time": [
+              "2026-12-01T00:00:00.000000Z"
+            ],
+            "min_start_time": [
+              "2026-11-01T00:00:00.000000Z"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "start_time:desc"
+            ],
+            "status": [
+              "active"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "listScheduledEvents-transport-before-send",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [
+        {
+          "body": "{\"resource\": {\"uri\": \"https://api.calendly.com/scheduled_events/EVT00001\", \"status\": \"active\", \"start_time\": \"2026-11-10T10:00:00Z\", \"end_time\": \"2026-11-10T10:30:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "endTime": "2026-11-10T10:30:00Z",
+          "inviteesCounter": {
+            "active": 0,
+            "limit": 0,
+            "total": 0
+          },
+          "location": {},
+          "startTime": "2026-11-10T10:00:00Z",
+          "status": "active",
+          "uri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "getScheduledEvent-success",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "endTime": "0001-01-01T00:00:00Z",
+          "inviteesCounter": {
+            "active": 0,
+            "limit": 0,
+            "total": 0
+          },
+          "location": {},
+          "startTime": "0001-01-01T00:00:00Z",
+          "status": "",
+          "uri": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "getScheduledEvent-not-found",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "endTime": "0001-01-01T00:00:00Z",
+          "inviteesCounter": {
+            "active": 0,
+            "limit": 0,
+            "total": 0
+          },
+          "location": {},
+          "startTime": "0001-01-01T00:00:00Z",
+          "status": "",
+          "uri": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "getScheduledEvent-provider-rejected",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "endTime": "0001-01-01T00:00:00Z",
+          "inviteesCounter": {
+            "active": 0,
+            "limit": 0,
+            "total": 0
+          },
+          "location": {},
+          "startTime": "0001-01-01T00:00:00Z",
+          "status": "",
+          "uri": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "getScheduledEvent-invalid-response",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "endTime": "0001-01-01T00:00:00Z",
+          "inviteesCounter": {
+            "active": 0,
+            "limit": 0,
+            "total": 0
+          },
+          "location": {},
+          "startTime": "0001-01-01T00:00:00Z",
+          "status": "",
+          "uri": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "bad"
+      },
+      "name": "getScheduledEvent-defect",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "getScheduledEvent-rate-limit",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "getScheduledEvent-server-unavailable",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "cea1ba45-23ff-56d2-8461-107b46b83512",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "getScheduledEvent-transport-before-send",
+      "operation": "getScheduledEvent"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001/invitees",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "email": [
+              "hana@example.com"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "invitees": [],
+          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001",
+        "status": "active"
+      },
+      "name": "listEventInvitees-success",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001/invitees",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "email": [
+              "hana@example.com"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "invitees": [],
+          "scheduledEventUri": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001",
+        "status": "active"
+      },
+      "name": "listEventInvitees-not-found",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001/invitees",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "email": [
+              "hana@example.com"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "invitees": [],
+          "scheduledEventUri": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001",
+        "status": "active"
+      },
+      "name": "listEventInvitees-provider-rejected",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001/invitees",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "email": [
+              "hana@example.com"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "invitees": [],
+          "scheduledEventUri": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001",
+        "status": "active"
+      },
+      "name": "listEventInvitees-invalid-response",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "invitees": [],
+          "scheduledEventUri": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "bad",
+        "status": "active"
+      },
+      "name": "listEventInvitees-defect",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001/invitees",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "email": [
+              "hana@example.com"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001",
+        "status": "active"
+      },
+      "name": "listEventInvitees-rate-limit",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001/invitees",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "email": [
+              "hana@example.com"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001",
+        "status": "active"
+      },
+      "name": "listEventInvitees-server-unavailable",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "54e9926e-aae7-5bb8-a172-cc0db3e7b39c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001/invitees",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "email": [
+              "hana@example.com"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "status": [
+              "active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "hana@example.com",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001",
+        "status": "active"
+      },
+      "name": "listEventInvitees-transport-before-send",
+      "operation": "listEventInvitees"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{\"resource\": {\"canceled_by\": \"Hana\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "alreadyCanceled": false,
+          "cancellation": {
+            "canceledBy": "Hana"
+          },
+          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-success",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "alreadyCanceled": false,
+          "cancellation": {},
+          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-not-found",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "alreadyCanceled": false,
+          "cancellation": {},
+          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-provider-rejected",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "alreadyCanceled": false,
+          "cancellation": {},
+          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-invalid-response",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "alreadyCanceled": false,
+          "cancellation": {},
+          "scheduledEventUri": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "bad"
+      },
+      "name": "cancelScheduledEvent-defect",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-rate-limit",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-server-unavailable",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-transport-before-send",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        },
+        {
+          "body": "{\"resource\": {\"uri\": \"https://api.calendly.com/scheduled_events/EVT00001\", \"status\": \"canceled\", \"start_time\": \"2026-11-10T10:00:00Z\", \"end_time\": \"2026-11-10T10:30:00Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "alreadyCanceled": true,
+          "cancellation": {},
+          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-already-canceled",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "body": "{\"resource\": {\"booking_url\": \"https://calendly.com/d/abcd-1234/30-minute-meeting\", \"owner\": \"https://api.calendly.com/event_types/TYPE0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "providerId": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "state": "claimed"
+        },
+        "output": {
+          "bookingUrl": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-success",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "claimed"
+        },
+        "output": {
+          "bookingUrl": "",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-provider-rejected",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "claimed"
+        },
+        "output": {
+          "bookingUrl": "",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-uncertain",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "bookingUrl": "",
+          "eventTypeUri": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "bad"
+      },
+      "name": "createSchedulingLink-defect",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-rate-limit",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-server-unavailable",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-transport-before-send",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "state": "claimed"
+        },
+        "output": {
+          "bookingUrl": "",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-transport-after-send",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resource\": {\"uri\": \"https://api.calendly.com/webhook_subscriptions/HOOK0001\", \"callback_url\": \"https://hooks.example.com/webhooks/calendly\", \"state\": \"active\", \"events\": [\"invitee.created\", \"invitee.canceled\"], \"scope\": \"user\", \"organization\": \"https://api.calendly.com/organizations/ORG0001\", \"user\": \"https://api.calendly.com/users/USER0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhook_subscriptions",
+          "requestBody": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ],
+            "organization": "https://api.calendly.com/organizations/ORG0001",
+            "scope": "user",
+            "signing_key": "SENTINEL-CALENDLY-SIGNING-KEY",
+            "url": "https://hooks.example.com/webhooks/calendly",
+            "user": "https://api.calendly.com/users/USER0001"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+          "events": [
+            "invitee.created",
+            "invitee.canceled"
+          ],
+          "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+          "scope": "user",
+          "state": "active",
+          "uri": "https://api.calendly.com/webhook_subscriptions/HOOK0001",
+          "userUri": "https://api.calendly.com/users/USER0001",
+          "wasCreated": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-success",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "callbackUrl": "",
+          "events": [],
+          "organizationUri": "",
+          "scope": "",
+          "state": "",
+          "uri": "",
+          "wasCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-provider-rejected",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [{\"uri\": \"https://api.calendly.com/webhook_subscriptions/HOOK0001\", \"callback_url\": \"https://hooks.example.com/webhooks/calendly\", \"state\": \"disabled\", \"events\": [\"invitee.created\", \"invitee.canceled\"], \"scope\": \"user\", \"organization\": \"https://api.calendly.com/organizations/ORG0001\", \"user\": \"https://api.calendly.com/users/USER0001\"}], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "conflictingSubscription",
+        "failureKind": "CONFLICT",
+        "output": {
+          "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+          "events": [
+            "invitee.created",
+            "invitee.canceled"
+          ],
+          "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+          "scope": "user",
+          "state": "disabled",
+          "uri": "https://api.calendly.com/webhook_subscriptions/HOOK0001",
+          "userUri": "https://api.calendly.com/users/USER0001",
+          "wasCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-conflicting-subscription",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "callbackUrl": "",
+          "events": [],
+          "organizationUri": "",
+          "scope": "",
+          "state": "",
+          "uri": "",
+          "wasCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-invalid-response",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "callbackUrl": "",
+          "events": [],
+          "organizationUri": "",
+          "scope": "",
+          "state": "",
+          "uri": "",
+          "wasCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "http://invalid.example.com"
+      },
+      "name": "createWebhookSubscription-defect",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-rate-limit",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-server-unavailable",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-transport-before-send",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [{\"uri\": \"https://api.calendly.com/webhook_subscriptions/HOOK0001\", \"callback_url\": \"https://hooks.example.com/webhooks/calendly\", \"state\": \"active\", \"events\": [\"invitee.created\", \"invitee.canceled\"], \"scope\": \"user\", \"organization\": \"https://api.calendly.com/organizations/ORG0001\", \"user\": \"https://api.calendly.com/users/USER0001\"}], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+          "events": [
+            "invitee.created",
+            "invitee.canceled"
+          ],
+          "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+          "scope": "user",
+          "state": "active",
+          "uri": "https://api.calendly.com/webhook_subscriptions/HOOK0001",
+          "userUri": "https://api.calendly.com/users/USER0001",
+          "wasCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-reused",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "{\"resource\": {\"uri\": \"https://api.calendly.com/users/USER0001\", \"current_organization\": \"https://api.calendly.com/organizations/ORG0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"collection\": [{\"uri\": \"https://api.calendly.com/scheduled_events/EVT00001\", \"status\": \"active\", \"start_time\": \"2026-11-10T10:00:00Z\", \"end_time\": \"2026-11-10T10:30:00Z\"}], \"pagination\": {\"next_page_token\": \"page-two\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events",
+          "query": {
+            "count": [
+              "10"
+            ],
+            "invitee_email": [
+              "hana@example.com"
+            ],
+            "max_start_time": [
+              "2026-12-01T00:00:00.000000Z"
+            ],
+            "min_start_time": [
+              "2026-11-01T00:00:00.000000Z"
+            ],
+            "page_token": [
+              "page-one"
+            ],
+            "sort": [
+              "start_time:desc"
+            ],
+            "status": [
+              "active"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "events": [
+            {
+              "endTime": "2026-11-10T10:30:00Z",
+              "inviteesCounter": {
+                "active": 0,
+                "limit": 0,
+                "total": 0
+              },
+              "location": {},
+              "startTime": "2026-11-10T10:00:00Z",
+              "status": "active",
+              "uri": "https://api.calendly.com/scheduled_events/EVT00001"
+            }
+          ],
+          "maxStartTime": "2026-12-01T00:00:00Z",
+          "minStartTime": "2026-11-01T00:00:00Z",
+          "nextPageToken": "page-two",
+          "userUri": "https://api.calendly.com/users/USER0001"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active"
+      },
+      "name": "listScheduledEvents-derived-user",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active"
+      },
+      "name": "listScheduledEvents-current-user-rate-limit",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active"
+      },
+      "name": "listScheduledEvents-current-user-server-unavailable",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "bbfe5311-aa77-55e6-9bad-e18d561533a1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "inviteeEmail": "hana@example.com",
+        "maxStartTime": "2026-12-01T00:00:00Z",
+        "minStartTime": "2026-11-01T00:00:00Z",
+        "pageSize": 10,
+        "pageToken": "page-one",
+        "sort": "start_time:desc",
+        "status": "active"
+      },
+      "name": "listScheduledEvents-current-user-transport-before-send",
+      "operation": "listScheduledEvents"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"resource\": {\"uri\": \"https://api.calendly.com/users/USER0001\", \"current_organization\": \"https://api.calendly.com/organizations/ORG0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resource\": {\"uri\": \"https://api.calendly.com/webhook_subscriptions/HOOK0001\", \"callback_url\": \"https://hooks.example.com/webhooks/calendly\", \"state\": \"active\", \"events\": [\"invitee.created\", \"invitee.canceled\"], \"scope\": \"user\", \"organization\": \"https://api.calendly.com/organizations/ORG0001\", \"user\": \"https://api.calendly.com/users/USER0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhook_subscriptions",
+          "requestBody": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ],
+            "organization": "https://api.calendly.com/organizations/ORG0001",
+            "scope": "user",
+            "signing_key": "SENTINEL-CALENDLY-SIGNING-KEY",
+            "url": "https://hooks.example.com/webhooks/calendly",
+            "user": "https://api.calendly.com/users/USER0001"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+          "events": [
+            "invitee.created",
+            "invitee.canceled"
+          ],
+          "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+          "scope": "user",
+          "state": "active",
+          "uri": "https://api.calendly.com/webhook_subscriptions/HOOK0001",
+          "userUri": "https://api.calendly.com/users/USER0001",
+          "wasCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "scope": "user"
+      },
+      "name": "createWebhookSubscription-derived-user",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "scope": "user"
+      },
+      "name": "createWebhookSubscription-current-user-rate-limit",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "scope": "user"
+      },
+      "name": "createWebhookSubscription-current-user-server-unavailable",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "scope": "user"
+      },
+      "name": "createWebhookSubscription-current-user-transport-before-send",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhook_subscriptions",
+          "requestBody": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ],
+            "organization": "https://api.calendly.com/organizations/ORG0001",
+            "scope": "user",
+            "signing_key": "SENTINEL-CALENDLY-SIGNING-KEY",
+            "url": "https://hooks.example.com/webhooks/calendly",
+            "user": "https://api.calendly.com/users/USER0001"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-post-rate-limit",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhook_subscriptions",
+          "requestBody": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ],
+            "organization": "https://api.calendly.com/organizations/ORG0001",
+            "scope": "user",
+            "signing_key": "SENTINEL-CALENDLY-SIGNING-KEY",
+            "url": "https://hooks.example.com/webhooks/calendly",
+            "user": "https://api.calendly.com/users/USER0001"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-post-server-unavailable",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhook_subscriptions",
+          "requestBody": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ],
+            "organization": "https://api.calendly.com/organizations/ORG0001",
+            "scope": "user",
+            "signing_key": "SENTINEL-CALENDLY-SIGNING-KEY",
+            "url": "https://hooks.example.com/webhooks/calendly",
+            "user": "https://api.calendly.com/users/USER0001"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-post-transport-after-send",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhook_subscriptions",
+          "requestBody": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ],
+            "organization": "https://api.calendly.com/organizations/ORG0001",
+            "scope": "user",
+            "signing_key": "SENTINEL-CALENDLY-SIGNING-KEY",
+            "url": "https://hooks.example.com/webhooks/calendly",
+            "user": "https://api.calendly.com/users/USER0001"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "conflictingSubscription",
+        "failureKind": "CONFLICT",
+        "output": {
+          "callbackUrl": "",
+          "events": [],
+          "organizationUri": "",
+          "scope": "",
+          "state": "",
+          "uri": "",
+          "wasCreated": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "name": "createWebhookSubscription-post-conflict",
+      "operation": "createWebhookSubscription"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        },
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-readback-rate-limit",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-readback-server-unavailable",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/scheduled_events/EVT00001",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "name": "cancelScheduledEvent-readback-transport-after-send",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "bookingUrl": "",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "name": "createSchedulingLink-prior-claimed",
+      "operation": "createSchedulingLink",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+        "state": "claimed"
+      }
+    },
+    {
+      "attempts": 2,
+      "callId": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"resource\": {\"canceled_by\": \"Hana\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduled_events/EVT00001/cancellation",
+          "requestBody": {
+            "reason": "Schedule changed"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "canceled",
+        "failureKind": "",
+        "output": {
+          "alreadyCanceled": false,
+          "cancellation": {
+            "canceledBy": "Hana"
+          },
+          "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "f2038b82-5764-5c8a-b8e8-7148aad8ab98",
+      "input": {
+        "reason": "Schedule changed",
+        "scheduledEventUri": "https://api.calendly.com/scheduled_events/EVT00001"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "cancelScheduledEvent-retry-then-success",
+      "operation": "cancelScheduledEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"resource\": {\"booking_url\": \"https://calendly.com/d/abcd-1234/30-minute-meeting\", \"owner\": \"https://api.calendly.com/event_types/TYPE0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/scheduling_links",
+          "requestBody": {
+            "max_event_count": 1,
+            "owner": "https://api.calendly.com/event_types/TYPE0001",
+            "owner_type": "EventType"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+          "providerId": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "state": "claimed"
+        },
+        "output": {
+          "bookingUrl": "https://calendly.com/d/abcd-1234/30-minute-meeting",
+          "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+      "input": {
+        "eventTypeUri": "https://api.calendly.com/event_types/TYPE0001"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "345b8fc6-bc68-513b-af1b-4f197c2e59f6",
+            "state": "canResend"
+          },
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "createSchedulingLink-retry-then-success",
+      "operation": "createSchedulingLink"
+    },
+    {
+      "attempts": 2,
+      "callId": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"collection\": [], \"pagination\": {}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/webhook_subscriptions",
+          "query": {
+            "count": [
+              "100"
+            ],
+            "organization": [
+              "https://api.calendly.com/organizations/ORG0001"
+            ],
+            "scope": [
+              "user"
+            ],
+            "sort": [
+              "created_at:asc"
+            ],
+            "user": [
+              "https://api.calendly.com/users/USER0001"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resource\": {\"uri\": \"https://api.calendly.com/webhook_subscriptions/HOOK0001\", \"callback_url\": \"https://hooks.example.com/webhooks/calendly\", \"state\": \"active\", \"events\": [\"invitee.created\", \"invitee.canceled\"], \"scope\": \"user\", \"organization\": \"https://api.calendly.com/organizations/ORG0001\", \"user\": \"https://api.calendly.com/users/USER0001\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/webhook_subscriptions",
+          "requestBody": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ],
+            "organization": "https://api.calendly.com/organizations/ORG0001",
+            "scope": "user",
+            "signing_key": "SENTINEL-CALENDLY-SIGNING-KEY",
+            "url": "https://hooks.example.com/webhooks/calendly",
+            "user": "https://api.calendly.com/users/USER0001"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer SENTINEL-CALENDLY-ACCESS-TOKEN"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "subscribed",
+        "failureKind": "",
+        "output": {
+          "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+          "events": [
+            "invitee.created",
+            "invitee.canceled"
+          ],
+          "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+          "scope": "user",
+          "state": "active",
+          "uri": "https://api.calendly.com/webhook_subscriptions/HOOK0001",
+          "userUri": "https://api.calendly.com/users/USER0001",
+          "wasCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ddce8fe1-a23a-5e83-bda6-ea65d4f786d0",
+      "input": {
+        "callbackUrl": "https://hooks.example.com/webhooks/calendly",
+        "events": [
+          "invitee.created",
+          "invitee.canceled"
+        ],
+        "organizationUri": "https://api.calendly.com/organizations/ORG0001",
+        "scope": "user",
+        "userUri": "https://api.calendly.com/users/USER0001"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "retryAfterMs": 2000
+        }
+      ],
+      "name": "createWebhookSubscription-retry-then-success",
+      "operation": "createWebhookSubscription"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -1,0 +1,7 @@
+# Microsoft Outlook Mail for Python
+
+`dex-connector-microsoft-outlook-mail==0.1.0` implements `searchMessages`, `getMessage`, `sendMessage`, `replyToMessage`, `moveMessage`, and `setMessageFlags` as typed Dex Queries and Mutations. It requires `dex-connectors-sdk==0.7.0`. The operation branches, retries, response bounds, immutable Graph IDs, and draft send checkpoints follow the [Go connector contract](../README.md).
+
+Use the [support reply example](examples/support_reply/README.md) as the runnable application. Its [Flow](examples/support_reply/flow.py) binds every operation to the static `outlook-support-mailbox` connection, and its [Worker](examples/support_reply/worker.py) loads that connection through `new_project_connection`. An unwired optional branch fails the Flow. Provider calls and token refreshes stay in the connector and generated SDK wiring; Flow inputs and results contain no credentials.
+
+For local verification, run `uv sync --locked`, `uv run ruff check src tests examples`, `uv run mypy src tests examples`, and `uv run pytest -q` from this directory. Start `dexcli dev --dex-port 40750 --web-port 40751 --open=false --zd-data-dir /tmp/dex-outlook-python-example`, then run `uv run pytest examples/support_reply/integration_test.py -q` against that stack and stop the server afterward. The integration test uses an inert Graph stand-in and a real Dex Worker and Client. Microsoft 365 authorization, consent, scopes, and live mail delivery remain unverified.

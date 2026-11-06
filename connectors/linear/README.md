@@ -13,6 +13,11 @@ The Linear Connector reads and writes Linear issues from Dex Flows through Linea
 `https://api.linear.app/graphql`, and receives Linear's signed Issue webhooks. It covers Team → workflow
 state → Issue, with assignee resolution by email, label set operations, and comments.
 
+The [TypeScript package](typescript/README.md) provides all seven operations with generated OAuth refresh
+and credential wiring. Its [issue search example](typescript/examples/issue-search/README.md) runs through
+a real Dex Worker against a local provider stand-in. The webhook Trigger remains Go only; live Linear
+authorization and writes have not been verified for the TypeScript package.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `linear.NewSearchIssuesStep` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |

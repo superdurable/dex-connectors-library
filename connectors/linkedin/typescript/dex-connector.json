@@ -1,0 +1,64 @@
+{
+  "connectorId": "linkedin",
+  "releaseTag": "connectors/linkedin/go/v0.24.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-linkedin",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetAuthenticatedProfileStep",
+      "kind": "query",
+      "operationId": "getAuthenticatedProfile",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "profileLoaded",
+          "field": "profileLoaded",
+          "optional": false
+        },
+        {
+          "id": "verifiedEmailRequired",
+          "field": "verifiedEmailRequired",
+          "optional": true
+        },
+        {
+          "id": "insufficientScope",
+          "field": "insufficientScope",
+          "optional": true
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
