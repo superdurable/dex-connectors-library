@@ -9,6 +9,12 @@ metadata:
 spec:
   provider: pipedrive
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-pipedrive
+      timestampFormat: rfc3339Nano
+      operations: [searchObjects, getObject, listObjects, upsertObject, createObject, updateObject]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-pipedrive'
