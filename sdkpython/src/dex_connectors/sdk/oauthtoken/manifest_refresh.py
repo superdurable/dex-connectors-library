@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: MIT
 """Manifest-declared OAuth and service-account token grants for connector credentials."""
 
+import asyncio
 import base64
 import json
+import math
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import replace
@@ -57,7 +59,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         credential_fields: Mapping[str, str],
         http_client: httpx.AsyncClient,
         *,
-        settings: Mapping[str, str] | None = None,
+        settings: Mapping[str, str | int] | None = None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         """Configure a driver with manifest auth, credential fields, and an owned HTTP client.
@@ -344,6 +346,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     ),
                     "refresh_when_credential_blank": refresh.get("refreshWhenCredentialBlank", ""),
                     "expiry_cap": refresh.get("expiryCap", ""),
+                    "token_exchange_timeout": refresh.get("tokenExchangeTimeout", ""),
                     "access_token_jwt_expiry_fallback": refresh.get("accessTokenJWTExpiryFallback", ""),
                     "declares_accepted_scope_sets": "acceptedScopeSets" in refresh,
                     "terminal_codes": refresh.get("terminalErrorCodes") or ["invalid_grant"],
@@ -392,6 +395,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                     "scope_resource_prefix_case_insensitive": False,
                     "refresh_when_credential_blank": "",
                     "expiry_cap": "",
+                    "token_exchange_timeout": client.get("tokenExchangeTimeout", ""),
                     "access_token_jwt_expiry_fallback": "",
                     "declares_accepted_scope_sets": "acceptedScopeSets" in client,
                     "terminal_codes": client.get("terminalErrorCodes") or ["invalid_client"],
@@ -460,7 +464,10 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         if grant["token_endpoint_network_policy"] == "privateNetworkHTTP" and not isinstance(
             self._http_client._transport, httpx.MockTransport
         ):
-            async with new_provider_http_client(30, address_policy="privateNetworkHTTP") as client:
+            timeout_seconds = self._token_exchange_timeout_seconds(grant.get("token_exchange_timeout"))
+            async with new_provider_http_client(
+                timeout_seconds or 30, address_policy="privateNetworkHTTP"
+            ) as client:
                 return await self._exchange_with_client(grant, credentials, client)
         return await self._exchange_with_client(grant, credentials, self._http_client)
 
@@ -559,13 +566,18 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             SecretString(secret),
             ClientAuthenticationMethod(method),
         )
-        if grant["kind"] == "refresh":
-            return await endpoint.exchange_refresh_token(
-                client, SecretString(self._credential_value(credentials, grant["refresh_field"]))
-            ), []
-        return await endpoint.exchange_client_credentials(
-            client, tuple(self._scopes(grant["request_scopes"]))
-        ), []
+        timeout_seconds = self._token_exchange_timeout_seconds(grant.get("token_exchange_timeout"))
+        try:
+            async with asyncio.timeout(timeout_seconds):
+                if grant["kind"] == "refresh":
+                    return await endpoint.exchange_refresh_token(
+                        client, SecretString(self._credential_value(credentials, grant["refresh_field"]))
+                    ), []
+                return await endpoint.exchange_client_credentials(
+                    client, tuple(self._scopes(grant["request_scopes"]))
+                ), []
+        except TimeoutError:
+            raise OSError("token endpoint is unavailable") from None
 
     def _resolve_assertion_source(
         self, source: Any, assertion: Mapping[str, Any], credentials: Credential, key: Mapping[str, Any]
@@ -644,6 +656,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             raise ValueError("manifest accessTokenJWTExpiryFallback must be positive")
         if grant["expiry_cap"] and _parse_duration(grant["expiry_cap"]) <= timedelta(0):
             raise ValueError("manifest expiryCap must be positive")
+        self._token_exchange_timeout_seconds(grant.get("token_exchange_timeout"))
         if grant["response_scopes"] not in ("check", "ignore"):
             raise ValueError("manifest responseScopes must be check or ignore")
         policy = grant.get("missing_expiry_policy")
@@ -681,11 +694,26 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             if "subjectValidation" in assertion and not assertion.get("subject"):
                 raise ValueError("manifest subjectValidation requires a subject")
 
+    def _token_exchange_timeout_seconds(self, declaration: Any) -> float | None:
+        if declaration in (None, ""):
+            return None
+        if isinstance(declaration, dict) and set(declaration) == {"fromSetting"}:
+            declaration = self._settings.get(declaration["fromSetting"])
+        if type(declaration) is int:
+            timeout_seconds = declaration / 1_000_000_000
+        elif isinstance(declaration, str):
+            timeout_seconds = _parse_duration(declaration).total_seconds()
+        else:
+            timeout_seconds = 0
+        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0 or timeout_seconds > 3600:
+            raise ValueError("manifest tokenExchangeTimeout must resolve to a positive duration at most 1h")
+        return timeout_seconds
+
     def _scopes(self, source: Any) -> list[str]:
         if isinstance(source, list):
             return [str(value) for value in source]
         if isinstance(source, dict) and "fromSetting" in source:
-            return self._settings.get(source["fromSetting"], "").split()
+            return str(self._settings.get(source["fromSetting"], "")).split()
         return []
 
     def _resolve_source(self, source: Any, credentials: Credential, key: Mapping[str, Any]) -> str:
@@ -696,7 +724,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
         if "fromCredential" in source:
             value = self._credential_value(credentials, source["fromCredential"])
         elif "fromSetting" in source:
-            value = self._settings.get(source["fromSetting"], "")
+            value = str(self._settings.get(source["fromSetting"], ""))
         elif "fromKey" in source:
             value = key.get(source["fromKey"], "")
         elif "template" in source:
@@ -707,7 +735,7 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
                 raw = (
                     self._credential_value(credentials, name)
                     if name in self._fields
-                    else self._settings.get(name, "")
+                    else str(self._settings.get(name, ""))
                 )
                 value = _apply_template_value_rule(raw, rules.get(name, {}))
                 template = template.replace(match.group(0), quote(value, safe=":@&=+$"))

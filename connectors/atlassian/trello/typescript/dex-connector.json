@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-atlassian-trello",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "factories": [
     {
