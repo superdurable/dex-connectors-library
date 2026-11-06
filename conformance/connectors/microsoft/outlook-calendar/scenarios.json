@@ -4172,6 +4172,43 @@
       },
       "name": "createEvent-havana-ambiguous-midnight-614",
       "operation": "createEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": null,
+        "eventId": "event-1"
+      },
+      "name": "updateEvent-null-attendees-defect",
+      "operation": "updateEvent"
     }
   ],
   "schemaVersion": 1
