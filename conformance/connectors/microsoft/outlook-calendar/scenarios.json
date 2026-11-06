@@ -1,0 +1,4215 @@
+{
+  "connector": "microsoft/outlook-calendar",
+  "scenarios": [
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "$select": [
+              "id,subject,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "25"
+            ],
+            "endDateTime": [
+              "2026-02-24T10:00:00-08:00"
+            ],
+            "startDateTime": [
+              "2026-02-24T09:00:00-08:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "calendarId": "team-calendar",
+          "events": [
+            {
+              "calendarId": "team-calendar",
+              "end": {
+                "dateTime": "2026-02-24T10:00:00-08:00",
+                "timeZone": "America/Los_Angeles"
+              },
+              "etag": "W/\"etag-1\"",
+              "id": "event-1",
+              "isAllDay": false,
+              "isCancelled": false,
+              "isOrganizer": false,
+              "originalEndTimeZone": "Pacific Standard Time",
+              "originalStartTimeZone": "Pacific Standard Time",
+              "showAs": "busy",
+              "start": {
+                "dateTime": "2026-02-24T09:00:00-08:00",
+                "timeZone": "America/Los_Angeles"
+              },
+              "subject": "Meeting",
+              "type": "singleInstance"
+            }
+          ],
+          "timeMax": "2026-02-24T10:00:00-08:00",
+          "timeMin": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-listed",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "cursor": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "calendarId": "team-calendar",
+          "events": [],
+          "timeMax": "2026-02-24T10:00:00-08:00",
+          "timeMin": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "pageToken": "https://graph.microsoft.com/v1.0/me/calendars/team-calendar/calendarView?cursor=next",
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-paged",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "end": {
+            "dateTime": "2026-02-24T10:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "etag": "W/\"etag-1\"",
+          "id": "event-1",
+          "isAllDay": false,
+          "isCancelled": false,
+          "isOrganizer": false,
+          "originalEndTimeZone": "Pacific Standard Time",
+          "originalStartTimeZone": "Pacific Standard Time",
+          "showAs": "busy",
+          "start": {
+            "dateTime": "2026-02-24T09:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "subject": "Meeting",
+          "type": "singleInstance"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-found",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\",\"calendarId\":\"team-calendar\",\"transactionId\":\"calendar-create-1\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars/team-calendar/events",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "Agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isOnlineMeeting": true,
+            "location": {
+              "displayName": "Room A"
+            },
+            "onlineMeetingProvider": "teamsForBusiness",
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey",
+                "value": "calendar-create-1"
+              }
+            ],
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "team-calendar",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1",
+            "type": "singleInstance"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-created",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Updated\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/events/event-1",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "New agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isAllDay": false,
+            "location": {
+              "displayName": "Room B"
+            },
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "W/\"etag-1\""
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Updated",
+            "type": "singleInstance"
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-updated",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"scheduleId\":\"priya@example.com\",\"availabilityView\":\"00\",\"scheduleItems\":[]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendar/getSchedule",
+          "requestBody": {
+            "availabilityViewInterval": 30,
+            "endTime": {
+              "dateTime": "2026-02-24T18:00:00",
+              "timeZone": "UTC"
+            },
+            "schedules": [
+              "priya@example.com"
+            ],
+            "startTime": {
+              "dateTime": "2026-02-24T17:00:00",
+              "timeZone": "UTC"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "63698ba6-7418-5fc7-90fc-481876f6aae8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "availabilityViewInterval": 30,
+          "schedules": [
+            {
+              "availabilityView": "00",
+              "isAvailabilityKnown": true,
+              "isBusy": false,
+              "items": [],
+              "scheduleId": "priya@example.com"
+            }
+          ],
+          "timeMax": "2026-02-24T10:00:00-08:00",
+          "timeMin": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "priya@example.com"
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-queried",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": true,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-all-day-defect",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": true,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-all-day-defect",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "$select": [
+              "id,subject,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "25"
+            ],
+            "endDateTime": [
+              "2026-02-24T10:00:00-08:00"
+            ],
+            "startDateTime": [
+              "2026-02-24T09:00:00-08:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-rate-limit",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "$select": [
+              "id,subject,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "25"
+            ],
+            "endDateTime": [
+              "2026-02-24T10:00:00-08:00"
+            ],
+            "startDateTime": [
+              "2026-02-24T09:00:00-08:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-unavailable",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "$select": [
+              "id,subject,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "25"
+            ],
+            "endDateTime": [
+              "2026-02-24T10:00:00-08:00"
+            ],
+            "startDateTime": [
+              "2026-02-24T09:00:00-08:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-transport",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "$select": [
+              "id,subject,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "25"
+            ],
+            "endDateTime": [
+              "2026-02-24T10:00:00-08:00"
+            ],
+            "startDateTime": [
+              "2026-02-24T09:00:00-08:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-provider-rejected",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "$select": [
+              "id,subject,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "25"
+            ],
+            "endDateTime": [
+              "2026-02-24T10:00:00-08:00"
+            ],
+            "startDateTime": [
+              "2026-02-24T09:00:00-08:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-invalid-response",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-rate-limit",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-unavailable",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-transport",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "end": {
+            "dateTime": "",
+            "timeZone": ""
+          },
+          "id": "",
+          "isAllDay": false,
+          "isCancelled": false,
+          "isOrganizer": false,
+          "showAs": "",
+          "start": {
+            "dateTime": "",
+            "timeZone": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-provider-rejected",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "end": {
+            "dateTime": "",
+            "timeZone": ""
+          },
+          "id": "",
+          "isAllDay": false,
+          "isCancelled": false,
+          "isOrganizer": false,
+          "showAs": "",
+          "start": {
+            "dateTime": "",
+            "timeZone": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-invalid-response",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-rate-limit",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-unavailable",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-transport",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-provider-rejected",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-invalid-response",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-rate-limit",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-unavailable",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-transport",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-provider-rejected",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-invalid-response",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendar/getSchedule",
+          "requestBody": {
+            "availabilityViewInterval": 30,
+            "endTime": {
+              "dateTime": "2026-02-24T18:00:00",
+              "timeZone": "UTC"
+            },
+            "schedules": [
+              "priya@example.com"
+            ],
+            "startTime": {
+              "dateTime": "2026-02-24T17:00:00",
+              "timeZone": "UTC"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "63698ba6-7418-5fc7-90fc-481876f6aae8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "priya@example.com"
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-rate-limit",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendar/getSchedule",
+          "requestBody": {
+            "availabilityViewInterval": 30,
+            "endTime": {
+              "dateTime": "2026-02-24T18:00:00",
+              "timeZone": "UTC"
+            },
+            "schedules": [
+              "priya@example.com"
+            ],
+            "startTime": {
+              "dateTime": "2026-02-24T17:00:00",
+              "timeZone": "UTC"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "63698ba6-7418-5fc7-90fc-481876f6aae8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "priya@example.com"
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-unavailable",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendar/getSchedule",
+          "requestBody": {
+            "availabilityViewInterval": 30,
+            "endTime": {
+              "dateTime": "2026-02-24T18:00:00",
+              "timeZone": "UTC"
+            },
+            "schedules": [
+              "priya@example.com"
+            ],
+            "startTime": {
+              "dateTime": "2026-02-24T17:00:00",
+              "timeZone": "UTC"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "63698ba6-7418-5fc7-90fc-481876f6aae8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "priya@example.com"
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-transport",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"ErrorAccessDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendar/getSchedule",
+          "requestBody": {
+            "availabilityViewInterval": 30,
+            "endTime": {
+              "dateTime": "2026-02-24T18:00:00",
+              "timeZone": "UTC"
+            },
+            "schedules": [
+              "priya@example.com"
+            ],
+            "startTime": {
+              "dateTime": "2026-02-24T17:00:00",
+              "timeZone": "UTC"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "63698ba6-7418-5fc7-90fc-481876f6aae8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "availabilityViewInterval": 0,
+          "schedules": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "priya@example.com"
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-provider-rejected",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendar/getSchedule",
+          "requestBody": {
+            "availabilityViewInterval": 30,
+            "endTime": {
+              "dateTime": "2026-02-24T18:00:00",
+              "timeZone": "UTC"
+            },
+            "schedules": [
+              "priya@example.com"
+            ],
+            "startTime": {
+              "dateTime": "2026-02-24T17:00:00",
+              "timeZone": "UTC"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "63698ba6-7418-5fc7-90fc-481876f6aae8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "availabilityViewInterval": 0,
+          "schedules": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "priya@example.com"
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-invalid-response",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/calendars/team-calendar/calendarView",
+          "query": {
+            "$select": [
+              "id,subject,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "25"
+            ],
+            "endDateTime": [
+              "2026-02-24T10:00:00-08:00"
+            ],
+            "startDateTime": [
+              "2026-02-24T09:00:00-08:00"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "a00900e7-1386-5942-958e-67f04e9fe82b"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-not-found",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "end": {
+            "dateTime": "",
+            "timeZone": ""
+          },
+          "id": "",
+          "isAllDay": false,
+          "isCancelled": false,
+          "isOrganizer": false,
+          "showAs": "",
+          "start": {
+            "dateTime": "",
+            "timeZone": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "event-1",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-not-found",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-not-found",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a00900e7-1386-5942-958e-67f04e9fe82b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "team-calendar",
+        "pageSize": 25,
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-defect",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "ce0e6ef1-7a74-5f5b-a2f9-b0bdf4f2a927",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "end": {
+            "dateTime": "",
+            "timeZone": ""
+          },
+          "id": "",
+          "isAllDay": false,
+          "isCancelled": false,
+          "isOrganizer": false,
+          "showAs": "",
+          "start": {
+            "dateTime": "",
+            "timeZone": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "eventId": "",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-defect",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "availabilityViewInterval": 0,
+          "schedules": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-defect",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendar/getSchedule",
+          "requestBody": {
+            "availabilityViewInterval": 30,
+            "endTime": {
+              "dateTime": "2026-02-24T18:00:00",
+              "timeZone": "UTC"
+            },
+            "schedules": [
+              "priya@example.com"
+            ],
+            "startTime": {
+              "dateTime": "2026-02-24T17:00:00",
+              "timeZone": "UTC"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "63698ba6-7418-5fc7-90fc-481876f6aae8"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "incomplete",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "availabilityViewInterval": 30,
+          "schedules": [
+            {
+              "availabilityView": "",
+              "isAvailabilityKnown": false,
+              "isBusy": false,
+              "items": [],
+              "scheduleId": "priya@example.com",
+              "unknownReason": "missing"
+            }
+          ],
+          "timeMax": "2026-02-24T10:00:00-08:00",
+          "timeMin": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "priya@example.com"
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-incomplete",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "team-calendar",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "type": "singleInstance"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-already-created",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Updated\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\",\"body\":{\"contentType\":\"text\",\"content\":\"New agenda\"},\"location\":{\"displayName\":\"Room B\"},\"attendees\":[{\"emailAddress\":{\"address\":\"priya@example.com\"},\"type\":\"optional\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "attendees": [
+              {
+                "email": "priya@example.com",
+                "type": "optional"
+              }
+            ],
+            "body": "New agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "location": "Room B",
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Updated",
+            "type": "singleInstance"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-already-applied",
+      "operation": "updateEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"ServiceUnavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars/team-calendar/events",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "Agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isOnlineMeeting": true,
+            "location": {
+              "displayName": "Room A"
+            },
+            "onlineMeetingProvider": "teamsForBusiness",
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey",
+                "value": "calendar-create-1"
+              }
+            ],
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"value\":[{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\",\"calendarId\":\"team-calendar\",\"transactionId\":\"calendar-create-1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "team-calendar",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1",
+            "type": "singleInstance"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEvent-post-503-then-read-back",
+      "operation": "createEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars/team-calendar/events",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "Agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isOnlineMeeting": true,
+            "location": {
+              "displayName": "Room A"
+            },
+            "onlineMeetingProvider": "teamsForBusiness",
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey",
+                "value": "calendar-create-1"
+              }
+            ],
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"value\":[{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\",\"calendarId\":\"team-calendar\",\"transactionId\":\"calendar-create-1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "team-calendar",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1",
+            "type": "singleInstance"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEvent-post-lost-then-read-back",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars/team-calendar/events",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "Agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isOnlineMeeting": true,
+            "location": {
+              "displayName": "Room A"
+            },
+            "onlineMeetingProvider": "teamsForBusiness",
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey",
+                "value": "calendar-create-1"
+              }
+            ],
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"value\":[{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\",\"calendarId\":\"team-calendar\",\"transactionId\":\"calendar-create-1\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "team-calendar",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1",
+            "type": "singleInstance"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-conflict-read-back",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/me/calendars/team-calendar/events",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "Agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isOnlineMeeting": true,
+            "location": {
+              "displayName": "Room A"
+            },
+            "onlineMeetingProvider": "teamsForBusiness",
+            "singleValueExtendedProperties": [
+              {
+                "id": "String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey",
+                "value": "calendar-create-1"
+              }
+            ],
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Meeting",
+            "transactionId": "calendar-create-1"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events",
+          "query": {
+            "$filter": [
+              "singleValueExtendedProperties/Any(ep: ep/id eq 'String {e8548d82-fea6-423a-bad8-7b6da468e968} Name DexIdempotencyKey' and ep/value eq 'calendar-create-1')"
+            ],
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-bad-request-rejected",
+      "operation": "createEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/events/event-1",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "New agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isAllDay": false,
+            "location": {
+              "displayName": "Room B"
+            },
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "W/\"etag-1\""
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Updated\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\",\"body\":{\"contentType\":\"text\",\"content\":\"New agenda\"},\"location\":{\"displayName\":\"Room B\"},\"attendees\":[{\"emailAddress\":{\"address\":\"priya@example.com\"},\"type\":\"optional\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "attendees": [
+              {
+                "email": "priya@example.com",
+                "type": "optional"
+              }
+            ],
+            "body": "New agenda",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "W/\"etag-1\"",
+            "id": "event-1",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "location": "Room B",
+            "originalEndTimeZone": "Pacific Standard Time",
+            "originalStartTimeZone": "Pacific Standard Time",
+            "showAs": "busy",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Updated",
+            "type": "singleInstance"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateEvent-patch-lost-then-read-back",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [
+        {
+          "body": "{\"@odata.etag\":\"W/\\\"etag-1\\\"\",\"id\":\"event-1\",\"subject\":\"Meeting\",\"showAs\":\"busy\",\"type\":\"singleInstance\",\"start\":{\"dateTime\":\"2026-02-24T17:00:00\",\"timeZone\":\"UTC\"},\"end\":{\"dateTime\":\"2026-02-24T18:00:00\",\"timeZone\":\"UTC\"},\"originalStartTimeZone\":\"Pacific Standard Time\",\"originalEndTimeZone\":\"Pacific Standard Time\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/events/event-1",
+          "query": {
+            "$select": [
+              "id,subject,body,bodyPreview,start,end,originalStartTimeZone,originalEndTimeZone,isAllDay,isCancelled,isOrganizer,showAs,sensitivity,type,seriesMasterId,location,attendees,organizer,isOnlineMeeting,onlineMeetingProvider,onlineMeeting,webLink,iCalUId,changeKey,transactionId,responseStatus"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":{\"code\":\"ErrorConflict\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/me/events/event-1",
+          "requestBody": {
+            "attendees": [
+              {
+                "emailAddress": {
+                  "address": "priya@example.com"
+                },
+                "type": "optional"
+              }
+            ],
+            "body": {
+              "content": "New agenda",
+              "contentType": "text"
+            },
+            "end": {
+              "dateTime": "2026-02-24T10:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "isAllDay": false,
+            "location": {
+              "displayName": "Room B"
+            },
+            "start": {
+              "dateTime": "2026-02-24T09:00:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "subject": "Updated"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Client-Request-Id": [
+              "07e033c4-cb87-5bd8-af3d-5ccb464e77d3"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "W/\"etag-1\""
+            ],
+            "Prefer": [
+              "outlook.timezone=\"UTC\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 412
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "CONFLICT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "New agenda",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event-1",
+        "isAllDay": false,
+        "location": "Room B",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Updated",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "updateEvent-etag-conflict",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "a.@x.com"
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-invalid-bare-attendee-614",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "availabilityViewInterval": 0,
+          "schedules": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "jane@x.com."
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-invalid-bare-schedule-614",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2024-11-04T00:00:00-05:00",
+          "timeZone": "America/Havana"
+        },
+        "isAllDay": true,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2024-11-03T00:00:00-04:00",
+          "timeZone": "America/Havana"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-havana-ambiguous-midnight-614",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "07e033c4-cb87-5bd8-af3d-5ccb464e77d3",
+      "input": {
+        "attendees": null,
+        "eventId": "event-1"
+      },
+      "name": "updateEvent-null-attendees-defect",
+      "operation": "updateEvent"
+    }
+  ],
+  "schemaVersion": 1
+}

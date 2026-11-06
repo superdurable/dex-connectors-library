@@ -227,3 +227,15 @@ refresh and reauthorization do not require restarting the application.
 ## TypeScript package
 
 The TypeScript package `@superdurable/connector-github` implements all six Query operations at package version `v0.1.0`. Its generated operation-specific Step factories preserve Go branch identities, and its generated OAuth declaration drives token refresh and credential decoding. The runnable [repository releases Flow](typescript/examples/repository-releases/README.md) uses the static `github-repository-releases` connection and verifies a successful page and an unwired scope rejection through a real Dex Worker. The Go-recorded [provider conformance scenarios](../../conformance/connectors/github/scenarios.json) cover every operation branch, rate limits, availability retries, and transport failures. Live GitHub authorization and provider calls remain unverified.
+
+## Python package
+
+The [Python package](python/README.md) implements all six GitHub Queries with
+operation-specific Step factories. It uses generated OAuth refresh and project
+connection wiring, with provider calls in hand-written Query invocations. The
+[profile Flow example](python/examples/profile/README.md) has a Worker entrypoint
+and a real Dex integration test using an inert provider stand-in. Python
+provider replay uses the Go-recorded scenarios under
+[`conformance/connectors/github`](../../conformance/connectors/github/).
+The Python package has its own `v0.1.0` release version; the Go connector remains
+at its current release version.

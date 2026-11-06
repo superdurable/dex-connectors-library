@@ -7,12 +7,11 @@ import (
 	"net/http"
 	"testing"
 
-	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
 	"github.com/stretchr/testify/require"
+	calendar "github.com/superdurable/dex-connectors-library/connectors/google/calendar/go"
 )
 
-const conformanceEndpointPath = "/calendar/v3"
-const conformanceFixturePathPrefix = "/calendar/v3"
+const conformanceEndpointPath, conformanceFixturePathPrefix = "/calendar/v3", "/calendar/v3"
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	client, err := calendar.New(calendar.Config{Endpoint: endpoint}, staticCalendarCredentials(), calendar.WithHTTPClient(transport))

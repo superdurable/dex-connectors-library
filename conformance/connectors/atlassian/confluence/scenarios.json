@@ -1733,7 +1733,7 @@
           "status": 400
         },
         {
-          "body": "{\"results\":[{\"id\":\"600003\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eDifferent\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600003\",\"base\":\"https://ops.atlassian.net/wiki\"}}],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "body": "{\"results\":[{\"id\":\"600003\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eDifferent\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600003\"}}],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"}}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2355,6 +2355,135 @@
       },
       "name": "getPage-adf",
       "operation": "getPage"
+    },
+    {
+      "callId": "a76cd8a9-b65e-5934-9ff7-83c694363a87",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":\"600002\",\"status\":\"current\",\"title\":\"Remote work policy\",\"spaceId\":\"98306\",\"parentId\":\"65537\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"version\":{\"number\":1,\"message\":\"\",\"createdAt\":\"2026-10-25T09:00:00Z\",\"authorId\":\"5b10ac8d82e05b22cc7d4ef5\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eHello\u003c/p\u003e\"}},\"_links\":{\"webui\":\"/spaces/OPS/pages/600002\"}}],\"_links\":{\"base\":\"https://ops.atlassian.net/wiki\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "5"
+            ],
+            "space-id": [
+              "98306"
+            ],
+            "title": [
+              "Remote work policy"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "isConfirmedByTitleLookup": true,
+          "pageId": "600002",
+          "parentPageId": "65537",
+          "spaceId": "98306",
+          "title": "Remote work policy",
+          "versionNumber": 1,
+          "webUrl": "https://ops.atlassian.net/wiki/spaces/OPS/pages/600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a76cd8a9-b65e-5934-9ff7-83c694363a87",
+      "input": {
+        "body": "Hello",
+        "bodyFormat": "plainText",
+        "parentPageId": "65537",
+        "spaceId": "98306",
+        "title": "Remote work policy"
+      },
+      "name": "createPage-confirmed-prior-send",
+      "operation": "createPage",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "dispatchedAtUnixMilli": 1792918800000
+        }
+      }
+    },
+    {
+      "attempts": 1,
+      "callId": "9a94169e-c193-5974-b142-e8e5583feaab",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":\"700001\",\"pageId\":\"600002\",\"version\":{\"number\":1,\"createdAt\":\"2026-10-25T09:00:00Z\"},\"body\":{\"storage\":{\"representation\":\"storage\",\"value\":\"\u003cp\u003eApproved\u003c/p\u003e\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/ex/confluence/11223344-a1b2-4b33-8c44-def123456789/wiki/api/v2/pages/600002/footer-comments",
+          "query": {
+            "body-format": [
+              "storage"
+            ],
+            "limit": [
+              "25"
+            ],
+            "sort": [
+              "-created-date"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer confluence-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "700001",
+          "createdAt": "2026-10-25T09:00:00Z",
+          "isConfirmedByReadBack": true,
+          "pageId": "600002"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9a94169e-c193-5974-b142-e8e5583feaab",
+      "input": {
+        "body": "Approved",
+        "bodyFormat": "plainText",
+        "pageId": "600002"
+      },
+      "name": "addComment-confirmed-prior-send",
+      "operation": "addComment",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "value": {
+          "dispatchedAtUnixMilli": 1792918800000
+        }
+      }
     }
   ],
   "schemaVersion": 1

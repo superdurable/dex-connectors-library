@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: linkedin
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-linkedin'
+      operations: [getAuthenticatedProfile]
+      triggers: []
   codegen:
     go:
       package: linkedin

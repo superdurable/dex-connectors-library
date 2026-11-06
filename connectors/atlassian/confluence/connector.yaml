@@ -14,6 +14,11 @@ spec:
       package: '@superdurable/connector-atlassian-confluence'
       operations: [searchPages, getPage, createPage, updatePage, addComment]
       triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-atlassian-confluence
+      operations: [searchPages, getPage, createPage, updatePage, addComment]
+      triggers: []
   codegen:
     go:
       package: confluence

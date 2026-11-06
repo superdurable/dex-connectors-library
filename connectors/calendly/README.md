@@ -247,3 +247,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 
 The integration run needs `dexcli dev`; the probe tests repeat Execute after
 an accepted provider call.
+
+## Python
+
+The Python `dex-connector-calendly` package implements the six Calendly operations with generated OAuth wiring and a [runnable scheduled event lookup](python/examples/scheduled_event/README.md). The signed invitee webhook Trigger remains Go-only. The Python example uses the static `calendly-scheduling` connection name.

@@ -27,6 +27,10 @@ This release has no Triggers.
 
 `@superdurable/connector-google-calendar@0.1.0` implements the same five operations as TypeScript Dex Steps. Its [package README](typescript/README.md) covers setup, generated OAuth refresh, and the runnable meeting lookup. The package has no Triggers. Its TypeScript version is independent of this Go connector's version.
 
+## Python package
+
+The Python package `dex-connector-google-calendar==0.1.0` implements the same five operations with generated connection and OAuth refresh wiring. Its [runnable event listing example](python/examples/calendar_events/README.md) uses the static `google-calendar-events-reader` connection name and a real Dex Worker. Go-recorded provider scenarios cover the Python request and branch behavior. Google consent, Workspace delegated minting against Google, and live Calendar API calls remain unverified for Python.
+
 ## Scopes
 
 The OAuth grant requests exactly these scopes, each by its canonical URI:

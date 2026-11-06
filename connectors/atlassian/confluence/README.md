@@ -26,6 +26,18 @@ footer comments use REST API v2 (`/wiki/api/v2`); CQL search uses the REST API
 v1 content search (`/wiki/rest/api/content/search`), because v2 has no CQL
 endpoint.
 
+## Python package
+
+The [`dex-connector-atlassian-confluence`](python/README.md) package implements
+all five operations at version `0.1.0`. It requires
+`dex-connectors-sdk==0.6.0` and a Python Dex SDK at least `1.28.0`. Its
+[read-page example](python/examples/read_page/README.md) uses the static
+`confluence-pages` connection and has a real Dex Worker and Client integration
+test against a local Confluence stand-in. The Python port's provider scenarios
+replay the Go connector's requests, branches, retries, output values, and
+checkpoint behavior. Live Atlassian authorization, scope consent, site
+selection, token refresh, and API behavior have not been verified.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `searchPages` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
