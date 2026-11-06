@@ -14,7 +14,7 @@ spec:
       operations: [listCards, getCard, createCard, updateCard, addComment]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.1.2
       operations: [listCards, getCard, createCard, updateCard, addComment]
       triggers: []
   codegen:
