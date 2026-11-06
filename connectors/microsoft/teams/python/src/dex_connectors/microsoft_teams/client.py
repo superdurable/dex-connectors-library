@@ -4,7 +4,9 @@
 
 import asyncio
 import re
+import time
 from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from html.parser import HTMLParser
@@ -311,14 +313,26 @@ class Client:
         if config is None or credentials is None:
             raise ValueError("Microsoft Teams configuration and credentials are required")
         self.endpoint = validate_base_url(config.endpoint or Config().endpoint)
-        self.max_response_bytes = config.max_response_bytes or Config().max_response_bytes
-        self.max_message_bytes = config.max_message_bytes or Config().max_message_bytes
-        if self.max_response_bytes < 1 or self.max_message_bytes < 1:
+        self.max_response_bytes = (
+            Config().max_response_bytes if config.max_response_bytes == 0 else config.max_response_bytes
+        )
+        self.max_message_bytes = (
+            Config().max_message_bytes if config.max_message_bytes == 0 else config.max_message_bytes
+        )
+        if (
+            type(self.max_response_bytes) is not int
+            or type(self.max_message_bytes) is not int
+            or self.max_response_bytes < 1
+            or self.max_message_bytes < 1
+        ):
             raise ValueError("Microsoft Teams response and message limits must be positive")
         self.credentials = credentials
         self.http_client = http_client or new_provider_http_client(20)
         self.owns_http_client = http_client is None
         self.now = now or (lambda: datetime.now(UTC))
+        self.operation_deadline: ContextVar[float | None] = ContextVar(
+            "microsoft_teams_operation_deadline", default=None
+        )
         self.refresh_driver = ManifestCredentialRefreshDriver[Credentials](
             "Microsoft", AUTHORIZATION, CREDENTIAL_FIELDS, self.http_client, now=self.now
         )
@@ -354,7 +368,9 @@ class Client:
 
     async def resolve_credentials(self, call: Call) -> Credentials:
         """Resolve and validate the current access token."""
-        credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
+        self.operation_deadline.set(time.monotonic() + 25)
+        async with asyncio.timeout(25):
+            credentials = await resolve_credential(self.credentials, call, self.refresh_driver)
         if not is_header_safe_credential(credentials.access_token.reveal()):
             raise ReauthorizationRequiredError()
         return credentials
@@ -375,6 +391,13 @@ class Client:
         """Send one bounded request and refresh a rejected read credential once."""
         target = absolute_url or self.endpoint + path + (("?" + query_encode(query)) if query else "")
         for attempt in range(2):
+            deadline = self.operation_deadline.get()
+            remaining = min(timeout, max(0, deadline - time.monotonic())) if deadline is not None else timeout
+            if remaining <= 0:
+                return (
+                    Exchange(error=TimeoutError("Microsoft Teams operation deadline exceeded")),
+                    credentials,
+                )
             headers = {
                 "Authorization": "Bearer " + credentials.access_token.reveal(),
                 "Accept": "application/json",
@@ -384,7 +407,7 @@ class Client:
                 headers["Content-Type"] = "application/json"
             try:
                 request = self.http_client.build_request(method, target, headers=headers, content=payload)
-                async with asyncio.timeout(timeout):
+                async with asyncio.timeout(remaining):
                     response, _ = await send_traced(self.http_client, request)
                     if (
                         response.status_code == 401

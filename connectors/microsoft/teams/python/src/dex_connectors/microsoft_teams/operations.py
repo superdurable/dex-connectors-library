@@ -58,6 +58,19 @@ def _empty_receipt() -> Receipt:
     return Receipt()
 
 
+def _go_json_body(value: object) -> bytes:
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    for character, escaped in (
+        ("<", "\\u003c"),
+        (">", "\\u003e"),
+        ("&", "\\u0026"),
+        ("\u2028", "\\u2028"),
+        ("\u2029", "\\u2029"),
+    ):
+        encoded = encoded.replace(character, escaped)
+    return encoded.encode()
+
+
 def _failure(client: Client, operation: str, kind: FailureKind, message: str) -> Failure:
     return client.failure(operation, kind, message)
 
@@ -497,7 +510,7 @@ class _PostOperation:
             return await self._reconcile(
                 call, credentials, post, decision.marker.provider_id if decision.marker else ""
             )
-        payload = json.dumps(post.body, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
+        payload = _go_json_body(post.body)
         try:
             exchange, credentials = await fence.dispatch(
                 lambda deadline: client.exchange(

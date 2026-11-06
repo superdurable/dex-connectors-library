@@ -5,6 +5,7 @@
 import pytest
 
 from dex_connectors.microsoft_teams.client import path_escape, query_encode
+from dex_connectors.microsoft_teams.operations import _go_json_body
 
 
 @pytest.mark.parametrize(
@@ -34,3 +35,10 @@ def test_query_encode_matches_go_url_values(values: dict[str, str], expected: st
 def test_path_escape_matches_go_url_path_escape(value: str, expected: str) -> None:
     """Check the path component form used by Go."""
     assert path_escape(value) == expected
+
+
+def test_write_body_uses_go_html_safe_json_escaping() -> None:
+    """Check the provider receives the same encoded JSON as Go."""
+    assert _go_json_body({"content": "<>&\u2028\u2029"}) == (
+        b'{"content":"\\u003c\\u003e\\u0026\\u2028\\u2029"}'
+    )
