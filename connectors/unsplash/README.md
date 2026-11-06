@@ -14,7 +14,9 @@ Read-only Unsplash photo operations for Dex. The connector uses the public JSON 
 Each photo result includes Unsplash-hosted image URLs and attribution URLs. Applications must hotlink `regularUrl` and attribute the photographer and Unsplash; do not download and serve the image from your own host. A download-like action requires Unsplash's separate download tracking endpoint, which this connector does not expose.
 
 The Python package is [`dex-connector-unsplash`](python/README.md), imported as
-`dex_connectors.unsplash`.
+`dex_connectors.unsplash`. The TypeScript package is
+[`@superdurable/connector-unsplash`](typescript/README.md), with a runnable
+[photo search Flow](typescript/examples/photo-search).
 
 ## Authorization
 
@@ -31,7 +33,7 @@ Sign in at [Unsplash Your apps](https://unsplash.com/oauth/applications), choose
 | Invalid input or missing credentials | `defect` |
 | Transport failure, 408, 429, or 5xx | Retry with Dex's default one-hour budget |
 
-Only the happy branch is wired in the [photo search example](go/examples/photo-search); optional branches fail its Flow.
+Only the happy branch is wired in the [Go photo search example](go/examples/photo-search) and [TypeScript photo search example](typescript/examples/photo-search); optional branches fail each Flow.
 
 ## Mocks
 
@@ -42,4 +44,4 @@ The generated `unsplashmock` defaults return one office photo for `searchPhotos`
 - [Unsplash API documentation](https://unsplash.com/documentation) documents application registration, `Client-ID` authentication, both endpoints, inputs, response fields, and HTTP statuses.
 - [Unsplash API guidelines](https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines) document image hotlinking, attribution, and download tracking.
 
-Live Unsplash authorization and provider responses remain unverified. CI runs the mock-backed real-Dex test.
+Live Unsplash authorization and provider responses remain unverified. The Go mock-backed Flow test and TypeScript real-Dex stand-in integration exercise the public application paths. Go-recorded conformance scenarios replay in Python and TypeScript.
