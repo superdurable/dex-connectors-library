@@ -299,6 +299,8 @@ See [`sdkgo/connectormock`](../../../sdkgo/README.md#connector-mocks) for script
 
 ## Example
 
+The [TypeScript user lookup example](typescript/examples/user-lookup/README.md) uses a static `entra-directory` connection and a real Dex Worker and Client. Its provider replay suite matches the Go-recorded operation requests and outcomes; its Dex integration test uses an inert Graph stand-in. Live Microsoft authorization and tenant behavior remain unverified for this port.
+
 [`examples/account-lifecycle`](go/examples/account-lifecycle) is a runnable Dex
 Web **Start Flow** example. Onboarding creates the hire's account, or finds
 the one an earlier run created for the same hire ID, and adds it to a team
