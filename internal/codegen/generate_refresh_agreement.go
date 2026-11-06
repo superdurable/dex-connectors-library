@@ -180,11 +180,12 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 					parameters["client_id"] = clientID
 				}
 				response, updates := agreement.sampleResponse(grant, credentials, sample)
+				tokenExchangeTimeout := resolveTokenExchangeTimeout(grant.tokenExchangeTimeout, settings)
 				result := RefreshAgreementCase{Name: name, MethodID: grant.method.ID, Credentials: credentials,
 					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
 					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: append([]string{}, grant.terminalCodes...),
 					StoredMissingExpiry:  defaultString(grant.storedMissingExpiry, schema.StoredMissingExpiryKeep),
-					TokenExchangeTimeout: grant.tokenExchangeTimeout,
+					TokenExchangeTimeout: tokenExchangeTimeout,
 					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
 				result.RefreshRequiredCases = agreement.refreshRequiredCases(grant, credentials)
 				if result.MayRefuseWithoutCall {
@@ -597,7 +598,7 @@ type declaredGrant struct {
 	caseInsensitiveScopes              bool
 	scopeResourcePrefixCaseInsensitive bool
 	expiryCap                          string
-	tokenExchangeTimeout               string
+	tokenExchangeTimeout               *schema.ValueSource
 	accessTokenJWTExpiryFallback       string
 	responseURLValidation              *schema.ResponseURLValidation
 	refreshWhenCredentialBlank         string
@@ -629,6 +630,16 @@ type declaredGrant struct {
 	missingExpiry           *schema.MissingExpiry
 	additional              map[string]string
 	jwtBearer               *schema.JWTBearerGrant
+}
+
+func resolveTokenExchangeTimeout(source *schema.ValueSource, settings map[string]string) string {
+	if source == nil {
+		return ""
+	}
+	if source.FromSetting != "" {
+		return settings[source.FromSetting]
+	}
+	return source.Value
 }
 
 // HasDeclaredTokenGrants reports whether any method of manifest refreshes or mints a token.
@@ -1035,8 +1046,8 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		generation.mustWrite("\t\t\trefreshToken: %q,\n", grant.refreshToken)
 	}
 	generation.mustWrite("\t\t\tterminalErrorCodes: %s,\n", goStringSlice(grant.terminalCodes))
-	if grant.tokenExchangeTimeout != "" {
-		timeout, err := time.ParseDuration(grant.tokenExchangeTimeout)
+	if timeoutDeclaration := resolveTokenExchangeTimeout(grant.tokenExchangeTimeout, settings); timeoutDeclaration != "" {
+		timeout, err := time.ParseDuration(timeoutDeclaration)
 		if err != nil {
 			return fmt.Errorf("%s tokenExchangeTimeout: %w", name, err)
 		}
@@ -1193,6 +1204,13 @@ func (agreement *refreshAgreementGenerator) sampleSettings(grant declaredGrant, 
 		if agreement.isURLSetting(grant.method, source.FromSetting) {
 			settings[source.FromSetting] = "https://manifest.example.com/" + source.FromSetting
 		}
+		if grant.tokenExchangeTimeout != nil && source.FromSetting == grant.tokenExchangeTimeout.FromSetting {
+			field, _ := agreement.settingField(grant.method, source.FromSetting)
+			settings[source.FromSetting] = "12s"
+			if field.Default != nil {
+				settings[source.FromSetting] = fmt.Sprint(field.Default)
+			}
+		}
 	}
 	for _, placeholder := range agreement.templatePlaceholders(grant) {
 		if !agreement.isMethodCredential(grant.method, placeholder) {
@@ -1272,6 +1290,9 @@ func (agreement *refreshAgreementGenerator) sampleResponse(grant declaredGrant, 
 
 func (agreement *refreshAgreementGenerator) sources(grant declaredGrant) []schema.ValueSource {
 	sources := []schema.ValueSource{grant.endpoint, grant.authMethod}
+	if grant.tokenExchangeTimeout != nil {
+		sources = append(sources, *grant.tokenExchangeTimeout)
+	}
 	if jwtBearer := grant.jwtBearer; jwtBearer != nil {
 		sources = append(sources, jwtBearer.PrivateKey, jwtBearer.Issuer, jwtBearer.Audience, jwtBearer.TokenEndpoint)
 		if jwtBearer.Subject != nil {
@@ -1304,12 +1325,17 @@ func (agreement *refreshAgreementGenerator) readsSettings(grants []declaredGrant
 
 // enumField returns the enum credential field or setting of method that name names.
 func (agreement *refreshAgreementGenerator) enumField(method schema.AuthMethod, name string) (schema.Field, bool) {
+	field, found := agreement.settingField(method, name)
+	return field, found && field.Type == "enum" && len(field.Enum) > 0
+}
+
+func (agreement *refreshAgreementGenerator) settingField(method schema.AuthMethod, name string) (schema.Field, bool) {
 	fields := append(append([]schema.Field{}, method.Fields...), agreement.manifest.Spec.Configuration.Fields...)
 	if method.Configuration != nil {
 		fields = append(fields, method.Configuration.Fields...)
 	}
 	for _, field := range fields {
-		if field.Name == name && field.Type == "enum" && len(field.Enum) > 0 {
+		if field.Name == name {
 			return field, true
 		}
 	}

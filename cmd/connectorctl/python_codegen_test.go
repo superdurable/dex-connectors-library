@@ -58,7 +58,8 @@ func TestPythonPrivateTokenEndpointProjectConnectionUsesPolicyClient(t *testing.
 	connection := generated["connection.py"]
 	for _, required := range []string{
 		"from dex_connectors.sdk.providerhttp import new_provider_http_client",
-		`http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")`,
+		`http_client = new_provider_http_client(config.request_timeout_seconds, address_policy="privateNetworkHTTP")`,
+		`refresh_settings['requestTimeout'] = f'{config.request_timeout_seconds}s'`,
 		"if http_client is not None:",
 		"private token endpoint does not accept a custom HTTP client",
 	} {

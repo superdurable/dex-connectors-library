@@ -696,6 +696,15 @@ def render_connection():
         (method.get("oauth2") or {}).get("tokenEndpointNetworkPolicy") == "privateNetworkHTTP"
         for method in (auth_methods or [spec["auth"]])
     )
+    timeout_settings = {
+        timeout["fromSetting"]
+        for method in (auth_methods or [spec["auth"]])
+        for timeout in [
+            ((method.get("oauth2") or {}).get("refresh") or {}).get("tokenExchangeTimeout"),
+            ((method.get("clientCredentials") or {}).get("tokenExchangeTimeout")),
+        ]
+        if isinstance(timeout, dict) and "fromSetting" in timeout
+    }
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
@@ -1039,8 +1048,15 @@ def render_connection():
         f"        raise ValueError({quoted(connection_label + ' project connection provider differs')})",
         "    config = _decode_config(matching[0].configuration)",
     ]
+    if timeout_settings:
+        lines.append("    refresh_settings = dict(matching[0].configuration)")
+        for setting_name in sorted(timeout_settings):
+            field_info = next(field for field in configuration_fields() if field["name"] == setting_name)
+            config_name = snake(setting_name) + ("_seconds" if field_info["type"] == "duration" else "")
+            lines.append(f"    refresh_settings[{setting_name!r}] = f'{{config.{config_name}}}s'")
+    refresh_settings_expression = "refresh_settings" if timeout_settings else "matching[0].configuration"
     client_args = (
-        ("config, _ProjectCredentialSource(project, key, http_client, matching[0].configuration), http_client"
+        (f"config, _ProjectCredentialSource(project, key, http_client, {refresh_settings_expression}), http_client"
          if has_refresh else "config, _ProjectCredentialSource(project, key), http_client")
         if credential_fields
         else "config, http_client"
@@ -1050,7 +1066,9 @@ def render_connection():
             lines += [
                 "    if http_client is not None:",
                 f"        raise ValueError({quoted(connection_label + ' private token endpoint does not accept a custom HTTP client')})",
-                '    http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")',
+                ('    http_client = new_provider_http_client(config.' + snake(next(iter(timeout_settings))) +
+                 '_seconds, address_policy="privateNetworkHTTP")' if timeout_settings else
+                 '    http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")'),
             ]
         else:
             lines.append("    http_client = http_client or httpx.AsyncClient()")

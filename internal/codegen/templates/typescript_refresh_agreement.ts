@@ -177,7 +177,14 @@ describe('generated refresh exchange timeout', () => {
     const methods = (authorization.methods ?? []) as Array<Record<string, unknown>>;
     const method = methods.find(candidate => candidate.id === agreement.methodId) ?? authorization;
     const oauth = method.oauth2 as Record<string, unknown>;
-    (oauth.refresh as Record<string, unknown>).tokenExchangeTimeout = '10ms';
+    const refresh = oauth.refresh as Record<string, unknown>;
+    const declaration = refresh.tokenExchangeTimeout;
+    const settings = { ...(agreement.settings ?? {}) };
+    if (typeof declaration === 'object' && declaration !== null) {
+      settings[(declaration as Record<string, string>).fromSetting!] = '10ms';
+    } else {
+      refresh.tokenExchangeTimeout = '10ms';
+    }
     let requests = 0;
     const transport: typeof fetch = async (_input, init) => {
       requests++;
@@ -188,7 +195,7 @@ describe('generated refresh exchange timeout', () => {
     };
     const driver = new ManifestCredentialRefreshDriver<Record<string, unknown>>({
       providerName: 'Agreement', auth: authorization, credentialFields: CredentialFields,
-      settings: agreement.settings ?? {}, fetch: transport,
+      settings, fetch: transport,
     });
     await expect(driver.refresh({ credentials: credentialsFor(agreement, ''), expiresAt: new Date(0), now: new Date() },
       new AbortController().signal)).rejects.toBeInstanceOf(RetryError);

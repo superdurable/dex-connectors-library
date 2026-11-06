@@ -98,6 +98,7 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: {fromSetting: tokenEndpointAuthMethod}
       refresh:
+        tokenExchangeTimeout: {fromSetting: requestTimeout}
         responseScopes: ignore
         missingExpiry: reject
         storedMissingExpiry: refreshIfRefreshTokenPresent

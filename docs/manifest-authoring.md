@@ -632,7 +632,9 @@ comma-aware parsing to client-credentials grants.
 `refresh.expiryCap` limits a reported lifetime.
 `refresh.tokenExchangeTimeout` bounds each refresh token exchange independently
 of the caller's deadline; the earlier deadline wins. Declare a positive Go
-duration only when the Go credential refresh driver applies the same bound.
+duration or `{fromSetting: requestTimeout}` naming a required or defaulted
+duration configuration field when the Go credential refresh driver applies
+the same bound. A sourced timeout uses the validated connection value.
 `clientCredentials.tokenExchangeTimeout` applies the same rule when a driver
 also mints tokens with the client credentials grant, as Xero does.
 The five eight-second declarations leave time for a provider operation after

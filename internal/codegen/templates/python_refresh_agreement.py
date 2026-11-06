@@ -208,7 +208,12 @@ async def test_generated_refresh_exchange_timeout(case: dict[str, Any]) -> None:
     authorization = deepcopy(AUTHORIZATION)
     methods = authorization.get("methods") or []
     method = next((item for item in methods if item["id"] == case.get("methodId")), authorization)
-    method["oauth2"]["refresh"]["tokenExchangeTimeout"] = "10ms"
+    declaration = method["oauth2"]["refresh"]["tokenExchangeTimeout"]
+    settings = dict(case.get("settings", {}))
+    if isinstance(declaration, dict):
+        settings[declaration["fromSetting"]] = "10ms"
+    else:
+        method["oauth2"]["refresh"]["tokenExchangeTimeout"] = "10ms"
     requests: list[httpx.Request] = []
 
     class SlowStream(httpx.AsyncByteStream):
@@ -225,7 +230,7 @@ async def test_generated_refresh_exchange_timeout(case: dict[str, Any]) -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
         driver = ManifestCredentialRefreshDriver[Any](
-            "Agreement", authorization, CREDENTIAL_FIELDS, client, settings=case.get("settings", {})
+            "Agreement", authorization, CREDENTIAL_FIELDS, client, settings=settings
         )
         credentials = credentials_for(case, "")
         state = CredentialRefreshState(credentials, datetime(2000, 1, 1, tzinfo=UTC), datetime.now(UTC))
