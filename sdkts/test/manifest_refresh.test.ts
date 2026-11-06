@@ -60,6 +60,11 @@ describe('manifest credential refresh', () => {
     refresh.tokenExchangeTimeout = '-1s';
     expect(() => new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
       credentialFields })).toThrow('tokenExchangeTimeout');
+    for (const duration of ['1h1s', '3000000000ms', '5000000000ms']) {
+      refresh.tokenExchangeTimeout = duration;
+      expect(() => new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+        credentialFields })).toThrow('at most 1h');
+    }
   });
 
   it('reads the exchange timeout from a pinned duration setting', async () => {
@@ -76,6 +81,10 @@ describe('manifest credential refresh', () => {
     await expect(driver.refresh(state(), caller.signal)).rejects.toBeInstanceOf(RetryError);
     expect(caller.signal.aborted).toBe(false);
     expect(() => new ManifestCredentialRefreshDriver<Credentials>({ ...options, settings: {} })).toThrow('tokenExchangeTimeout');
+    for (const nanoseconds of [3_000_000_000_000_000, 5_000_000_000_000_000]) {
+      expect(() => new ManifestCredentialRefreshDriver<Credentials>({ ...options,
+        settings: { requestTimeout: nanoseconds } })).toThrow('at most 1h');
+    }
   });
 
   it('limits a client-credentials exchange as the Go Xero driver does', async () => {
@@ -863,6 +872,33 @@ describe('Go-specific manifest refresh declarations', () => {
 });
 
 describe('manifest token endpoint address policy', () => {
+  it('bounds a private endpoint exchange with the declared refresh timeout', async () => {
+    let requests = 0;
+    const server = http.createServer((_request, response) => {
+      requests++;
+      response.writeHead(200, { 'content-type': 'application/json' });
+      setTimeout(() => response.end(JSON.stringify({ access_token: 'late', expires_in: 3600, token_type: 'Bearer' })), 400);
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new TypeError('test server address is missing');
+      const configured = structuredClone(auth) as Record<string, unknown>;
+      const method = (configured.methods as Record<string, unknown>[])[0]!;
+      const oauth = method.oauth2 as Record<string, unknown>;
+      oauth.tokenEndpoint = { fromSetting: 'tokenEndpoint' };
+      oauth.tokenEndpointNetworkPolicy = 'privateNetworkHTTP';
+      (oauth.refresh as Record<string, unknown>).tokenExchangeTimeout = '100ms';
+      const driver = new ManifestCredentialRefreshDriver<Credentials>({ providerName: 'Example', auth: configured,
+        credentialFields, settings: { tokenEndpoint: `http://127.0.0.1:${address.port}/token` } });
+      await expect(driver.refresh(state(), new AbortController().signal)).rejects.toBeInstanceOf(RetryError);
+      expect(requests).toBe(1);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    }
+  });
+
   it('refuses forbidden HTTP endpoints without using either transport', async () => {
     const configured = structuredClone(auth) as Record<string, unknown>;
     const method = (configured.methods as Record<string, unknown>[])[0]!;

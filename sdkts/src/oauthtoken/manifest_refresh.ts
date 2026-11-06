@@ -445,8 +445,8 @@ export class ManifestCredentialRefreshDriver<C extends object> implements Creden
         ? this.#settings[settingSource.fromSetting] : undefined;
     const timeoutMs = typeof raw === 'number' && Number.isSafeInteger(raw) ? raw / 1_000_000
       : typeof raw === 'string' ? parseDurationMs(raw) : 0;
-    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
-      throw new TypeError('manifest tokenExchangeTimeout must resolve to a positive duration');
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 3_600_000)
+      throw new TypeError('manifest tokenExchangeTimeout must resolve to a positive duration at most 1h');
     return timeoutMs;
   }
 
