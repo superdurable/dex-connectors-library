@@ -635,6 +635,9 @@ of the caller's deadline; the earlier deadline wins. Declare a positive Go
 duration or `{fromSetting: requestTimeout}` naming a required or defaulted
 duration configuration field when the Go credential refresh driver applies
 the same bound. A sourced timeout uses the validated connection value.
+Do not declare a timeout that comes only from a default HTTP client: callers
+can supply a client with another timeout, so the connector does not guarantee
+that bound for every exchange.
 `clientCredentials.tokenExchangeTimeout` applies the same rule when a driver
 also mints tokens with the client credentials grant, as Xero does.
 The five eight-second declarations leave time for a provider operation after
