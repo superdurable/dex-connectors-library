@@ -67,8 +67,10 @@ export function parseGraphTime(value: unknown, field: string): string {
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   if (!year || month < 1 || month > 12 || day < 1 || day > days[month - 1]! || Number(hourText) > 23 || Number(minuteText) > 59 || Number(secondText) > 59 || Number(zoneHourText ?? 0) > 24 || Number(zoneMinuteText ?? 0) > 60) throw new TypeError(`${field} is invalid`);
   const offset = zone === 'Z' ? 0 : (Number(zoneHourText) * 60 + Number(zoneMinuteText)) * (sign === '-' ? -1 : 1);
-  const local = Date.UTC(year, month - 1, day, Number(hourText), Number(minuteText), Number(secondText));
-  const instant = new Date(local - offset * 60_000);
+  const localDate = new Date(0);
+  localDate.setUTCFullYear(year, month - 1, day);
+  localDate.setUTCHours(Number(hourText), Number(minuteText), Number(secondText), 0);
+  const instant = new Date(localDate.getTime() - offset * 60_000);
   if (!Number.isFinite(instant.getTime())) throw new TypeError(`${field} is invalid`);
   const digits = (fraction ?? '').slice(0, 9).replace(/0+$/, '');
   return instant.toISOString().slice(0, 19) + (digits ? `.${digits}` : '') + 'Z';

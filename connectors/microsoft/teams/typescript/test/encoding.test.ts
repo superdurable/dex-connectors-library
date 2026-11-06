@@ -24,5 +24,6 @@ it('keeps Go RFC3339Nano precision and rejects hour 24 clock values', () => {
     .toBe('2026-10-01T09:30:01.123456789Z');
   expect(parseGraphTime('2026-10-01T09:30:01.123456789+01:00', 'createdDateTime'))
     .toBe('2026-10-01T08:30:01.123456789Z');
+  expect(parseGraphTime('0001-01-01T00:00:00Z', 'createdDateTime')).toBe('0001-01-01T00:00:00Z');
   expect(() => parseGraphTime('2026-10-01T24:00:00Z', 'createdDateTime')).toThrow();
 });

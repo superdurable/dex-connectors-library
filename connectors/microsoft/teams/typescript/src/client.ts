@@ -47,6 +47,7 @@ export class TeamsClient {
   /** Generated manifest OAuth refresh driver. */ readonly refreshDriver: CredentialRefreshDriver<Credentials>;
   /** Provider transport. */ readonly transport: ProviderHTTPClient;
   /** Observation clock. */ readonly now: () => Date;
+  readonly #operationDeadlines = new WeakMap<Call, number>();
 
   /** Validate settings and bind renewable credentials. */
   constructor(config: Config, credentials: CredentialProvider<Credentials>, options: TeamsClientOptions = {}) {
@@ -77,7 +78,10 @@ export class TeamsClient {
 
   /** Resolve a renewable credential and check its bearer header form. */
   async resolveCredentials(call: Call): Promise<Credentials> {
-    const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+    const deadline = Date.now() + 25_000;
+    this.#operationDeadlines.set(call, deadline);
+    const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(25_000)]);
+    const credentials = await resolveCredential(this.credentials, call, this.refreshDriver, signal);
     if (!isHeaderSafeCredential(credentials.accessToken.reveal())) throw new ReauthorizationRequiredError();
     return credentials;
   }
@@ -88,7 +92,10 @@ export class TeamsClient {
     options: { payload?: Uint8Array; absoluteURL?: string; query?: Record<string, string>; retryRejected?: boolean; signal?: AbortSignal } = {},
   ): Promise<{ exchange: Exchange; credentials: Credentials }> {
     const target = options.absoluteURL || this.endpoint + path + (options.query ? `?${queryEncode(options.query)}` : '');
+    const deadline = this.#operationDeadlines.get(call) ?? Date.now() + 25_000;
     for (let attempt = 0; attempt < 2; attempt++) {
+      const remaining = Math.max(1, Math.min(requestTimeoutMs, deadline - Date.now()));
+      const signal = AbortSignal.any([options.signal ?? call.context.cancellationSignal, AbortSignal.timeout(remaining)]);
       const bearer = credentials.accessToken.reveal();
       const headers: Record<string, string> = {
         Authorization: `Bearer ${bearer}`, Accept: 'application/json', 'client-request-id': call.id,
@@ -100,9 +107,9 @@ export class TeamsClient {
         const response: ProviderResponse = await this.transport.send({
           url: target, method, headers, maxResponseBytes: this.maxResponseBytes,
           maxErrorResponseBytes: MaxErrorBodyBytes,
-          addressPolicy: 'unrestricted', timeoutMs: requestTimeoutMs,
+          addressPolicy: 'unrestricted', timeoutMs: remaining,
           ...(options.payload !== undefined ? { body: options.payload } : {}),
-          signal: options.signal ?? call.context.cancellationSignal,
+          signal,
           onResponseChunk: (_chunk, status, responseHeaders) => {
             observedStatus = status;
             observedHeaders = responseHeaders as Record<string, string | string[] | undefined>;
@@ -110,7 +117,7 @@ export class TeamsClient {
         });
         if (response.status === 401 && options.retryRejected !== false && attempt === 0 && 'resolveAfterRejection' in this.credentials) {
           try {
-            const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+            const replacement = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, signal);
             if (isHeaderSafeCredential(replacement.accessToken.reveal())) { credentials = replacement; continue; }
           } catch { /* The original 401 remains a conclusive provider refusal. */ }
         }
