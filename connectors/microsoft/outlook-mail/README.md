@@ -10,6 +10,8 @@ support remains a separate release.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail`.
 
+The TypeScript package `@superdurable/connector-microsoft-outlook-mail@0.1.0` implements all six operations with Connector SDK 0.7.0. See its [package guide](typescript/README.md) and [runnable Dex Flow](typescript/examples/read-message/flow.ts). The TypeScript port replays Go-recorded provider conformance scenarios; live Microsoft 365 authorization and delivery have not been verified for this port.
+
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack, through Dex Web and real-Dex tests, against a local Microsoft Graph stand-in; no Microsoft 365 tenant was used. See
 > [verification status](../../../docs/verification-status.md) for what is and
 > is not verified.

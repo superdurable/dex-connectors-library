@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: microsoft
   languages:
+    typescript:
+      package: '@superdurable/connector-microsoft-teams'
+      version: v0.1.0
+      operations: [listThreadReplies, postChannelMessage, postThreadReply, postChatMessage]
+      triggers: []
     python:
       package: dex-connector-microsoft-teams
       version: v0.1.0

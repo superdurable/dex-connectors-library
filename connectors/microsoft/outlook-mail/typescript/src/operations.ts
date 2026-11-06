@@ -1,0 +1,91 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+import { newMutationBranch,newMutationRetry,newQueryBranch,newQueryRetry,zeroReceipt,type Call,type CredentialProvider, type CredentialRefreshDriver,type Mutation,type MutationAttempt,type Query,type QueryAttempt,type ReceiptDraft } from '@superdurable/connectors-sdk';
+import { SearchMessagesDefinition,SearchMessagesBranch,GetMessageDefinition,GetMessageBranch,MoveMessageDefinition,MoveMessageBranch,SetMessageFlagsDefinition,SetMessageFlagsBranch } from './generated/definitions.js';
+import type { Config,Credentials,GetMessageInput,Message,MessageFlags,MoveMessageInput,MovedMessage,SearchMessagesInput,SearchMessagesOutput,SetMessageFlagsInput } from './generated/models.js';
+import { GraphSession,escapePathSegment,graphFailure,isGraphExchange,type GraphExchange,type GraphTransport } from './http.js';
+import { decodeAttachments,decodeFullMessage,graphTimestampUTC,parseGraphMessage,parseJSON,resolveFolder,summarizeMessage,summaryProperties,validateAddress,validateGraphID,validateSingleLine,type GraphMessageWire } from './message.js';
+
+export interface ClientDependencies { config: Config; source: CredentialProvider<Credentials>; driver: CredentialRefreshDriver<Credentials>; transport: GraphTransport; now: () => Date; timeoutMs: number }
+function queryFailed<T>(exchange: GraphExchange, receipt: ReceiptDraft, branches: {NotFound?: string; ProviderRejected:string; InvalidResponse:string; Defect:string}, empty: T): QueryAttempt<T> {
+  if(exchange.outcome==='retry'||exchange.outcome==='ambiguous') return newQueryRetry(exchange.failure!,exchange.retryAfterMs);
+  if(exchange.outcome==='notFound') return newQueryBranch(branches.NotFound??branches.ProviderRejected,empty,receipt,exchange.failure);
+  if(exchange.outcome==='invalid') return newQueryBranch(branches.InvalidResponse,empty,receipt,exchange.failure);
+  if(exchange.outcome==='defect') return newQueryBranch(branches.Defect,empty,receipt,exchange.failure);
+  return newQueryBranch(branches.ProviderRejected,empty,receipt,exchange.failure);
+}
+function updateFailed<T>(exchange: GraphExchange, receipt: ReceiptDraft, branches:{NotFound:string;ProviderRejected:string;Defect:string}, empty:T): MutationAttempt<T> {
+  if(['retry','ambiguous','invalid'].includes(exchange.outcome)) return newMutationRetry(exchange.failure!,exchange.retryAfterMs);
+  if(exchange.outcome==='notFound') return newMutationBranch(branches.NotFound,empty,receipt,exchange.failure);
+  if(exchange.outcome==='defect') return newMutationBranch(branches.Defect,empty,receipt,exchange.failure);
+  return newMutationBranch(branches.ProviderRejected,empty,receipt,exchange.failure);
+}
+function validNextPageLink(value: string): void {
+  if (!value || Buffer.byteLength(value) > 4096) throw new TypeError('next-page link is empty or too long');
+  const raw = /^https:\/\/([^/?#]+)([^?#]*)/.exec(value);
+  let url: URL;
+  try { url = new URL(value); } catch { throw new TypeError('next-page link cannot be parsed'); }
+  let goPath = '';
+  try { goPath = decodeURIComponent(raw?.[2] ?? ''); } catch { throw new TypeError('next-page link cannot be parsed'); }
+  if (!raw || raw[1] !== 'graph.microsoft.com' || url.username || url.password || url.hash)
+    throw new TypeError('next-page link is not an https://graph.microsoft.com link');
+  if (!goPath.startsWith('/v1.0/') || !goPath.toLowerCase().endsWith('/messages'))
+    throw new TypeError('next-page link is not a Microsoft Graph v1.0 messages collection');
+  if (goPath.includes('..')) throw new TypeError('next-page link contains a relative path segment');
+}
+function quoteOData(value:string):string{return `'${value.replace(/'/g,"''")}'`;}
+function queryTimestamp(value:string):string { return graphTimestampUTC(value).slice(0,19)+'Z'; }
+function buildSearch(input:SearchMessagesInput):{folder:string;path?:string;absoluteURL?:string;query?:[string,string][]}{
+  const folder=resolveFolder(input.folder??'','inbox');if(input.pageCursor){validNextPageLink(input.pageCursor);return {folder,absoluteURL:input.pageCursor};}
+  const after=input.receivedAfter?queryTimestamp(input.receivedAfter):'1900-01-01T00:00:00Z';const clauses=[`receivedDateTime ge ${after}`];
+  if(input.receivedBefore){const before=queryTimestamp(input.receivedBefore);if(before<=after)throw new TypeError('receivedBefore must be later than receivedAfter');clauses.push(`receivedDateTime lt ${before}`);}
+  if(input.from?.trim()){const sender=input.from.trim();validateAddress(sender,'from');clauses.push(`from/emailAddress/address eq ${quoteOData(sender)}`);}
+  if(input.isUnread)clauses.push('isRead eq false');if(input.subjectContains?.trim()){const subject=input.subjectContains.trim();validateSingleLine(subject,'subjectContains',255);clauses.push(`contains(subject,${quoteOData(subject)})`);}
+  const limit=input.limit||10;if(!Number.isSafeInteger(limit)||limit<1||limit>50)throw new TypeError('limit must be between 1 and 50');
+  return {folder,path:'/mailFolders/'+escapePathSegment(folder)+'/messages',query:[['$filter',clauses.join(' and ')],['$orderby','receivedDateTime desc'],['$top',String(limit)],['$select',summaryProperties.join(',')]]};
+}
+function emptySearch():SearchMessagesOutput{return {folder:'',messages:[],hasMore:false};}
+function emptyMessage():Message{return {id:'',subject:'',receivedAt:'0001-01-01T00:00:00Z',isRead:false,flagStatus:'',hasAttachments:false,text:'',textSource:''};}
+function emptyMoved():MovedMessage{return {messageId:'',destinationFolderId:''};}
+function emptyFlags():MessageFlags{return {messageId:'',isRead:false,flagStatus:''};}
+/** Search one bounded Microsoft Graph mail page. */
+export class SearchMessagesOperation implements Query<SearchMessagesInput,SearchMessagesOutput>{constructor(private readonly dependencies:ClientDependencies){} definition(){return SearchMessagesDefinition;}
+  async invoke(call:Call,input:SearchMessagesInput):Promise<QueryAttempt<SearchMessagesOutput>>{let request:ReturnType<typeof buildSearch>;try{request=buildSearch(input);}catch(error){return newQueryBranch(SearchMessagesBranch.Defect,emptySearch(),zeroReceipt(),graphFailure('searchMessages','VALIDATION',(error as Error).message));}
+    const opened=await GraphSession.open(call,'searchMessages',...sessionArguments(this.dependencies));if(isGraphExchange(opened))return queryFailed(opened,zeroReceipt(),SearchMessagesBranch,emptySearch());
+    const exchange=await opened.exchange({method:'GET',path:request.path,absoluteURL:request.absoluteURL,query:request.query});const receipt=opened.receipt(exchange);if(exchange.outcome!=='succeeded')return queryFailed(exchange,receipt,SearchMessagesBranch,emptySearch());
+    try{const envelope=parseJSON(exchange.body) as Record<string,unknown>;if(!Array.isArray(envelope.value))throw new TypeError('response has no value list');const messages=envelope.value.slice(0,50).map(item=>summarizeMessage(parseGraphMessage(item)));const next=envelope['@odata.nextLink'];if(next!==undefined&&next!==''){if(typeof next!=='string')throw new TypeError('invalid next-page link');validNextPageLink(next);}return newQueryBranch(SearchMessagesBranch.Searched,{folder:request.folder,messages,hasMore:!!next,...(next?{nextPageCursor:next as string}:{})},receipt);}catch(error){return newQueryBranch(SearchMessagesBranch.InvalidResponse,emptySearch(),receipt,graphFailure('searchMessages','PROTOCOL','Microsoft Graph returned an invalid message page: '+(error as Error).message));}
+  }}
+/** Read one message and optional attachment metadata. */
+export class GetMessageOperation implements Query<GetMessageInput,Message>{constructor(private readonly dependencies:ClientDependencies){} definition(){return GetMessageDefinition;}
+  async invoke(call:Call,input:GetMessageInput):Promise<QueryAttempt<Message>>{const id=input.messageId?.trim();try{validateGraphID(id);}catch(error){return newQueryBranch(GetMessageBranch.Defect,emptyMessage(),zeroReceipt(),graphFailure('getMessage','VALIDATION',(error as Error).message));}
+    const opened=await GraphSession.open(call,'getMessage',...sessionArguments(this.dependencies));if(isGraphExchange(opened))return queryFailed(opened,zeroReceipt(),GetMessageBranch,emptyMessage());
+    const path='/messages/'+escapePathSegment(id);const read=await opened.exchange({method:'GET',path,prefersTextBody:true,query:[['$select',[...summaryProperties,'bccRecipients','body','webLink'].join(',')]]});let receipt=opened.receipt(read,id);if(read.outcome!=='succeeded')return queryFailed(read,receipt,GetMessageBranch,emptyMessage());
+    let message:Message;try{message=decodeFullMessage(parseGraphMessage(parseJSON(read.body)));}catch(error){return newQueryBranch(GetMessageBranch.InvalidResponse,emptyMessage(),receipt,graphFailure('getMessage','PROTOCOL','Microsoft Graph returned an invalid message: '+(error as Error).message));}
+    if(!message.hasAttachments)return newQueryBranch(GetMessageBranch.Found,message,receipt);
+    const listed=await opened.exchange({method:'GET',path:path+'/attachments',query:[['$select','id,name,contentType,size,isInline']]});receipt=opened.receipt(listed,id);if(listed.outcome!=='succeeded')return queryFailed(listed,receipt,GetMessageBranch,emptyMessage());
+    try{const {attachments,truncated}=decodeAttachments(parseJSON(listed.body));return newQueryBranch(GetMessageBranch.Found,{...message,...(attachments.length?{attachments}:{}),...(truncated?{isAttachmentListTruncated:true}:{})},receipt);}catch(error){return newQueryBranch(GetMessageBranch.InvalidResponse,emptyMessage(),receipt,graphFailure('getMessage','PROTOCOL','Microsoft Graph returned an invalid attachment list: '+(error as Error).message));}
+  }}
+function sessionArguments(dependencies:ClientDependencies):[Config,CredentialProvider<Credentials>,CredentialRefreshDriver<Credentials>,GraphTransport,()=>Date,number]{return [dependencies.config,dependencies.source,dependencies.driver,dependencies.transport,dependencies.now,dependencies.timeoutMs];}
+/** Move an immutable message into an existing folder. */
+export class MoveMessageOperation implements Mutation<MoveMessageInput,MovedMessage>{constructor(private readonly dependencies:ClientDependencies){} definition(){return MoveMessageDefinition;} idempotencyKey(callId:string){return callId;}
+  async invoke(call:Call,input:MoveMessageInput):Promise<MutationAttempt<MovedMessage>>{let destination:string;const id=input.messageId?.trim();try{destination=resolveFolder(input.destinationFolder??'','','destinationFolder');validateGraphID(id);}catch(error){return newMutationBranch(MoveMessageBranch.Defect,emptyMoved(),zeroReceipt(),graphFailure('moveMessage','VALIDATION',(error as Error).message));}
+    const opened=await GraphSession.open(call,'moveMessage',...sessionArguments(this.dependencies));if(isGraphExchange(opened))return updateFailed(opened,zeroReceipt(),MoveMessageBranch,emptyMoved());const path='/messages/'+escapePathSegment(id);
+    const read=await opened.exchange({method:'GET',path,query:[['$select','id,parentFolderId']]});if(read.outcome!=='succeeded')return updateFailed(read,opened.receipt(read,id),MoveMessageBranch,emptyMoved());let message:GraphMessageWire;try{message=parseGraphMessage(parseJSON(read.body));}catch(error){return newMutationRetry(graphFailure('moveMessage','PROTOCOL','Microsoft Graph returned an invalid message: '+(error as Error).message));}
+    const folderRead=await opened.exchange({method:'GET',path:'/mailFolders/'+escapePathSegment(destination),query:[['$select','id,displayName']]});if(folderRead.outcome==='notFound'){return newMutationBranch(MoveMessageBranch.ProviderRejected,emptyMoved(),opened.receipt(folderRead,id),{...folderRead.failure!,message:'the destination folder does not exist in the mailbox; the connector never creates folders'});}if(folderRead.outcome!=='succeeded')return updateFailed(folderRead,opened.receipt(folderRead,id),MoveMessageBranch,emptyMoved());
+    let folder:{id:string;displayName?:string};try{folder=parseJSON(folderRead.body) as typeof folder;validateGraphID(folder.id,'folder id');}catch{return newMutationRetry(graphFailure('moveMessage','PROTOCOL','Microsoft Graph returned a mail folder without a usable id'));}
+    if(message.parentFolderId===folder.id)return newMutationBranch(MoveMessageBranch.Moved,{messageId:message.id,destinationFolderId:folder.id,...(folder.displayName?{destinationFolderName:folder.displayName}:{}),wasAlreadyMoved:true},opened.receipt(read,message.id));
+    const moved=await opened.exchange({method:'POST',path:path+'/move',payload:{destinationId:folder.id}});if(moved.outcome==='notFound')return newMutationRetry(moved.failure!);if(moved.outcome!=='succeeded')return updateFailed(moved,opened.receipt(moved,id),MoveMessageBranch,emptyMoved());
+    try{const result=parseGraphMessage(parseJSON(moved.body));return newMutationBranch(MoveMessageBranch.Moved,{messageId:result.id,destinationFolderId:folder.id,...(folder.displayName?{destinationFolderName:folder.displayName}:{})},opened.receipt(moved,result.id));}catch(error){return newMutationRetry(graphFailure('moveMessage','PROTOCOL','Microsoft Graph returned an invalid moved message: '+(error as Error).message));}
+  }}
+/** Apply absolute read, flag, and category values. */
+export class SetMessageFlagsOperation implements Mutation<SetMessageFlagsInput,MessageFlags>{constructor(private readonly dependencies:ClientDependencies){} definition(){return SetMessageFlagsDefinition;} idempotencyKey(callId:string){return callId;}
+  async invoke(call:Call,input:SetMessageFlagsInput):Promise<MutationAttempt<MessageFlags>>{const id=input.messageId?.trim();try{validateGraphID(id);if(input.isRead===undefined&&input.flagStatus===undefined&&input.categories===undefined)throw new TypeError('set at least one of isRead, flagStatus, and categories');if(input.flagStatus!==undefined&&!['notFlagged','flagged','complete'].includes(input.flagStatus))throw new TypeError('flagStatus must be notFlagged, flagged, or complete');if(input.categories){if(input.categories.length>25)throw new TypeError('categories can hold at most 25 names');const seen=new Set<string>();for(const value of input.categories){if(!value||value.trim()!==value)throw new TypeError('categories must be names without surrounding spaces');validateSingleLine(value,'categories',255);if(seen.has(value.toLowerCase()))throw new TypeError('categories must not repeat a name');seen.add(value.toLowerCase());}}}catch(error){return newMutationBranch(SetMessageFlagsBranch.Defect,emptyFlags(),zeroReceipt(),graphFailure('setMessageFlags','VALIDATION',(error as Error).message));}
+    const opened=await GraphSession.open(call,'setMessageFlags',...sessionArguments(this.dependencies));if(isGraphExchange(opened))return updateFailed(opened,zeroReceipt(),SetMessageFlagsBranch,emptyFlags());const path='/messages/'+escapePathSegment(id);const read=await opened.exchange({method:'GET',path,query:[['$select','id,isRead,flag,categories']]});if(read.outcome!=='succeeded')return updateFailed(read,opened.receipt(read,id),SetMessageFlagsBranch,emptyFlags());let message:GraphMessageWire;try{message=parseGraphMessage(parseJSON(read.body));}catch(error){return newMutationRetry(graphFailure('setMessageFlags','PROTOCOL','Microsoft Graph returned an invalid message: '+(error as Error).message));}
+    const summary=summarizeMessage(message);const flags:MessageFlags={messageId:message.id,isRead:summary.isRead,flagStatus:summary.flagStatus,...(summary.categories?.length?{categories:summary.categories}:{})};const changes:Record<string,unknown>={};
+    if(input.isRead!==undefined&&input.isRead!==flags.isRead){changes.isRead=input.isRead;flags.isRead=input.isRead;}
+    if(input.flagStatus!==undefined&&input.flagStatus!==flags.flagStatus){changes.flag={flagStatus:input.flagStatus};flags.flagStatus=input.flagStatus;}
+    if(input.categories!==undefined){const requested=input.categories??[];const current=message.categories??[];const same=requested.length===current.length&&requested.every(value=>current.some(candidate=>candidate.toLowerCase()===value.toLowerCase()));if(!same){changes.categories=[...requested];if(requested.length)flags.categories=[...requested];else delete flags.categories;}}
+    if(!Object.keys(changes).length)return newMutationBranch(SetMessageFlagsBranch.Updated,{...flags,wasAlreadyApplied:true},opened.receipt(read,message.id));
+    const updated=await opened.exchange({method:'PATCH',path,payload:changes});if(updated.outcome!=='succeeded')return updateFailed(updated,opened.receipt(updated,message.id),SetMessageFlagsBranch,emptyFlags());return newMutationBranch(SetMessageFlagsBranch.Updated,flags,opened.receipt(updated,message.id));
+  }}

@@ -23,6 +23,12 @@ type httpClientOption struct{ client *http.Client }
 
 func (option httpClientOption) applyClientOption(client *Client) { client.httpClient = option.client }
 
+type clockOption struct{ clock func() time.Time }
+
+func (option clockOption) applyClientOption(client *Client) { client.clock = option.clock }
+
+func withClock(clock func() time.Time) Option { return clockOption{clock} }
+
 // WithHTTPClient supplies a transport. New copies the client, preserves a nonzero timeout, and disables redirects.
 func WithHTTPClient(client *http.Client) Option { return httpClientOption{client} }
 
@@ -111,6 +117,9 @@ func New(config Config, _ sdkgo.CredentialProvider[Credentials], options ...Opti
 	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, clock: time.Now}
 	for _, option := range options {
 		option.applyClientOption(client)
+	}
+	if client.clock == nil {
+		return nil, errors.New("clock is required")
 	}
 	client.httpClient = providerhttp.NewProviderHTTPClient(client.httpClient, config.Timeout)
 	return client, nil
@@ -220,7 +229,7 @@ func getJSON[T any](client *Client, call sdkgo.Call, operation, path string, dec
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return sdkgo.NewQueryRetry[T](failure(operation, kind, "Hacker News is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
+		return sdkgo.NewQueryRetry[T](failure(operation, kind, "Hacker News is temporarily unavailable"), providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), client.clock()))
 	case response.StatusCode == http.StatusNotFound && operation == "getItem":
 		return failedBranch[T](operation, GetItemBranchNotFound, sdkgo.FailureNotFound, "Hacker News resource was not found")
 	case response.StatusCode != http.StatusOK:

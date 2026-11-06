@@ -205,7 +205,11 @@ export function loadScenarios(url: URL): Scenario[] {
     }
     if ('fixedClock' in scenario && (typeof scenario.fixedClock !== 'string' ||
         !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(scenario.fixedClock) ||
-        !Number.isFinite(Date.parse(scenario.fixedClock)))) throw new Error('invalid fixed clock');
+        !Number.isFinite(Date.parse(scenario.fixedClock)) ||
+        scenario.fixedClock.startsWith('0000-') ||
+        (() => { const precision = scenario.fixedClock.includes('.') ? scenario.fixedClock.length - scenario.fixedClock.indexOf('.') - 2 : 0;
+          const canonical = new Date(scenario.fixedClock).toISOString();
+          return canonical.slice(0, 19) + (precision ? canonical.slice(19, 20 + precision) : '') + 'Z' !== scenario.fixedClock; })())) throw new Error('invalid fixed clock');
   }
   return document.scenarios as Scenario[];
 }
@@ -352,7 +356,11 @@ export class ExchangeRecorder {
     const bodyBytes = typeof request.body === 'string' ? Buffer.from(request.body) : Buffer.from(request.body ?? []);
     const bodyText = bodyBytes.toString();
     this.equal(index, 'method', request.method, exchange.method);
-    this.equal(index, 'path', url.pathname, this.pathPrefix + exchange.path);
+    // Go records URL.Path, which decodes one layer of escaping; URL.pathname retains that layer.
+    let decodedPath = url.pathname;
+    try { decodedPath = decodeURIComponent(url.pathname); }
+    catch { this.mismatches.push(`request ${index}: invalid percent-encoded path`); }
+    this.equal(index, 'path', decodedPath, this.pathPrefix + exchange.path);
     for (const [key, value] of Object.entries(exchange.query ?? {})) this.equal(index, `query ${key}`, url.searchParams.getAll(key), Array.isArray(value) ? value : [value]);
     for (const key of new Set(url.searchParams.keys())) if (!(key in (exchange.query ?? {}))) this.mismatches.push(`request ${index}: unasserted query ${key}=${JSON.stringify(url.searchParams.getAll(key))}`);
     const contentType = Object.entries(request.headers ?? {}).find(([name]) => name.toLowerCase() === 'content-type')?.[1];

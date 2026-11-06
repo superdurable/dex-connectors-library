@@ -259,7 +259,14 @@ def load_scenarios(path: Path) -> list[dict[str, Any]]:
                     or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z",
                                     scenario["fixedClock"]) is None):
                 raise ValueError(f"{scenario['name']}: invalid fixed clock")
-            datetime.fromisoformat(scenario["fixedClock"])
+            fixed_clock = scenario["fixedClock"]
+            parsed_clock = datetime.fromisoformat(fixed_clock)
+            precision = len(fixed_clock.split(".", 1)[1]) - 1 if "." in fixed_clock else 0
+            canonical_clock = parsed_clock.strftime("%Y-%m-%dT%H:%M:%S")
+            if precision:
+                canonical_clock += "." + f"{parsed_clock.microsecond:06d}"[:precision]
+            if canonical_clock + "Z" != fixed_clock:
+                raise ValueError(f"{scenario['name']}: invalid fixed clock")
         if scenario.get("attempts", 1) != len(scenario.get("intermediate", [])) + 1:
             raise ValueError(f"{scenario['name']}: inconsistent attempts")
         if "idempotencyKey" in scenario and not isinstance(scenario["idempotencyKey"], str):

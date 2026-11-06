@@ -17,8 +17,6 @@ async function invokeSpreadsheet(scenario: Scenario, recorder: ExchangeRecorder,
     const pathname = new URL(request.url).pathname;
     const exchange = scenario.exchanges[recorder.requestCount];
     if (exchange && decodeURIComponent(pathname) !== exchange.path) throw new Error('Google Sheets request path differs from Go');
-    // Go records decoded URL paths; the shared Node recorder reads encoded pathname.
-    if (exchange) exchange.path = pathname;
     return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
   const credential: Credentials = {
