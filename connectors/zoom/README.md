@@ -1,5 +1,9 @@
 # Zoom Connector
 
+## TypeScript package
+
+Install `@superdurable/connector-zoom@0.1.0` with Connector SDK 0.6.0 to use all five meeting operations from TypeScript. The [package README](typescript/README.md) documents the generated OAuth connection binding, operation-specific Step factories, and the runnable meeting-list Flow. The TypeScript conformance suite replays Go-recorded provider requests and decisions; its Dex integration check runs the example with a generated stand-in. Live Zoom OAuth authorization and provider behavior remain unverified.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoom`.

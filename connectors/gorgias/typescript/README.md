@@ -1,6 +1,6 @@
 # Gorgias TypeScript connector
 
-Install `@superdurable/connector-gorgias@0.1.0` after publication. The package
+Install `@superdurable/connector-gorgias@0.1.1` after publication. The package
 provides `searchTickets`, `getTicket`, `findCustomerByEmail`, `createTicket`,
 `updateTicket`, and `addNote` Step factories and typed mock cases. It has no
 Triggers.

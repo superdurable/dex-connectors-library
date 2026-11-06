@@ -1,0 +1,3206 @@
+{
+  "connector": "google-calendar",
+  "scenarios": [
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"timeZone\":\"America/Los_Angeles\",\"nextPageToken\":\"last\",\"items\":[{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "calendarId": "primary",
+          "events": [
+            {
+              "calendarId": "primary",
+              "end": {
+                "dateTime": "2026-02-24T10:00:00-08:00",
+                "timeZone": "America/Los_Angeles"
+              },
+              "etag": "etag-one",
+              "id": "event12345",
+              "isAllDay": false,
+              "start": {
+                "dateTime": "2026-02-24T09:00:00-08:00",
+                "timeZone": "America/Los_Angeles"
+              },
+              "status": "confirmed",
+              "summary": "Planning",
+              "transparency": "opaque"
+            }
+          ],
+          "nextPageToken": "last",
+          "timeMax": "2026-02-25T00:00:00Z",
+          "timeMin": "2026-02-24T00:00:00Z",
+          "timeZone": "America/Los_Angeles"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-success",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-rate-limit",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-unavailable",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-transport",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-not-found",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"forbidden\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-rejected",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-invalid",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-defect",
+      "operation": "listEvents"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "calendarId": "primary",
+          "end": {
+            "dateTime": "2026-02-24T10:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "etag": "etag-one",
+          "id": "event12345",
+          "isAllDay": false,
+          "start": {
+            "dateTime": "2026-02-24T09:00:00-08:00",
+            "timeZone": "America/Los_Angeles"
+          },
+          "status": "confirmed",
+          "summary": "Planning",
+          "transparency": "opaque"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-success",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-rate-limit",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-unavailable",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-transport",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-not-found",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"forbidden\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-rejected",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-invalid",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-defect",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Discuss plans",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "etag-one",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Planning",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-success",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-rate-limit",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-unavailable",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-transport",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"cancelled\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "etag-one",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "cancelled",
+            "summary": "Planning",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-conflict",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"forbidden\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-rejected",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-invalid",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-defect",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Updated planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-two\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "optional": true
+              }
+            ],
+            "description": "Updated notes",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "etag-one"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "calendarId": "primary",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "etag-two",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Updated planning",
+            "transparency": "opaque"
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-success",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-rate-limit",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-unavailable",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-transport",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-not-found",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"forbidden\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-rejected",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-invalid",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "calendarId": "",
+            "end": {},
+            "id": "",
+            "isAllDay": false,
+            "start": {},
+            "status": "",
+            "transparency": ""
+          },
+          "wasAlreadyApplied": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "name": "updateEvent-defect",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"timeMin\":\"2026-02-24T00:00:00Z\",\"timeMax\":\"2026-02-25T00:00:00Z\",\"calendars\":{\"primary\":{\"busy\":[{\"start\":\"2026-02-24T09:00:00Z\",\"end\":\"2026-02-24T10:00:00Z\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              }
+            ],
+            "timeMax": "2026-02-25T00:00:00Z",
+            "timeMin": "2026-02-24T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "queried",
+        "failureKind": "",
+        "output": {
+          "calendars": [
+            {
+              "busy": [
+                {
+                  "end": "2026-02-24T10:00:00Z",
+                  "start": "2026-02-24T09:00:00Z"
+                }
+              ],
+              "calendarId": "primary"
+            }
+          ],
+          "timeMax": "2026-02-25T00:00:00Z",
+          "timeMin": "2026-02-24T00:00:00Z",
+          "timeZone": "UTC"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary"
+        ],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-success",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              }
+            ],
+            "timeMax": "2026-02-25T00:00:00Z",
+            "timeMin": "2026-02-24T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary"
+        ],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-rate-limit",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              }
+            ],
+            "timeMax": "2026-02-25T00:00:00Z",
+            "timeMin": "2026-02-24T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary"
+        ],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-unavailable",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              }
+            ],
+            "timeMax": "2026-02-25T00:00:00Z",
+            "timeMin": "2026-02-24T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary"
+        ],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-transport",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"calendars\":{\"primary\":{\"errors\":[{\"domain\":\"global\",\"reason\":\"notFound\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              }
+            ],
+            "timeMax": "2026-02-25T00:00:00Z",
+            "timeMin": "2026-02-24T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "incomplete",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "calendars": [
+            {
+              "busy": [],
+              "calendarId": "primary",
+              "errors": [
+                {
+                  "domain": "global",
+                  "reason": "notFound"
+                }
+              ]
+            }
+          ],
+          "timeMax": "2026-02-25T00:00:00Z",
+          "timeMin": "2026-02-24T00:00:00Z",
+          "timeZone": "UTC"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary"
+        ],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-incomplete",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"forbidden\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              }
+            ],
+            "timeMax": "2026-02-25T00:00:00Z",
+            "timeMin": "2026-02-24T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "calendars": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary"
+        ],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-rejected",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "not-json",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/freeBusy",
+          "requestBody": {
+            "items": [
+              {
+                "id": "primary"
+              }
+            ],
+            "timeMax": "2026-02-25T00:00:00Z",
+            "timeMin": "2026-02-24T00:00:00Z",
+            "timeZone": "UTC"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "calendars": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [
+          "primary"
+        ],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-invalid",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "calendars": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarIds": [],
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "UTC"
+      },
+      "name": "queryFreeBusy-defect",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Discuss plans",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\",\"description\":\"Discuss plans\",\"attendees\":[{\"email\":\"guest@example.com\",\"optional\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "isOptional": true,
+                "isOrganizer": false,
+                "isResource": false,
+                "isSelf": false
+              }
+            ],
+            "calendarId": "primary",
+            "description": "Discuss plans",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "etag-one",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Planning",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "name": "createEvent-duplicate-readback",
+      "operation": "createEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "01e84fae-1ee5-5e7d-97f5-add3b4d9b290",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/calendars/primary/events",
+          "query": {
+            "conferenceDataVersion": [
+              "1"
+            ],
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "optional": true
+              }
+            ],
+            "conferenceData": {
+              "createRequest": {
+                "conferenceSolutionKey": {
+                  "type": "hangoutsMeet"
+                },
+                "requestId": "event12345"
+              }
+            },
+            "description": "Discuss plans",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "id": "event12345",
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\",\"description\":\"Discuss plans\",\"attendees\":[{\"email\":\"guest@example.com\",\"optional\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "isOptional": true,
+                "isOrganizer": false,
+                "isResource": false,
+                "isSelf": false
+              }
+            ],
+            "calendarId": "primary",
+            "description": "Discuss plans",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "etag-one",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Planning",
+            "transparency": "opaque"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "event12345",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Discuss plans",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "requestConference": true,
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Planning"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createEvent-lost-insert-retry",
+      "operation": "createEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "optional": true
+              }
+            ],
+            "description": "Updated notes",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "etag-one"
+            ]
+          },
+          "status": 412
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Updated planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\",\"description\":\"Updated notes\",\"attendees\":[{\"email\":\"guest@example.com\",\"optional\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "isOptional": true,
+                "isOrganizer": false,
+                "isResource": false,
+                "isSelf": false
+              }
+            ],
+            "calendarId": "primary",
+            "description": "Updated notes",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "etag-one",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Updated planning",
+            "transparency": "opaque"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "CONFLICT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateEvent-concurrent-change-retry",
+      "operation": "updateEvent"
+    },
+    {
+      "attempts": 2,
+      "callId": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "sendUpdates": [
+              "all"
+            ]
+          },
+          "requestBody": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "optional": true
+              }
+            ],
+            "description": "Updated notes",
+            "end": {
+              "date": null,
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "start": {
+              "date": null,
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "summary": "Updated planning"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "If-Match": [
+              "etag-one"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"id\":\"event12345\",\"status\":\"confirmed\",\"summary\":\"Updated planning\",\"start\":{\"dateTime\":\"2026-02-24T09:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"end\":{\"dateTime\":\"2026-02-24T10:00:00-08:00\",\"timeZone\":\"America/Los_Angeles\"},\"etag\":\"etag-one\",\"description\":\"Updated notes\",\"attendees\":[{\"email\":\"guest@example.com\",\"optional\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "event": {
+            "attendees": [
+              {
+                "email": "guest@example.com",
+                "isOptional": true,
+                "isOrganizer": false,
+                "isResource": false,
+                "isSelf": false
+              }
+            ],
+            "calendarId": "primary",
+            "description": "Updated notes",
+            "end": {
+              "dateTime": "2026-02-24T10:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "etag": "etag-one",
+            "id": "event12345",
+            "isAllDay": false,
+            "start": {
+              "dateTime": "2026-02-24T09:00:00-08:00",
+              "timeZone": "America/Los_Angeles"
+            },
+            "status": "confirmed",
+            "summary": "Updated planning",
+            "transparency": "opaque"
+          },
+          "wasAlreadyApplied": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "a0c9d7c7-db4b-58fc-b555-4e1f46f59638",
+      "input": {
+        "attendees": [
+          {
+            "email": "guest@example.com",
+            "isOptional": true
+          }
+        ],
+        "calendarId": "primary",
+        "description": "Updated notes",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "eventId": "event12345",
+        "sendUpdates": "all",
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "summary": "Updated planning"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "updateEvent-lost-patch-retry",
+      "operation": "updateEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"authError\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "calendarId": "",
+          "end": {},
+          "id": "",
+          "isAllDay": false,
+          "start": {},
+          "status": "",
+          "transparency": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-unauthorized",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"rateLimitExceeded\"}]}}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events/event12345",
+          "query": {
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "eventId": "event12345",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "getEvent-rate-limit-403",
+      "operation": "getEvent"
+    },
+    {
+      "callId": "12345678-1234-1234-1234-123456789abc",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"errors\":[{\"reason\":\"dailyLimitExceeded\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/calendars/primary/events",
+          "query": {
+            "maxResults": [
+              "25"
+            ],
+            "orderBy": [
+              "startTime"
+            ],
+            "pageToken": [
+              "next-page"
+            ],
+            "q": [
+              "Planning"
+            ],
+            "showDeleted": [
+              "false"
+            ],
+            "singleEvents": [
+              "true"
+            ],
+            "timeMax": [
+              "2026-02-25T00:00:00Z"
+            ],
+            "timeMin": [
+              "2026-02-24T00:00:00Z"
+            ],
+            "timeZone": [
+              "America/Los_Angeles"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer calendar-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "calendarId": "",
+          "events": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "calendarId": "primary",
+        "pageSize": 25,
+        "pageToken": "next-page",
+        "query": "Planning",
+        "timeMax": "2026-02-25T00:00:00Z",
+        "timeMin": "2026-02-24T00:00:00Z",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "listEvents-daily-quota",
+      "operation": "listEvents"
+    }
+  ],
+  "schemaVersion": 1
+}

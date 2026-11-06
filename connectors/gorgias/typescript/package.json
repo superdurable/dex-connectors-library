@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-gorgias",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Gorgias ticket and customer operations for Dex",
   "license": "MIT",
   "repository": {

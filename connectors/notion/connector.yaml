@@ -12,6 +12,11 @@ spec:
     go:
       package: notion
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-notion'
+      operations: [search, queryDatabase, getPage, createPage, updatePageProperties]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-notion
