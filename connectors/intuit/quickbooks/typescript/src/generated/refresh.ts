@@ -75,7 +75,8 @@ export const Authorization = {
         "invalid_client",
         "unauthorized_client",
         "unsupported_grant_type"
-      ]
+      ],
+      "tokenExchangeTimeout": "8s"
     },
     "scopes": [
       "com.intuit.quickbooks.accounting",

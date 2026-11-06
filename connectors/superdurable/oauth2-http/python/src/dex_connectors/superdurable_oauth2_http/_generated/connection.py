@@ -147,10 +147,12 @@ def new_project_connection(
     if matching[0].provider != CONNECTOR_ID:
         raise ValueError("OAuth 2.0 HTTP project connection provider differs")
     config = _decode_config(matching[0].configuration)
+    refresh_settings = dict(matching[0].configuration)
+    refresh_settings['requestTimeout'] = matching[0].configuration.get('requestTimeout') or 12000000000
     if http_client is not None:
         raise ValueError("OAuth 2.0 HTTP private token endpoint does not accept a custom HTTP client")
-    http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")
-    client = Client(config, _ProjectCredentialSource(project, key, http_client, matching[0].configuration), http_client)
+    http_client = new_provider_http_client(config.request_timeout_seconds, address_policy="privateNetworkHTTP")
+    client = Client(config, _ProjectCredentialSource(project, key, http_client, refresh_settings), http_client)
     return new_connection(client, reference)
 
 setattr(new_project_connection, '__module__', 'dex_connectors.superdurable_oauth2_http.connection')
@@ -202,5 +204,5 @@ def _decode_config(value: dict[str, Any]) -> Config:
         request_timeout = value["requestTimeout"]
         if not (type(request_timeout) is int):
             raise ValueError("OAuth 2.0 HTTP configuration requestTimeout has an invalid type")
-        config_arguments['request_timeout_seconds'] = request_timeout / 1_000_000_000
+        config_arguments['request_timeout_seconds'] = (request_timeout / 1_000_000_000 if request_timeout != 0 else 12000000000 / 1_000_000_000)
     return Config(**config_arguments)

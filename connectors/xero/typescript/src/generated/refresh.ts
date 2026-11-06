@@ -32,7 +32,8 @@ export const Authorization = {
           "invalid_scope"
         ],
         "tokenEndpoint": "https://identity.xero.com/connect/token",
-        "tokenEndpointAuthMethod": "client_secret_basic"
+        "tokenEndpointAuthMethod": "client_secret_basic",
+        "tokenExchangeTimeout": "8s"
       },
       "fields": [
         {
@@ -101,7 +102,8 @@ export const Authorization = {
             "unauthorized_client",
             "unsupported_grant_type",
             "invalid_scope"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "offline_access",

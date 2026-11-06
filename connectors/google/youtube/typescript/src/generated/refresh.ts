@@ -59,7 +59,8 @@ export const Authorization = {
             "invalid_grant",
             "invalid_client",
             "unauthorized_client"
-          ]
+          ],
+          "tokenExchangeTimeout": "25s"
         },
         "scopes": [
           "https://www.googleapis.com/auth/youtube.readonly"
@@ -113,7 +114,8 @@ export const Authorization = {
             "invalid_grant",
             "invalid_client",
             "unauthorized_client"
-          ]
+          ],
+          "tokenExchangeTimeout": "25s"
         },
         "scopes": [
           "https://www.googleapis.com/auth/youtube"
