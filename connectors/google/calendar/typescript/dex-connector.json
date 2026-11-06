@@ -1,0 +1,201 @@
+{
+  "connectorId": "google-calendar",
+  "releaseTag": "connectors/google/calendar/go/v0.24.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-google-calendar",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListEventsStep",
+      "kind": "query",
+      "operationId": "listEvents",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newGetEventStep",
+      "kind": "query",
+      "operationId": "getEvent",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newCreateEventStep",
+      "kind": "mutation",
+      "operationId": "createEvent",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "conflict",
+          "field": "conflict",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newUpdateEventStep",
+      "kind": "mutation",
+      "operationId": "updateEvent",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "updated",
+          "field": "updated",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newQueryFreeBusyStep",
+      "kind": "query",
+      "operationId": "queryFreeBusy",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "queried",
+          "field": "queried",
+          "optional": false
+        },
+        {
+          "id": "incomplete",
+          "field": "incomplete",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

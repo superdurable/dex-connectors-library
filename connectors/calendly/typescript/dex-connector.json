@@ -1,0 +1,229 @@
+{
+  "connectorId": "calendly",
+  "releaseTag": "connectors/calendly/go/v0.24.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-calendly",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListScheduledEventsStep",
+      "kind": "query",
+      "operationId": "listScheduledEvents",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newGetScheduledEventStep",
+      "kind": "query",
+      "operationId": "getScheduledEvent",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newListEventInviteesStep",
+      "kind": "query",
+      "operationId": "listEventInvitees",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newCancelScheduledEventStep",
+      "kind": "mutation",
+      "operationId": "cancelScheduledEvent",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "canceled",
+          "field": "canceled",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newCreateSchedulingLinkStep",
+      "kind": "mutation",
+      "operationId": "createSchedulingLink",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "name": "newCreateWebhookSubscriptionStep",
+      "kind": "mutation",
+      "operationId": "createWebhookSubscription",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "subscribed",
+          "field": "subscribed",
+          "optional": false
+        },
+        {
+          "id": "conflictingSubscription",
+          "field": "conflictingSubscription",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
