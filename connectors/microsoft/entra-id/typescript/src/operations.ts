@@ -18,14 +18,25 @@ function hasControl(value: string): boolean { return Array.from(value).some(char
 
 /** Provider-safe failed attempt classification. */
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { kind, provider: 'microsoft-entra-id', operation, message }; }
+function goTrimSpace(value: string): string {
+  const isSpace = (character: string): boolean => {
+    const code = character.codePointAt(0)!;
+    return code >= 9 && code <= 13 || code === 32 || code === 133 || code === 160 || code === 5760 ||
+      code >= 8192 && code <= 8202 || code === 8232 || code === 8233 || code === 8239 || code === 8287 || code === 12288;
+  };
+  let start = 0, end = value.length;
+  while (start < end && isSpace(value[start]!)) start++;
+  while (end > start && isSpace(value[end - 1]!)) end--;
+  return value.slice(start, end);
+}
 function checkUserKey(value: string): string {
-  const key = value.trim();
+  const key = goTrimSpace(value);
   if (guid.test(key)) return key.toLowerCase();
   if (Buffer.byteLength(key) <= 256 && lookupUPN.test(key) && key.split('@').length === 2) return key;
   throw new TypeError('userKey must be an object ID or one user principal name such as ada@contoso.com');
 }
 function checkObjectID(field: string, value: string): string {
-  const id = value.trim();
+  const id = goTrimSpace(value);
   if (!guid.test(id)) throw new TypeError(`${field} must be an object ID, a GUID such as 00000000-0000-0000-0000-000000000000`);
   return id.toLowerCase();
 }
@@ -103,9 +114,9 @@ function validateNextPageURL(value: string): string {
   return value;
 }
 function listRequest(input: ListUsersInput, pageSizeDefault: number): GraphRequest {
-  const filter = input.filter?.trim() ?? '';
-  const search = input.search?.trim() ?? '';
-  const pageToken = input.pageToken?.trim() ?? '';
+  const filter = goTrimSpace(input.filter ?? '');
+  const search = goTrimSpace(input.search ?? '');
+  const pageToken = goTrimSpace(input.pageToken ?? '');
   if (pageToken) {
     if (filter || search || (input.pageSize ?? 0) !== 0) throw new TypeError('leave filter, search, and pageSize blank with pageToken, which carries the original query');
     const nextPageURL = validateNextPageURL(pageToken);
@@ -197,36 +208,39 @@ export class RevokeSignInSessionsOperation {
     if (exchange.outcome !== 'succeeded') return failedMutation(this.client, call, exchange, zero);
     const output = { userKey: key };
     const receipt = this.client.receipt(call, exchange.response, guid.test(key) ? key : '');
-    if (!Buffer.from(exchange.response!.body).toString().trim()) return newMutationBranch(RevokeSignInSessionsBranch.Revoked, output, receipt);
+    if (!goTrimSpace(Buffer.from(exchange.response!.body).toString())) return newMutationBranch(RevokeSignInSessionsBranch.Revoked, output, receipt);
     try {
-      const response = parseObject(exchange.response!.body);
-      if (response.value != null && typeof response.value !== 'boolean') throw new TypeError('invalid value');
-      if (response.value === false) return newMutationBranch(RevokeSignInSessionsBranch.ProviderRejected, output, receipt, failure('revokeSignInSessions', 'PROVIDER_REJECTION', 'Microsoft Graph reported that it did not revoke the sessions'));
+      const response = JSON.parse(Buffer.from(exchange.response!.body).toString()) as unknown;
+      if (response === null) return newMutationBranch(RevokeSignInSessionsBranch.Revoked, output, receipt);
+      if (!response || typeof response !== 'object' || Array.isArray(response)) throw new TypeError('invalid response');
+      const parsed = response as { value?: unknown };
+      if (parsed.value != null && typeof parsed.value !== 'boolean') throw new TypeError('invalid value');
+      if (parsed.value === false) return newMutationBranch(RevokeSignInSessionsBranch.ProviderRejected, output, receipt, failure('revokeSignInSessions', 'PROVIDER_REJECTION', 'Microsoft Graph reported that it did not revoke the sessions'));
     } catch { return newMutationBranch(RevokeSignInSessionsBranch.InvalidResponse, output, receipt, failure('revokeSignInSessions', 'PROTOCOL', 'provider returned an invalid revocation response')); }
     return newMutationBranch(RevokeSignInSessionsBranch.Revoked, output, receipt);
   }
 }
 
 function textField(name: string, value: string | undefined, limit: number): string {
-  const trimmed = value?.trim() ?? '';
+  const trimmed = goTrimSpace(value ?? '');
   if (Array.from(trimmed).length > limit) throw new TypeError(`${name} must be valid text of at most ${limit} characters`);
   if (/\p{Cc}/u.test(trimmed)) throw new TypeError(`${name} cannot contain control characters`);
   return trimmed;
 }
 function createPayload(input: CreateUserInput, attribute: string, key: string): Record<string, unknown> {
-  const upn = input.userPrincipalName.trim();
+  const upn = goTrimSpace(input.userPrincipalName);
   const [local, domain, extra] = upn.split('@');
   if (extra !== undefined || !local || !domain || Buffer.byteLength(upn) > 113 || Buffer.byteLength(local) > 64 || Buffer.byteLength(domain) > 48 || !/^[A-Za-z0-9'.\-_!#^~]+$/.test(local) || local.startsWith('.') || local.endsWith('.') || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(domain)) throw new TypeError("userPrincipalName must be alias@domain with at most 64 letters, digits, or ' . - _ ! # ^ ~ before the @ and a verified domain after it");
   if (!/^[A-Za-z0-9._:-]{1,128}$/.test(key)) throw new TypeError('provisioningKey must be 1 to 128 letters, digits, or . _ : - characters');
   const givenName = textField('givenName', input.givenName, 64);
   const surname = textField('surname', input.surname, 64);
-  const displayName = textField('displayName', input.displayName, 256) || `${givenName} ${surname}`.trim();
+  const displayName = textField('displayName', input.displayName, 256) || goTrimSpace(`${givenName} ${surname}`);
   if (!displayName) throw new TypeError('displayName, givenName, or surname is required');
   const jobTitle = textField('jobTitle', input.jobTitle, 128);
   const department = textField('department', input.department, 64);
-  const mailNickname = input.mailNickname?.trim() || local;
+  const mailNickname = goTrimSpace(input.mailNickname ?? '') || local;
   if (mailNickname.length > 64 || !/^[A-Za-z0-9!#$%&'*+\-/=?^_`{|}~.]+$/.test(mailNickname)) throw new TypeError('mailNickname must be at most 64 letters, digits, or alias punctuation without spaces or @');
-  const usageLocation = input.usageLocation?.trim() ?? '';
+  const usageLocation = goTrimSpace(input.usageLocation ?? '');
   if (usageLocation && !/^[A-Z]{2}$/.test(usageLocation)) throw new TypeError('usageLocation must be a two-letter uppercase ISO 3166 country code such as US');
   return { accountEnabled: true, displayName, ...(givenName ? { givenName } : {}), ...(surname ? { surname } : {}), mailNickname, userPrincipalName: upn, ...(jobTitle ? { jobTitle } : {}), ...(department ? { department } : {}), ...(usageLocation ? { usageLocation } : {}), passwordProfile: { forceChangePasswordNextSignIn: true, password: '' }, onPremisesExtensionAttributes: { [attribute]: `dex-creation-key:${key}` } };
 }
@@ -245,7 +259,7 @@ function initialPassword(draw: (upper: number) => number): string {
 export class CreateUserOperation {
   constructor(private readonly client: EntraClient) {}
   definition() { return CreateUserDefinition; }
-  idempotencyKey(callId: string, input: CreateUserInput): string { return input.provisioningKey?.trim() || callId; }
+  idempotencyKey(callId: string, input: CreateUserInput): string { return goTrimSpace(input.provisioningKey ?? '') || callId; }
   async invoke(call: Call, input: CreateUserInput): Promise<MutationAttempt<CreateUserOutput>> {
     const operation = 'createUser';
     const key = call.idempotencyKey ?? this.idempotencyKey(call.id, input);

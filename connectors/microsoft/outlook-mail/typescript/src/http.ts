@@ -87,7 +87,7 @@ export class GraphSession {
     if (result.status !== 401 || this.#refreshedAfterRejection || !('resolveAfterRejection' in this.#source)) return result;
     this.#refreshedAfterRejection = true;
     try { const replacement = await resolveCredentialAfterRejection(this.#source, this.#call, this.#refreshDriver, this.#call.context.cancellationSignal);
-      if (!replacement.accessToken?.reveal() || replacement.authMethodId !== this.#credentials.authMethodId) return result;
+      if (!isHeaderSafeCredential(replacement.accessToken?.reveal() ?? '') || !['microsoft-oauth', 'app-only'].includes(replacement.authMethodId ?? '') || replacement.authMethodId !== this.#credentials.authMethodId) return result;
       this.#credentials = replacement; result = await this.#send(request);
     } catch { /* The original 401 is the conclusive answer. */ }
     return result;

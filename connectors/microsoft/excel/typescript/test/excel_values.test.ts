@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { expect, it } from 'vitest';
-import { decodeColumns, decodeRange, wireCell } from '../src/excel_values.js';
+import { decodeColumns, decodeRange, parseA1Range, wireCell } from '../src/excel_values.js';
 
 const bytes = (value: string): Uint8Array => new TextEncoder().encode(value);
 
@@ -19,4 +19,23 @@ it('refuses absent and nonfinite literal cells', () => {
   expect(() => wireCell(Number.NaN)).toThrow();
   expect(() => wireCell(Number.POSITIVE_INFINITY)).toThrow();
   expect(wireCell('=SUM(A1:A3)')).toBe("'=SUM(A1:A3)");
+});
+
+it.each(['1e16', '6.02e23'])('accepts Go float64 cell %s', literal => {
+  expect(decodeRange(bytes(`{"rowCount":1,"columnCount":1,"values":[[${literal}]]}`), false).values[0]![0])
+    .toBe(Number(literal));
+});
+
+it.each(['aß1', 'ﬀ1'])('rejects non-ASCII A1 case folding %s', address => {
+  expect(() => parseA1Range(address)).toThrow();
+});
+
+it('matches Go TrimSpace around A1 addresses', () => {
+  expect(parseA1Range('A1\u0085').address).toBe('A1');
+  expect(() => parseA1Range('\uFEFFA1')).toThrow();
+});
+
+it('does not call an array cell Graph field 0 when a number overflows', () => {
+  expect(() => decodeRange(bytes('{"rowCount":1,"columnCount":1,"values":[[1e999]]}'), false))
+    .toThrow(/Graph number is not finite/);
 });

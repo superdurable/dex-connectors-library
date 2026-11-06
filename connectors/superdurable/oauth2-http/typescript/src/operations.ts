@@ -24,28 +24,30 @@ export class SendRequestOperation implements Mutation<SendRequestInput, SendRequ
     let plan: RequestPlan;
     try { plan = planRequest(this.client, input); }
     catch (error) { return newMutationBranch('defect', zeroOutput, {}, failure('VALIDATION', error instanceof Error ? error.message : 'sendRequest input is invalid')); }
+    const deadline = Date.now() + 25_000;
+    const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(25_000)]);
     let token: string;
     try {
-      const credentials = await this.client.resolveCredentials(call);
+      const credentials = await this.client.resolveCredentials(call, signal);
       token = credentials.accessToken.reveal();
       if (!token || !credentials.oauthClientId || !credentials.oauthClientSecret.reveal()) return newMutationBranch('defect', zeroOutput, {}, failure('AUTHENTICATION', "the connection's credentials are unavailable or unusable"));
     } catch (error) {
       if (error instanceof AddressRefusal) return newMutationBranch('defect', zeroOutput, {}, failure('VALIDATION', `the connection's tokenEndpoint resolves to an address the connector will not connect to: ${error.reason}`));
       if (error instanceof ReauthorizationRequiredError) return newMutationBranch('rejected', zeroOutput, {}, failure('AUTHENTICATION', 'the OAuth authorization must be renewed in Dex Web Connections'));
-      if (error instanceof RefreshFailedError || error instanceof ProviderTransportError || error instanceof Error && /token endpoint is unavailable|token response could not be read|refresh/i.test(error.message)) return newMutationRetry(failure('AVAILABILITY', 'the OAuth access token could not be refreshed now'));
+      if (error instanceof RefreshFailedError || error instanceof ProviderTransportError || error instanceof Error && /token endpoint is unavailable|token response could not be read/i.test(error.message)) return newMutationRetry(failure('AVAILABILITY', 'the OAuth access token could not be refreshed now'));
       return newMutationBranch('defect', zeroOutput, {}, failure('AUTHENTICATION', "the connection's credentials are unavailable or unusable"));
     }
     let answer: APIResponse;
     let tokens = [token];
-    try { answer = await this.client.exchange(call, plan, token); }
+    try { answer = await this.client.exchange(call, plan, token, signal, deadline); }
     catch (error) { return dispatchFailure(error, plan, call, this.client.now()); }
     if (answer.status === 401 && !answer.readError) {
       try {
-        const replacement = await this.client.resolveAfterRejection(call);
+        const replacement = await this.client.resolveAfterRejection(call, signal);
         const replacementToken = replacement.accessToken.reveal();
         if (replacementToken && replacementToken !== token) {
           tokens = [token, replacementToken];
-          try { answer = await this.client.exchange(call, plan, replacementToken); }
+          try { answer = await this.client.exchange(call, plan, replacementToken, signal, deadline); }
           catch (error) { return dispatchFailure(error, plan, call, this.client.now()); }
         }
       } catch { /* The original 401 remains the authoritative API response. */ }

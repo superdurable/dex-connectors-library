@@ -50,6 +50,10 @@ export function queryEncode(values: Record<string, string>): string {
 export function safeToken(value: unknown): string {
   return typeof value === 'string' && Buffer.byteLength(value) > 0 && Buffer.byteLength(value) <= 128 && /^[!-~]+$/.test(value) ? value : '';
 }
+function boundedToken(value: unknown): string {
+  const token = safeToken(value);
+  return Buffer.byteLength(token) <= 64 ? token : '';
+}
 /** Keep a valid HTTPS Teams link without reflecting provider controls. */
 export function safeWebURL(value: unknown): string {
   if (typeof value !== 'string' || Buffer.byteLength(value) > 2048 || !value.startsWith('https://') || !/^[!-~]+$/.test(value)) return '';
@@ -65,7 +69,7 @@ export function parseGraphTime(value: unknown, field: string): string {
   const year = Number(yearText), month = Number(monthText), day = Number(dayText);
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (!year || month < 1 || month > 12 || day < 1 || day > days[month - 1]! || Number(hourText) > 23 || Number(minuteText) > 59 || Number(secondText) > 59 || Number(zoneHourText ?? 0) > 24 || Number(zoneMinuteText ?? 0) > 60) throw new TypeError(`${field} is invalid`);
+  if (month < 1 || month > 12 || day < 1 || day > days[month - 1]! || Number(hourText) > 23 || Number(minuteText) > 59 || Number(secondText) > 59 || Number(zoneHourText ?? 0) > 24 || Number(zoneMinuteText ?? 0) > 60) throw new TypeError(`${field} is invalid`);
   const offset = zone === 'Z' ? 0 : (Number(zoneHourText) * 60 + Number(zoneMinuteText)) * (sign === '-' ? -1 : 1);
   const localDate = new Date(0);
   localDate.setUTCFullYear(year, month - 1, day);
@@ -138,23 +142,23 @@ export function decodeMessage(value: unknown, maximumCharacters = 0): Message {
   const sender: MessageSender = {};
   if (identity === user) sender.userId = safeToken(identity?.id);
   else if (identity) sender.applicationId = safeToken(identity.id);
-  if (identity && typeof identity.displayName === 'string') sender.displayName = [...identity.displayName].filter(char => !/[\p{Cc}\p{Cf}\uFFFD]/u.test(char)).slice(0, 256).join('');
+  if (identity && typeof identity.displayName === 'string') sender.displayName = [...identity.displayName].filter(char => !/[\p{Cc}\uFFFD]/u.test(char)).slice(0, 256).join('');
   const deleted = resource.deletedDateTime !== null && resource.deletedDateTime !== undefined;
   const body = resource.body && typeof resource.body === 'object' ? resource.body as Record<string, unknown> : undefined;
-  const contentType = safeToken(body?.contentType);
+  const contentType = boundedToken(body?.contentType);
   const text = body && !deleted ? extractMessageText(contentType, typeof body.content === 'string' ? body.content : '') : '';
   const codepoints = [...text];
   const output: Message = {
-    id: resource.id, messageType: safeToken(resource.messageType).slice(0, 64), createdAt, sender,
+    id: resource.id, messageType: boundedToken(resource.messageType), createdAt, sender,
     text: maximumCharacters > 0 && codepoints.length > maximumCharacters ? codepoints.slice(0, maximumCharacters).join('') : text,
   };
   if (typeof resource.replyToId === 'string' && messageID.test(resource.replyToId)) output.replyToId = resource.replyToId;
   if (lastEditedAt) output.lastEditedAt = lastEditedAt;
   if (deleted) output.isDeleted = true;
-  if (typeof resource.subject === 'string') output.subject = [...resource.subject].filter(char => !/[\p{Cc}\p{Cf}\uFFFD]/u.test(char)).slice(0, 1024).join('');
-  const importance = safeToken(resource.importance).slice(0, 64);
+  if (typeof resource.subject === 'string') output.subject = [...resource.subject].filter(char => !/[\p{Cc}\uFFFD]/u.test(char)).slice(0, 1024).join('');
+  const importance = boundedToken(resource.importance);
   if (importance) output.importance = importance;
-  if (body && !deleted && contentType) output.contentType = contentType.slice(0, 64);
+  if (body && !deleted && contentType) output.contentType = contentType;
   if (maximumCharacters > 0 && codepoints.length > maximumCharacters) output.isTextTruncated = true;
   const webURL = safeWebURL(resource.webUrl);
   if (webURL) output.webUrl = webURL;

@@ -91,3 +91,33 @@ describe('sendRequest provider semantics', () => {
     expect(planRequest(client, { path: '/items', query }).url).toBe(`http://127.0.0.1:45880/v1/items?${expected}`);
   });
 });
+
+describe('Go URL and operation budget regressions', () => {
+  it.each([
+    ['/a/./b', 'http://127.0.0.1:45880/v1/a/./b'],
+    ['/a/%2e/b', 'http://127.0.0.1:45880/v1/a/%2e/b'],
+    ['/a|b', 'http://127.0.0.1:45880/v1/a%7Cb'],
+  ])('preserves Go URL path form %s', (path, expected) => {
+    const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]));
+    expect(planRequest(client, { path }).url).toBe(expected);
+  });
+  it('adds query values to an absolute URL without dropping its existing query', () => {
+    const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]));
+    expect(planRequest(client, { url: 'http://127.0.0.1:45880/v1/items?existing=one', query: { added: ['two'] } }).url)
+      .toBe('http://127.0.0.1:45880/v1/items?added=two&existing=one');
+  });
+  it('does not treat an arbitrary refresh-word error as a retryable token failure', async () => {
+    const client = new OAuth2HTTPClient(config, { resolve: async () => { throw new Error('refresh policy is invalid'); }, resolveWithRefresh: async () => { throw new Error('refresh policy is invalid'); } });
+    const result = await client.sendRequest().invoke(call, { path: '/userinfo' });
+    expect(result).toMatchObject({ kind: 'branch', branch: 'defect' });
+  });
+  it('caps a request by the remaining total operation budget', async () => {
+    let timeout = 0;
+    const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]), {
+      send: async request => { timeout = request.timeoutMs ?? 0; return { status: 200, headers: {}, body: new Uint8Array() }; },
+    });
+    await client.exchange(call, planRequest(client, { path: '/userinfo' }), firstCredentials.accessToken.reveal(),
+      call.context.cancellationSignal, Date.now() + 5);
+    expect(timeout).toBeLessThanOrEqual(5);
+  });
+});

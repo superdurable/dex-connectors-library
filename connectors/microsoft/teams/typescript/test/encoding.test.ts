@@ -27,3 +27,16 @@ it('keeps Go RFC3339Nano precision and rejects hour 24 clock values', () => {
   expect(parseGraphTime('0001-01-01T00:00:00Z', 'createdDateTime')).toBe('0001-01-01T00:00:00Z');
   expect(() => parseGraphTime('2026-10-01T24:00:00Z', 'createdDateTime')).toThrow();
 });
+
+it('keeps Go year zero and provider token limits', async () => {
+  const { decodeMessage } = await import('../src/message.js');
+  expect(parseGraphTime('0000-01-01T00:00:00Z', 'createdDateTime')).toBe('0000-01-01T00:00:00Z');
+  const message = decodeMessage({ id: '1', createdDateTime: '2026-01-01T00:00:00Z',
+    messageType: 'x'.repeat(65), importance: 'x'.repeat(65),
+    from: { user: { id: 'sender', displayName: 'A\u200dB\u0085C' } },
+    body: { contentType: 'x'.repeat(65), content: 'text' } });
+  expect(message.messageType).toBe('');
+  expect(message.importance).toBeUndefined();
+  expect(message.contentType).toBeUndefined();
+  expect(message.sender.displayName).toBe('A\u200dBC');
+});

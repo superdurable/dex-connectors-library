@@ -31,16 +31,27 @@ export function validateWorksheet(worksheet: string): void {
 }
 /** Validate a table or column name. */
 export function validateTableText(value: string, field: 'table' | 'column'): void {
-  if (![...value].length || [...value].length > 255 || !value.trim() || value.includes('/') || /\p{Cc}/u.test(value))
+  if (![...value].length || [...value].length > 255 || !trimGoSpace(value) || value.includes('/') || /\p{Cc}/u.test(value))
     throw new TypeError(field === 'table' ? 'table must be a table ID or name of 1 to 255 characters without slashes or control characters' : 'a column name must be 1 to 255 characters without slashes or control characters');
 }
 /** Validate one workbook table location. */
 export function validateTableLocation(input: GetTableRowsInput | AppendTableRowsInput): void {
   validateWorkbook(input.driveId, input.workbookId); validateTableText(input.table, 'table');
 }
+function trimGoSpace(value: string): string {
+  const isSpace = (character: string): boolean => {
+    const code = character.codePointAt(0)!;
+    return code >= 9 && code <= 13 || code === 32 || code === 133 || code === 160 || code === 5760 ||
+      code >= 8192 && code <= 8202 || code === 8232 || code === 8233 || code === 8239 || code === 8287 || code === 12288;
+  };
+  let start = 0, end = value.length;
+  while (start < end && isSpace(value[start]!)) start++;
+  while (end > start && isSpace(value[end - 1]!)) end--;
+  return value.slice(start, end);
+}
 /** Parse a bounded A1 cell or rectangle. */
 export function parseA1Range(value: string): A1Range {
-  const address = value.trim().toUpperCase();
+  const address = trimGoSpace(value).replace(/[a-z]/g, character => character.toUpperCase());
   const parts = address.split(':');
   if (parts.length > 2) throw new TypeError('address must be one cell or range in A1 form, such as A1 or A2:C10, without a worksheet name, $, or whole columns or rows');
   const first = parseCell(parts[0] ?? ''); const last = parseCell(parts[1] ?? parts[0] ?? '');

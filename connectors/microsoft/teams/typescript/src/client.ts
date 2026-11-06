@@ -106,7 +106,7 @@ export class TeamsClient {
       try {
         const response: ProviderResponse = await this.transport.send({
           url: target, method, headers, maxResponseBytes: this.maxResponseBytes,
-          maxErrorResponseBytes: MaxErrorBodyBytes,
+          maxErrorResponseBytes: MaxErrorBodyBytes, ignoreErrorBodyReadFailure: true,
           addressPolicy: 'unrestricted', timeoutMs: remaining,
           ...(options.payload !== undefined ? { body: options.payload } : {}),
           signal,
@@ -132,12 +132,14 @@ export class TeamsClient {
           status: error.status ?? observedStatus, headers: error.headers ?? observedHeaders, body: new Uint8Array(),
           bodyTooLarge: true, dispatched: true,
         }, credentials };
+        if (observedStatus && (observedStatus < 200 || observedStatus >= 300)) return {
+          exchange: { status: observedStatus, headers: observedHeaders, body: new Uint8Array(), dispatched: true }, credentials,
+        };
         const isReadFailure = observedStatus >= 200 && observedStatus < 300;
         const isNotSent = error instanceof ProviderTransportError && error.isProvablyNotSent;
         return { exchange: {
           status: observedStatus, headers: observedHeaders, body: new Uint8Array(),
-          ...(isReadFailure ? { bodyReadFailed: true } : {}),
-          ...(isReadFailure ? {} : { error: new ProviderTransportError(isNotSent) }),
+          ...(isReadFailure ? { bodyReadFailed: true } : { error: new ProviderTransportError(isNotSent) }),
           dispatched: isReadFailure || !isNotSent,
         }, credentials };
       }

@@ -15,3 +15,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:40660 npm run test:integration
 Create the Microsoft work or school OAuth connection in Dex Web using the [connector authorization guide](../README.md). The `maxResponseBytes` and `maxCells` settings use their manifest defaults when blank. The TypeScript package does not add a visible configuration field or change Connector Studio, React primitives, or the directory UI.
 
 Live Microsoft authorization and workbook requests have not been verified for this TypeScript port. A separate Connector SDK 0.8.0 follow-up will add the manifest-controlled eight second token exchange deadline used by Go; until then refresh uses the caller's cancellation deadline.
+
+A1 addresses use ASCII case conversion and Go's whitespace rules. Numeric Graph cell values are accepted as JavaScript doubles, including finite values above `2^53`; row and column counts still require integer JSON literals.

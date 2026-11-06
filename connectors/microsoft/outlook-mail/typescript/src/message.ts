@@ -2,16 +2,24 @@
 // SPDX-License-Identifier: MIT
 
 import type { Attachment, EmailAddress, Message, MessageSummary } from './generated/models.js';
+import { Parser } from 'htmlparser2';
 export const summaryProperties = ['id','conversationId','internetMessageId','parentFolderId','subject','from','sender','replyTo','toRecipients','ccRecipients','receivedDateTime','sentDateTime','isRead','isDraft','flag','categories','importance','hasAttachments','bodyPreview'];
 const wellKnownFolders = new Set(['archive','clutter','conflicts','conversationhistory','deleteditems','drafts','inbox','junkemail','localfailures','msgfolderroot','outbox','recoverableitemsdeletions','scheduled','searchfolders','sentitems','serverfailures','syncissues']);
 const zeroTime = '0001-01-01T00:00:00Z';
 export interface GraphMessageWire { id: string; conversationId?: string; internetMessageId?: string; parentFolderId?: string; subject?: string; from?: GraphRecipient; sender?: GraphRecipient; replyTo?: GraphRecipient[]; toRecipients?: GraphRecipient[]; ccRecipients?: GraphRecipient[]; bccRecipients?: GraphRecipient[]; receivedDateTime?: string; sentDateTime?: string; createdDateTime?: string; isRead?: boolean; isDraft?: boolean; flag?: {flagStatus?: string}; categories?: string[]; importance?: string; hasAttachments?: boolean; bodyPreview?: string; webLink?: string; body?: {contentType?: string; content?: string} }
 interface GraphRecipient { emailAddress?: { name?: string; address?: string } }
 function object(value: unknown): Record<string,unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('response is not a message object'); return value as Record<string,unknown>; }
-export function parseJSON(body: Uint8Array): unknown { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; }
+export function parseJSON(body: Uint8Array): unknown {
+  const parse = JSON.parse as (text: string, reviver: (key: string, value: unknown, context?: { source?: string }) => unknown) => unknown;
+  return parse(Buffer.from(body).toString('utf8'), (key, value, context) => {
+    if (key === 'size' && typeof value === 'number' && context?.source && !/^-?(?:0|[1-9][0-9]*)$/.test(context.source))
+      throw new TypeError('attachment size must be an integer JSON literal');
+    return value;
+  });
+}
 export function validateGraphID(value: string, field = 'messageId'): void { if (!value || Buffer.byteLength(value) > 1024 || !/^[A-Za-z0-9=+_-]+$/.test(value)) throw new TypeError(`${field} must be a Microsoft Graph ID from an earlier Result, such as the id of searchMessages`); }
 export function resolveFolder(folder: string, fallback = '', field = 'folder'): string { const value = folder.trim() || fallback; if (!value) throw new TypeError(`${field} is required: a folder ID from the mail folder picker or a well-known name such as archive`); if (wellKnownFolders.has(value.toLowerCase())) return value.toLowerCase(); try { validateGraphID(value, field); } catch { throw new TypeError(`${field} must be a folder ID from the mail folder picker or a well-known name such as inbox, archive, or deleteditems`); } return value; }
-export function validateAddress(value: string, field: string): void { if (!/^[^\s<>@,;]+@[^\s<>@,;]+$/.test(value)) throw new TypeError(`${field} must contain bare addresses such as jane@acme.example.com`); }
+export function validateAddress(value: string, field: string): void { if (!/^[^\s<>@,;()]+@[^\s<>@,;()]+$/.test(value) || value.includes('..')) throw new TypeError(`${field} must contain bare addresses such as jane@acme.example.com`); }
 export function validateSingleLine(value: string, field: string, maximum: number): void { if ([...value].length > maximum) throw new TypeError(`${field} can be at most ${maximum} characters`); if ([...value].some(character => { const code=character.codePointAt(0)!; return code < 32 || code === 127; })) throw new TypeError(`${field} must be one line without control characters`); }
 export function parseGraphMessage(value: unknown): GraphMessageWire {
   const record = object(value);
@@ -80,6 +88,33 @@ export function summarizeMessage(message: GraphMessageWire): MessageSummary { re
 }; }
 export function recipientAddresses(message: GraphMessageWire): string[] { return [...message.toRecipients ?? [],...message.ccRecipients ?? [],...message.bccRecipients ?? []].map(value => value?.emailAddress?.address ?? '').filter(Boolean); }
 export function buildGraphRecipients(addresses: string[]): GraphRecipient[] { return addresses.map(address => ({emailAddress:{address,name:''}})); }
-export function decodeFullMessage(message: GraphMessageWire): Message { const summary = summarizeMessage(message); const body = message.body?.content ?? ''; const isHTML = message.body?.contentType?.toLowerCase() === 'html'; const text = isHTML ? body.replace(/<(script|style|head)\b[^>]*>[\s\S]*?<\/\1>/gi,'').replace(/<(?:br|p|div|li|tr|h[1-4]|blockquote)\b[^>]*>/gi,'\n').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim() : body;
-  const bytes = Buffer.from(text); let cut = Math.min(bytes.length,65536); while(cut > 0 && cut < bytes.length && (bytes[cut]! & 0xc0) === 0x80) cut--; return {...summary, ...(toAddresses(message.bccRecipients).length ? {bcc:toAddresses(message.bccRecipients)}:{}), text:bytes.subarray(0,cut).toString('utf8'), ...(cut<bytes.length ? {isTextTruncated:true}:{}), textSource:isHTML?'html':'text', ...(message.webLink ? {webLink:message.webLink}:{})}; }
-export function decodeAttachments(value: unknown): {attachments: Attachment[]; truncated: boolean} { const envelope=object(value); if(!Array.isArray(envelope.value)) throw new TypeError('response has no value list'); const attachments: Attachment[]=[]; for(const item of envelope.value){ if(attachments.length===50) return {attachments,truncated:true}; const record=object(item); if(typeof record.id!=='string'||!record.id||typeof record.size!=='number'||!Number.isSafeInteger(record.size)||record.size<0) throw new TypeError('an attachment has no id or a negative size'); const kind=record['@odata.type']==='#microsoft.graph.itemAttachment'?'item':record['@odata.type']==='#microsoft.graph.referenceAttachment'?'reference':'file'; attachments.push({id:record.id,name:typeof record.name==='string'?record.name:'',...(typeof record.contentType==='string'&&record.contentType?{contentType:record.contentType}:{}),sizeBytes:record.size,...(record.isInline?{isInline:true}:{}),kind}); } return {attachments,truncated:typeof envelope['@odata.nextLink']==='string'&&!!envelope['@odata.nextLink']}; }
+function extractHTMLText(document: string): string {
+  const text: string[] = [];
+  let skippedDepth = 0;
+  const parser = new Parser({
+    onopentag(name) {
+      if (['script', 'style', 'head'].includes(name)) skippedDepth++;
+      else if (['br', 'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'blockquote'].includes(name)) text.push('\n');
+    },
+    onclosetag(name) {
+      if (['script', 'style', 'head'].includes(name)) skippedDepth = Math.max(0, skippedDepth - 1);
+    },
+    ontext(value) { if (skippedDepth === 0) text.push(value); },
+  }, { decodeEntities: true });
+  parser.end(document);
+  return text.join('').trim();
+}
+/** Decode one full Graph message, including HTML text and bounded attachments. */
+export function decodeFullMessage(message: GraphMessageWire): Message {
+  const summary = summarizeMessage(message);
+  const body = message.body?.content ?? '';
+  const isHTML = message.body?.contentType?.toLowerCase() === 'html';
+  const text = isHTML ? extractHTMLText(body) : body;
+  const bytes = Buffer.from(text);
+  let cut = Math.min(bytes.length, 65536);
+  while (cut > 0 && cut < bytes.length && (bytes[cut]! & 0xc0) === 0x80) cut--;
+  return { ...summary, ...(toAddresses(message.bccRecipients).length ? { bcc: toAddresses(message.bccRecipients) } : {}),
+    text: bytes.subarray(0, cut).toString('utf8'), ...(cut < bytes.length ? { isTextTruncated: true } : {}),
+    textSource: isHTML ? 'html' : 'text', ...(message.webLink ? { webLink: message.webLink } : {}) };
+}
+export function decodeAttachments(value: unknown): {attachments: Attachment[]; truncated: boolean} { const envelope=object(value); if(!Array.isArray(envelope.value)) throw new TypeError('response has no value list'); const attachments: Attachment[]=[]; for(const item of envelope.value){ if(attachments.length===50) return {attachments,truncated:true}; const record=object(item); if(typeof record.id!=='string'||!record.id||record.size != null && (typeof record.size!=='number'||!Number.isInteger(record.size)||record.size<0)) throw new TypeError('an attachment has no id or a negative size'); const kind=record['@odata.type']==='#microsoft.graph.itemAttachment'?'item':record['@odata.type']==='#microsoft.graph.referenceAttachment'?'reference':'file'; attachments.push({id:record.id,name:typeof record.name==='string'?record.name:'',...(typeof record.contentType==='string'&&record.contentType?{contentType:record.contentType}:{}),sizeBytes:record.size as number ?? 0,...(record.isInline?{isInline:true}:{}),kind}); } return {attachments,truncated:typeof envelope['@odata.nextLink']==='string'&&!!envelope['@odata.nextLink']}; }

@@ -31,3 +31,22 @@ it('uses the refreshed token for every request after one 401', async () => {
   expect(tokens).toEqual(['Bearer old-token', 'Bearer new-token', 'Bearer new-token']);
   expect(refreshes).toBe(1);
 });
+
+it('classifies an oversized error body by its HTTP status', async () => {
+  const { BodyTooLargeError } = await import('@superdurable/connectors-sdk/providerhttp');
+  const { GraphClient } = await import('../src/graph.js');
+  const credentials: Credentials = { authMethodId: 'microsoft-oauth', accessToken: new SecretString('token'),
+    oauthClientId: 'client', oauthClientSecret: new SecretString('secret'), refreshToken: new SecretString('refresh') };
+  const source = { resolve: async () => credentials, resolveWithRefresh: async () => credentials };
+  const driver: CredentialRefreshDriver<Credentials> = { refreshRequired: () => false,
+    refresh: async () => { throw new Error('unused'); } };
+  const graph = new GraphClient({}, source, driver, async () => { throw new BodyTooLargeError(404, {}); });
+  const call = scenarioCall({ callId: 'excel-oversized-error', operation: 'getValues' } as Scenario,
+    { provider: 'microsoft', name: 'approvals' }, 'microsoft-excel', new HeartbeatContext(undefined));
+  const result = await graph.request(call as never, credentials, 'GET', '/missing');
+  expect(result.status).toBe(404);
+  expect(result.transportFailure).toBe(false);
+  expect(graph.readFailure(call as never, 'getValues', result, {
+    NotFound: 'notFound', ProviderRejected: 'providerRejected', InvalidResponse: 'invalidResponse',
+  })).toMatchObject({ branch: 'notFound' });
+});

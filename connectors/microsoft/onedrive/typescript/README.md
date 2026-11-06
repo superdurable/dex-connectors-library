@@ -5,3 +5,5 @@ This package implements `searchFiles`, `getFile`, `readFileText`, `uploadFile`, 
 The public configuration and authorization instructions are in the [connector README](../README.md). No bearer token, refresh token, client secret, or preauthenticated download URL belongs in Flow input or persisted output.
 
 Run `npm run check` for static checks and Go-recorded provider conformance. With `dexcli dev` running, set `DEX_FLOW_SERVICE_ADDRESS` and run `npm run test:integration` to exercise a real Worker, Client, and persistence boundary. Live Microsoft authorization has not been exercised.
+
+`readFileText` preserves a leading UTF-8 byte order mark in the returned text and byte count.

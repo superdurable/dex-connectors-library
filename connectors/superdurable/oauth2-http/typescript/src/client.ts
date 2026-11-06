@@ -45,7 +45,7 @@ export class OAuth2HTTPClient {
     if (!Array.isArray(config.scopes) || !config.scopes.length) throw new TypeError('OAuth 2.0 HTTP scopes are required');
     const apiBaseUrl = parseHTTPURL(config.apiBaseUrl);
     if (apiBaseUrl.search || config.apiBaseUrl.includes('?')) throw new TypeError('OAuth 2.0 HTTP apiBaseUrl cannot contain a query');
-    this.apiBaseUrl = apiBaseUrl.href.replace(/\/+$/, '');
+    this.apiBaseUrl = config.apiBaseUrl.replace(/\|/g, '%7C').replace(/\/+$/, '');
     this.maxBodyBytes = config.maxBodyBytes ?? 1_048_576;
     this.requestTimeoutMs = config.requestTimeoutMs ?? 12_000;
     if (!Number.isSafeInteger(this.maxBodyBytes) || this.maxBodyBytes < 1 || !Number.isSafeInteger(this.requestTimeoutMs) || this.requestTimeoutMs < 1_000) {
@@ -63,17 +63,17 @@ export class OAuth2HTTPClient {
   sendRequest(): SendRequestOperation { return new SendRequestOperation(this); }
 
   /** Resolve current OAuth material through manifest generated renewal. */
-  resolveCredentials(call: Call): Promise<Credentials> {
-    return resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+  resolveCredentials(call: Call, signal: AbortSignal = call.context.cancellationSignal): Promise<Credentials> {
+    return resolveCredential(this.credentials, call, this.refreshDriver, signal);
   }
 
   /** Renew once after HTTP 401 through the generated credential source. */
-  resolveAfterRejection(call: Call): Promise<Credentials> {
-    return resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+  resolveAfterRejection(call: Call, signal: AbortSignal = call.context.cancellationSignal): Promise<Credentials> {
+    return resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, signal);
   }
 
   /** Send one bearer request without following redirects. */
-  async exchange(call: Call, plan: RequestPlan, token: string): Promise<APIResponse> {
+  async exchange(call: Call, plan: RequestPlan, token: string, signal: AbortSignal = call.context.cancellationSignal, deadline = Date.now() + 25_000): Promise<APIResponse> {
     const headers: Record<string, string> = { ...plan.headers, Authorization: `Bearer ${token}` };
     if (!Object.keys(headers).some(key => key.toLowerCase() === 'user-agent')) headers['User-Agent'] = 'superdurable-dex-oauth2-http-connector/0.1';
     if (plan.idempotencyKeyHeader) headers[plan.idempotencyKeyHeader] = call.idempotencyKey ?? call.id;
@@ -82,8 +82,8 @@ export class OAuth2HTTPClient {
     let responseHeaders: ProviderResponse['headers'] | undefined;
     const request: ProviderRequest = {
       url: plan.url, method: plan.method, headers, ...(plan.body ? { body: Buffer.from(plan.body) } : {}),
-      maxResponseBytes: this.maxBodyBytes, addressPolicy: 'privateNetworkHTTP', timeoutMs: this.requestTimeoutMs,
-      signal: call.context.cancellationSignal,
+      maxResponseBytes: this.maxBodyBytes, addressPolicy: 'privateNetworkHTTP', timeoutMs: Math.max(1, Math.min(this.requestTimeoutMs, deadline - Date.now())),
+      signal,
       onResponseChunk: (chunk, status, headers) => {
         responseStatus = status;
         responseHeaders = headers;
@@ -121,6 +121,7 @@ export function planRequest(client: OAuth2HTTPClient, input: SendRequestInput): 
   if (!['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) throw new TypeError('sendRequest method must be GET, HEAD, OPTIONS, POST, PUT, PATCH, or DELETE');
   if (Boolean(input.path) === Boolean(input.url)) throw new TypeError('sendRequest needs exactly one of path and url');
   let url: URL;
+  let requestURL: string;
   if (input.path) {
     const path = input.path;
     if (!/^\/[\x21-\x7e]*$/.test(path) || path.startsWith('//')) throw new TypeError('sendRequest path must start with a single slash and be printable ASCII without spaces');
@@ -128,9 +129,11 @@ export function planRequest(client: OAuth2HTTPClient, input: SendRequestInput): 
     if (/%(?![\da-fA-F]{2})/.test(path)) throw new TypeError('sendRequest path has invalid percent-encoding');
     const decoded = path.replace(/%2e/gi, '.').replace(/%2f/gi, '/');
     if (decoded.split('/').includes('..')) throw new TypeError('sendRequest path cannot contain a .. segment');
-    url = parseHTTPURL(client.apiBaseUrl + path.replace(/\|/g, '%7C'));
+    requestURL = client.apiBaseUrl + path.replace(/\|/g, '%7C');
+    url = parseHTTPURL(requestURL);
   } else {
-    url = parseHTTPURL(input.url ?? '');
+    requestURL = (input.url ?? '').replace(/\|/g, '%7C');
+    url = parseHTTPURL(requestURL);
   }
   if (url.origin !== new URL(client.apiBaseUrl).origin) throw new TypeError("sendRequest url must have the scheme, host, and port of the connection's apiBaseUrl");
   if (input.query && Object.keys(input.query).length) {
@@ -139,7 +142,7 @@ export function planRequest(client: OAuth2HTTPClient, input: SendRequestInput): 
       if (!key) throw new TypeError('sendRequest query parameter names cannot be empty');
       for (const value of input.query[key] ?? []) query.append(key, value);
     }
-    url.search = encodeGoQuery(query);
+    requestURL = requestURL.split('?')[0] + '?' + encodeGoQuery(query);
   }
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(input.headers ?? {})) {
@@ -154,7 +157,7 @@ export function planRequest(client: OAuth2HTTPClient, input: SendRequestInput): 
   if (body && ['GET', 'HEAD'].includes(method)) throw new TypeError('sendRequest body is not allowed with GET or HEAD');
   if (Buffer.byteLength(body) > client.maxBodyBytes) throw new TypeError("sendRequest body exceeds the connection's maxBodyBytes");
   if (body && !Object.keys(headers).some(key => key.toLowerCase() === 'content-type' && headers[key])) headers['Content-Type'] = 'application/json';
-  return { method, url: url.href, headers, body, idempotencyKeyHeader: input.idempotencyKeyHeader ?? '', isSafe: ['GET', 'HEAD', 'OPTIONS'].includes(method) };
+  return { method, url: requestURL, headers, body, idempotencyKeyHeader: input.idempotencyKeyHeader ?? '', isSafe: ['GET', 'HEAD', 'OPTIONS'].includes(method) };
 }
 
 function parseHTTPURL(value: string): URL {

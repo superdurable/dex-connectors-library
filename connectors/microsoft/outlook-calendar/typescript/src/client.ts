@@ -627,7 +627,7 @@ function availability(
         reason = "unknownStatus";
       }
     } catch {
-      if (value.error !== undefined) continue;
+      if (value.error !== undefined && value.error !== null) continue;
       throw new TypeError(
         `schedule ${scheduleId} has an item without two ordered times`,
       );
@@ -642,7 +642,7 @@ function availability(
     }
   }
   let code = "";
-  if (value.error !== undefined) {
+  if (value.error !== undefined && value.error !== null) {
     known = false;
     reason = "error";
     if (value.error && typeof value.error === "object") {
@@ -995,7 +995,7 @@ function updateApplied(current: Event, input: UpdateEventInput): boolean {
       input.body.replace(/\r\n/g, "\n").trim()
   )
     return false;
-  if (input.location !== undefined && current.location !== input.location)
+  if (input.location !== undefined && (current.location ?? "") !== input.location)
     return false;
   if (
     input.start &&
@@ -1040,8 +1040,8 @@ function updatePayload(input: UpdateEventInput): Record<string, unknown> {
           isAllDay: input.isAllDay ?? false,
         }
       : {}),
-    ...(input.attendees !== undefined
-      ? { attendees: encodeAttendees(input.attendees ?? []) }
+    ...(input.attendees !== undefined && input.attendees !== null
+      ? { attendees: encodeAttendees(input.attendees) }
       : {}),
   };
 }
@@ -1074,7 +1074,7 @@ export class UpdateEventOperation
           input.start,
           input.end,
           input.attendees,
-        ].every((value) => value === undefined)
+        ].every((value) => value === undefined || value === null)
       )
         throw new TypeError(
           "set at least one of subject, body, location, start and end, or attendees",

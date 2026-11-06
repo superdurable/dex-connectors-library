@@ -167,12 +167,15 @@ export function validateNextLink(value: string): void {
       "pageToken must be the nextPageToken of a previous page, an https://graph.microsoft.com URL",
     );
   }
+  const raw = /^https:\/\/([^/?#]+)([^?#]*)/.exec(value);
+  let goPath = "";
+  try { goPath = decodeURIComponent(raw?.[2] ?? ""); } catch { /* Invalid percent encoding. */ }
   if (
+    !raw || raw[1] !== "graph.microsoft.com" ||
     url.protocol !== "https:" ||
-    url.host !== "graph.microsoft.com" ||
     url.hash ||
-    !url.pathname.startsWith("/v1.0/") ||
-    !url.pathname.toLowerCase().endsWith("/calendarview")
+    !goPath.startsWith("/v1.0/") ||
+    !goPath.toLowerCase().endsWith("/calendarview")
   )
     throw new TypeError(
       "pageToken must be the nextPageToken of a previous page, an https://graph.microsoft.com URL",
@@ -366,7 +369,7 @@ export class GraphHTTP {
       } catch {
         return response;
       }
-      if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? ""))
+      if (!isHeaderSafeCredential(credentials.accessToken?.reveal() ?? "") || !["microsoft-oauth", "app-only"].includes(credentials.authMethodId ?? ""))
         return response;
     }
     throw new RequestFailure(

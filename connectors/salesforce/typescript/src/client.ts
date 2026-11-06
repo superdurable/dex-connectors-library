@@ -216,7 +216,7 @@ export class SalesforceClient {
           url, method: request.method, headers,
           ...(request.body ? { body: request.body } : {}),
           maxResponseBytes: Math.max(this.maxResponseBytes, MaxErrorBodyBytes),
-          addressPolicy: instanceURL.startsWith('http://') ? 'privateNetworkHTTP' : 'publicHTTPS',
+          addressPolicy: 'unrestricted',
           timeoutMs: this.timeoutMs, signal: call.context.cancellationSignal,
           onResponseChunk: (_chunk, status, responseHeaders) => {
             observedStatus = status;

@@ -6,9 +6,11 @@ import type { SOQLValue } from './models.js';
 const bindingName = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 const numberPattern = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
 const identifierPattern = /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*){0,4}$/;
-const rfc3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/;
+const rfc3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d+))?(Z|[+-]\d{2}:\d{2})$/;
+const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u;
 
 function quoteSOQL(value: string, like = false, prefix = '', suffix = ''): string {
+  if (loneSurrogate.test(value)) throw new TypeError('text must be valid UTF-8');
   let rendered = "'" + prefix;
   for (const character of value) {
     switch (character) {
@@ -61,9 +63,20 @@ function renderBinding(value: SOQLValue): string {
     case 'dateTime': {
       const text = value.text ?? '';
       const match = rfc3339.exec(text);
-      if (!match || Number(match[4]) > 23 || Number(match[5]) > 59 || Number(match[6]) > 59 || Number.isNaN(Date.parse(text)))
+      if (!match) throw new TypeError('dateTime must be an RFC 3339 timestamp');
+      const [year, month, day, hour, minute, second] = match.slice(1, 7).map(Number);
+      const local = new Date(0);
+      local.setUTCFullYear(year!, month! - 1, day!);
+      local.setUTCHours(hour!, minute!, second!, 0);
+      if (month! < 1 || month! > 12 || day! < 1 || hour! > 23 || minute! > 59 || second! > 59 ||
+        local.getUTCFullYear() !== year || local.getUTCMonth() + 1 !== month || local.getUTCDate() !== day)
         throw new TypeError('dateTime must be an RFC 3339 timestamp');
-      return new Date(text).toISOString().slice(0, 19) + 'Z';
+      const zone = match[8]!;
+      const offsetHour = zone === 'Z' ? 0 : Number(zone.slice(1, 3));
+      const offsetMinute = zone === 'Z' ? 0 : Number(zone.slice(4, 6));
+      if (offsetHour > 24 || offsetMinute > 60) throw new TypeError('dateTime must be an RFC 3339 timestamp');
+      const offset = (offsetHour * 60 + offsetMinute) * 60_000 * (zone.startsWith('-') ? -1 : 1);
+      return new Date(local.getTime() - offset).toISOString().slice(0, 19) + 'Z';
     }
     default: throw new TypeError('kind is not a supported SOQL value kind');
   }
@@ -72,6 +85,7 @@ function renderBinding(value: SOQLValue): string {
 /** Render typed SOQL bindings only outside quoted string literals. */
 export function renderSOQL(statement: string, bindings: Record<string, SOQLValue>): string {
   if (!statement.trim()) throw new TypeError('soql is required');
+  if (loneSurrogate.test(statement)) throw new TypeError('soql must be valid UTF-8');
   if (Object.keys(bindings).length > 100) throw new TypeError('soql accepts at most 100 bindings');
   for (const name of Object.keys(bindings)) if (!bindingName.test(name)) throw new TypeError('binding names must match the supported pattern');
   let rendered = '';

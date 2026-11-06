@@ -32,3 +32,5 @@ The generated OAuth agreement suite and Go-recorded provider replay run in
 and requires `DEX_FLOW_SERVICE_ADDRESS` set to a running Dex development
 server. Live provider authorization for the TypeScript port has not been
 verified.
+
+One operation has a 25-second budget shared by token resolution and every provider request. Request paths preserve Go URL dot segments and percent encoding when sent.

@@ -21,3 +21,42 @@ describe('Go-compatible Graph HTTP behavior',()=>{
   it('retries transient OAuth token exchange failures',async()=>{const source={resolve:async()=>credentials,resolveWithRefresh:async()=>{throw new RetryError({provider:'microsoft-graph',operation:'refreshCredentials',kind:'PROTOCOL',message:'token endpoint failed'});}};const client=new OutlookMailClient({},source,{refreshDriver:driver});const outcome=await client.getMessage().invoke(call(),{messageId:'message1'});expect(outcome).toMatchObject({kind:'retry',failure:{kind:'AVAILABILITY',message:'the Microsoft token endpoint is temporarily unavailable'}});});
   it('rejects unsafe response limits before any provider call',()=>{for(const limit of [NaN,Infinity,Number.MAX_SAFE_INTEGER+1])expect(()=>new OutlookMailClient({maxResponseBytes:limit},new StaticCredentialProvider([[connection,credentials]]))).toThrow();});
 });
+
+it('decodes Graph HTML with Go tokenizer text and drops comments',async()=>{
+  const {decodeFullMessage}=await import('../src/message.js');
+  const decoded=decodeFullMessage({id:'message1',body:{contentType:'html',content:'<p>Tom&#39;s &quot;plan&quot;&nbsp;&eacute; &amp;lt;b&amp;gt;</p><!-- a > b -->x'}});
+  expect(decoded.text).toBe('Tom\'s "plan"\u00a0é &lt;b&gt;x');
+});
+
+it('rejects addresses Go mail.ParseAddress rejects',async()=>{
+  const {validateAddress}=await import('../src/message.js');
+  expect(()=>validateAddress('a(c)@x.com','to')).toThrow();
+  expect(()=>validateAddress('a..b@x.com','to')).toThrow();
+});
+
+it('defaults a missing attachment size to zero and rejects a decimal literal',async()=>{
+  const {decodeAttachments,parseJSON}=await import('../src/message.js');
+  expect(decodeAttachments(parseJSON(Buffer.from('{"value":[{"id":"att1"}]}'))).attachments[0]?.sizeBytes).toBe(0);
+  expect(()=>decodeAttachments(parseJSON(Buffer.from('{"value":[{"id":"att1","size":5.0}]}')))).toThrow();
+});
+
+it('does not resend a mail read with an invalid 401 replacement credential',async()=>{
+  let requests=0;
+  const source={resolve:async()=>credentials,resolveWithRefresh:async()=>credentials,
+    resolveAfterRejection:async()=>({...credentials,accessToken:new SecretString('bad token')})};
+  const client=new OutlookMailClient({},source,{refreshDriver:driver,transport:async()=>{
+    requests++;return {status:401,headers:{},body:Buffer.from('{}')};
+  }});
+  const outcome=await client.getMessage().invoke(call(),{messageId:'message1'});
+  expect(outcome).toMatchObject({kind:'branch',branch:'providerRejected'});
+  expect(requests).toBe(1);
+});
+
+it('rejects next-page links normalized into Graph by WHATWG URL parsing',async()=>{
+  const client=new OutlookMailClient({},new StaticCredentialProvider([[connection,credentials]]),{refreshDriver:driver});
+  for(const pageCursor of ['https://graph.microsoft.com:443/v1.0/me/messages',
+    'https://GRAPH.microsoft.com/v1.0/me/messages','https://graph.microsoft.com/v1.0/a/../me/messages']){
+    const outcome=await client.searchMessages().invoke(call(),{pageCursor});
+    expect(outcome).toMatchObject({kind:'branch',branch:'defect'});
+  }
+});

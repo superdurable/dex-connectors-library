@@ -11,3 +11,5 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:40630 npm run test:integration
 ```
 
 The Go-recorded [conformance fixture](../../../../conformance/connectors/microsoft/entra-id/scenarios.json) verifies every branch, retry, transport path, 401 renewal, creation-key convergence, and group membership read-back through the production SDK operation path. The integration test exercises a Dex Worker and Client with an inert Graph stand-in. Live Microsoft authorization, admin consent, and tenant API behavior remain unverified.
+
+A credential refreshed after HTTP 401 is reused by subsequent Graph requests in the same operation, including write confirmation reads. Zero or blank configuration fields use the manifest defaults.

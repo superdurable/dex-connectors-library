@@ -126,8 +126,10 @@ export class OneDriveClient {
       status = response.status; headers = response.headers;
       if (status >= 200 && status < 300 && response.body.length > (options.limit ?? this.maxResponseBytes)) return { status, headers, body: new Uint8Array(), error: 'tooLarge' };
       if (status !== 401 || attempt || options.preauthenticated || !('resolveAfterRejection' in this.credentials)) return { status, headers, body: response.body, credentials };
-      try { credentials = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
-      catch { return { status, headers, body: response.body, credentials }; }
+      try { const refreshed = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
+        if (!isHeaderSafeCredential(refreshed.accessToken?.reveal() ?? '') || !['', 'microsoft-oauth', 'microsoft-app-only'].includes(refreshed.authMethodId ?? '')) return { status, headers, body: response.body, credentials };
+        credentials = refreshed;
+      } catch { return { status, headers, body: response.body, credentials }; }
     }
     return { status: 0, headers: {}, body: new Uint8Array(), error: 'defect' };
   }

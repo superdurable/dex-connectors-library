@@ -59,8 +59,8 @@ export function graphJSON(body: Uint8Array): unknown {
     if (['rowCount', 'columnCount', 'index'].includes(key) && typeof value === 'number' &&
       (!context?.source || !/^-?(?:0|[1-9][0-9]*)$/.test(context.source)))
       throw new TypeError(`Graph field ${key} must be an integer JSON literal`);
-    if (typeof value === 'number' && (!Number.isFinite(value) || !Number.isSafeInteger(value) && Number.isInteger(value))) {
-      throw new TypeError(`Graph field ${key || '<root>'} cannot be represented exactly`);
+    if (typeof value === 'number' && !Number.isFinite(value)) {
+      throw new TypeError(`${key && !/^[0-9]+$/.test(key) ? `Graph field ${key}` : 'Graph number'} is not finite`);
     }
     return value;
   });
@@ -78,8 +78,8 @@ export class GraphClient {
 
   /** Validate limits and inject the host credential source. */
   constructor(config: Config, credentials: CredentialSource, refreshDriver: CredentialRefreshDriver<Credentials>, transport: ExcelTransport = sendProviderRequest, endpoint = 'https://graph.microsoft.com/v1.0', now: () => Date = () => new Date()) {
-    this.maxResponseBytes = config.maxResponseBytes ?? 4_194_304;
-    this.maxCells = config.maxCells ?? 10_000;
+    this.maxResponseBytes = config.maxResponseBytes || 4_194_304;
+    this.maxCells = config.maxCells || 10_000;
     if (!Number.isSafeInteger(this.maxResponseBytes) || this.maxResponseBytes < 1 || !Number.isSafeInteger(this.maxCells) || this.maxCells < 1 || this.maxCells > 100_000) throw new TypeError('Microsoft Excel limits are invalid');
     if (!credentials || !refreshDriver || !transport || !now) throw new TypeError('Microsoft Excel dependencies are required');
     if (endpoint !== 'https://graph.microsoft.com/v1.0' && !/^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/v1\.0$/.test(endpoint)) throw new TypeError('Microsoft Graph endpoint is invalid');

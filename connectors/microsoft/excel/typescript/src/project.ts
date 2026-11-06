@@ -19,9 +19,10 @@ export function newExcelProjectConnection(project: LoadedProject, connectionName
     const entry = loaded.configuration.connections.find(connection => connection.connectorId === 'microsoft-excel' && connection.connectionName === name);
     if (!entry) throw new TypeError('Microsoft Excel project connection is not configured');
     const fields = entry.configuration as Record<string, unknown>;
+    for (const name of ['maxResponseBytes', 'maxCells']) if (fields[name] !== undefined && (typeof fields[name] !== 'number' || !Number.isInteger(fields[name]))) throw new TypeError(`Microsoft Excel ${name} must be an integer`);
     const config: Config = {
-      ...(fields.maxResponseBytes !== undefined ? { maxResponseBytes: Number(fields.maxResponseBytes) } : {}),
-      ...(fields.maxCells !== undefined ? { maxCells: Number(fields.maxCells) } : {}),
+      ...(fields.maxResponseBytes !== undefined ? { maxResponseBytes: fields.maxResponseBytes as number } : {}),
+      ...(fields.maxCells !== undefined ? { maxCells: fields.maxCells as number } : {}),
     };
     return new ExcelClient(config, newProjectCredentialProvider(loaded, name, decodeCredentials, encodeCredentials, decodeSharedCredentials));
   });

@@ -168,7 +168,7 @@ export class ReadFileTextOperation implements Query<ReadFileTextInput, ReadFileT
       content = { ...downloaded, headers: content.headers };
     }
     let text: string;
-    try { text = new TextDecoder('utf-8', { fatal: true }).decode(content.body); if (text.includes('\0')) throw new TypeError('NUL'); }
+    try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(content.body); if (text.includes('\0')) throw new TypeError('NUL'); }
     catch { return newQueryBranch(ReadFileTextBranch.UnsupportedContent, output, this.client.receipt(content, item.id), failure(operation, 'VALIDATION', 'file content is not valid UTF-8 text')); }
     return newQueryBranch(ReadFileTextBranch.Read, { ...output, ...(text ? { text } : {}), byteCount: content.body.length }, this.client.receipt(content, item.id));
   }

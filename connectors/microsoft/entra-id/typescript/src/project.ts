@@ -19,6 +19,8 @@ export function newProjectConnection(project: LoadedProject, connectionName: str
     const entry = loadedProject.configuration.connections.find(connection => connection.connectorId === 'microsoft-entra-id' && connection.connectionName === name);
     if (!entry) throw new TypeError('Microsoft Entra ID project connection is not configured');
     const settings = entry.configuration as Record<string, unknown>;
+    for (const name of ['maxResponseBytes', 'listUsersPageSize']) if (settings[name] !== undefined && (typeof settings[name] !== 'number' || !Number.isInteger(settings[name]))) throw new TypeError(`Microsoft Entra ID ${name} must be an integer`);
+    if (settings.creationKeyAttribute !== undefined && typeof settings.creationKeyAttribute !== 'string') throw new TypeError('Microsoft Entra ID creationKeyAttribute must be text');
     const config: Config = { ...(typeof settings.maxResponseBytes === 'number' ? { maxResponseBytes: settings.maxResponseBytes } : {}), ...(typeof settings.listUsersPageSize === 'number' ? { listUsersPageSize: settings.listUsersPageSize } : {}), ...(typeof settings.creationKeyAttribute === 'string' ? { creationKeyAttribute: settings.creationKeyAttribute } : {}) };
     const provider = newProjectCredentialProvider(loadedProject, name, decodeCredentials, encodeCredentials, decodeSharedCredentials);
     return new EntraClient(config, provider);

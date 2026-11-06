@@ -83,7 +83,7 @@ function sameThreadLink(client: TeamsClient, link: string, path: string): boolea
   try {
     const parsed = new URL(link), endpoint = new URL(client.endpoint);
     return parsed.protocol === endpoint.protocol && parsed.host.toLowerCase() === endpoint.host.toLowerCase() &&
-      !parsed.username && !parsed.password && !parsed.hash && parsed.pathname.toLowerCase() === (endpoint.pathname + path).toLowerCase();
+      !parsed.username && !parsed.password && !parsed.hash && decodeURIComponent(parsed.pathname).toLowerCase() === (endpoint.pathname + path).toLowerCase();
   } catch { return false; }
 }
 

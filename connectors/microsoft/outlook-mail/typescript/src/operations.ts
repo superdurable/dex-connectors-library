@@ -21,7 +21,19 @@ function updateFailed<T>(exchange: GraphExchange, receipt: ReceiptDraft, branche
   if(exchange.outcome==='defect') return newMutationBranch(branches.Defect,empty,receipt,exchange.failure);
   return newMutationBranch(branches.ProviderRejected,empty,receipt,exchange.failure);
 }
-function validNextPageLink(value: string): void { if(!value||Buffer.byteLength(value)>4096) throw new TypeError('next-page link is empty or too long'); let url:URL;try{url=new URL(value);}catch{throw new TypeError('next-page link cannot be parsed');}if(url.protocol!=='https:'||url.host!=='graph.microsoft.com'||url.username||url.password||url.hash)throw new TypeError('next-page link is not an https://graph.microsoft.com link');if(!url.pathname.startsWith('/v1.0/')||!url.pathname.toLowerCase().endsWith('/messages'))throw new TypeError('next-page link is not a Microsoft Graph v1.0 messages collection');if(url.pathname.includes('..'))throw new TypeError('next-page link contains a relative path segment'); }
+function validNextPageLink(value: string): void {
+  if (!value || Buffer.byteLength(value) > 4096) throw new TypeError('next-page link is empty or too long');
+  const raw = /^https:\/\/([^/?#]+)([^?#]*)/.exec(value);
+  let url: URL;
+  try { url = new URL(value); } catch { throw new TypeError('next-page link cannot be parsed'); }
+  let goPath = '';
+  try { goPath = decodeURIComponent(raw?.[2] ?? ''); } catch { throw new TypeError('next-page link cannot be parsed'); }
+  if (!raw || raw[1] !== 'graph.microsoft.com' || url.username || url.password || url.hash)
+    throw new TypeError('next-page link is not an https://graph.microsoft.com link');
+  if (!goPath.startsWith('/v1.0/') || !goPath.toLowerCase().endsWith('/messages'))
+    throw new TypeError('next-page link is not a Microsoft Graph v1.0 messages collection');
+  if (goPath.includes('..')) throw new TypeError('next-page link contains a relative path segment');
+}
 function quoteOData(value:string):string{return `'${value.replace(/'/g,"''")}'`;}
 function queryTimestamp(value:string):string { return graphTimestampUTC(value).slice(0,19)+'Z'; }
 function buildSearch(input:SearchMessagesInput):{folder:string;path?:string;absoluteURL?:string;query?:[string,string][]}{

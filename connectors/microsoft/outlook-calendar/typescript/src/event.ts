@@ -11,7 +11,7 @@ import { object, string } from "./http.js";
 const instantPattern =
   /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)([.,]\d+)?(Z|[+-]\d\d:\d\d)$/;
 const wallPattern = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)([.,]\d+)?$/;
-const addressPattern = /^[^\s<>@,;]+@[^\s<>@,;]+$/;
+const addressPattern = /^[^\s<>@,;()]+@[^\s<>@,;()]+$/;
 export function emptyEvent(): Event {
   return {
     id: "",
@@ -45,7 +45,6 @@ function dateParts(
     .slice(1, 7)
     .map(Number);
   if (
-    year! < 1 ||
     year! > 9999 ||
     month! < 1 ||
     month! > 12 ||
@@ -57,8 +56,6 @@ function dateParts(
   )
     throw new TypeError(`${name} is not a valid time`);
   const fraction = value[7]?.slice(1) ?? "";
-  if (fraction.length > 3 && /[1-9]/.test(fraction.slice(3)))
-    throw new TypeError(`${name} has precision beyond JavaScript milliseconds`);
   const check = new Date(0);
   check.setUTCFullYear(year!, month! - 1, day!);
   check.setUTCHours(hour!, minute!, second!, 0);
@@ -98,15 +95,17 @@ export function instant(name: string, value: string): number {
     parts.hour,
     parts.minute,
     parts.second,
-    Number(parts.fraction.padEnd(3, "0")),
+    Number(parts.fraction.slice(0, 3).padEnd(3, "0")),
   );
   return candidate.getTime() - offset;
 }
 export function validateZone(name: string, zone: string): string {
   if (!zone || zone.trim() !== zone || zone === "Local")
     throw new TypeError(`${name} must be an IANA time zone`);
+  if (/^[+-]\d\d:\d\d$/.test(zone)) throw new TypeError(`${name} is not a known IANA time zone`);
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    const canonical = new Intl.DateTimeFormat("en-US", { timeZone: zone }).resolvedOptions().timeZone;
+    if (zone.toLowerCase() === canonical.toLowerCase() && zone !== canonical) throw new TypeError();
   } catch {
     throw new TypeError(`${name} is not a known IANA time zone`);
   }
@@ -160,14 +159,7 @@ export function formatInstant(epoch: number, zone: string): string {
   const mm = String(
     Math.floor((Math.abs(offset) % 3_600_000) / 60_000),
   ).padStart(2, "0");
-  const fraction =
-    epoch % 1000
-      ? "." +
-        String(epoch % 1000)
-          .padStart(3, "0")
-          .replace(/0+$/, "")
-      : "";
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${fraction}${offset === 0 ? "Z" : `${sign}${hh}:${mm}`}`;
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset === 0 ? "Z" : `${sign}${hh}:${mm}`}`;
 }
 export function boundary(name: string, value: EventDateTime): number {
   const result = instant(name + ".dateTime", value.dateTime);
@@ -196,13 +188,27 @@ export function validateEventTimes(
         parts.hour !== "00" ||
         parts.minute !== "00" ||
         parts.second !== "00" ||
-        epoch % 1000 !== 0
+        epoch % 1000 !== 0 || /[.,]\d*[1-9]\d*(?:Z|[+-]\d\d:\d\d)$/.test((name === "start" ? start : end).dateTime)
       )
         throw new TypeError(
           `an all-day ${name} must be midnight in ${start.timeZone}`,
         );
+      if (isAmbiguousWallTime(epoch, start.timeZone))
+        throw new TypeError(`an all-day ${name} falls on an ambiguous midnight in ${start.timeZone}`);
     }
   }
+}
+function isAmbiguousWallTime(epoch: number, zone: string): boolean {
+  const parts = localParts(epoch, zone);
+  const wall = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`;
+  const originalOffset = offsetMs(parts);
+  for (const probe of [-12 * 3600_000, 12 * 3600_000]) {
+    const probeOffset = offsetMs(localParts(epoch + probe, zone));
+    if (probeOffset === originalOffset) continue;
+    const other = localParts(epoch + originalOffset - probeOffset, zone);
+    if (`${other.year}-${other.month}-${other.day}T${other.hour}:${other.minute}:${other.second}` === wall) return true;
+  }
+  return false;
 }
 export function graphBoundary(value: EventDateTime): {
   dateTime: string;
@@ -211,21 +217,7 @@ export function graphBoundary(value: EventDateTime): {
   const epoch = boundary("dateTime", value);
   const parts = localParts(epoch, value.timeZone);
   const wall = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`;
-  const originalOffset = offsetMs(parts);
-  for (const probe of [-12 * 3600_000, 12 * 3600_000]) {
-    const probeOffset = offsetMs(localParts(epoch + probe, value.timeZone));
-    if (probeOffset !== originalOffset) {
-      const other = localParts(
-        epoch + originalOffset - probeOffset,
-        value.timeZone,
-      );
-      if (
-        `${other.year}-${other.month}-${other.day}T${other.hour}:${other.minute}:${other.second}` ===
-        wall
-      )
-        return graphUTC(epoch);
-    }
-  }
+  if (isAmbiguousWallTime(epoch, value.timeZone)) return graphUTC(epoch);
   return { dateTime: wall, timeZone: value.timeZone };
 }
 export function graphUTC(epoch: number): {
@@ -254,7 +246,7 @@ export function returnedBoundary(
     parts.hour,
     parts.minute,
     parts.second,
-    Number(parts.fraction.padEnd(3, "0")),
+    Number(parts.fraction.slice(0, 3).padEnd(3, "0")),
   );
   const naive = candidate.getTime();
   let epoch = naive;
@@ -301,22 +293,20 @@ export function event(
         }
       })
     : [];
-  const online =
-    item.isOnlineMeeting || item.onlineMeeting
-      ? {
-          provider: string(item.onlineMeetingProvider),
-          joinUrl: string(
-            item.onlineMeeting && object(item.onlineMeeting).joinUrl,
-          ),
-        }
-      : undefined;
+  const online = item.isOnlineMeeting || item.onlineMeeting
+    ? {
+        provider: string(item.onlineMeetingProvider),
+        ...(item.onlineMeeting && object(item.onlineMeeting).joinUrl
+          ? { joinUrl: string(object(item.onlineMeeting).joinUrl) } : {}),
+      }
+    : undefined;
   return {
     id,
     ...(calendarId ? { calendarId } : {}),
     ...(item.subject ? { subject: string(item.subject) } : {}),
-    ...(item.body ? { body: string(object(item.body).content) } : {}),
+    ...(item.body && object(item.body).content ? { body: string(object(item.body).content) } : {}),
     ...(item.bodyPreview ? { bodyPreview: string(item.bodyPreview) } : {}),
-    ...(item.location
+    ...(item.location && object(item.location).displayName
       ? { location: string(object(item.location).displayName) }
       : {}),
     start: start.value,
@@ -340,12 +330,8 @@ export function event(
       ? { responseStatus: string(object(item.responseStatus).response) }
       : {}),
     ...(attendees.length ? { attendees } : {}),
-    ...(item.organizer
-      ? {
-          organizerEmail: string(
-            object(object(item.organizer).emailAddress).address,
-          ),
-        }
+    ...(item.organizer && object(item.organizer).emailAddress && object(object(item.organizer).emailAddress).address
+      ? { organizerEmail: string(object(object(item.organizer).emailAddress).address) }
       : {}),
     ...(online ? { onlineMeeting: online } : {}),
     ...(item.webLink ? { webLink: string(item.webLink) } : {}),
@@ -360,7 +346,7 @@ export function event(
 export function validateAttendees(attendees: EventAttendeeInput[]): void {
   const seen = new Set<string>();
   for (const item of attendees) {
-    if (!addressPattern.test(item.email))
+    if (!addressPattern.test(item.email) || item.email.includes(".."))
       throw new TypeError(
         "attendee email must be one bare address such as person@example.com",
       );
@@ -386,7 +372,7 @@ export function validateEventId(value: string): void {
     throw new TypeError("eventId is required");
 }
 export function validateAddress(value: string): void {
-  if (!addressPattern.test(value))
+  if (!addressPattern.test(value) || value.includes(".."))
     throw new TypeError(
       "schedule must be one bare address such as person@example.com",
     );
