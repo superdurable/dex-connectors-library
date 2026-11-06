@@ -403,6 +403,10 @@ reads the same field and stage metadata inside a Flow.
 - **COQL text with an apostrophe or backslash** cannot be matched, such as an
   account named `Macy's`, until Zoho documents an escape.
 
+## TypeScript package
+
+The first TypeScript package, `@superdurable/connector-zoho-crm@0.1.0`, implements all six operations and no Triggers. It pins Connector SDK 0.7.0 and uses the generated OAuth refresh declaration. See the [TypeScript package README](typescript/README.md) and its [runnable record lookup Flow](typescript/examples/record-lookup/README.md). Go-recorded conformance covers branches, retries, request counts, and exact outputs. A real Dex integration test covers retry and optional branch handling; live Zoho authorization remains unverified.
+
 ## Examples
 
 - [`examples/lead-qualification`](go/examples/lead-qualification) is a runnable
