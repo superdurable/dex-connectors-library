@@ -5,6 +5,7 @@
 import asyncio
 import base64
 import json
+import math
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import replace
@@ -704,8 +705,8 @@ class ManifestCredentialRefreshDriver(Generic[Credential]):
             timeout_seconds = _parse_duration(declaration).total_seconds()
         else:
             timeout_seconds = 0
-        if timeout_seconds <= 0:
-            raise ValueError("manifest tokenExchangeTimeout must resolve to a positive duration")
+        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0 or timeout_seconds > 3600:
+            raise ValueError("manifest tokenExchangeTimeout must resolve to a positive duration at most 1h")
         return timeout_seconds
 
     def _scopes(self, source: Any) -> list[str]:

@@ -131,6 +131,63 @@ async def test_manifest_refresh_token_exchange_timeout_is_retryable(
 
 
 @pytest.mark.asyncio
+async def test_manifest_refresh_rejects_oversized_exchange_deadlines() -> None:
+    """Durations beyond the shared one-hour bound fail before a token request."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    grant = auth["methods"][0]["oauth2"]["refresh"]
+    async with httpx.AsyncClient() as client:
+        for duration in ("1h1s", "3000000000ms", "5000000000ms"):
+            grant["tokenExchangeTimeout"] = duration
+            with pytest.raises(ValueError, match="at most 1h"):
+                ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        grant["tokenExchangeTimeout"] = {"fromSetting": "requestTimeout"}
+        for nanoseconds in (3_000_000_000_000_000, 5_000_000_000_000_000):
+            with pytest.raises(ValueError, match="at most 1h"):
+                ManifestCredentialRefreshDriver[Credentials](
+                    "Example", auth, FIELDS, client, settings={"requestTimeout": nanoseconds}
+                )
+
+
+@pytest.mark.asyncio
+async def test_private_token_endpoint_uses_declared_exchange_deadline() -> None:
+    """The private network transport also stops a stalled token response."""
+    requests = 0
+
+    async def serve_token(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        nonlocal requests
+        try:
+            await reader.readuntil(b"\r\n\r\n")
+            requests += 1
+            writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n")
+            await writer.drain()
+            await reader.read()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    server = await asyncio.start_server(serve_token, "127.0.0.1", 0)
+    try:
+        socket = server.sockets[0]
+        port = socket.getsockname()[1]
+        auth: dict[str, Any] = deepcopy(AUTH)
+        oauth = auth["methods"][0]["oauth2"]
+        oauth["tokenEndpoint"] = f"http://127.0.0.1:{port}/token"
+        oauth["tokenEndpointNetworkPolicy"] = "privateNetworkHTTP"
+        oauth["refresh"]["tokenExchangeTimeout"] = "100ms"
+        async with httpx.AsyncClient() as client:
+            driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+            state = CredentialRefreshState(
+                Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+            )
+            with pytest.raises(RetryError):
+                await driver.refresh(state)
+        assert requests == 1
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
 async def test_manifest_default_method_scope_and_missing_expiry_match_go() -> None:
     """An empty method uses the default, while scope and expiry follow Go refresh rules."""
     auth: dict[str, Any] = deepcopy(AUTH)

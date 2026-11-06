@@ -46,6 +46,12 @@ def test_query_values_match_go_url_values_encode() -> None:
     assert encode_query_values({"empty": [], "x": [""]}) == "x="
 
 
+def test_query_values_reject_plain_string_instead_of_iterating_characters() -> None:
+    """A plain string is not a list of query values at runtime."""
+    with pytest.raises(TypeError, match="sequence of strings"):
+        encode_query_values({"x": "abc"})
+
+
 @pytest.mark.parametrize(
     "addresses,private_http,private_https,public_https",
     [

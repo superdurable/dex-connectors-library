@@ -54,11 +54,16 @@ class ProviderTransportError(OSError):
 
 def encode_query_values(values: Mapping[str, Sequence[str]]) -> str:
     """Encode a string multimap like Go net/url.Values.Encode, omitting empty value lists."""
-    return "&".join(
-        f"{quote_plus(key)}={quote_plus(value)}"
-        for key in sorted(values, key=lambda item: item.encode("utf-8"))
-        for value in values[key]
-    )
+    encoded: list[str] = []
+    for key in sorted(values, key=lambda item: item.encode("utf-8")):
+        entries = values[key]
+        if isinstance(entries, (str, bytes)):
+            raise TypeError("query values must be a sequence of strings")
+        for value in entries:
+            if not isinstance(value, str):
+                raise TypeError("query values must be a sequence of strings")
+            encoded.append(f"{quote_plus(key)}={quote_plus(value)}")
+    return "&".join(encoded)
 
 
 @dataclass(slots=True)
