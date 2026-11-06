@@ -18,7 +18,7 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
     recording => runMutation(recording as Mutation<Input, Output>, call, input), error => error instanceof RetryError);
 }
 
-it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAttempt, '/v1.0'));
+it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeAttempt));
 
 async function invokeAttempt(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const refreshDriver: CredentialRefreshDriver<Credentials> = { refreshRequired: () => false,

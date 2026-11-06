@@ -1,5 +1,16 @@
 # Microsoft Excel Connector
 
+## Python package
+
+The Python package `dex-connector-microsoft-excel` (`v0.1.0`) provides
+`new_get_table_rows_step`, `new_get_values_step`, `new_update_values_step`,
+and `new_append_table_rows_step` from `dex_connectors.microsoft_excel`.
+It uses the same Microsoft OAuth connection and operation branches as Go.
+The [Python approval decision example](python/examples/approval_decision/README.md)
+runs all four operations with a static `approvals` connection. Its integration
+test verifies the Flow through a real Dex Worker and Client against a local
+Microsoft Graph stand-in. Live Microsoft workbook behavior remains unverified.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/excel/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/excel`.

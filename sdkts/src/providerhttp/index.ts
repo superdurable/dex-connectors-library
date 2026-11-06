@@ -34,7 +34,9 @@ export class AddressRefusal extends Error {
 /** Sanitized transport failure with positive evidence about dispatch. */
 export class ProviderTransportError extends Error {
   /** True only when the request failed before a usable connection could send HTTP bytes. */
-  constructor(readonly isProvablyNotSent: boolean) {
+  constructor(readonly isProvablyNotSent: boolean,
+    /** HTTP status when response headers arrived before the failure. */ readonly status?: number,
+    /** HTTP headers when response headers arrived before the failure. */ readonly headers?: http.IncomingHttpHeaders) {
     super('provider request failed in transport');
     this.name = 'ProviderTransportError';
   }
@@ -42,8 +44,15 @@ export class ProviderTransportError extends Error {
 
 /** Provider emitted no response byte within the configured stall timeout. */
 export class ProviderStalledError extends Error {
+  /** HTTP status when the response stalled after its headers arrived. */ readonly status: number | undefined;
+  /** HTTP headers when the response stalled after its headers arrived. */ readonly headers: http.IncomingHttpHeaders | undefined;
   /** Construct a sanitized no-byte timeout failure. */
-  constructor() { super('provider sent no bytes within the stall timeout'); this.name = 'ProviderStalledError'; }
+  constructor(status?: number, headers?: http.IncomingHttpHeaders) {
+    super('provider sent no bytes within the stall timeout');
+    this.name = 'ProviderStalledError';
+    this.status = status;
+    this.headers = headers;
+  }
 }
 
 /** Public HTTPS, owned private HTTP, or caller-owned unrestricted transport. */
@@ -80,6 +89,17 @@ export interface ProviderResponse {
   /** Numeric HTTP status. */ status: number;
   /** Response headers. */ headers: http.IncomingHttpHeaders;
   /** Bounded response bytes. */ body: Uint8Array;
+}
+
+/** Encode a multimap with Go net/url.Values.Encode ordering and escaping. Empty value lists are omitted. */
+export function encodeQueryValues(values: Readonly<Record<string, readonly string[]>>): string {
+  const escape = (value: string): string => encodeURIComponent(value).replace(/[!'()*]/g, character =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`).replace(/%20/g, '+');
+  const fields: string[] = [];
+  for (const key of Object.keys(values).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)))) {
+    for (const value of values[key] ?? []) fields.push(`${escape(key)}=${escape(value)}`);
+  }
+  return fields.join('&');
 }
 
 /** Parse RFC 9110 delay-seconds or an HTTP-date, capped at one hour. */
@@ -189,7 +209,8 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
         let stallTimer: ReturnType<typeof setTimeout> | undefined;
         const observeProgress = () => {
           if (stallTimer) clearTimeout(stallTimer);
-          if (request.stallTimeoutMs && request.stallTimeoutMs > 0) stallTimer = setTimeout(() => response.destroy(new ProviderStalledError()), request.stallTimeoutMs);
+          if (request.stallTimeoutMs && request.stallTimeoutMs > 0) stallTimer = setTimeout(() =>
+            response.destroy(new ProviderStalledError(response.statusCode ?? 0, response.headers)), request.stallTimeoutMs);
         };
         observeProgress();
         void (async () => {
@@ -234,7 +255,8 @@ export async function sendProviderRequest(request: ProviderRequest): Promise<Pro
             } else if (request.ignoreErrorBodyReadFailure && ((response.statusCode ?? 0) < 200 || (response.statusCode ?? 0) >= 300)) {
               resolve({ status: response.statusCode ?? 0, headers: response.headers, body: Buffer.concat(chunks) });
             } else {
-              reject(error instanceof BodyTooLargeError || error instanceof ProviderStalledError ? error : new ProviderTransportError(false));
+              reject(error instanceof BodyTooLargeError || error instanceof ProviderStalledError ? error :
+                new ProviderTransportError(false, response.statusCode ?? 0, response.headers));
             }
           } finally { if (stallTimer) clearTimeout(stallTimer); }
         })();
