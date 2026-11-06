@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-asana",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Asana task and comment operations for Dex",
   "repository": {
     "type": "git",
