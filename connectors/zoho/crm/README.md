@@ -19,6 +19,12 @@ synthetic credentials and a local HTTP responder.
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go@v0.24.0`.
 
+The TypeScript package `@superdurable/connector-zoho-crm@0.1.0` supports all six
+record operations and no Triggers. Its [runnable record lookup example](typescript/examples/record-lookup/README.md)
+uses the static `zoho-crm-main` connection and verifies retry and optional-branch
+behavior with a real Dex Worker and a local Zoho stand-in. The
+[TypeScript package guide](typescript/README.md) describes setup and verification.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/crm`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Zoho CRM; no live Zoho CRM account was used. See
