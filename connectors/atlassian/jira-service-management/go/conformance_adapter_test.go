@@ -16,6 +16,7 @@ const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
+	t.Logf("conformance scenario: %s", scenario.Name)
 	client := newTestClient(t, endpoint, jiraservicemanagement.WithHTTPClient(transport))
 	context := newTestDexContext("conformance")
 	previousAttempt := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(value []byte) {
@@ -29,11 +30,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		context.attempt = previousAttempt + int32(attempt)
 	}, actions: map[string]conformanceOperationInvocation{
 		"findCustomerByEmail": newConformanceQueryInvocation(t, scenario.Input, context, client.FindCustomerByEmail(), jsmConnection),
-		"searchTickets": newConformanceQueryInvocation(t, scenario.Input, context, client.SearchTickets(), jsmConnection),
-		"getTicket": newConformanceQueryInvocation(t, scenario.Input, context, client.GetTicket(), jsmConnection),
-		"createTicket": newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTicket(), jsmConnection, scenario.CallID),
-		"updateTicket": newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateTicket(), jsmConnection, scenario.CallID),
-		"transitionTicket": newConformanceMutationInvocation(t, scenario.Input, context, client.TransitionTicket(), jsmConnection, scenario.CallID),
-		"addComment": newConformanceMutationInvocation(t, scenario.Input, context, client.AddComment(), jsmConnection, scenario.CallID),
+		"searchTickets":       newConformanceQueryInvocation(t, scenario.Input, context, client.SearchTickets(), jsmConnection),
+		"getTicket":           newConformanceQueryInvocation(t, scenario.Input, context, client.GetTicket(), jsmConnection),
+		"createTicket":        newConformanceMutationInvocation(t, scenario.Input, context, client.CreateTicket(), jsmConnection, scenario.CallID),
+		"updateTicket":        newConformanceMutationInvocation(t, scenario.Input, context, client.UpdateTicket(), jsmConnection, scenario.CallID),
+		"transitionTicket":    newConformanceMutationInvocation(t, scenario.Input, context, client.TransitionTicket(), jsmConnection, scenario.CallID),
+		"addComment":          newConformanceMutationInvocation(t, scenario.Input, context, client.AddComment(), jsmConnection, scenario.CallID),
 	}}
 }

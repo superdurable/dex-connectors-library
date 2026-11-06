@@ -19,6 +19,7 @@ const conformanceFixturePathPrefix = ""
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, _ string, transport *http.Client) conformanceInvoker {
 	t.Helper()
+	t.Logf("conformance scenario: %s", scenario.Name)
 	stepName := scenario.Name
 	if strings.Contains(stepName, " ") {
 		stepName = "conformance"
