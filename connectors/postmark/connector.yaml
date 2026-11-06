@@ -13,6 +13,11 @@ spec:
       version: v0.2.0
       operations: [listOutboundMessages, getMessageDetails]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-postmark"
+      operations: [listOutboundMessages, getMessageDetails]
+      triggers: []
   codegen:
     go:
       package: postmark

@@ -13,6 +13,11 @@ The Linear Connector reads and writes Linear issues from Dex Flows through Linea
 `https://api.linear.app/graphql`, and receives Linear's signed Issue webhooks. It covers Team → workflow
 state → Issue, with assignee resolution by email, label set operations, and comments.
 
+The [TypeScript package](typescript/README.md) provides all seven operations with generated OAuth refresh
+and credential wiring. Its [issue search example](typescript/examples/issue-search/README.md) runs through
+a real Dex Worker against a local provider stand-in. The webhook Trigger remains Go only; live Linear
+authorization and writes have not been verified for the TypeScript package.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `linear.NewSearchIssuesStep` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
@@ -310,6 +315,11 @@ See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks) for scripting
 
 ## Examples
 
+- [`python/examples/list_workflow_states`](python/examples/list_workflow_states) is a Python Dex Flow that
+  lists one team's workflow states through the static `linear` connection. The package implements all seven
+  operations with generated personal-key and OAuth connection wiring; the Issue webhook Trigger remains
+  Go-only. Its 54 Go-recorded provider scenarios and real Dex Worker/Client integration test pass with
+  an inert provider stand-in. Live Linear behavior and OAuth consent were not verified for this Python port.
 - [`examples/issue-request`](go/examples/issue-request) is a Dex Web **Start Flow** example that uses all seven
   operations and the `teamPicker` unit: it resolves the assignee by email, reuses the team's open issue with
   the requested title or creates one, moves it to the requested workflow state, adds one comment, and reads it

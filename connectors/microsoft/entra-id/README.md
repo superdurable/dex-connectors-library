@@ -307,6 +307,10 @@ anything; reinstating enables a returning person's account instead of
 creating a second one; and offboarding finds the account, disables it,
 revokes its sign-in sessions, and removes the membership.
 
+## Python package
+
+[`python/`](python/) releases `dex-connector-microsoft-entra-id==0.1.0` independently of the Go module. It implements all eight operations with generated typed models, Step factories, connection codecs, and app-only or delegated OAuth refresh. The [Python user lookup example](python/examples/user_lookup/flow.py) runs a real Dex Worker and Client with the static `entra-directory` connection name; its [integration test](python/examples/user_lookup/integration_test.py) uses a local Graph stand-in. Go-recorded [conformance scenarios](../../../conformance/connectors/microsoft/entra-id/scenarios.json) replay each operation through the Python package. See the [Python package README](python/README.md) for installation and Worker commands.
+
 ## Verification
 
 ```bash

@@ -223,3 +223,15 @@ if err != nil {
 static connection name as `ConnectionName` in each generated GitHub Step
 config. The latest credential state is read before every provider call, so
 refresh and reauthorization do not require restarting the application.
+
+## Python package
+
+The [Python package](python/README.md) implements all six GitHub Queries with
+operation-specific Step factories. It uses generated OAuth refresh and project
+connection wiring, with provider calls in hand-written Query invocations. The
+[profile Flow example](python/examples/profile/README.md) has a Worker entrypoint
+and a real Dex integration test using an inert provider stand-in. Python
+provider replay uses the Go-recorded scenarios under
+[`conformance/connectors/github`](../../conformance/connectors/github/).
+The Python package has its own `v0.1.0` release version; the Go connector remains
+at its current release version.

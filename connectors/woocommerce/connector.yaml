@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listOrders, getOrder]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-woocommerce"
+      operations: [listOrders, getOrder]
+      triggers: []
   codegen:
     go:
       package: woocommerce

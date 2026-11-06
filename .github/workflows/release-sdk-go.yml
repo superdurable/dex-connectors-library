@@ -54,7 +54,7 @@ jobs:
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
       - name: Test fixture connector with real Dex
         run: |
-          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
+          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false -durability process-crash-safe \
             -zd-data-dir /tmp/dex-connectors-sdk/zd \
             -server-log-folder /tmp/dex-connectors-sdk/logs > /tmp/dex-connectors-sdk-server.log 2>&1 &
           dex_pid=$!

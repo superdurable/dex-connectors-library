@@ -345,6 +345,19 @@ flow := NewFlow(mock.Connection())
 This snippet comes from
 [`workflow_mock_integration_test.go`](go/examples/approved-order/flow/workflow_mock_integration_test.go).
 
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements all six operations at
+`@superdurable/connector-xero` version `0.1.0`. Its generated OAuth wiring
+refreshes Custom Connection and web-app credentials, including rotating OAuth
+refresh tokens. The [list contacts example](typescript/examples/list-contacts/README.md)
+is a runnable Dex Flow with a real Dex integration test and the static
+`xero-contacts` connection. Go-recorded scenarios in
+[`conformance/connectors/xero`](../../conformance/connectors/xero) check the
+TypeScript requests, branches, retries, uncertainty, and outputs.
+
+Live provider behavior remains unverified for this TypeScript port.
+
 ## Verification
 
 ```bash
@@ -383,3 +396,19 @@ whether a 503 is cached under an idempotency key; JSON number formatting of
 amounts in live responses; `If-Modified-Since` parsing; Xero's
 `EmailAddress` filter with `==`; the developer portal labels in the setup
 guidance; and the response to an invoice number reused by another invoice.
+
+## Python package
+
+`connectors/xero/python` publishes `dex-connector-xero` v0.1.0 with all six
+operations and no Triggers. Its public models and Step factories are generated
+from this manifest; its HTTP client and operation invocations retain Xero's
+exact-decimal amounts and Call ID based Idempotency-Key behavior. Both Custom
+Connection and OAuth web app credentials use the generated durable refresh
+wiring and the same Dex Web setup above.
+
+The runnable [contact lookup example](python/examples/contact_lookup/README.md)
+binds the static `xero-books` connection and routes only the `found` branch.
+The [Python package README](python/README.md) covers installation and targeted
+verification. The Go-recorded provider replay and the real Dex Worker/Client
+example use inert local stand-ins. Live Xero authorization, tenant selection,
+and Accounting API behavior are unverified for the Python package.

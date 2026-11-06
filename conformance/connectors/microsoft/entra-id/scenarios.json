@@ -1,0 +1,4192 @@
+{
+  "connector": "microsoft-entra-id",
+  "scenarios": [
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"displayName\":\"Ada Lovelace\",\"givenName\":\"Ada\",\"surname\":\"Lovelace\",\"mailNickname\":\"ada.lovelace\",\"accountEnabled\":true,\"userType\":\"Member\",\"department\":\"Engineering\",\"usageLocation\":\"GB\",\"createdDateTime\":\"2026-10-25T09:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdDateTime": "2026-10-25T09:00:00Z",
+          "department": "Engineering",
+          "displayName": "Ada Lovelace",
+          "givenName": "Ada",
+          "id": "11111111-2222-4333-8444-555555555555",
+          "isAccountEnabled": true,
+          "isOnPremisesSyncEnabled": false,
+          "mailNickname": "ada.lovelace",
+          "surname": "Lovelace",
+          "usageLocation": "GB",
+          "userPrincipalName": "ada.lovelace@contoso.com",
+          "userType": "Member"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-success",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-rate-limit",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-server-error",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-transport",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-provider-rejected",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-not-found",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-invalid-response",
+      "operation": "getUser"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "bad"
+      },
+      "name": "getUser-defect",
+      "operation": "getUser"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"displayName\":\"Ada Lovelace\",\"givenName\":\"Ada\",\"surname\":\"Lovelace\",\"mailNickname\":\"ada.lovelace\",\"accountEnabled\":true,\"userType\":\"Member\",\"department\":\"Engineering\",\"usageLocation\":\"GB\",\"createdDateTime\":\"2026-10-25T09:00:00Z\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "accountEnabled eq true"
+            ],
+            "$search": [
+              "\"displayName:Ada\""
+            ],
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ],
+            "$top": [
+              "42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "users": [
+            {
+              "createdDateTime": "2026-10-25T09:00:00Z",
+              "department": "Engineering",
+              "displayName": "Ada Lovelace",
+              "givenName": "Ada",
+              "id": "11111111-2222-4333-8444-555555555555",
+              "isAccountEnabled": true,
+              "isOnPremisesSyncEnabled": false,
+              "mailNickname": "ada.lovelace",
+              "surname": "Lovelace",
+              "usageLocation": "GB",
+              "userPrincipalName": "ada.lovelace@contoso.com",
+              "userType": "Member"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "accountEnabled eq true",
+        "pageSize": 42,
+        "search": "\"displayName:Ada\"",
+        "usesAdvancedQuery": true
+      },
+      "name": "listUsers-success",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "accountEnabled eq true"
+            ],
+            "$search": [
+              "\"displayName:Ada\""
+            ],
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ],
+            "$top": [
+              "42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "accountEnabled eq true",
+        "pageSize": 42,
+        "search": "\"displayName:Ada\"",
+        "usesAdvancedQuery": true
+      },
+      "name": "listUsers-rate-limit",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "accountEnabled eq true"
+            ],
+            "$search": [
+              "\"displayName:Ada\""
+            ],
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ],
+            "$top": [
+              "42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "accountEnabled eq true",
+        "pageSize": 42,
+        "search": "\"displayName:Ada\"",
+        "usesAdvancedQuery": true
+      },
+      "name": "listUsers-server-error",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "accountEnabled eq true"
+            ],
+            "$search": [
+              "\"displayName:Ada\""
+            ],
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ],
+            "$top": [
+              "42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "accountEnabled eq true",
+        "pageSize": 42,
+        "search": "\"displayName:Ada\"",
+        "usesAdvancedQuery": true
+      },
+      "name": "listUsers-transport",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "accountEnabled eq true"
+            ],
+            "$search": [
+              "\"displayName:Ada\""
+            ],
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ],
+            "$top": [
+              "42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "accountEnabled eq true",
+        "pageSize": 42,
+        "search": "\"displayName:Ada\"",
+        "usesAdvancedQuery": true
+      },
+      "name": "listUsers-provider-rejected",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"bad\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "accountEnabled eq true"
+            ],
+            "$search": [
+              "\"displayName:Ada\""
+            ],
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ],
+            "$top": [
+              "42"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "filter": "accountEnabled eq true",
+        "pageSize": 42,
+        "search": "\"displayName:Ada\"",
+        "usesAdvancedQuery": true
+      },
+      "name": "listUsers-invalid-response",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "users": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 1000
+      },
+      "name": "listUsers-defect",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "873e44ec-31bc-5f95-9822-f55ece879b5c",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users",
+          "query": {
+            "$skiptoken": [
+              "next"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "users": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "https://graph.microsoft.com/v1.0/users?$skiptoken=next",
+        "usesAdvancedQuery": true
+      },
+      "name": "listUsers-page-token",
+      "operation": "listUsers"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"displayName\":\"Ada Lovelace\",\"givenName\":\"Ada\",\"surname\":\"Lovelace\",\"mailNickname\":\"ada.lovelace\",\"accountEnabled\":true,\"userType\":\"Member\",\"department\":\"Engineering\",\"usageLocation\":\"GB\",\"createdDateTime\":\"2026-10-25T09:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "5c80157e3978ed65f4ef784506ea8a19acd3d579f40ab41a9b2a625f2af4e7f7"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "user": {
+            "createdDateTime": "2026-10-25T09:00:00Z",
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "id": "11111111-2222-4333-8444-555555555555",
+            "isAccountEnabled": true,
+            "isOnPremisesSyncEnabled": false,
+            "mailNickname": "ada.lovelace",
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com",
+            "userType": "Member"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-success",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_SUCCESS"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "51851b9d255fcb59c1e44df05c001afbf95e004cb56c5ca0477d910b1dd7183f"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-rate-limit",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_RATE_LIMIT"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "8fe76f11d5d12a5293dd2fa51aff7206a318dbaaf991520f4069353f3fbc0b18"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-server-error",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_SERVER_ERROR"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "eee2c7135d5776a1e0241040f200316e4e543775c819b2278539a58a810aa22d"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-transport",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_TRANSPORT"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "f27b5abd2bb11715145e9ab0cdc5f981f65454044888cf0807db90431356cca2"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "user": {
+            "id": "",
+            "isAccountEnabled": false,
+            "isOnPremisesSyncEnabled": false,
+            "userPrincipalName": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-provider-rejected",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_PROVIDER_REJECTED"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "2fda2dfcbd74ac643322edcb8ff26a0caf9b14ecc9e1189d2af164a5ac261eaa"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "user": {
+            "id": "",
+            "isAccountEnabled": false,
+            "isOnPremisesSyncEnabled": false,
+            "userPrincipalName": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-not-found",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_NOT_FOUND"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "1e49bf66bcfe3d188659c16af25d78db46b8628ba5a6c6b69ba9a23a000b456a"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"displayName\":\"Ada Lovelace\",\"givenName\":\"Ada\",\"surname\":\"Lovelace\",\"mailNickname\":\"ada.lovelace\",\"accountEnabled\":true,\"userType\":\"Member\",\"department\":\"Engineering\",\"usageLocation\":\"GB\",\"createdDateTime\":\"2026-10-25T09:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada.lovelace@contoso.com",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime,onPremisesExtensionAttributes"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "alreadyExists",
+        "failureKind": "CONFLICT",
+        "output": {
+          "user": {
+            "createdDateTime": "2026-10-25T09:00:00Z",
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "id": "11111111-2222-4333-8444-555555555555",
+            "isAccountEnabled": true,
+            "isOnPremisesSyncEnabled": false,
+            "mailNickname": "ada.lovelace",
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com",
+            "userType": "Member"
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-already-exists",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_ALREADY_EXISTS"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "c7b789e5977768bc82bb5b906afbaf86e46284c518297feaa3ad3f5abb3dde49"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada.lovelace@contoso.com",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime,onPremisesExtensionAttributes"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "user": {
+            "id": "",
+            "isAccountEnabled": false,
+            "isOnPremisesSyncEnabled": false,
+            "userPrincipalName": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-invalid-response",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_INVALID_RESPONSE"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "user": {
+            "id": "",
+            "isAccountEnabled": false,
+            "isOnPremisesSyncEnabled": false,
+            "userPrincipalName": ""
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "input": {
+        "userPrincipalName": "bad"
+      },
+      "name": "createUser-defect",
+      "operation": "createUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"displayName\":\"Ada Lovelace\",\"givenName\":\"Ada\",\"surname\":\"Lovelace\",\"mailNickname\":\"ada.lovelace\",\"accountEnabled\":false,\"userType\":\"Member\",\"department\":\"Engineering\",\"usageLocation\":\"GB\",\"createdDateTime\":\"2026-10-25T09:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "disabled",
+        "failureKind": "",
+        "output": {
+          "createdDateTime": "2026-10-25T09:00:00Z",
+          "department": "Engineering",
+          "displayName": "Ada Lovelace",
+          "givenName": "Ada",
+          "id": "11111111-2222-4333-8444-555555555555",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "mailNickname": "ada.lovelace",
+          "surname": "Lovelace",
+          "usageLocation": "GB",
+          "userPrincipalName": "ada.lovelace@contoso.com",
+          "userType": "Member"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-success",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-rate-limit",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-server-error",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-transport",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-provider-rejected",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-not-found",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-invalid-response",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "bad"
+      },
+      "name": "disableUser-defect",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"displayName\":\"Ada Lovelace\",\"givenName\":\"Ada\",\"surname\":\"Lovelace\",\"mailNickname\":\"ada.lovelace\",\"accountEnabled\":true,\"userType\":\"Member\",\"department\":\"Engineering\",\"usageLocation\":\"GB\",\"createdDateTime\":\"2026-10-25T09:00:00Z\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "enabled",
+        "failureKind": "",
+        "output": {
+          "createdDateTime": "2026-10-25T09:00:00Z",
+          "department": "Engineering",
+          "displayName": "Ada Lovelace",
+          "givenName": "Ada",
+          "id": "11111111-2222-4333-8444-555555555555",
+          "isAccountEnabled": true,
+          "isOnPremisesSyncEnabled": false,
+          "mailNickname": "ada.lovelace",
+          "surname": "Lovelace",
+          "usageLocation": "GB",
+          "userPrincipalName": "ada.lovelace@contoso.com",
+          "userType": "Member"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-success",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-rate-limit",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-server-error",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-transport",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-provider-rejected",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-not-found",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-invalid-response",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "bad"
+      },
+      "name": "enableUser-defect",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "body": "{\"value\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "revoked",
+        "failureKind": "",
+        "output": {
+          "userKey": "11111111-2222-4333-8444-555555555555"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-success",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-rate-limit",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-server-error",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-transport",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "userKey": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-provider-rejected",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "userKey": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-not-found",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "body": "{\"value\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "userKey": "11111111-2222-4333-8444-555555555555"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-rejected-revocation",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/11111111-2222-4333-8444-555555555555/revokeSignInSessions",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "userKey": "11111111-2222-4333-8444-555555555555"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "revokeSignInSessions-invalid-response",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "userKey": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "043ebfef-74c5-5dd0-8796-c6ffa2d43905",
+      "input": {
+        "userKey": "bad"
+      },
+      "name": "revokeSignInSessions-defect",
+      "operation": "revokeSignInSessions"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "userId": "11111111-2222-4333-8444-555555555555",
+          "wasAlreadyMember": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-success",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-rate-limit",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-server-error",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-transport",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyMember": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-provider-rejected",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "query": {
+            "$select": [
+              "id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyMember": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-not-found",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"value\":[{\"id\":\"11111111-2222-4333-8444-555555555555\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "id eq '11111111-2222-4333-8444-555555555555'"
+            ],
+            "$select": [
+              "id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "userId": "11111111-2222-4333-8444-555555555555",
+          "wasAlreadyMember": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-already-member",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "id eq '11111111-2222-4333-8444-555555555555'"
+            ],
+            "$select": [
+              "id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyMember": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-invalid-response",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyMember": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "bad",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-defect",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "userId": "11111111-2222-4333-8444-555555555555",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-success",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"TooManyRequests\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-rate-limit",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"serviceNotAvailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-server-error",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-transport",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"Authorization_RequestDenied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-provider-rejected",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "query": {
+            "$select": [
+              "id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-not-found",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 404
+        },
+        {
+          "body": "{\"id\":\"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "query": {
+            "$select": [
+              "id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "removed",
+        "failureKind": "",
+        "output": {
+          "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          "userId": "11111111-2222-4333-8444-555555555555",
+          "wasAlreadyRemoved": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-already-removed",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [
+        {
+          "body": "abc",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/11111111-2222-4333-8444-555555555555/$ref",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-invalid-response",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyRemoved": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c8956768-dce0-597b-bb0a-63a8e78e6691",
+      "input": {
+        "groupId": "bad",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "removeUserFromGroup-defect",
+      "operation": "removeUserFromGroup"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"accountEnabled\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users('$o''neil@contoso.com')",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "11111111-2222-4333-8444-555555555555",
+          "isAccountEnabled": true,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": "ada.lovelace@contoso.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "$o'neil@contoso.com"
+      },
+      "name": "getUser-special-upn",
+      "operation": "getUser"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "a6e7c23cea9f9c40330164e73d02e723778860e1b6d0191170698953358cbd58"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"accountEnabled\":true,\"onPremisesExtensionAttributes\":{\"extensionAttribute15\":\"dex-creation-key:hire-0042\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada.lovelace@contoso.com",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime,onPremisesExtensionAttributes"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "user": {
+            "id": "11111111-2222-4333-8444-555555555555",
+            "isAccountEnabled": true,
+            "isOnPremisesSyncEnabled": false,
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "wasAlreadyCreated": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-already-created",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_CREATEUSER_ALREADY_CREATED"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"bad\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "e1abc24d96688c15337dcd144142a91816ed3748108de6b5c60c5c12508cf939"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-unusable-create",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_CREATEUSER_UNUSABLE_CREATE"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "id eq '11111111-2222-4333-8444-555555555555'"
+            ],
+            "$select": [
+              "id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "groupId": "",
+          "userId": "",
+          "wasAlreadyMember": false
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-membership-rejected",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"accountEnabled\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "11111111-2222-4333-8444-555555555555",
+          "isAccountEnabled": true,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": "ada.lovelace@contoso.com"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-stale-read",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"accountEnabled\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "11111111-2222-4333-8444-555555555555",
+          "isAccountEnabled": false,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": "ada.lovelace@contoso.com"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-stale-read",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": false
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4a2325d4-6911-590f-ae5b-5c0c63c48c20",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "disableUser-propagation",
+      "operation": "disableUser"
+    },
+    {
+      "callId": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "requestBody": {
+            "accountEnabled": true
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        },
+        {
+          "body": "{\"id\":\"11111111-2222-4333-8444-555555555555\",\"userPrincipalName\":\"ada.lovelace@contoso.com\",\"accountEnabled\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7a6ed6d9-bf73-59fe-b4e2-07b2e936f812",
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "enableUser-propagation",
+      "operation": "enableUser"
+    },
+    {
+      "callId": "2de792ff-0ee3-5e36-981e-07b6972e4f0a",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users",
+          "requestBody": {
+            "accountEnabled": true,
+            "department": "Engineering",
+            "displayName": "Ada Lovelace",
+            "givenName": "Ada",
+            "jobTitle": "Analyst",
+            "mailNickname": "ada.lovelace",
+            "onPremisesExtensionAttributes": {
+              "extensionAttribute15": "dex-creation-key:hire-0042"
+            },
+            "passwordProfile": {
+              "forceChangePasswordNextSignIn": true,
+              "password": {
+                "$syntheticSha256": "0f3696f68a8dfaa6906a9f3366cf931467d41768c64df5d17e98b0110d252297"
+              }
+            },
+            "surname": "Lovelace",
+            "usageLocation": "GB",
+            "userPrincipalName": "ada.lovelace@contoso.com"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/ada.lovelace@contoso.com",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime,onPremisesExtensionAttributes"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "hire-0042",
+      "input": {
+        "department": "Engineering",
+        "displayName": "Ada Lovelace",
+        "givenName": "Ada",
+        "jobTitle": "Analyst",
+        "mailNickname": "ada.lovelace",
+        "provisioningKey": "hire-0042",
+        "surname": "Lovelace",
+        "usageLocation": "GB",
+        "userPrincipalName": "ada.lovelace@contoso.com"
+      },
+      "name": "createUser-propagation",
+      "operation": "createUser",
+      "randomRequestFields": [
+        "/passwordProfile/password"
+      ],
+      "randomSeed": "SYNTHETIC_CONFORMANCE_CREATEUSER_PROPAGATION"
+    },
+    {
+      "callId": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members/$ref",
+          "requestBody": {
+            "@odata.id": "https://graph.microsoft.com/v1.0/directoryObjects/11111111-2222-4333-8444-555555555555"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/groups/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee/members",
+          "query": {
+            "$count": [
+              "true"
+            ],
+            "$filter": [
+              "id eq '11111111-2222-4333-8444-555555555555'"
+            ],
+            "$select": [
+              "id"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer entra-token"
+            ],
+            "Consistencylevel": [
+              "eventual"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "271ee865-a477-57a1-9a0a-80fa29f91cbb",
+      "input": {
+        "groupId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "userId": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "addUserToGroup-propagation",
+      "operation": "addUserToGroup"
+    },
+    {
+      "callId": "a43b51e0-7118-5bbb-9eae-e50f9da3be2f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer stale-token"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"id\": \"11111111-2222-4333-8444-555555555555\", \"userPrincipalName\": \"ada@contoso.com\", \"accountEnabled\": true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/11111111-2222-4333-8444-555555555555",
+          "query": {
+            "$select": [
+              "id,userPrincipalName,displayName,givenName,surname,mail,mailNickname,accountEnabled,userType,jobTitle,department,usageLocation,onPremisesSyncEnabled,createdDateTime,signInSessionsValidFromDateTime"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer fresh-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "11111111-2222-4333-8444-555555555555",
+          "isAccountEnabled": true,
+          "isOnPremisesSyncEnabled": false,
+          "userPrincipalName": "ada@contoso.com"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "userKey": "11111111-2222-4333-8444-555555555555"
+      },
+      "name": "getUser-401-renewed",
+      "operation": "getUser"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -1,5 +1,9 @@
 # Zoom Connector
 
+## TypeScript package
+
+Install `@superdurable/connector-zoom@0.1.0` with Connector SDK 0.6.0 to use all five meeting operations from TypeScript. The [package README](typescript/README.md) documents the generated OAuth connection binding, operation-specific Step factories, and the runnable meeting-list Flow. The TypeScript conformance suite replays Go-recorded provider requests and decisions; its Dex integration check runs the example with a generated stand-in. Live Zoom OAuth authorization and provider behavior remain unverified.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoom/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoom`.
@@ -265,6 +269,17 @@ flow := NewFlow(mock.Connection(), &AttendancePolicy{CheckDelay: time.Hour})
 
 See [`workflow_mock_integration_test.go`](go/examples/booked-meeting/flow/workflow_mock_integration_test.go)
 for literal call-input, call-count, reschedule, and attendance assertions.
+
+## Python package
+
+The first Python package is [`python/`](python/README.md), version `v0.1.0` with
+`dex-connectors-sdk==0.6.0`. It implements all five meeting operations using
+the manifest-generated models, Step factories, connection, and OAuth refresh
+wiring. The checked-in [meeting-list example](python/examples/meeting_list/README.md)
+binds `zoom-meetings` and has a real Dex Worker/Client integration test with a
+fake provider. `createMeeting` uses the SDK single-dispatch fence and reports
+an unconfirmed dispatch as uncertain. No live Zoom authorization or provider
+request was performed for this port.
 
 ## Not in this release
 

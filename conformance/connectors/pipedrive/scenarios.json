@@ -1,0 +1,5690 @@
+{
+  "connector": "pipedrive",
+  "scenarios": [
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":301,\"title\":\"Acme renewal\",\"owner\":{\"id\":7},\"organization\":{\"id\":201},\"person\":{\"id\":101},\"stage\":{\"id\":3},\"status\":\"open\"}}]},\"additional_data\":{\"next_cursor\":\"next_2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/search",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "title,notes,custom_fields"
+            ],
+            "limit": [
+              "10"
+            ],
+            "organization_id": [
+              "201"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "term": [
+              "Acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "next_2",
+          "objectType": "deals",
+          "objects": [
+            {
+              "fields": {
+                "id": 301,
+                "organization": {
+                  "id": 201
+                },
+                "owner": {
+                  "id": 7
+                },
+                "person": {
+                  "id": 101
+                },
+                "stage": {
+                  "id": 3
+                },
+                "status": "open",
+                "title": "Acme renewal"
+              },
+              "id": "301",
+              "isPartial": true,
+              "name": "Acme renewal",
+              "objectType": "deals",
+              "organizationId": "201",
+              "ownerId": "7",
+              "personId": "101",
+              "stageId": "3",
+              "status": "open"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "exactMatch": true,
+        "fields": [
+          "title",
+          "notes",
+          "custom_fields"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "personId": "101",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "term": "Acme"
+      },
+      "name": "searchObjects-success",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/search",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "title,notes,custom_fields"
+            ],
+            "limit": [
+              "10"
+            ],
+            "organization_id": [
+              "201"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "term": [
+              "Acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objectType": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "exactMatch": true,
+        "fields": [
+          "title",
+          "notes",
+          "custom_fields"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "personId": "101",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "term": "Acme"
+      },
+      "name": "searchObjects-invalid-response",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/search",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "title,notes,custom_fields"
+            ],
+            "limit": [
+              "10"
+            ],
+            "organization_id": [
+              "201"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "term": [
+              "Acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectType": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "exactMatch": true,
+        "fields": [
+          "title",
+          "notes",
+          "custom_fields"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "personId": "101",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "term": "Acme"
+      },
+      "name": "searchObjects-provider-rejected",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/search",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "title,notes,custom_fields"
+            ],
+            "limit": [
+              "10"
+            ],
+            "organization_id": [
+              "201"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "term": [
+              "Acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "exactMatch": true,
+        "fields": [
+          "title",
+          "notes",
+          "custom_fields"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "personId": "101",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "term": "Acme"
+      },
+      "name": "searchObjects-rate-limited",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/search",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "title,notes,custom_fields"
+            ],
+            "limit": [
+              "10"
+            ],
+            "organization_id": [
+              "201"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "term": [
+              "Acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "exactMatch": true,
+        "fields": [
+          "title",
+          "notes",
+          "custom_fields"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "personId": "101",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "term": "Acme"
+      },
+      "name": "searchObjects-unavailable",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/search",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "title,notes,custom_fields"
+            ],
+            "limit": [
+              "10"
+            ],
+            "organization_id": [
+              "201"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "term": [
+              "Acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "exactMatch": true,
+        "fields": [
+          "title",
+          "notes",
+          "custom_fields"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "personId": "101",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "term": "Acme"
+      },
+      "name": "searchObjects-transport-before-send",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":301,\"title\":\"Acme renewal\",\"owner_id\":7,\"org_id\":201,\"person_id\":101,\"pipeline_id\":2,\"stage_id\":3,\"status\":\"open\",\"value\":125.5,\"add_time\":\"2026-01-02T03:04:05Z\",\"update_time\":\"2026-01-03T04:05:06Z\",\"custom_fields\":{\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":\"priority\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "addTime": "2026-01-02T03:04:05Z",
+          "customFields": {
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+          },
+          "fields": {
+            "add_time": "2026-01-02T03:04:05Z",
+            "id": 301,
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "status": "open",
+            "title": "Acme renewal",
+            "update_time": "2026-01-03T04:05:06Z",
+            "value": 125.5
+          },
+          "id": "301",
+          "name": "Acme renewal",
+          "objectType": "deals",
+          "organizationId": "201",
+          "ownerId": "7",
+          "personId": "101",
+          "pipelineId": "2",
+          "stageId": "3",
+          "status": "open",
+          "updateTime": "2026-01-03T04:05:06Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "getObject-success",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "getObject-invalid-response",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "getObject-provider-rejected",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "getObject-rate-limited",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "getObject-unavailable",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "getObject-transport-before-send",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "getObject-not-found",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[{\"id\":301,\"title\":\"Acme renewal\",\"owner_id\":7,\"org_id\":201,\"person_id\":101,\"pipeline_id\":2,\"stage_id\":3,\"status\":\"open\",\"value\":125.5,\"add_time\":\"2026-01-02T03:04:05Z\",\"update_time\":\"2026-01-03T04:05:06Z\",\"custom_fields\":{\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":\"priority\"}}],\"additional_data\":{\"next_cursor\":\"next_2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "custom_fields": [
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "limit": [
+              "10"
+            ],
+            "org_id": [
+              "201"
+            ],
+            "owner_id": [
+              "7"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "pipeline_id": [
+              "2"
+            ],
+            "sort_by": [
+              "update_time"
+            ],
+            "sort_direction": [
+              "desc"
+            ],
+            "stage_id": [
+              "3"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "updated_since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "updated_until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "next_2",
+          "objectType": "deals",
+          "objects": [
+            {
+              "addTime": "2026-01-02T03:04:05Z",
+              "customFields": {
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+              },
+              "fields": {
+                "add_time": "2026-01-02T03:04:05Z",
+                "id": 301,
+                "org_id": 201,
+                "owner_id": 7,
+                "person_id": 101,
+                "pipeline_id": 2,
+                "stage_id": 3,
+                "status": "open",
+                "title": "Acme renewal",
+                "update_time": "2026-01-03T04:05:06Z",
+                "value": 125.5
+              },
+              "id": "301",
+              "name": "Acme renewal",
+              "objectType": "deals",
+              "organizationId": "201",
+              "ownerId": "7",
+              "personId": "101",
+              "pipelineId": "2",
+              "stageId": "3",
+              "status": "open",
+              "updateTime": "2026-01-03T04:05:06Z"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "customFieldKeys": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "ownerId": "7",
+        "personId": "101",
+        "pipelineId": "2",
+        "sortBy": "update_time",
+        "sortDirection": "desc",
+        "stageId": "3",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "updatedSince": "2026-01-01T00:00:00Z",
+        "updatedUntil": "2026-02-01T00:00:00Z"
+      },
+      "name": "listObjects-success",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "custom_fields": [
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "limit": [
+              "10"
+            ],
+            "org_id": [
+              "201"
+            ],
+            "owner_id": [
+              "7"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "pipeline_id": [
+              "2"
+            ],
+            "sort_by": [
+              "update_time"
+            ],
+            "sort_direction": [
+              "desc"
+            ],
+            "stage_id": [
+              "3"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "updated_since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "updated_until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "objectType": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "customFieldKeys": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "ownerId": "7",
+        "personId": "101",
+        "pipelineId": "2",
+        "sortBy": "update_time",
+        "sortDirection": "desc",
+        "stageId": "3",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "updatedSince": "2026-01-01T00:00:00Z",
+        "updatedUntil": "2026-02-01T00:00:00Z"
+      },
+      "name": "listObjects-invalid-response",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "custom_fields": [
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "limit": [
+              "10"
+            ],
+            "org_id": [
+              "201"
+            ],
+            "owner_id": [
+              "7"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "pipeline_id": [
+              "2"
+            ],
+            "sort_by": [
+              "update_time"
+            ],
+            "sort_direction": [
+              "desc"
+            ],
+            "stage_id": [
+              "3"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "updated_since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "updated_until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "objectType": "",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "customFieldKeys": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "ownerId": "7",
+        "personId": "101",
+        "pipelineId": "2",
+        "sortBy": "update_time",
+        "sortDirection": "desc",
+        "stageId": "3",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "updatedSince": "2026-01-01T00:00:00Z",
+        "updatedUntil": "2026-02-01T00:00:00Z"
+      },
+      "name": "listObjects-provider-rejected",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "custom_fields": [
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "limit": [
+              "10"
+            ],
+            "org_id": [
+              "201"
+            ],
+            "owner_id": [
+              "7"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "pipeline_id": [
+              "2"
+            ],
+            "sort_by": [
+              "update_time"
+            ],
+            "sort_direction": [
+              "desc"
+            ],
+            "stage_id": [
+              "3"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "updated_since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "updated_until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "customFieldKeys": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "ownerId": "7",
+        "personId": "101",
+        "pipelineId": "2",
+        "sortBy": "update_time",
+        "sortDirection": "desc",
+        "stageId": "3",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "updatedSince": "2026-01-01T00:00:00Z",
+        "updatedUntil": "2026-02-01T00:00:00Z"
+      },
+      "name": "listObjects-rate-limited",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "custom_fields": [
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "limit": [
+              "10"
+            ],
+            "org_id": [
+              "201"
+            ],
+            "owner_id": [
+              "7"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "pipeline_id": [
+              "2"
+            ],
+            "sort_by": [
+              "update_time"
+            ],
+            "sort_direction": [
+              "desc"
+            ],
+            "stage_id": [
+              "3"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "updated_since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "updated_until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "customFieldKeys": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "ownerId": "7",
+        "personId": "101",
+        "pipelineId": "2",
+        "sortBy": "update_time",
+        "sortDirection": "desc",
+        "stageId": "3",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "updatedSince": "2026-01-01T00:00:00Z",
+        "updatedUntil": "2026-02-01T00:00:00Z"
+      },
+      "name": "listObjects-unavailable",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals",
+          "query": {
+            "cursor": [
+              "next_1"
+            ],
+            "custom_fields": [
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "limit": [
+              "10"
+            ],
+            "org_id": [
+              "201"
+            ],
+            "owner_id": [
+              "7"
+            ],
+            "person_id": [
+              "101"
+            ],
+            "pipeline_id": [
+              "2"
+            ],
+            "sort_by": [
+              "update_time"
+            ],
+            "sort_direction": [
+              "desc"
+            ],
+            "stage_id": [
+              "3"
+            ],
+            "status": [
+              "open,won"
+            ],
+            "updated_since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "updated_until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "next_1",
+        "customFieldKeys": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "limit": 10,
+        "objectType": "deals",
+        "organizationId": "201",
+        "ownerId": "7",
+        "personId": "101",
+        "pipelineId": "2",
+        "sortBy": "update_time",
+        "sortDirection": "desc",
+        "stageId": "3",
+        "statuses": [
+          "open",
+          "won"
+        ],
+        "updatedSince": "2026-01-01T00:00:00Z",
+        "updatedUntil": "2026-02-01T00:00:00Z"
+      },
+      "name": "listObjects-transport-before-send",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":301,\"title\":\"Acme renewal\",\"owner_id\":7,\"org_id\":201,\"person_id\":101,\"pipeline_id\":2,\"stage_id\":3,\"status\":\"open\",\"value\":125.5,\"add_time\":\"2026-01-02T03:04:05Z\",\"update_time\":\"2026-01-03T04:05:06Z\",\"custom_fields\":{\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":\"priority\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "providerId": "301",
+          "state": "claimed"
+        },
+        "output": {
+          "addTime": "2026-01-02T03:04:05Z",
+          "customFields": {
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+          },
+          "fields": {
+            "add_time": "2026-01-02T03:04:05Z",
+            "id": 301,
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "status": "open",
+            "title": "Acme renewal",
+            "update_time": "2026-01-03T04:05:06Z",
+            "value": 125.5
+          },
+          "id": "301",
+          "name": "Acme renewal",
+          "objectType": "deals",
+          "organizationId": "201",
+          "ownerId": "7",
+          "personId": "101",
+          "pipelineId": "2",
+          "stageId": "3",
+          "status": "open",
+          "updateTime": "2026-01-03T04:05:06Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-success",
+      "operation": "createObject"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-invalid-response",
+      "operation": "createObject"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-provider-rejected",
+      "operation": "createObject"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-rate-limited",
+      "operation": "createObject"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-unavailable",
+      "operation": "createObject"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-transport-before-send",
+      "operation": "createObject"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/deals",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "title": "Acme renewal",
+            "value": 125.5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "caa4781a-357f-5359-9562-1241cba08988",
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-uncertain",
+      "operation": "createObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":301,\"title\":\"Acme renewal\",\"owner_id\":7,\"org_id\":201,\"person_id\":101,\"pipeline_id\":2,\"stage_id\":3,\"status\":\"open\",\"value\":125.5,\"add_time\":\"2026-01-02T03:04:05Z\",\"update_time\":\"2026-01-03T04:05:06Z\",\"custom_fields\":{\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":\"priority\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/deals/301",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "stage_id": 3,
+            "title": "Acme renewal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "addTime": "2026-01-02T03:04:05Z",
+          "customFields": {
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+          },
+          "fields": {
+            "add_time": "2026-01-02T03:04:05Z",
+            "id": 301,
+            "org_id": 201,
+            "owner_id": 7,
+            "person_id": 101,
+            "pipeline_id": 2,
+            "stage_id": 3,
+            "status": "open",
+            "title": "Acme renewal",
+            "update_time": "2026-01-03T04:05:06Z",
+            "value": 125.5
+          },
+          "id": "301",
+          "name": "Acme renewal",
+          "objectType": "deals",
+          "organizationId": "201",
+          "ownerId": "7",
+          "personId": "101",
+          "pipelineId": "2",
+          "stageId": "3",
+          "status": "open",
+          "updateTime": "2026-01-03T04:05:06Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "stage_id": 3,
+          "title": "Acme renewal"
+        },
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-success",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"data\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/deals/301",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "stage_id": 3,
+            "title": "Acme renewal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "stage_id": 3,
+          "title": "Acme renewal"
+        },
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-invalid-response",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/deals/301",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "stage_id": 3,
+            "title": "Acme renewal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "stage_id": 3,
+          "title": "Acme renewal"
+        },
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-provider-rejected",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/deals/301",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "stage_id": 3,
+            "title": "Acme renewal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "stage_id": 3,
+          "title": "Acme renewal"
+        },
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-rate-limited",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/deals/301",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "stage_id": 3,
+            "title": "Acme renewal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "stage_id": 3,
+          "title": "Acme renewal"
+        },
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-unavailable",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/deals/301",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "stage_id": 3,
+            "title": "Acme renewal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "stage_id": 3,
+          "title": "Acme renewal"
+        },
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-transport-before-send",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectType": "",
+          "objects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "deals",
+        "term": ""
+      },
+      "name": "searchObjects-defect",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "bad",
+        "objectType": "deals"
+      },
+      "name": "getObject-defect",
+      "operation": "getObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectType": "",
+          "objects": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 501,
+        "objectType": "deals"
+      },
+      "name": "listObjects-defect",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "fields": {},
+        "objectType": "deals"
+      },
+      "name": "createObject-defect",
+      "operation": "createObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "fields": {},
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-defect",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[{\"value\":\"jane@example.com\",\"primary\":true}],\"org_id\":201,\"owner_id\":7}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/persons/101",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "created": false,
+          "object": {
+            "emails": [
+              "jane@example.com"
+            ],
+            "fields": {
+              "emails": [
+                {
+                  "primary": true,
+                  "value": "jane@example.com"
+                }
+              ],
+              "id": 101,
+              "name": "Jane Smith",
+              "org_id": 201,
+              "owner_id": 7
+            },
+            "id": "101",
+            "name": "Jane Smith",
+            "objectType": "persons",
+            "organizationId": "201",
+            "ownerId": "7"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-update-success",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[{\"value\":\"jane@example.com\",\"primary\":true}],\"org_id\":201,\"owner_id\":7}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
+          "state": "claimed"
+        },
+        "output": {
+          "created": true,
+          "object": {
+            "emails": [
+              "jane@example.com"
+            ],
+            "fields": {
+              "emails": [
+                {
+                  "primary": true,
+                  "value": "jane@example.com"
+                }
+              ],
+              "id": 101,
+              "name": "Jane Smith",
+              "org_id": 201,
+              "owner_id": 7
+            },
+            "id": "101",
+            "name": "Jane Smith",
+            "objectType": "persons",
+            "organizationId": "201",
+            "ownerId": "7"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-create-success",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}},{\"item\":{\"id\":102,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "multipleMatches",
+        "failureKind": "CONFLICT",
+        "output": {
+          "created": false,
+          "matchingIds": [
+            "101",
+            "102"
+          ],
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-multiple-matches",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-invalid-response",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-provider-rejected",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "deals"
+      },
+      "name": "upsertObject-defect",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "notSent"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-search-rate-limited",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "notSent"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-search-unavailable",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "notSent"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-search-transport-before-send",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/persons/101",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "notSent"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-update-rate-limited",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/persons/101",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "notSent"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-update-unavailable",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/persons/101",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "notSent"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-update-transport-before-send",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-create-rate-limited",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "canResend"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-create-unavailable",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-create-transport-before-send",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-create-uncertain",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":201,\"name\":\"Acme\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/organizations/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "name"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "Acme"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":201,\"name\":\"Acme\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/organizations/201",
+          "requestBody": {
+            "owner_id": 7
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "created": false,
+          "object": {
+            "fields": {
+              "id": 201,
+              "name": "Acme"
+            },
+            "id": "201",
+            "name": "Acme",
+            "objectType": "organizations"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "fields": {
+          "owner_id": 7
+        },
+        "idProperty": "name",
+        "idValue": "Acme",
+        "objectType": "organizations"
+      },
+      "name": "upsertObject-organizations",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"invalid\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-create-unconfirmed",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/deals/301",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "stage_id": 3,
+            "title": "Acme renewal"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "fca56e98-569e-585e-ac80-0eda663618f7",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "stage_id": 3,
+          "title": "Acme renewal"
+        },
+        "objectId": "301",
+        "objectType": "deals"
+      },
+      "name": "updateObject-not-found",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":301,\"title\":\"Acme renewal\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "id": 301,
+            "title": "Acme renewal"
+          },
+          "id": "301",
+          "name": "Acme renewal",
+          "objectType": "deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-prior-readback",
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "caa4781a-357f-5359-9562-1241cba08988",
+        "providerId": "301",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[{\"value\":\"jane@example.com\",\"primary\":true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/api/v2/persons/101",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "created": false,
+          "object": {
+            "emails": [
+              "jane@example.com"
+            ],
+            "fields": {
+              "emails": [
+                {
+                  "primary": true,
+                  "value": "jane@example.com"
+                }
+              ],
+              "id": 101,
+              "name": "Jane Smith"
+            },
+            "id": "101",
+            "name": "Jane Smith",
+            "objectType": "persons"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-prior-readback",
+      "operation": "upsertObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-prior-unconfirmed",
+      "operation": "upsertObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-prior-id-429",
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "caa4781a-357f-5359-9562-1241cba08988",
+        "providerId": "301",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-prior-id-503",
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "caa4781a-357f-5359-9562-1241cba08988",
+        "providerId": "301",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "caa4781a-357f-5359-9562-1241cba08988",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals/301",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "caa4781a-357f-5359-9562-1241cba08988",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "org_id": 201,
+          "owner_id": 7,
+          "person_id": 101,
+          "pipeline_id": 2,
+          "stage_id": 3,
+          "title": "Acme renewal",
+          "value": 125.5
+        },
+        "objectType": "deals"
+      },
+      "name": "createObject-prior-id-transport",
+      "operation": "createObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "caa4781a-357f-5359-9562-1241cba08988",
+        "providerId": "301",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-prior-id-429",
+      "operation": "upsertObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "providerId": "101",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-prior-id-503",
+      "operation": "upsertObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "providerId": "101",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-prior-id-transport",
+      "operation": "upsertObject",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+        "providerId": "101",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"invalid\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-accepted-readback-search-429",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"invalid\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "requestCount": 4,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-accepted-readback-get-429",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"invalid\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-accepted-readback-search-503",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"invalid\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "requestCount": 4,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-accepted-readback-get-503",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"invalid\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-accepted-readback-search-transport",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"invalid\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "custom_fields": {
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+            },
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "jane@example.com"
+              }
+            ],
+            "name": "Jane Smith",
+            "org_id": 201
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[{\"item\":{\"id\":101,\"name\":\"Jane Smith\",\"emails\":[\"jane@example.com\"]}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "jane@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/101",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "state": "claimed"
+        },
+        "requestCount": 3,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "customFields": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "priority"
+        },
+        "fields": {
+          "name": "Jane Smith",
+          "org_id": 201
+        },
+        "idProperty": "email",
+        "idValue": "jane@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-accepted-readback-get-transport",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "é@例子.测试"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":101,\"name\":\"A Person\",\"emails\":[{\"value\":\"é@例子.测试\",\"primary\":true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "é@例子.测试"
+              }
+            ],
+            "name": "A Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
+          "state": "claimed"
+        },
+        "output": {
+          "created": true,
+          "object": {
+            "emails": [
+              "é@例子.测试"
+            ],
+            "fields": {
+              "emails": [
+                {
+                  "primary": true,
+                  "value": "é@例子.测试"
+                }
+              ],
+              "id": 101,
+              "name": "A Person"
+            },
+            "id": "101",
+            "name": "A Person",
+            "objectType": "persons"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "fields": {
+          "name": "A Person"
+        },
+        "idProperty": "email",
+        "idValue": "é@例子.测试",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-unicode-email",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "a@[127.0.0.1]"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":101,\"name\":\"A Person\",\"emails\":[{\"value\":\"a@[127.0.0.1]\",\"primary\":true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "a@[127.0.0.1]"
+              }
+            ],
+            "name": "A Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
+          "state": "claimed"
+        },
+        "output": {
+          "created": true,
+          "object": {
+            "emails": [
+              "a@[127.0.0.1]"
+            ],
+            "fields": {
+              "emails": [
+                {
+                  "primary": true,
+                  "value": "a@[127.0.0.1]"
+                }
+              ],
+              "id": 101,
+              "name": "A Person"
+            },
+            "id": "101",
+            "name": "A Person",
+            "objectType": "persons"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "fields": {
+          "name": "A Person"
+        },
+        "idProperty": "email",
+        "idValue": "a@[127.0.0.1]",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-domain-literal-email",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": false,
+          "object": {
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "fields": {
+          "name": "A Person"
+        },
+        "idProperty": "email",
+        "idValue": "a..b@example.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-invalid-dot-email",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "a3b0652e-53b2-4fe1-b370-9742d08e1e08",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/deals",
+          "query": {
+            "limit": [
+              "25"
+            ],
+            "sort_by": [
+              "update_time"
+            ],
+            "updated_since": [
+              "2025-12-30T23:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "objectType": "deals",
+          "objects": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectType": "deals",
+        "updatedSince": "2026-01-01T00:00:00,5+24:60"
+      },
+      "name": "listObjects-comma-fraction-and-wide-offset",
+      "operation": "listObjects"
+    },
+    {
+      "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"data\":{\"items\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/v2/persons/search",
+          "query": {
+            "exact_match": [
+              "true"
+            ],
+            "fields": [
+              "email"
+            ],
+            "limit": [
+              "50"
+            ],
+            "term": [
+              "💼@☃.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"success\":true,\"data\":{\"id\":101,\"name\":\"A Person\",\"emails\":[{\"value\":\"💼@☃.com\",\"primary\":true}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/v2/persons",
+          "requestBody": {
+            "emails": [
+              {
+                "label": "work",
+                "primary": true,
+                "value": "💼@☃.com"
+              }
+            ],
+            "name": "A Person"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Api-Token": [
+              "pipedrive-unit-test-api-token"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dd214505-13a2-5e2b-b804-26a970d2c964",
+          "providerId": "101",
+          "state": "claimed"
+        },
+        "output": {
+          "created": true,
+          "object": {
+            "emails": [
+              "💼@☃.com"
+            ],
+            "fields": {
+              "emails": [
+                {
+                  "primary": true,
+                  "value": "💼@☃.com"
+                }
+              ],
+              "id": 101,
+              "name": "A Person"
+            },
+            "id": "101",
+            "name": "A Person",
+            "objectType": "persons"
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dd214505-13a2-5e2b-b804-26a970d2c964",
+      "input": {
+        "fields": {
+          "name": "A Person"
+        },
+        "idProperty": "email",
+        "idValue": "💼@☃.com",
+        "objectType": "persons"
+      },
+      "name": "upsertObject-symbol-unicode-email",
+      "operation": "upsertObject"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -15,7 +15,7 @@ spec:
       operations: [searchConversations, getConversation, replyToConversation, updateConversationState, findContactByEmail]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.1.1
       package: "@superdurable/connector-intercom"
       operations: [searchConversations, getConversation, replyToConversation, updateConversationState, findContactByEmail]
       triggers: []

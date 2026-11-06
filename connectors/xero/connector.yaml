@@ -8,6 +8,17 @@ metadata:
   version: v0.24.0
 spec:
   provider: xero
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-xero
+      operations: [listContacts, findContactByEmail, getInvoice, listInvoices, createInvoice, recordPayment]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-xero"
+      operations: [listContacts, findContactByEmail, getInvoice, listInvoices, createInvoice, recordPayment]
+      triggers: []
   codegen:
     go:
       package: xero

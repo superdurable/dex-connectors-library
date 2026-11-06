@@ -9,6 +9,16 @@ API messages through Socket Mode, or from a host that relays them for a shared
 connection (see [Relayed events](#relayed-events)). It supports public and
 private channels, not direct messages.
 
+## TypeScript package
+
+`@superdurable/connector-slack@0.1.0` implements the four thread read and
+message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
+Go-only. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
+uses the static `slack-thread-reader` connection name and obtains OAuth bot and
+user tokens through Dex project credentials. The TypeScript package uses
+generated manifest refresh declarations for token rotation. Live Slack OAuth
+and provider behavior have not been verified for this package.
+
 ## Slack app setup
 
 1. Create a Slack app and enable Socket Mode.
@@ -319,6 +329,17 @@ invalid responses, and uncertain post outcomes.
 [`examples/thread-approval`](go/examples/thread-approval) combines both Triggers,
 `ListThreadMessages`, a typed reply RPC, and `PostThreadReply` in one runnable
 Flow.
+
+## Python package
+
+The [Python package](python/README.md) provides all four Slack operations:
+`listThreadMessages`, `getThreadReply`, `postChannelMessage`, and
+`postThreadReply`. It uses generated OAuth credential decoding and refresh for
+private or shared Dex project connections. Socket Mode Triggers remain Go-only.
+The runnable [thread messages example](python/examples/thread_messages/README.md)
+posts through a Mutation Step and reads the new thread through a Query Step.
+Its integration test uses a real Dex Worker and Client with a local Slack HTTP
+stand-in; live Slack authorization and Web API behavior are unverified.
 
 ## Verification
 

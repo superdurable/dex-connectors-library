@@ -6,6 +6,8 @@ Moved from `github.com/superdurable/dex-connectors-library/connectors/square`.
 
 Read-only Dex Query Steps for Square. The module is `github.com/superdurable/dex-connectors-library/connectors/square/go`. See the [runnable resource-read Flow](go/examples/resource-read/README.md).
 
+The TypeScript package is [`@superdurable/connector-square`](typescript/README.md).
+
 The Python package is [`dex-connector-square`](python/README.md), imported as
 `dex_connectors.square`.
 

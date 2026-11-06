@@ -8,6 +8,17 @@ metadata:
   version: v1.3.0
 spec:
   provider: slack
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-slack
+      operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-slack"
+      operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
+      triggers: []
   codegen:
     go:
       package: slack
