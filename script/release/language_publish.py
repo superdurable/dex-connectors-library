@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -32,6 +33,9 @@ LANGUAGE_RELEASE_MANIFEST = "language-release.json"
 PENDING_PYPI_NOTES_START = "<!-- pypi-upload-pending:start -->"
 PENDING_PYPI_NOTES_END = "<!-- pypi-upload-pending:end -->"
 STABLE_VERSION_PATTERN = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
+PYTHON_CONNECTOR_TAG_PATTERN = re.compile(
+    r"(?P<directory>connectors/[a-z0-9-]+(?:/[a-z0-9-]+)*)/python/(?P<version>v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))")
+SOURCE_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 
 def has_registry_project(language: str, package: str) -> bool:
@@ -127,6 +131,8 @@ def is_release_complete(item: dict[str, str], completed_tags: set[str]) -> bool:
 def select_release_matrices(items: list[dict[str, str]], first_publish_limit: int,
                             *, github_release_limit: int = GITHUB_FIRST_RELEASE_LIMIT,
                             completed_tags: set[str] | None = None,
+                            release_created_at: dict[str, str] | None = None,
+                            release_package=None,
                             project_exists=has_registry_project,
                             pypi_release_exists=has_pypi_release_files) -> dict[str, object]:
     """Queue Python first releases for GitHub first and completed releases missing from PyPI for upload."""
@@ -138,30 +144,11 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     updates: list[dict[str, str]] = []
     first: list[dict[str, str]] = []
     github_first: list[dict[str, str]] = []
-    pypi_pending: list[dict[str, str]] = []
     deferred: list[dict[str, str]] = []
-    # Earlier GitHub releases take PyPI project-creation slots before newer ones.
-    pypi_first_count = 0
-    for item in items:
-        if item["language"] != "python" or not is_release_complete(item, completed):
-            continue
-        try:
-            if pypi_release_exists(item["package"], item["version"]):
-                continue
-            has_project = project_exists(item["language"], item["package"])
-        except RuntimeError as error:
-            print(f"::warning::{error}; checking the PyPI upload of {item['package']} again next run", file=sys.stderr)
-            continue
-        item["github_released"] = True
-        if has_project:
-            pypi_pending.append(item)
-        elif pypi_first_count >= first_publish_limit:
-            item["defer_reason"] = "first_publish_cap"
-            deferred.append(item)
-        else:
-            item["first_publish"] = True
-            pypi_pending.append(item)
-            pypi_first_count += 1
+    pypi_pending = select_pending_pypi_uploads(
+        completed, first_publish_limit, deferred, release_created_at=release_created_at or {},
+        release_package=release_package or read_release_package, project_exists=project_exists,
+        pypi_release_exists=pypi_release_exists)
     github_first_count = 0
     for item in items:
         if is_release_complete(item, completed):
@@ -193,6 +180,75 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     return {"updates": updates, "first": first, "github_first": github_first, "pypi_pending": pypi_pending,
             "deferred": deferred,
             "pending_count": len(updates) + len(first) + len(github_first) + len(pypi_pending) + len(deferred)}
+
+
+def select_pending_pypi_uploads(completed_tags: set[str], first_publish_limit: int, deferred: list[dict[str, str]],
+                                *, release_created_at: dict[str, str], release_package, project_exists,
+                                pypi_release_exists) -> list[dict[str, str]]:
+    """Queue every completed Python release missing from PyPI, oldest GitHub release first."""
+    python_tags = [tag for tag in completed_tags if PYTHON_CONNECTOR_TAG_PATTERN.fullmatch(tag)]
+    # A tag without a recorded creation time sorts after every dated tag.
+    python_tags.sort(key=lambda tag: (release_created_at.get(tag) or "￿", tag))
+    pending: list[dict[str, str]] = []
+    allocated_new_projects: set[str] = set()
+    capped_new_projects: set[str] = set()
+    for tag in python_tags:
+        match = PYTHON_CONNECTOR_TAG_PATTERN.fullmatch(tag)
+        directory, version = match.group("directory"), match.group("version")
+        item: dict[str, object] = {"directory": directory, "tag_prefix": f"{directory}/python/", "version": version,
+                                   "language": "python", "github_released": True}
+        try:
+            item["package"] = release_package(directory, tag)
+            if pypi_release_exists(item["package"], version):
+                continue
+            has_project = project_exists("python", item["package"])
+        except (RuntimeError, ValueError) as error:
+            print(f"::warning::{error}; checking the PyPI upload of {tag} again next run", file=sys.stderr)
+            item["defer_reason"] = "registry_lookup_failure"
+            deferred.append(item)
+            continue
+        package = item["package"]
+        if has_project:
+            pending.append(item)
+        elif package in allocated_new_projects:
+            # A later version of a project already queued in this run needs no extra project slot.
+            item["first_publish"] = True
+            pending.append(item)
+        elif package in capped_new_projects or len(allocated_new_projects) >= first_publish_limit:
+            capped_new_projects.add(package)
+            item["defer_reason"] = "first_publish_cap"
+            deferred.append(item)
+        else:
+            allocated_new_projects.add(package)
+            item["first_publish"] = True
+            pending.append(item)
+    return pending
+
+
+def read_release_package(directory: str, tag: str) -> str:
+    """Read the Python distribution name from the release tag's own pyproject.toml."""
+    reachable = subprocess.run(("git", "merge-base", "--is-ancestor", tag, "HEAD"), capture_output=True, check=False)
+    if reachable.returncode != 0:
+        raise RuntimeError(f"release tag is not reachable from HEAD: {tag}")
+    pyproject = subprocess.run(("git", "show", f"{tag}:{directory}/python/pyproject.toml"),
+                               capture_output=True, text=True, check=False)
+    if pyproject.returncode != 0:
+        raise RuntimeError(f"cannot read {directory}/python/pyproject.toml at {tag}")
+    name = tomllib.loads(pyproject.stdout).get("project", {}).get("name")
+    if not isinstance(name, str) or not name:
+        raise ValueError(f"{directory}/python/pyproject.toml at {tag} has no project name")
+    return name
+
+
+def read_release_created_at() -> dict[str, str]:
+    """Return GitHub release creation times by tag, or an empty map when the plan recorded none."""
+    path = os.environ.get("GH_RELEASE_CREATED_AT_PATH")
+    if not path or not Path(path).is_file():
+        return {}
+    created_at = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(created_at, dict) or any(not isinstance(value, str) for value in created_at.values()):
+        raise ValueError("GitHub release creation times must map tags to timestamps")
+    return created_at
 
 
 def defer_beyond_matrix_limit(queues: list[list[dict[str, str]]], deferred: list[dict[str, str]]) -> None:
@@ -295,7 +351,7 @@ def without_pending_pypi_notes(notes: str) -> str:
     return notes[:start] + notes[end + len(PENDING_PYPI_NOTES_END):].lstrip("\n")
 
 
-def verify_release_archives(directory: Path, tag: str, package: str, version: str) -> list[Path]:
+def verify_release_archives(directory: Path, tag: str, package: str, version: str, source_sha: str) -> list[Path]:
     """Check downloaded release files against language-release.json; return the wheel and sdist paths."""
     manifest_path = directory / LANGUAGE_RELEASE_MANIFEST
     manifest_bytes = manifest_path.read_bytes()
@@ -309,6 +365,13 @@ def verify_release_archives(directory: Path, tag: str, package: str, version: st
     actual_identity = {name: manifest.get(name) for name in expected_identity}
     if actual_identity != expected_identity:
         raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} identity {actual_identity} differs from {expected_identity}")
+    if not SOURCE_SHA_PATTERN.fullmatch(source_sha):
+        raise ValueError(f"expected source SHA must be a full commit SHA: {source_sha!r}")
+    manifest_source_sha = manifest.get("sourceSha")
+    if not isinstance(manifest_source_sha, str) or not SOURCE_SHA_PATTERN.fullmatch(manifest_source_sha):
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} sourceSha must be a full commit SHA")
+    if manifest_source_sha != source_sha:
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} sourceSha {manifest_source_sha} differs from tag commit {source_sha}")
     artifacts = manifest.get("artifacts")
     if (not isinstance(artifacts, dict) or len(artifacts) != 2 or
             any(not isinstance(name, str) or not isinstance(digest, str) or "/" in name or "\\" in name
@@ -335,6 +398,32 @@ def verify_release_archives(directory: Path, tag: str, package: str, version: st
         if (directory / (name + ".sha256")).read_text(encoding="utf-8") != f"{digest}  {name}\n":
             raise ValueError(f"{name}.sha256 differs from {LANGUAGE_RELEASE_MANIFEST}")
     return [directory / wheels[0], directory / sdists[0]]
+
+
+def release_mutation_state(asset_names: list[str] | None, built_source_sha: str, trusted_source_sha: str,
+                           remote_tag_sha: str) -> str:
+    """Return absent, incomplete, or complete; complete wins before source checks so stale reruns never modify it."""
+    if asset_names is not None and "language-release.complete" in asset_names:
+        return "complete"
+    if not SOURCE_SHA_PATTERN.fullmatch(trusted_source_sha):
+        raise ValueError(f"release source must be a full commit SHA: {trusted_source_sha!r}")
+    if built_source_sha != trusted_source_sha:
+        raise ValueError(f"build artifact source {built_source_sha} differs from release source {trusted_source_sha}; "
+                         "rerun the whole workflow instead of a stale publish job")
+    if remote_tag_sha and remote_tag_sha != trusted_source_sha:
+        raise ValueError(f"remote tag commit {remote_tag_sha} differs from release source {trusted_source_sha}")
+    return "absent" if asset_names is None else "incomplete"
+
+
+def verify_existing_archives(existing_directory: Path, dist_directory: Path) -> None:
+    """Require archives already on an incomplete GitHub release to equal the rebuilt archives byte for byte."""
+    for existing in existing_directory.iterdir():
+        rebuilt = dist_directory / existing.name
+        if existing.is_symlink() or not existing.is_file() or not rebuilt.is_file():
+            raise ValueError(f"incomplete GitHub release has {existing.name}, which this build did not produce")
+        if hashlib.sha256(existing.read_bytes()).digest() != hashlib.sha256(rebuilt.read_bytes()).digest():
+            raise ValueError(f"incomplete GitHub release has a different {existing.name}; delete that release to "
+                             "rebuild it, because a GitHub-first release has no registry copy to compare")
 
 
 def pypi_published_language_tags(items: list[dict[str, str]], completed_tags: set[str], *,
@@ -454,6 +543,16 @@ def main() -> int:
     archives_parser.add_argument("--tag", required=True)
     archives_parser.add_argument("--package", required=True)
     archives_parser.add_argument("--version", required=True)
+    archives_parser.add_argument("--source-sha", required=True)
+    mutation_parser = commands.add_parser("check-release-mutation")
+    mutation_parser.add_argument("--release-assets", required=True, help="JSON asset-name list, or null")
+    mutation_parser.add_argument("--built-plan", type=Path, required=True)
+    mutation_parser.add_argument("--trusted-plan", type=Path, required=True)
+    mutation_parser.add_argument("--remote-tag-sha", default="")
+    mutation_parser.add_argument("--github-output", type=Path, required=True)
+    existing_parser = commands.add_parser("verify-existing-archives")
+    existing_parser.add_argument("--existing", type=Path, required=True)
+    existing_parser.add_argument("--dist", type=Path, required=True)
     summary_parser = commands.add_parser("summarize")
     summary_parser.add_argument("--selection", type=Path, required=True)
     summary_parser.add_argument("--results-directory", type=Path, required=True)
@@ -473,7 +572,8 @@ def main() -> int:
             else:
                 selection = select_release_matrices(items, args.first_publish_limit,
                                                     github_release_limit=args.github_release_limit,
-                                                    completed_tags=completed_tags)
+                                                    completed_tags=completed_tags,
+                                                    release_created_at=read_release_created_at())
             write_selection_outputs(args.github_output, selection, entries["matrix"], entries["count"])
             Path(os.environ.get("LANGUAGE_SELECTION_PATH", "/tmp/language-selection.json")).write_text(
                 json.dumps(selection) + "\n", encoding="utf-8")
@@ -506,8 +606,22 @@ def main() -> int:
             args.output.write_text(published_pypi_notes(args.notes.read_text(encoding="utf-8"), args.package,
                                                         args.version), encoding="utf-8")
         elif args.command == "verify-release-archives":
-            archives = verify_release_archives(args.directory, args.tag, args.package, args.version)
+            archives = verify_release_archives(args.directory, args.tag, args.package, args.version, args.source_sha)
             print("\n".join(str(archive) for archive in archives))
+        elif args.command == "check-release-mutation":
+            asset_names = json.loads(args.release_assets)
+            if asset_names is not None and (not isinstance(asset_names, list)
+                                            or any(not isinstance(name, str) for name in asset_names)):
+                raise ValueError("release assets must be a JSON list of names or null")
+            state = release_mutation_state(
+                asset_names, json.loads(args.built_plan.read_text(encoding="utf-8"))["source_sha"],
+                json.loads(args.trusted_plan.read_text(encoding="utf-8"))["source_sha"], args.remote_tag_sha)
+            has_archives = any(name.endswith((".whl", ".tar.gz", ".tgz")) for name in asset_names or [])
+            with args.github_output.open("a", encoding="utf-8") as output:
+                output.write(f"release_state={state}\nhas_archives={str(has_archives).lower()}\n")
+            print(f"Release state: {state}")
+        elif args.command == "verify-existing-archives":
+            verify_existing_archives(args.existing, args.dist)
         else:
             selection = json.loads(args.selection.read_text(encoding="utf-8"))
             expected = (selection["updates"] + selection["first"] + selection.get("github_first", [])

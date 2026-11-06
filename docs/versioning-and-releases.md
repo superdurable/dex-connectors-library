@@ -251,18 +251,38 @@ releases are GitHub-first:
    `PYTHON_GITHUB_FIRST_RELEASE_LIMIT` repository variable or the manual
    workflow's `github_first_release_limit` input to change that cap; packages
    beyond it are deferred with `github_release_cap`.
-2. **PyPI pending.** Selection checks every completed Python release against
-   PyPI. A version whose wheel and sdist PyPI does not both serve joins the
-   `upload-pending-pypi` queue. Earlier pending uploads take new-project slots
-   before newer ones.
+2. **PyPI pending.** Every selection run checks every completed
+   `connectors/**/python/vX.Y.Z` release in the GitHub release inventory
+   against PyPI, not only the current manifest versions, so a version bump
+   never abandons an earlier pending upload. Each tag's package name comes
+   from the `pyproject.toml` at that tag, which must be reachable from `main`.
+   A version whose wheel and sdist PyPI does not both serve joins the
+   `upload-pending-pypi` queue, oldest GitHub release (by release creation
+   time, then tag) first; earlier pending uploads also take new-project slots
+   before newer ones. A later version of a project queued in the same run
+   shares its slot. A failed PyPI or tag lookup schedules no upload and is
+   reported as `pypi_pending` with `registry_lookup_failure`.
 3. **PyPI upload.** The `upload-pending-pypi` job downloads the release's
    archives, digests, and `language-release.json` from GitHub, checks every
-   file against the manifest and its `.sha256` file, checks the archive
+   file against the manifest and its `.sha256` file, requires the manifest's
+   `sourceSha` to equal the commit its tag points to, checks the archive
    identities, and uploads those bytes to PyPI. It never rebuilds, so a GitHub
    install and a PyPI install of one version are identical. After PyPI shows
    both archives with matching digests, the job replaces the pending Install
    block with `pip install <package>==<version>`. A failed notes edit only
    warns.
+
+Immediately before a publish job creates or repairs any language release, it
+reads the release live. A release that already has `language-release.complete`
+is never modified, so rerunning an old publish job with a stale build artifact
+leaves it untouched and reports `already_complete`. Otherwise the build
+artifact's source commit must equal the release source and the remote tag
+commit, or the job fails; rerun the whole workflow instead. Repairing an
+incomplete GitHub-first release that already has archives requires those
+archives to equal the rebuilt ones byte for byte, because no registry copy
+exists to compare; delete the incomplete release to rebuild it. Registry-backed
+repairs still replace incomplete GitHub assets with archives that match PyPI or
+npm.
 
 The upload job tries at most three new PyPI projects per run by default, one at
 a time; uploads to existing projects are not capped. Set the
@@ -277,10 +297,6 @@ PyPI projects keep the PyPI-then-GitHub order. npm first publishes keep the
 serialized `publish-language-first` queue; npm documents no comparable
 project-creation cap.
 
-Only a package's current manifest version is checked against PyPI. If a newer
-Python version is declared before an older pending version reaches PyPI, the
-older version stays GitHub-only.
-
 The same workflow runs hourly at minute 17 to drain pending language releases
 and pending Go releases. A scheduled run repairs an incomplete language release
 when its tag records the original source commit. If the upload succeeded but
@@ -293,8 +309,9 @@ Go releases again.
 The `summarize-language` job writes published, `pypi_pending`, deferred, and
 failed tags plus the pending count to its job summary and `result` JSON output.
 A `pypi_pending` tag has a complete GitHub release whose PyPI upload is still
-due, with a reason such as `github_first_release`, `first_publish_cap`, or
-`project_creation_limit`. A deferred tag has no complete GitHub release yet,
+due, with a reason such as `github_first_release`, `first_publish_cap`,
+`project_creation_limit`, or `registry_lookup_failure`. A published tag with
+reason `already_complete` was complete before its publish job ran. A deferred tag has no complete GitHub release yet,
 with a reason such as `github_release_cap`, `registry_lookup_failure`, or
 `matrix_limit`. To recover
 manually, run `Release Connectors and Catalog` on `main` with the affected

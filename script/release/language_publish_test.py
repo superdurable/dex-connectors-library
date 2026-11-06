@@ -27,19 +27,28 @@ def names(entries: list[dict[str, str]]) -> list[str]:
             for entry in entries]
 
 
-def tag(name: str, language: str = "python") -> str:
-    return f"connectors/{name}/{language}/v0.1.0"
+def tag(name: str, language: str = "python", version: str = "v0.1.0") -> str:
+    return f"connectors/{name}/{language}/{version}"
 
 
 def never_on_pypi(_package: str, _version: str) -> bool:
     return False
 
 
+def package_from_directory(directory: str, _tag: str) -> str:
+    return "dex-connector-" + directory.removeprefix("connectors/")
+
+
+def select(items: list[dict[str, str]], first_publish_limit: int, **options) -> dict[str, object]:
+    options.setdefault("release_package", package_from_directory)
+    return language_publish.select_release_matrices(items, first_publish_limit, **options)
+
+
 class SelectReleaseMatricesTests(unittest.TestCase):
     def test_python_first_releases_go_to_github_first_and_keep_updates(self) -> None:
         items = [item("existing"), item("new-one"), item("npm-new", "typescript"), item("new-two"),
                  item("new-three"), item("completed")]
-        selection = language_publish.select_release_matrices(
+        selection = select(
             items, 2, github_release_limit=2, completed_tags={tag("completed")},
             project_exists=lambda _language, package: package in {"dex-connector-existing", "dex-connector-completed"},
             pypi_release_exists=lambda package, _version: package == "dex-connector-completed")
@@ -58,38 +67,116 @@ class SelectReleaseMatricesTests(unittest.TestCase):
 
     def test_completed_github_release_missing_from_pypi_queues_a_pypi_only_upload(self) -> None:
         items = [item("existing-project"), item("new-project"), item("on-pypi"), item("npm-done", "typescript")]
-        selection = language_publish.select_release_matrices(
+        selection = select(
             items, 3, completed_tags={tag("existing-project"), tag("new-project"), tag("on-pypi"),
-                                      tag("npm-done", "typescript")},
+                                      tag("npm-done", "typescript"), "sdkpython/v0.8.0"},
             project_exists=lambda _language, package: package != "dex-connector-new-project",
             pypi_release_exists=lambda package, _version: package == "dex-connector-on-pypi")
         self.assertEqual(["existing-project", "new-project"], names(selection["pypi_pending"]))
         self.assertNotIn("first_publish", selection["pypi_pending"][0])
         self.assertTrue(selection["pypi_pending"][1]["first_publish"])
         self.assertTrue(all(entry["github_released"] for entry in selection["pypi_pending"]))
+        self.assertEqual({"directory": "connectors/existing-project", "tag_prefix": "connectors/existing-project/python/",
+                          "version": "v0.1.0", "language": "python", "github_released": True,
+                          "package": "dex-connector-existing-project"}, selection["pypi_pending"][0])
         self.assertEqual([], selection["updates"] + selection["first"] + selection["github_first"])
-        self.assertNotIn("artifact_index", selection["pypi_pending"][0])
         self.assertEqual(2, selection["pending_count"])
+
+    def test_version_bump_keeps_an_earlier_pending_pypi_upload(self) -> None:
+        bumped = item("acme")
+        bumped["version"] = "v0.2.0"
+        packages = []
+
+        def release_package(directory, release_tag):
+            packages.append(release_tag)
+            return "dex-connector-acme-renamed" if release_tag.endswith("v0.1.0") else "dex-connector-acme"
+
+        selection = select(
+            [bumped], 3, completed_tags={tag("acme")}, release_package=release_package,
+            project_exists=lambda _language, _package: False, pypi_release_exists=never_on_pypi)
+        self.assertEqual([("connectors/acme/python/", "v0.1.0", "dex-connector-acme-renamed")],
+                         [(entry["tag_prefix"], entry["version"], entry["package"])
+                          for entry in selection["pypi_pending"]])
+        self.assertEqual(["v0.2.0"], [entry["version"] for entry in selection["github_first"]])
+        self.assertEqual([tag("acme")], packages)
+
+    def test_pending_pypi_uploads_run_oldest_github_release_first(self) -> None:
+        created_at = {tag("alpha"): "2026-11-06T09:00:00Z", tag("zeta"): "2026-11-05T09:00:00Z",
+                      tag("beta"): "2026-11-05T09:00:00Z"}
+        selection = select(
+            [], 2, completed_tags={tag("alpha"), tag("zeta"), tag("beta"), tag("undated")},
+            release_created_at=created_at,
+            project_exists=lambda _language, _package: False, pypi_release_exists=never_on_pypi)
+        self.assertEqual(["beta", "zeta"], names(selection["pypi_pending"]))
+        self.assertEqual(["alpha", "undated"], names(selection["deferred"]))
+        self.assertEqual({"first_publish_cap"}, {entry["defer_reason"] for entry in selection["deferred"]})
+
+    def test_later_versions_of_a_queued_new_project_share_its_slot(self) -> None:
+        completed = {tag("acme"), tag("acme", version="v0.2.0"), tag("other")}
+        created_at = {tag("acme"): "2026-11-01T00:00:00Z", tag("acme", version="v0.2.0"): "2026-11-02T00:00:00Z",
+                      tag("other"): "2026-11-03T00:00:00Z"}
+        selection = select(
+            [], 1, completed_tags=completed, release_created_at=created_at,
+            project_exists=lambda _language, _package: False, pypi_release_exists=never_on_pypi)
+        self.assertEqual(["v0.1.0", "v0.2.0"], [entry["version"] for entry in selection["pypi_pending"]])
+        self.assertTrue(all(entry["first_publish"] for entry in selection["pypi_pending"]))
+        self.assertEqual(["other"], names(selection["deferred"]))
 
     def test_pending_pypi_uploads_take_project_slots_before_new_releases(self) -> None:
         items = [item("new-release"), item("pending-one"), item("pending-two"), item("pending-three")]
-        selection = language_publish.select_release_matrices(
+        selection = select(
             items, 2, completed_tags={tag("pending-one"), tag("pending-two"), tag("pending-three")},
             project_exists=lambda _language, _package: False, pypi_release_exists=never_on_pypi)
-        self.assertEqual(["pending-one", "pending-two"], names(selection["pypi_pending"]))
+        self.assertEqual(["pending-one", "pending-three"], names(selection["pypi_pending"]))
         self.assertEqual(["new-release"], names(selection["github_first"]))
-        self.assertEqual(["pending-three"], names(selection["deferred"]))
+        self.assertEqual(["pending-two"], names(selection["deferred"]))
         self.assertEqual("first_publish_cap", selection["deferred"][0]["defer_reason"])
         self.assertTrue(selection["deferred"][0]["github_released"])
 
-    def test_pypi_lookup_failure_for_completed_release_retries_next_run(self) -> None:
+    def test_pypi_lookup_failure_for_completed_release_is_reported_without_an_upload(self) -> None:
         def pypi_release_exists(_package, _version):
             raise RuntimeError("PyPI unavailable")
 
-        selection = language_publish.select_release_matrices(
+        selection = select(
             [item("completed")], 3, completed_tags={tag("completed")},
             project_exists=lambda _language, _package: False, pypi_release_exists=pypi_release_exists)
-        self.assertEqual(0, selection["pending_count"])
+        self.assertEqual([], selection["pypi_pending"])
+        self.assertEqual([tag("completed")], [entry["tag_prefix"] + entry["version"] for entry in selection["deferred"]])
+        self.assertEqual("registry_lookup_failure", selection["deferred"][0]["defer_reason"])
+        self.assertTrue(selection["deferred"][0]["github_released"])
+        self.assertEqual(1, selection["pending_count"])
+
+    def test_reads_package_from_the_release_tag_and_rejects_unreachable_tags(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+
+            def git(*arguments: str) -> None:
+                subprocess.run(("git", *arguments), cwd=repository, check=True, capture_output=True)
+
+            git("init", "-q", "-b", "main")
+            git("config", "user.email", "test@example.com")
+            git("config", "user.name", "Test")
+            pyproject = repository / "connectors/acme/python/pyproject.toml"
+            pyproject.parent.mkdir(parents=True)
+            pyproject.write_text('[project]\nname = "dex-connector-acme-old"\n', encoding="utf-8")
+            git("add", ".")
+            git("commit", "-q", "-m", "release")
+            git("tag", tag("acme"))
+            pyproject.write_text('[project]\nname = "dex-connector-acme"\n', encoding="utf-8")
+            git("commit", "-q", "-am", "rename")
+            git("checkout", "-q", "-b", "side")
+            git("commit", "-q", "--allow-empty", "-m", "side")
+            git("tag", tag("acme", version="v0.9.0"))
+            git("checkout", "-q", "main")
+            previous_directory = os.getcwd()
+            os.chdir(repository)
+            try:
+                self.assertEqual("dex-connector-acme-old",
+                                 language_publish.read_release_package("connectors/acme", tag("acme")))
+                with self.assertRaisesRegex(RuntimeError, "not reachable"):
+                    language_publish.read_release_package("connectors/acme", tag("acme", version="v0.9.0"))
+            finally:
+                os.chdir(previous_directory)
 
     def test_rejects_zero_limits(self) -> None:
         with self.assertRaisesRegex(ValueError, "PyPI first publish limit must be positive"):
@@ -126,7 +213,7 @@ class SelectReleaseMatricesTests(unittest.TestCase):
         self.assertEqual({"matrix_limit"}, {entry["defer_reason"] for entry in selection["deferred"]})
 
     def test_writes_github_first_and_pypi_pending_outputs(self) -> None:
-        selection = language_publish.select_release_matrices(
+        selection = select(
             [item("new"), item("pending")], 3, completed_tags={tag("pending")},
             project_exists=lambda _language, _package: False, pypi_release_exists=never_on_pypi)
         with tempfile.TemporaryDirectory() as temporary:
@@ -221,20 +308,47 @@ class VerifyReleaseArchivesTests(unittest.TestCase):
     wheel = "dex_connector_calendly-0.1.0-py3-none-any.whl"
     sdist = "dex_connector_calendly-0.1.0.tar.gz"
 
-    def write_release(self, directory: Path) -> None:
+    source_sha = "1" * 40
+    _omitted = object()
+
+    def write_release(self, directory: Path, source_sha: object = _omitted) -> None:
         digests = {}
         for name, contents in ((self.wheel, b"wheel bytes"), (self.sdist, b"sdist bytes")):
             (directory / name).write_bytes(contents)
             digests[name] = hashlib.sha256(contents).hexdigest()
             (directory / f"{name}.sha256").write_text(f"{digests[name]}  {name}\n", encoding="utf-8")
-        manifest = json.dumps({"language": "python", "package": self.package, "version": "v0.1.0",
-                               "tag": self.release_tag, "sourceSha": "abc", "artifacts": digests}).encode("utf-8")
+        document = {"language": "python", "package": self.package, "version": "v0.1.0",
+                    "tag": self.release_tag, "sourceSha": self.source_sha, "artifacts": digests}
+        if source_sha is None:
+            del document["sourceSha"]
+        elif source_sha is not self._omitted:
+            document["sourceSha"] = source_sha
+        manifest = json.dumps(document).encode("utf-8")
         (directory / "language-release.json").write_bytes(manifest)
         (directory / "language-release.json.sha256").write_text(
             f"{hashlib.sha256(manifest).hexdigest()}  language-release.json\n", encoding="utf-8")
 
-    def verify(self, directory: Path, version: str = "v0.1.0") -> list[Path]:
-        return language_publish.verify_release_archives(directory, self.release_tag, self.package, version)
+    def verify(self, directory: Path, version: str = "v0.1.0", source_sha: str = source_sha) -> list[Path]:
+        return language_publish.verify_release_archives(directory, self.release_tag, self.package, version,
+                                                        source_sha)
+
+    def test_binds_the_manifest_source_to_the_tag_commit(self) -> None:
+        for manifest_source_sha, message in ((None, "sourceSha must be a full commit SHA"),
+                                             ("abc", "sourceSha must be a full commit SHA"),
+                                             ("2" * 40, "differs from tag commit")):
+            with self.subTest(manifest_source_sha=manifest_source_sha), tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                self.write_release(directory, manifest_source_sha)
+                with self.assertRaisesRegex(ValueError, message):
+                    self.verify(directory)
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            self.write_release(directory)
+            # A tag moved after release peels to a different commit than the recorded source.
+            with self.assertRaisesRegex(ValueError, "differs from tag commit"):
+                self.verify(directory, source_sha="3" * 40)
+            with self.assertRaisesRegex(ValueError, "expected source SHA"):
+                self.verify(directory, source_sha="")
 
     def test_returns_wheel_and_sdist_that_match_the_release_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -267,6 +381,39 @@ class VerifyReleaseArchivesTests(unittest.TestCase):
             (directory / "language-release.complete").write_text(self.release_tag, encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "differs from the release manifest"):
                 self.verify(directory)
+
+
+class ReleaseMutationTests(unittest.TestCase):
+    built = "a" * 40
+    trusted = "b" * 40
+
+    def test_complete_release_is_never_modified_even_by_a_stale_build(self) -> None:
+        self.assertEqual("complete", language_publish.release_mutation_state(
+            ["x.whl", "language-release.complete"], self.built, self.trusted, "c" * 40))
+
+    def test_rejects_stale_build_or_moved_tag_before_repair(self) -> None:
+        with self.assertRaisesRegex(ValueError, "stale publish job"):
+            language_publish.release_mutation_state(["x.whl"], self.built, self.trusted, "")
+        with self.assertRaisesRegex(ValueError, "remote tag commit"):
+            language_publish.release_mutation_state(None, self.trusted, self.trusted, "c" * 40)
+        self.assertEqual("absent", language_publish.release_mutation_state(None, self.trusted, self.trusted, ""))
+        self.assertEqual("incomplete", language_publish.release_mutation_state(
+            ["x.whl"], self.trusted, self.trusted, self.trusted))
+
+    def test_existing_archives_must_equal_rebuilt_archives(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            existing, dist = Path(temporary) / "existing", Path(temporary) / "dist"
+            existing.mkdir()
+            dist.mkdir()
+            (existing / "a.whl").write_bytes(b"same")
+            (dist / "a.whl").write_bytes(b"same")
+            language_publish.verify_existing_archives(existing, dist)
+            (dist / "a.whl").write_bytes(b"rebuilt")
+            with self.assertRaisesRegex(ValueError, "different a.whl"):
+                language_publish.verify_existing_archives(existing, dist)
+            (existing / "b.tar.gz").write_bytes(b"other")
+            with self.assertRaisesRegex(ValueError, "did not produce"):
+                language_publish.verify_existing_archives(existing, dist)
 
 
 class RegistryLookupTests(unittest.TestCase):
@@ -449,7 +596,8 @@ class WorkflowTests(unittest.TestCase):
         create_step = publish_steps.split("      - name: Create or repair language release\n", 1)[1].split("      - name:", 1)[0]
         complete_step = publish_steps.split("      - name: Mark language release complete\n", 1)[1].split("      - name:", 1)[0]
         for step in (create_step, complete_step):
-            self.assertIn("if: steps.state.outputs.release_required == 'true'\n", step)
+            self.assertIn("if: steps.state.outputs.release_required == 'true' && "
+                          "steps.guard.outputs.release_state != 'complete'\n", step)
         self.assertIn("matrix: ${{ fromJSON(needs.plan.outputs.github_first_matrix) }}",
                       self.job("publish-language-github-first"))
 
@@ -465,6 +613,8 @@ class WorkflowTests(unittest.TestCase):
             ({"PYPI_STATUS": "deferred", "PYPI_DEFERRED_REASON": "github_first_release", "COMPLETE_STATUS": "failure"},
              ("failed", "")),
             ({"PYPI_STATUS": "", "PYPI_DEFERRED_REASON": "", "COMPLETE_STATUS": "success"}, ("published", "")),
+            ({"PYPI_STATUS": "deferred", "PYPI_DEFERRED_REASON": "github_first_release", "COMPLETE_STATUS": "skipped",
+              "RELEASE_STATE": "complete"}, ("published", "already_complete")),
         )
         for environment, expected in cases:
             with self.subTest(environment=environment), tempfile.TemporaryDirectory() as temporary:
@@ -473,6 +623,95 @@ class WorkflowTests(unittest.TestCase):
                     TAG_PREFIX="connectors/acme/python/", RELEASE_VERSION="v0.1.0", **environment))
                 result = json.loads((Path(temporary) / "release-result" / "release-result.json").read_text())
                 self.assertEqual(expected, (result["status"], result["reason"]))
+
+    def run_guard(self, temporary: Path, *, release_assets: list[str] | None, built_source_sha: str | None,
+                  existing_archive: bytes | None = None, pypi_status: str = "deferred") -> subprocess.CompletedProcess:
+        """Run the guard step with fake release lookup and gh; a None built source matches the fixture HEAD."""
+        publish_job = self.job("publish-language")
+        step = publish_job.split("      - name: Check the live release before changing it\n", 1)[1].split(
+            "      - name:", 1)[0]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        repository = temporary / "repository"
+        repository.mkdir()
+        for arguments in (("init", "-q"), ("-c", "user.email=t@example.com", "-c", "user.name=T", "commit", "-q",
+                                           "--allow-empty", "-m", "source"), ("remote", "add", "origin", str(repository))):
+            subprocess.run(("git", *arguments), cwd=repository, check=True, capture_output=True)
+        trusted_source_sha = subprocess.run(("git", "rev-parse", "HEAD"), cwd=repository, check=True,
+                                            capture_output=True, text=True).stdout.strip()
+        runner_temp = temporary / "runner"
+        dist = runner_temp / "language-work" / "dist"
+        dist.mkdir(parents=True)
+        (dist / "dex_connector_acme-0.1.0-py3-none-any.whl").write_bytes(b"rebuilt wheel")
+        (runner_temp / "language-work" / "plan.json").write_text(
+            json.dumps({"source_sha": trusted_source_sha if built_source_sha is None else built_source_sha}))
+        (runner_temp / "trusted-language-plan.json").write_text(json.dumps({"source_sha": trusted_source_sha}))
+        (runner_temp / "language_publish.py").write_text(Path(language_publish.__file__).read_text())
+        inventory_source = (Path(language_publish.__file__).parent / "github_release_inventory.py").read_text()
+        entry_point = 'if __name__ == "__main__":\n    main()\n'
+        self.assertIn(entry_point, inventory_source)
+        (runner_temp / "github_release_inventory.py").write_text(inventory_source.replace(
+            entry_point, f'if __name__ == "__main__":\n    print({json.dumps(json.dumps(release_assets))})\n'))
+        existing = temporary / "existing"
+        existing.mkdir()
+        if existing_archive is not None:
+            (existing / "dex_connector_acme-0.1.0-py3-none-any.whl").write_bytes(existing_archive)
+        bin_directory = temporary / "bin"
+        bin_directory.mkdir()
+        gh = bin_directory / "gh"
+        gh.write_text('#!/bin/sh\necho "$@" >> "$GH_LOG"\nwhile [ $# -gt 0 ]; do\n'
+                      '  if [ "$1" = --dir ]; then cp "$FAKE_EXISTING"/* "$2"/ 2>/dev/null || true; fi\n'
+                      '  shift\ndone\n')
+        gh.chmod(0o755)
+        return subprocess.run(("bash", "-e", "-o", "pipefail", "-c", script), cwd=repository, capture_output=True,
+                              text=True, env=dict(
+                                  os.environ, PATH=f"{bin_directory}:{os.environ['PATH']}", RUNNER_TEMP=str(runner_temp),
+                                  GITHUB_OUTPUT=str(temporary / "output"), GH_LOG=str(temporary / "gh.log"),
+                                  FAKE_EXISTING=str(existing), TAG_PREFIX="connectors/acme/python/",
+                                  RELEASE_VERSION="v0.1.0", PYPI_STATUS=pypi_status,
+                                  GITHUB_REPOSITORY="superdurable/dex-connectors-library"))
+
+    def test_stale_publish_rerun_never_modifies_a_completed_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            result = self.run_guard(directory, built_source_sha="f" * 40, release_assets=[
+                "dex_connector_acme-0.1.0-py3-none-any.whl", "language-release.complete"])
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("release_state=complete\n", (directory / "output").read_text())
+            self.assertFalse((directory / "gh.log").exists())
+        publish_job = self.job("publish-language")
+        for step_name in ("Create or repair language release", "Mark language release complete"):
+            step = publish_job.split(f"      - name: {step_name}\n", 1)[1].split("      - name:", 1)[0]
+            self.assertIn("steps.guard.outputs.release_state != 'complete'", step.splitlines()[0])
+
+    def test_stale_build_artifact_cannot_repair_an_incomplete_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result = self.run_guard(Path(temporary), built_source_sha="f" * 40,
+                                    release_assets=["dex_connector_acme-0.1.0-py3-none-any.whl"])
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("stale publish job", result.stderr)
+
+    def test_github_first_repair_keeps_existing_archive_bytes(self) -> None:
+        for existing_archive, should_pass in ((b"rebuilt wheel", True), (b"earlier wheel", False)):
+            with self.subTest(should_pass=should_pass), tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                result = self.run_guard(directory, built_source_sha=None, existing_archive=existing_archive,
+                                        release_assets=["dex_connector_acme-0.1.0-py3-none-any.whl"])
+                self.assertEqual(should_pass, result.returncode == 0, result.stderr)
+                self.assertIn("release download", (directory / "gh.log").read_text())
+                if should_pass:
+                    self.assertIn("release_state=incomplete\n", (directory / "output").read_text())
+                else:
+                    self.assertIn("different dex_connector_acme-0.1.0-py3-none-any.whl", result.stderr)
+
+    def test_registry_backed_repair_replaces_incomplete_release_archives(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            result = self.run_guard(directory, built_source_sha=None, existing_archive=b"earlier wheel",
+                                    pypi_status="published",
+                                    release_assets=["dex_connector_acme-0.1.0-py3-none-any.whl"])
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("release_state=incomplete\n", (directory / "output").read_text())
+            self.assertFalse((directory / "gh.log").exists())
 
 
 if __name__ == "__main__":

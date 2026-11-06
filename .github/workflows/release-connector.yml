@@ -89,11 +89,14 @@ jobs:
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 script/release/github_release_inventory.py --output "${RUNNER_TEMP}/release-inventory.json"
+        run: |
+          python3 script/release/github_release_inventory.py --output "${RUNNER_TEMP}/release-inventory.json" \
+            --created-at-output "${RUNNER_TEMP}/release-created-at.json"
       - name: Defer language releases when the inventory is unavailable
         if: steps.release-inventory.outcome == 'failure'
         run: |
           printf '{"_inventory_unavailable":true}\n' > "${RUNNER_TEMP}/release-inventory.json"
+          printf '{}\n' > "${RUNNER_TEMP}/release-created-at.json"
           echo '::warning::Release inventory unavailable; Go release jobs will check their tags directly and language releases will be deferred.'
       - name: Build pending or targeted repair matrix
         id: matrix
@@ -103,6 +106,7 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
           GH_RELEASE_INVENTORY_PATH: ${{ runner.temp }}/release-inventory.json
+          GH_RELEASE_CREATED_AT_PATH: ${{ runner.temp }}/release-created-at.json
           FIRST_PUBLISH_LIMIT: ${{ inputs.first_publish_limit || vars.PYPI_FIRST_PUBLISH_LIMIT || '3' }}
           PYTHON_GITHUB_FIRST_RELEASE_LIMIT: ${{ inputs.github_first_release_limit || vars.PYTHON_GITHUB_FIRST_RELEASE_LIMIT || '15' }}
           DRAIN_FIRST_PUBLISHES: ${{ inputs.drain_first_publishes }}
@@ -678,20 +682,41 @@ jobs:
             --notes "${RUNNER_TEMP}/language-work/notes.md" --repository "${GITHUB_REPOSITORY}" \
             --tag "${TAG_PREFIX}${RELEASE_VERSION}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
             --directory "${CONNECTOR_DIRECTORY}" --wheel "${wheels[0]}"
-      - name: Create or repair language release
+      - name: Check the live release before changing it
+        id: guard
         if: steps.state.outputs.release_required == 'true'
+        env:
+          PYPI_STATUS: ${{ steps.python-publish.outputs.status || steps.first-limit.outputs.status }}
+        run: |
+          tag="${TAG_PREFIX}${RELEASE_VERSION}"
+          release_assets="$(python3 "${RUNNER_TEMP}/github_release_inventory.py" --tag "${tag}" --live)"
+          remote_tag_sha="$(git ls-remote origin "refs/tags/${tag}" "refs/tags/${tag}^{}" | tail -n 1 | cut -f 1)"
+          python3 "${RUNNER_TEMP}/language_publish.py" check-release-mutation \
+            --release-assets "${release_assets}" --built-plan "${RUNNER_TEMP}/language-work/plan.json" \
+            --trusted-plan "${RUNNER_TEMP}/trusted-language-plan.json" --remote-tag-sha "${remote_tag_sha}" \
+            --github-output "${RUNNER_TEMP}/guard-output"
+          cat "${RUNNER_TEMP}/guard-output" >> "${GITHUB_OUTPUT}"
+          if [ "${PYPI_STATUS}" = deferred ] && grep -qx 'release_state=incomplete' "${RUNNER_TEMP}/guard-output" \
+            && grep -qx 'has_archives=true' "${RUNNER_TEMP}/guard-output"; then
+            # A GitHub-first release has no registry copy, so its existing archives are the reference.
+            existing="${RUNNER_TEMP}/existing-archives"
+            mkdir -p "${existing}"
+            gh release download "${tag}" --repo "${GITHUB_REPOSITORY}" --dir "${existing}" \
+              --pattern '*.whl' --pattern '*.tar.gz'
+            python3 "${RUNNER_TEMP}/language_publish.py" verify-existing-archives \
+              --existing "${existing}" --dist "${RUNNER_TEMP}/language-work/dist"
+          fi
+      - name: Create or repair language release
+        if: steps.state.outputs.release_required == 'true' && steps.guard.outputs.release_state != 'complete'
         env:
           SOURCE_SHA: ${{ steps.state.outputs.source_sha }}
           PYPI_STATUS: ${{ steps.python-publish.outputs.status || steps.first-limit.outputs.status }}
+          RELEASE_STATE: ${{ steps.guard.outputs.release_state }}
         run: |
           tag="${TAG_PREFIX}${RELEASE_VERSION}"
           title="$(python3 "${RUNNER_TEMP}/component_release.py" release-title \
             --display-name "${RELEASE_DISPLAY_NAME}" --language "${LANGUAGE}" --version "${RELEASE_VERSION}")"
-          release_assets=null
-          if git show-ref --verify --quiet "refs/tags/${tag}"; then
-            release_assets="$(python3 "${RUNNER_TEMP}/github_release_inventory.py" --tag "${tag}" --live)"
-          fi
-          if [ "${release_assets}" != null ]; then
+          if [ "${RELEASE_STATE}" = incomplete ]; then
             edit_arguments=(--title "${title}")
             if [ "${PYPI_STATUS}" = deferred ]; then
               edit_arguments+=(--notes-file "${RUNNER_TEMP}/language-work/notes.md")
@@ -704,7 +729,7 @@ jobs:
               --notes-file "${RUNNER_TEMP}/language-work/notes.md" "${RUNNER_TEMP}"/language-work/dist/*
           fi
       - name: Mark language release complete
-        if: steps.state.outputs.release_required == 'true'
+        if: steps.state.outputs.release_required == 'true' && steps.guard.outputs.release_state != 'complete'
         id: complete
         run: |
           printf '%s\n' "${TAG_PREFIX}${RELEASE_VERSION}" > "${RUNNER_TEMP}/language-release.complete"
@@ -727,12 +752,16 @@ jobs:
           PYPI_DEFERRED_REASON: ${{ steps.first-limit.outputs.reason }}
           COMPLETE_STATUS: ${{ steps.complete.outcome }}
           RELEASE_REQUIRED: ${{ steps.state.outputs.release_required }}
+          RELEASE_STATE: ${{ steps.guard.outputs.release_state }}
         run: |
           status=failed
           reason=""
           if [ "${JOB_STATUS}" = success ]; then
             if [ "${RELEASE_REQUIRED}" = false ]; then
               status=published
+            elif [ "${RELEASE_STATE}" = complete ]; then
+              status=published
+              reason=already_complete
             elif [ "${COMPLETE_STATUS}" = success ] && [ "${PYPI_STATUS}" = deferred ]; then
               status=pypi_pending
               reason="${PYPI_DEFERRED_REASON:-project_creation_limit}"
@@ -832,7 +861,8 @@ jobs:
           gh release download "${tag}" --repo "${GITHUB_REPOSITORY}" --dir "${dist}" \
             --pattern '*.whl' --pattern '*.tar.gz' --pattern '*.sha256' --pattern 'language-release.json'
           python3 script/release/language_publish.py verify-release-archives \
-            --directory "${dist}" --tag "${tag}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}"
+            --directory "${dist}" --tag "${tag}" --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
+            --source-sha "$(git rev-parse "${tag}^{commit}")"
           python3 script/release/component_release.py verify-language-artifacts \
             --language python --package "${PACKAGE_NAME}" --version "${RELEASE_VERSION}" \
             --asset "$(echo "${dist}"/*.whl)" --asset "$(echo "${dist}"/*.tar.gz)"
