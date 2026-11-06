@@ -139,6 +139,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 25s
             trimClientID: true
             scopeResourcePrefix: https://graph.microsoft.com/
             scopeResourcePrefixCaseInsensitive: true

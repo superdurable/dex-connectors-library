@@ -45,10 +45,12 @@ type manifestGrant struct {
 	refreshRequiredCases []manifestRefreshRequiredCase
 	updates              map[string]string
 	// refreshToken is the credential field that holds the refresh token, or empty for a minting grant.
-	refreshToken         string
-	terminalErrorCodes   []string
-	tokenExchangeTimeout time.Duration
-	missingExpiry        time.Duration
+	refreshToken               string
+	terminalErrorCodes         []string
+	tokenExchangeTimeout       time.Duration
+	deadlineWithSuppliedClient bool
+	privateDefaultClient       bool
+	missingExpiry              time.Duration
 	// mayRefuseWithoutRequest lets a driver refuse a public client refresh before calling the provider.
 	mayRefuseWithoutRequest bool
 }
@@ -135,7 +137,7 @@ func (grant manifestGrant) refresh(t *testing.T, privateKeyPEM string, status in
 func (grant manifestGrant) refreshWithOverrides(t *testing.T, privateKeyPEM string, status int, response map[string]any, overrides map[string]string) (sdkgo.CredentialRefreshResult[docusign.Credentials], *manifestTokenEndpoint, error) {
 	t.Helper()
 	endpoint := &manifestTokenEndpoint{status: status, response: response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
 	result, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[docusign.Credentials]{
 		Credentials: grant.credentials(privateKeyPEM, overrides), Now: time.Now(),
 	})
@@ -169,7 +171,17 @@ func requireManifestTokenExchangeTimeout(t *testing.T, grant manifestGrant, priv
 	if grant.tokenExchangeTimeout == 0 {
 		return
 	}
-	_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, grant.response)
+	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
+	var driver *docusign.CredentialRefreshDriver
+	if grant.deadlineWithSuppliedClient || grant.privateDefaultClient {
+		driver = newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	} else {
+		driver = newManifestRefreshDriver(nil, grant.settings)
+		docusign.SetManifestRefreshTransportForTest(driver, endpoint)
+	}
+	_, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[docusign.Credentials]{
+		Credentials: grant.credentials(privateKeyPEM, nil), Now: time.Now(),
+	})
 	require.NoError(t, err)
 	require.Len(t, endpoint.requests, 1)
 	require.True(t, endpoint.requests[0].hasDeadline, "refresh exchange must have a deadline")
@@ -185,7 +197,7 @@ func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKe
 
 func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, privateKeyPEM string, baseOverrides map[string]string, refreshCases []manifestRefreshRequiredCase) {
 	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
 	for _, refreshCase := range refreshCases {
 		t.Run(refreshCase.name, func(t *testing.T) {
 			now := time.Now().UTC()

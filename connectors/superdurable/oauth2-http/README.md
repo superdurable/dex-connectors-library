@@ -145,7 +145,7 @@ A Keycloak realm on a private network, as the settings of a connection:
 | `tokenEndpointAuthMethod` | `client_secret_post` (default) or `client_secret_basic`: how a refresh presents the client. The manifest cannot yet declare this as the source for a host's code exchange. |
 | `apiBaseUrl` | Required. Base URL of the protected API; the only origin that receives the token. |
 | `maxBodyBytes` | Largest request and response body. Blank uses 1 MiB. |
-| `requestTimeout` | Longest single HTTP request, including token refresh, from one second through one hour. Blank uses 12 seconds. |
+| `requestTimeout` | Longest single HTTP request. Blank uses 12 seconds. |
 
 | Credential | Meaning |
 | --- | --- |

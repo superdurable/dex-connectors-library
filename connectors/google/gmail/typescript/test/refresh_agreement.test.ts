@@ -4,7 +4,7 @@
 
 import { generateKeyPairSync, verify, type KeyObject } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ReauthorizationRequiredError, RetryError, SecretString } from '@superdurable/connectors-sdk';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { Authorization, CredentialFields } from '../src/generated/refresh.js';
@@ -34,6 +34,7 @@ interface AgreementCase {
   assertion?: { issuer: string; subject?: string; audience: string; scope?: string; lifetimeSeconds: number };
   mayRefuseWithoutCall?: boolean;
   tokenExchangeTimeout?: string;
+  tokenExchangeTimeoutNanoseconds?: number;
 }
 
 const cases = JSON.parse(readFileSync(new URL('./fixtures/refresh-agreement-cases.json', import.meta.url), 'utf8')) as AgreementCase[];
@@ -200,8 +201,24 @@ describe('generated timeout grant selection', () => {
   });
 });
 
-describe('generated refresh exchange timeout', () => {
-  for (const agreement of cases.filter(candidate => candidate.tokenExchangeTimeout)) it(agreement.name, async () => {
+const timeoutCases = cases.filter(candidate => candidate.tokenExchangeTimeout);
+if (timeoutCases.length > 0) describe('generated refresh exchange timeout', () => {
+  it('uses the declared duration without shortening it', async () => {
+    const agreement = timeoutCases[0]!;
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    try {
+      const driver = new ManifestCredentialRefreshDriver<Record<string, unknown>>({
+        providerName: 'Agreement', auth: Authorization, credentialFields: CredentialFields,
+        settings: agreement.settings ?? {}, fetch: async () => Response.json(agreement.response),
+      });
+      await driver.refresh({ credentials: credentialsFor(agreement, ''), expiresAt: new Date(0), now: new Date() },
+        new AbortController().signal);
+      expect(timeoutSpy).toHaveBeenCalledWith(agreement.tokenExchangeTimeoutNanoseconds! / 1_000_000);
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+  for (const agreement of timeoutCases) it(agreement.name, async () => {
     const authorization = structuredClone(Authorization) as Record<string, unknown>;
     const settings = shortenDeclaredExchangeTimeout(authorization, agreement);
     let requests = 0;

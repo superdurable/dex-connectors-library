@@ -410,7 +410,7 @@ func TestGoRefreshTimeoutDeclarationsReachAgreements(t *testing.T) {
 			require.NoError(t, err)
 			generated, err := codegen.GenerateRefreshAgreementTest(manifest, "example.com/connector", nil)
 			require.NoError(t, err)
-			require.Contains(t, string(generated), "tokenExchangeTimeout: time.Duration(8000000000)")
+			require.Regexp(t, `tokenExchangeTimeout:\s+time.Duration\(8000000000\)`, string(generated))
 			encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
 			require.NoError(t, err)
 			var cases []codegen.RefreshAgreementCase

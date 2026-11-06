@@ -45,10 +45,12 @@ type manifestGrant struct {
 	refreshRequiredCases []manifestRefreshRequiredCase
 	updates              map[string]string
 	// refreshToken is the credential field that holds the refresh token, or empty for a minting grant.
-	refreshToken         string
-	terminalErrorCodes   []string
-	tokenExchangeTimeout time.Duration
-	missingExpiry        time.Duration
+	refreshToken               string
+	terminalErrorCodes         []string
+	tokenExchangeTimeout       time.Duration
+	deadlineWithSuppliedClient bool
+	privateDefaultClient       bool
+	missingExpiry              time.Duration
 	// mayRefuseWithoutRequest lets a driver refuse a public client refresh before calling the provider.
 	mayRefuseWithoutRequest bool
 }
@@ -135,7 +137,7 @@ func (grant manifestGrant) refresh(t *testing.T, privateKeyPEM string, status in
 func (grant manifestGrant) refreshWithOverrides(t *testing.T, privateKeyPEM string, status int, response map[string]any, overrides map[string]string) (sdkgo.CredentialRefreshResult[crm.Credentials], *manifestTokenEndpoint, error) {
 	t.Helper()
 	endpoint := &manifestTokenEndpoint{status: status, response: response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
 	result, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[crm.Credentials]{
 		Credentials: grant.credentials(privateKeyPEM, overrides), Now: time.Now(),
 	})
@@ -169,7 +171,17 @@ func requireManifestTokenExchangeTimeout(t *testing.T, grant manifestGrant, priv
 	if grant.tokenExchangeTimeout == 0 {
 		return
 	}
-	_, endpoint, err := grant.refresh(t, privateKeyPEM, http.StatusOK, grant.response)
+	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
+	var driver *crm.CredentialRefreshDriver
+	if grant.deadlineWithSuppliedClient || grant.privateDefaultClient {
+		driver = newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	} else {
+		driver = newManifestRefreshDriver(nil, grant.settings)
+		crm.SetManifestRefreshTransportForTest(driver, endpoint)
+	}
+	_, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[crm.Credentials]{
+		Credentials: grant.credentials(privateKeyPEM, nil), Now: time.Now(),
+	})
 	require.NoError(t, err)
 	require.Len(t, endpoint.requests, 1)
 	require.True(t, endpoint.requests[0].hasDeadline, "refresh exchange must have a deadline")
@@ -185,7 +197,7 @@ func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKe
 
 func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, privateKeyPEM string, baseOverrides map[string]string, refreshCases []manifestRefreshRequiredCase) {
 	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
 	for _, refreshCase := range refreshCases {
 		t.Run(refreshCase.name, func(t *testing.T) {
 			now := time.Now().UTC()
@@ -535,9 +547,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(3600000000000), checkExpiry: true},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			tokenExchangeTimeout: time.Duration(8000000000),
 		},
 		{
 			name:     "zoho-eu-oauth refresh",
@@ -599,9 +612,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(3600000000000), checkExpiry: true},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.eu", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			tokenExchangeTimeout: time.Duration(8000000000),
 		},
 		{
 			name:     "zoho-in-oauth refresh",
@@ -663,9 +677,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(3600000000000), checkExpiry: true},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.in", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			tokenExchangeTimeout: time.Duration(8000000000),
 		},
 		{
 			name:     "zoho-au-oauth refresh",
@@ -727,9 +742,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(3600000000000), checkExpiry: true},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.com.au", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			tokenExchangeTimeout: time.Duration(8000000000),
 		},
 		{
 			name:     "zoho-jp-oauth refresh",
@@ -791,9 +807,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(3600000000000), checkExpiry: true},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.jp", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			tokenExchangeTimeout: time.Duration(8000000000),
 		},
 		{
 			name:     "zoho-ca-oauth refresh",
@@ -855,9 +872,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(3600000000000), checkExpiry: true},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.ca", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			tokenExchangeTimeout: time.Duration(8000000000),
 		},
 		{
 			name:     "zoho-sa-oauth refresh",
@@ -919,9 +937,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with expiry above cap", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 7200, "refresh_token": "manifest-refresh-token-2", "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(3600000000000), checkExpiry: true},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "expires_in": 3600, "scope": "ZohoCRM.modules.READ ZohoCRM.modules.CREATE ZohoCRM.modules.UPDATE ZohoCRM.coql.READ ZohoCRM.settings.fields.READ", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "api_domain": "https://www.zohoapis.sa", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_code", "invalid_client", "invalid_client_secret"},
+			tokenExchangeTimeout: time.Duration(8000000000),
 		},
 	}
 }

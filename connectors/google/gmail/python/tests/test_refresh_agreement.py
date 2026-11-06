@@ -228,6 +228,24 @@ def test_generated_timeout_grant_selection() -> None:
     assert shorten_declared_exchange_timeout(authorization, mint) == {"requestTimeout": "1s"}
 
 
+@pytest.mark.parametrize("case", [case for case in CASES if case.get("tokenExchangeTimeout")][:1],
+                         ids=lambda case: case["name"])
+@pytest.mark.asyncio
+async def test_generated_declared_exchange_timeout_duration(case: dict[str, Any]) -> None:
+    """The SDK resolves the full manifest duration before a token exchange."""
+    methods = AUTHORIZATION.get("methods") or []
+    method = next((item for item in methods if item["id"] == case.get("methodId")), AUTHORIZATION)
+    grant = (method["clientCredentials"] if case["parameters"]["grant_type"] == "client_credentials"
+             else method["oauth2"]["refresh"])
+    async with httpx.AsyncClient() as client:
+        driver = ManifestCredentialRefreshDriver[Any](
+            "Agreement", AUTHORIZATION, CREDENTIAL_FIELDS, client, settings=case.get("settings", {})
+        )
+        assert driver._token_exchange_timeout_seconds(grant["tokenExchangeTimeout"]) == (
+            case["tokenExchangeTimeoutNanoseconds"] / 1_000_000_000
+        )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", [case for case in CASES if case.get("tokenExchangeTimeout")],
                          ids=lambda case: case["name"])

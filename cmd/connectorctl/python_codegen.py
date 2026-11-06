@@ -6,6 +6,7 @@ import json
 import keyword
 import re
 import sys
+from decimal import Decimal
 
 payload = json.load(sys.stdin)
 manifest = payload["manifest"]
@@ -100,6 +101,15 @@ def duration(value):
         for number, unit in parts
     )
     return f"timedelta(seconds={seconds:g})"
+
+
+def duration_nanoseconds(value):
+    parts = re.findall(r"(\d+(?:\.\d+)?)(ns|us|µs|μs|ms|s|m|h)", value)
+    if not parts or "".join(number + unit for number, unit in parts) != value:
+        raise ValueError(f"unsupported duration {value!r}")
+    units = {"ns": 1, "us": 1_000, "µs": 1_000, "μs": 1_000, "ms": 1_000_000,
+             "s": 1_000_000_000, "m": 60_000_000_000, "h": 3_600_000_000_000}
+    return int(sum(Decimal(number) * units[unit] for number, unit in parts))
 
 
 def referenced_models(type_info):
@@ -705,6 +715,15 @@ def render_connection():
         ]
         if isinstance(timeout, dict) and "fromSetting" in timeout
     }
+    private_timeout_settings = {
+        timeout["fromSetting"]
+        for method in (auth_methods or [spec["auth"]])
+        if (method.get("oauth2") or {}).get("tokenEndpointNetworkPolicy") == "privateNetworkHTTP"
+        for timeout in [((method.get("oauth2") or {}).get("refresh") or {}).get("tokenExchangeTimeout")]
+        if isinstance(timeout, dict) and "fromSetting" in timeout
+    }
+    if len(private_timeout_settings) > 1:
+        raise ValueError("private token endpoint methods require one shared timeout setting")
     lines = [
         "# Copyright (c) 2026 Super Durable",
         "# SPDX-License-Identifier: MIT",
@@ -1052,8 +1071,12 @@ def render_connection():
         lines.append("    refresh_settings = dict(matching[0].configuration)")
         for setting_name in sorted(timeout_settings):
             field_info = next(field for field in configuration_fields() if field["name"] == setting_name)
-            config_name = snake(setting_name) + ("_seconds" if field_info["type"] == "duration" else "")
-            lines.append(f"    refresh_settings[{setting_name!r}] = f'{{config.{config_name}}}s'")
+            if field_info["type"] == "duration":
+                default_nanoseconds = duration_nanoseconds(field_info["default"])
+                lines.append(f"    refresh_settings[{setting_name!r}] = matching[0].configuration.get({setting_name!r}) or {default_nanoseconds}")
+            else:
+                config_name = snake(setting_name)
+                lines.append(f"    refresh_settings[{setting_name!r}] = config.{config_name}")
     refresh_settings_expression = "refresh_settings" if timeout_settings else "matching[0].configuration"
     client_args = (
         (f"config, _ProjectCredentialSource(project, key, http_client, {refresh_settings_expression}), http_client"
@@ -1066,8 +1089,8 @@ def render_connection():
             lines += [
                 "    if http_client is not None:",
                 f"        raise ValueError({quoted(connection_label + ' private token endpoint does not accept a custom HTTP client')})",
-                ('    http_client = new_provider_http_client(config.' + snake(next(iter(timeout_settings))) +
-                 '_seconds, address_policy="privateNetworkHTTP")' if timeout_settings else
+                ('    http_client = new_provider_http_client(config.' + snake(sorted(private_timeout_settings)[0]) +
+                 '_seconds, address_policy="privateNetworkHTTP")' if private_timeout_settings else
                  '    http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")'),
             ]
         else:
@@ -1138,6 +1161,8 @@ def render_connection():
             if field_type == "number"
             else raw_name
         )
+        if field_type == "duration" and field_info["name"] in timeout_settings and "default" in field_info:
+            expression = f"({expression} if {raw_name} != 0 else {duration_nanoseconds(field_info['default'])} / 1_000_000_000)"
         lines.append(f"        config_arguments[{name!r}] = {expression}")
         if "default" not in field_info:
             lines.append("    else:")

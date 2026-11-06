@@ -37,7 +37,6 @@
       "unauthorized_client"
     ],
     "storedMissingExpiry": "refresh",
-    "tokenExchangeTimeout": "25s",
     "refreshRequiredCases": [
       {
         "name": "fresh token",

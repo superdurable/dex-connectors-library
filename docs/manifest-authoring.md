@@ -630,18 +630,15 @@ case for Microsoft Graph. `scopeResourcePrefixCaseInsensitive` also removes
 an uppercase prefix when the Go driver accepts it. `clientCredentials.scopeSeparators` applies the same
 comma-aware parsing to client-credentials grants.
 `refresh.expiryCap` limits a reported lifetime.
-`refresh.tokenExchangeTimeout` bounds each refresh token exchange independently
-of the caller's deadline; the earlier deadline wins. Declare a positive Go
-duration of at most one hour or `{fromSetting: requestTimeout}` naming a required or defaulted
-duration configuration field when the Go credential refresh driver applies
-the same bound. A sourced timeout uses the validated connection value.
-For a driver that sets only its default HTTP client's timeout, declare that
-default for language parity and note that a caller-supplied Go client may have
-a different timeout.
-`clientCredentials.tokenExchangeTimeout` applies the same rule when a driver
-also mints tokens with the client credentials grant, as Xero does.
-The eight-second declarations leave time for a provider operation after
-refresh within a 30-second Execute window. A timeout is retryable.
+`refresh.tokenExchangeTimeout` declares the bound the Go driver applies on its
+production token exchange path. Declare a positive Go duration of at most one
+hour or `{fromSetting: requestTimeout}` naming a required or defaulted duration
+configuration field. A sourced timeout uses the validated connection value.
+The Go bound may come from a request context or from the driver's default
+`http.Client.Timeout`; a caller-supplied Go client can override a default-client
+timeout. Python and TypeScript always enforce the declared bound, including
+when a caller supplies a client. `clientCredentials.tokenExchangeTimeout`
+applies the same rule to client-credentials grants. A timeout is retryable.
 `accessTokenJWTExpiryFallback` reads the access token JWT `exp` for an undated
 stored token and a response without `expires_in`; an unreadable or past claim
 uses the declared fallback lifetime after refresh.
