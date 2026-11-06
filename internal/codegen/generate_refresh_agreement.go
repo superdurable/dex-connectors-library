@@ -58,7 +58,8 @@ const (
 	offlineAccessScope    = "offline_access"
 )
 
-// suppliedClientDeadlineConnectors apply a context deadline even when a caller supplies an unbounded HTTP client.
+// These drivers use context.WithTimeout during exchange; the map distinguishes that bound from default-client timeouts.
+// Keep this list aligned with production drivers so generated agreements exercise the effective deadline.
 var suppliedClientDeadlineConnectors = map[string]bool{
 	"microsoft-excel": true,
 	"outlook-mail":    true,

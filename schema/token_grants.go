@@ -531,6 +531,34 @@ func validateTokenGrants(prefix string, method AuthMethod, specConfigurationFiel
 	return problems
 }
 
+func validateConsistentTokenExchangeTimeouts(auth Auth) []string {
+	var declared, omitted []string
+	for _, method := range auth.AuthMethods() {
+		methodName := method.ID
+		if methodName == "" {
+			methodName = "default"
+		}
+		if method.OAuth2 != nil && method.OAuth2.Refresh != nil {
+			if method.OAuth2.Refresh.TokenExchangeTimeout == nil {
+				omitted = append(omitted, methodName+" oauth2 refresh")
+			} else {
+				declared = append(declared, methodName+" oauth2 refresh")
+			}
+		}
+		if method.ClientCredentials != nil {
+			if method.ClientCredentials.TokenExchangeTimeout == nil {
+				omitted = append(omitted, methodName+" clientCredentials")
+			} else {
+				declared = append(declared, methodName+" clientCredentials")
+			}
+		}
+	}
+	if len(declared) > 0 && len(omitted) > 0 {
+		return []string{"spec.auth tokenExchangeTimeout must be declared for all timeout-capable token grants when any declares it; missing: " + strings.Join(omitted, ", ")}
+	}
+	return nil
+}
+
 func (grantContext tokenGrantContext) validateOAuthTokenRequests(oauth *OAuth2) []string {
 	problems := grantContext.validateTokenRequestSettings(grantContext.prefix+" oauth2", oauth.TokenEndpointAuthMethod, oauth.TokenRequestEncoding)
 	// Hosts read oauth2 fields as literals or {fromSetting} only; other sources belong to minting grants.

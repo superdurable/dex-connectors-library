@@ -639,6 +639,9 @@ The Go bound may come from a request context or from the driver's default
 timeout. Python and TypeScript always enforce the declared bound, including
 when a caller supplies a client. `clientCredentials.tokenExchangeTimeout`
 applies the same rule to client-credentials grants. A timeout is retryable.
+When one timeout-capable token grant declares this bound, every OAuth refresh
+and client-credentials grant in the connector must declare it. JWT bearer grants
+cannot declare this field yet.
 `accessTokenJWTExpiryFallback` reads the access token JWT `exp` for an undated
 stored token and a response without `expires_in`; an unreadable or past claim
 uses the declared fallback lifetime after refresh.

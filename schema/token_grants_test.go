@@ -174,6 +174,20 @@ func TestClientCredentialsTokenExchangeTimeoutMatchesGoDuration(t *testing.T) {
 	require.NoError(t, manifest.Validate())
 }
 
+func TestTokenExchangeTimeoutRequiresEveryCapableGrant(t *testing.T) {
+	manifestFile, err := os.Open("../connectors/salesforce/connector.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+	manifest, err := schema.Decode(manifestFile)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Validate(), "JWT bearer cannot declare this timeout")
+	manifest.Spec.Auth.Methods[1].OAuth2.Refresh.TokenExchangeTimeout = nil
+	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be declared for all timeout-capable token grants")
+	require.ErrorContains(t, manifest.Validate(), "salesforce-sandbox-oauth oauth2 refresh")
+	manifest.Spec.Auth.Methods[1].OAuth2.Refresh.TokenExchangeTimeout = &schema.ValueSource{Value: "25s"}
+	require.NoError(t, manifest.Validate())
+}
+
 func TestTokenExchangeTimeoutCanReadDefaultedDurationSetting(t *testing.T) {
 	manifestFile, err := os.Open("../connectors/superdurable/oauth2-http/connector.yaml")
 	require.NoError(t, err)

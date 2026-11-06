@@ -90,12 +90,13 @@ def quoted(value):
 def duration(value):
     if not value:
         return "timedelta(0)"
-    parts = re.findall(r"(\d+(?:\.\d+)?)(ns|us|µs|ms|s|m|h)", value)
-    if not parts or "".join(number + unit for number, unit in parts) != value:
+    unsigned_value = value.removeprefix("+")
+    parts = re.findall(r"((?:\d+(?:\.\d*)?|\.\d+))(ns|us|µs|μs|ms|s|m|h)", unsigned_value)
+    if not parts or "".join(number + unit for number, unit in parts) != unsigned_value:
         raise ValueError(f"unsupported duration {value!r}")
     seconds = sum(
         float(number)
-        * {"ns": 1e-9, "us": 1e-6, "µs": 1e-6, "ms": 1e-3, "s": 1, "m": 60, "h": 3600}[
+        * {"ns": 1e-9, "us": 1e-6, "µs": 1e-6, "μs": 1e-6, "ms": 1e-3, "s": 1, "m": 60, "h": 3600}[
             unit
         ]
         for number, unit in parts
@@ -104,8 +105,9 @@ def duration(value):
 
 
 def duration_nanoseconds(value):
-    parts = re.findall(r"(\d+(?:\.\d+)?)(ns|us|µs|μs|ms|s|m|h)", value)
-    if not parts or "".join(number + unit for number, unit in parts) != value:
+    unsigned_value = value.removeprefix("+")
+    parts = re.findall(r"((?:\d+(?:\.\d*)?|\.\d+))(ns|us|µs|μs|ms|s|m|h)", unsigned_value)
+    if not parts or "".join(number + unit for number, unit in parts) != unsigned_value:
         raise ValueError(f"unsupported duration {value!r}")
     units = {"ns": 1, "us": 1_000, "µs": 1_000, "μs": 1_000, "ms": 1_000_000,
              "s": 1_000_000_000, "m": 60_000_000_000, "h": 3_600_000_000_000}
@@ -1072,8 +1074,11 @@ def render_connection():
         for setting_name in sorted(timeout_settings):
             field_info = next(field for field in configuration_fields() if field["name"] == setting_name)
             if field_info["type"] == "duration":
-                default_nanoseconds = duration_nanoseconds(field_info["default"])
-                lines.append(f"    refresh_settings[{setting_name!r}] = matching[0].configuration.get({setting_name!r}) or {default_nanoseconds}")
+                if "default" in field_info:
+                    default_nanoseconds = duration_nanoseconds(field_info["default"])
+                    lines.append(f"    refresh_settings[{setting_name!r}] = matching[0].configuration.get({setting_name!r}) or {default_nanoseconds}")
+                else:
+                    lines.append(f"    refresh_settings[{setting_name!r}] = matching[0].configuration[{setting_name!r}]")
             else:
                 config_name = snake(setting_name)
                 lines.append(f"    refresh_settings[{setting_name!r}] = config.{config_name}")

@@ -73,6 +73,43 @@ func TestPythonPrivateTokenEndpointProjectConnectionUsesPolicyClient(t *testing.
 	}
 }
 
+func TestPythonRequiredSourcedTimeoutAndGoDurationForms(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "superdurable", "oauth2-http", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{}, Triggers: []string{}}}
+	for index := range manifest.Spec.Configuration.Fields {
+		field := &manifest.Spec.Configuration.Fields[index]
+		if field.Name == "requestTimeout" {
+			field.Default = "+.5s"
+			break
+		}
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "superdurable_oauth2_http", MockPackageName: "oauth2httpmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["connection.py"], "or 500000000") {
+		t.Fatal("leading plus and fractional Go duration must compile to nanoseconds")
+	}
+	for index := range manifest.Spec.Configuration.Fields {
+		field := &manifest.Spec.Configuration.Fields[index]
+		if field.Name == "requestTimeout" {
+			field.Default = nil
+			field.Required = true
+			break
+		}
+	}
+	generated, err = renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "superdurable_oauth2_http", MockPackageName: "oauth2httpmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["connection.py"], "matching[0].configuration['requestTimeout']") {
+		t.Fatal("required sourced timeout must use the supplied duration")
+	}
+}
+
 func TestPythonSalesforceBlankStoredMethodUsesDeclaredDefault(t *testing.T) {
 	manifest, err := load(filepath.Join("..", "..", "connectors", "salesforce", "connector.yaml"))
 	if err != nil {
