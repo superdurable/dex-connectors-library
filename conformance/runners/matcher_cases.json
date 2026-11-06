@@ -1004,5 +1004,37 @@
       }
     },
     "expectedMismatches": ["body"]
+  },
+  {
+    "name": "noncanonical-header-name",
+    "requestPath": "/matcher",
+    "requestHeaders": {"orgId": ["12345"]},
+    "requestBody": "",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {"Orgid": "12345"}
+    },
+    "expectedMismatches": []
+  },
+  {
+    "name": "noncanonical-header-value-mismatch",
+    "requestPath": "/matcher",
+    "requestHeaders": {"orgId": ["12345"]},
+    "requestBody": "",
+    "exchange": {
+      "method": "POST",
+      "path": "/matcher",
+      "keyMode": "absent",
+      "status": 200,
+      "headers": {},
+      "body": "",
+      "requestHeaders": {"Orgid": "wrong"}
+    },
+    "expectedMismatches": ["header Orgid"]
   }
 ]
