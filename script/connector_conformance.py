@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,26 @@ NATIVE_WIRE_CONNECTORS = frozenset({
     "connectors/postgresql", "connectors/mysql", "connectors/microsoft/sql-server",
     "connectors/superdurable/email",
 })
+_CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
+
+
+def validate_scenario_fixed_clock(scenario: dict[str, object]) -> None:
+    """Require a timezone-bearing RFC3339 clock when a scenario fixes time."""
+    if "fixedClock" not in scenario:
+        return
+    clock = scenario["fixedClock"]
+    if not isinstance(clock, str) or not _CLOCK_FORMAT.fullmatch(clock):
+        raise ValueError(f"{scenario['name']} has an invalid clock timestamp")
+    try:
+        parsed = datetime.fromisoformat(clock)
+    except ValueError as error:
+        raise ValueError(f"{scenario['name']} has an invalid clock timestamp") from error
+    precision = len(clock.split(".", 1)[1]) - 1 if "." in clock else 0
+    formatted = parsed.strftime("%Y-%m-%dT%H:%M:%S")
+    if precision:
+        formatted += "." + f"{parsed.microsecond:06d}"[:precision]
+    if formatted + "Z" != clock:
+        raise ValueError(f"{scenario['name']} has an invalid clock timestamp")
 
 
 def conformance_exemptions() -> dict[str, str]:
@@ -157,6 +178,7 @@ def run_connector(connector: Path, paths: list[str], exemptions: dict[str, str] 
     observed_transport_failures: set[str] = set()
     observed_uncertainty: set[str] = set()
     for scenario in document["scenarios"]:
+        validate_scenario_fixed_clock(scenario)
         if "pending" in scenario:
             raise ValueError(f"{scenario['name']} uses unsupported pending scenario")
         operation = scenario["operation"]

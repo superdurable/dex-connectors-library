@@ -21,6 +21,7 @@ test-common:
 	cd sdkgo && GOWORK=off go vet ./...
 	python3 -m unittest script/release/component_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py
 	npm ci --prefix connectors/stripe/typescript
+	connectors/stripe/typescript/node_modules/.bin/tsx --test conformance/runners/typescript/connector_scenarios.test.mjs
 	npm ci --prefix connectors/google/gmail/typescript
 	TS_CODEGEN_COMPILE=1 GOWORK=off go test -race ./...
 	GOWORK=off go vet ./...
@@ -65,6 +66,7 @@ test-python-connectors:
 		uv run --project "$$module/python" python script/python_public_exports_test.py "$$module/python" && \
 		uv run --project "$$module/python" python script/python_model_drift_test.py "$$module/python" || exit 1; \
 	done
+	uv run --project connectors/airtable/python python conformance/runners/python/clock_test.py
 	@python3 script/python_slice_wire_test.py
 
 test-typescript-connectors:
