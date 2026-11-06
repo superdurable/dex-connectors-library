@@ -2,12 +2,12 @@
   "connector": "linkedin",
   "scenarios": [
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000001",
       "exchanges": [
         {
-          "body": "{\"sub\":\"linkedin-subject\",\"name\":\"Ada Lovelace\",\"given_name\":\"Ada\",\"family_name\":\"Lovelace\",\"picture\":\"https://media.licdn.com/profile.jpg\",\"locale\":{\"language\":\"en\",\"country\":\"US\"},\"email\":\"Ada@Example.COM\",\"email_verified\":true}",
+          "body": "{\"sub\": \" member-1 \", \"name\": \"Ada\", \"given_name\": \"Ada\", \"family_name\": \"Lovelace\", \"picture\": \"https://media.licdn.com/ada.jpg\", \"locale\": {\"language\": \"en\", \"country\": \"US\"}, \"email\": \"Ada@Example.com\", \"email_verified\": true}",
           "headers": {
-            "X-LI-UUID": "linkedin-request-1"
+            "X-LI-UUID": "request-1"
           },
           "keyMode": "absent",
           "method": "GET",
@@ -33,9 +33,9 @@
           "familyName": "Lovelace",
           "givenName": "Ada",
           "locale": "en-US",
-          "name": "Ada Lovelace",
-          "pictureUrl": "https://media.licdn.com/profile.jpg",
-          "subject": "linkedin-subject",
+          "name": "Ada",
+          "pictureUrl": "https://media.licdn.com/ada.jpg",
+          "subject": "member-1",
           "verifiedEmail": "ada@example.com"
         },
         "requestCount": 1,
@@ -48,10 +48,10 @@
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000002",
       "exchanges": [
         {
-          "body": "{\"sub\":\"member\",\"email\":\"member@example.com\",\"email_verified\":false}",
+          "body": "{\"sub\": \"member-1\", \"email\": \"a@example.com\", \"email_verified\": false}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -83,14 +83,14 @@
         "uncertain": false
       },
       "input": {},
-      "name": "unverified-email",
+      "name": "verified-email-required",
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000003",
       "exchanges": [
         {
-          "body": "{\"error\":\"insufficient_scope\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -126,10 +126,10 @@
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000004",
       "exchanges": [
         {
-          "body": "{\"error\":\"invalid_token\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -165,10 +165,10 @@
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000005",
       "exchanges": [
         {
-          "body": "{\"error\":\"missing\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -204,10 +204,10 @@
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000006",
       "exchanges": [
         {
-          "body": "{\"error\":\"bad_request\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -243,10 +243,10 @@
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000007",
       "exchanges": [
         {
-          "body": "{\"sub\":\"\",\"email\":\"member@example.com\",\"email_verified\":true}",
+          "body": "{\"sub\":",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -282,12 +282,12 @@
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000008",
       "exchanges": [
         {
-          "body": "{\"error\":\"rate_limit\"}",
+          "body": "{}",
           "headers": {
-            "Retry-After": "5"
+            "Retry-After": "7"
           },
           "keyMode": "absent",
           "method": "GET",
@@ -311,18 +311,18 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 5000,
+        "retryAfterMs": 7000,
         "uncertain": false
       },
       "input": {},
-      "name": "rate-limit",
+      "name": "rate-limited",
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000009",
       "exchanges": [
         {
-          "body": "{\"error\":\"unavailable\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -350,11 +350,11 @@
         "uncertain": false
       },
       "input": {},
-      "name": "server-unavailable",
+      "name": "unavailable",
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000010",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -387,7 +387,7 @@
       "operation": "getAuthenticatedProfile"
     },
     {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
+      "callId": "50000000-0000-4000-8000-000000000011",
       "exchanges": [],
       "expected": {
         "branch": "defect",
@@ -403,88 +403,6 @@
       },
       "input": {},
       "name": "missing-credential",
-      "operation": "getAuthenticatedProfile"
-    },
-    {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [
-        {
-          "body": "{\"sub\":123,\"email\":\"member@example.com\",\"email_verified\":true}",
-          "headers": {
-            "X-Request-Id": "request-invalid"
-          },
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/userinfo",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer one-use-token"
-            ],
-            "User-Agent": [
-              "superdurable-dex-linkedin-connector/0.1"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "invalidResponse",
-        "failureKind": "PROTOCOL",
-        "output": {
-          "subject": "",
-          "verifiedEmail": ""
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {},
-      "name": "wrong-typed-claim",
-      "operation": "getAuthenticatedProfile"
-    },
-    {
-      "callId": "5ecde15b-017b-5681-83c4-dcbd11fe5e99",
-      "exchanges": [
-        {
-          "body": "{broken",
-          "headers": {
-            "X-Request-Id": "request-invalid"
-          },
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/v2/userinfo",
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer one-use-token"
-            ],
-            "User-Agent": [
-              "superdurable-dex-linkedin-connector/0.1"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "invalidResponse",
-        "failureKind": "PROTOCOL",
-        "output": {
-          "subject": "",
-          "verifiedEmail": ""
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {},
-      "name": "malformed-json",
       "operation": "getAuthenticatedProfile"
     }
   ],

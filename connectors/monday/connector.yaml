@@ -12,6 +12,9 @@ spec:
     python:
       version: v0.1.0
       package: dex-connector-monday
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-monday'
       operations: [listItems, getItem, createItem, updateItemColumnValues, addUpdate]
       triggers: []
   codegen:

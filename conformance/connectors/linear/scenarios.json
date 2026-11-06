@@ -2,10 +2,10 @@
   "connector": "linear",
   "scenarios": [
     {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
+      "callId": "1e514395-51ad-5629-8b26-324c2a43597f",
       "exchanges": [
         {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"44444444-4444-4444-8444-444444444444\",\"identifier\":\"ENG-210\",\"title\":\"Monthly Fire Drill Checklist - February\",\"url\":\"https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"22222222-2222-4222-8222-222222222222\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"},\"priority\":2,\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"dueDate\":\"2026-11-30\",\"createdAt\":\"2026-10-26T09:00:00Z\",\"updatedAt\":\"2026-10-26T09:10:00Z\",\"archivedAt\":null}],\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null}}}}",
+          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}],\"pageInfo\":{\"hasNextPage\":true,\"endCursor\":\"page-3\"}}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -14,18 +14,15 @@
             "operationName": "LinearSearchIssues",
             "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
             "variables": {
-              "after": "linear-page-1",
+              "after": "page-2",
               "filter": {
                 "assignee": {
-                  "email": {
-                    "eqIgnoreCase": "alice@example.com"
-                  },
                   "id": {
                     "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
                   }
                 },
                 "createdAt": {
-                  "gt": "2026-09-01T00:00:00.000Z"
+                  "gt": "2025-01-01T00:00:00.000Z"
                 },
                 "labels": {
                   "some": {
@@ -43,13 +40,13 @@
                 },
                 "project": {
                   "id": {
-                    "eq": "12345678-1234-4234-8234-123456789012"
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
                   }
                 },
                 "state": {
                   "id": {
                     "in": [
-                      "22222222-2222-4222-8222-222222222222"
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
                     ]
                   },
                   "type": {
@@ -64,11 +61,11 @@
                   }
                 },
                 "title": {
-                  "containsIgnoreCase": "Fire Drill",
-                  "eq": "Monthly Fire Drill Checklist - February"
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
                 },
                 "updatedAt": {
-                  "gt": "2026-10-01T00:00:00.000Z"
+                  "gt": "2026-01-01T00:00:00.000Z"
                 }
               },
               "first": 25,
@@ -81,7 +78,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -97,16 +94,16 @@
           "issues": [
             {
               "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-              "createdAt": "2026-10-26T09:00:00Z",
-              "dueDate": "2026-11-30",
-              "id": "44444444-4444-4444-8444-444444444444",
-              "identifier": "ENG-210",
+              "createdAt": "2026-01-28T10:00:00Z",
+              "dueDate": "2026-02-18",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+              "identifier": "ENG-7",
               "labelIds": [
                 "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
               ],
               "priority": 2,
               "state": {
-                "id": "22222222-2222-4222-8222-222222222222",
+                "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
                 "name": "Todo",
                 "type": "unstarted"
               },
@@ -115,11 +112,12 @@
                 "key": "ENG",
                 "name": "Engineering"
               },
-              "title": "Monthly Fire Drill Checklist - February",
-              "updatedAt": "2026-10-26T09:10:00Z",
-              "url": "https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february"
+              "title": "Fire panel wiring",
+              "updatedAt": "2026-01-28T10:05:00Z",
+              "url": "https://linear.app/acme/issue/ENG-7"
             }
-          ]
+          ],
+          "nextCursor": "page-3"
         },
         "requestCount": 1,
         "retry": false,
@@ -127,28 +125,27 @@
         "uncertain": false
       },
       "input": {
-        "cursor": "linear-page-1",
+        "cursor": "page-2",
         "filter": {
-          "assigneeEmail": "alice@example.com",
           "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-          "createdAfter": "2026-09-01T00:00:00Z",
+          "createdAfter": "2025-01-01T00:00:00Z",
           "labelIds": [
             "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
           ],
           "labelNames": [
             "Bug"
           ],
-          "projectId": "12345678-1234-4234-8234-123456789012",
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
           "stateIds": [
-            "22222222-2222-4222-8222-222222222222"
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
           ],
           "stateTypes": [
             "started"
           ],
           "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-          "title": "Monthly Fire Drill Checklist - February",
-          "titleContains": "Fire Drill",
-          "updatedAfter": "2026-10-01T00:00:00Z"
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
         },
         "includesArchived": true,
         "order": "updatedAt",
@@ -158,10 +155,10 @@
       "operation": "searchIssues"
     },
     {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
+      "callId": "53a17722-3e63-530c-86b6-022a1c9bcb3c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -170,9 +167,63 @@
             "operationName": "LinearSearchIssues",
             "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
             "variables": {
-              "first": 50,
-              "includeArchived": false,
-              "orderBy": "createdAt"
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
             }
           },
           "requestHeaders": {
@@ -180,7 +231,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -198,16 +249,40 @@
         "uncertain": false
       },
       "input": {
-        "filter": {}
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
       },
       "name": "searchIssues-429",
       "operation": "searchIssues"
     },
     {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
+      "callId": "893af7b9-8d02-512b-ad5e-93fdeba1ef19",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -216,9 +291,63 @@
             "operationName": "LinearSearchIssues",
             "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
             "variables": {
-              "first": 50,
-              "includeArchived": false,
-              "orderBy": "createdAt"
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
             }
           },
           "requestHeaders": {
@@ -226,7 +355,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -244,13 +373,37 @@
         "uncertain": false
       },
       "input": {
-        "filter": {}
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
       },
       "name": "searchIssues-503",
       "operation": "searchIssues"
     },
     {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
+      "callId": "831d31b8-0b35-5f25-9773-9d430448315b",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -260,9 +413,63 @@
             "operationName": "LinearSearchIssues",
             "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
             "variables": {
-              "first": 50,
-              "includeArchived": false,
-              "orderBy": "createdAt"
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
             }
           },
           "requestHeaders": {
@@ -270,7 +477,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -288,16 +495,40 @@
         "uncertain": false
       },
       "input": {
-        "filter": {}
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
       },
       "name": "searchIssues-transport",
       "operation": "searchIssues"
     },
     {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
+      "callId": "3222a4a5-6597-5116-813f-1a280bf7990b",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -306,9 +537,63 @@
             "operationName": "LinearSearchIssues",
             "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
             "variables": {
-              "first": 50,
-              "includeArchived": false,
-              "orderBy": "createdAt"
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
             }
           },
           "requestHeaders": {
@@ -316,18 +601,18 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 401
+          "status": 403
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "AUTHORIZATION",
         "output": {
           "issues": []
         },
@@ -337,37 +622,40 @@
         "uncertain": false
       },
       "input": {
-        "filter": {}
-      },
-      "name": "searchIssues-rejected",
-      "operation": "searchIssues"
-    },
-    {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "issues": []
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
         },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
       },
-      "input": {
-        "filter": {},
-        "pageSize": 101
-      },
-      "name": "searchIssues-defect",
+      "name": "searchIssues-provider-rejected",
       "operation": "searchIssues"
     },
     {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
+      "callId": "57656117-3f7f-58dd-97ef-9ce58993bfc1",
       "exchanges": [
         {
-          "body": "{\"data\": {\"issues\": null, \"users\": null, \"workflowStates\": null, \"issueUpdate\": null}}",
+          "body": "{\"data\":{\"nonsense\":true}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -376,9 +664,63 @@
             "operationName": "LinearSearchIssues",
             "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
             "variables": {
-              "first": 50,
-              "includeArchived": false,
-              "orderBy": "createdAt"
+              "after": "page-2",
+              "filter": {
+                "assignee": {
+                  "id": {
+                    "eq": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
+                  }
+                },
+                "createdAt": {
+                  "gt": "2025-01-01T00:00:00.000Z"
+                },
+                "labels": {
+                  "some": {
+                    "id": {
+                      "in": [
+                        "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                      ]
+                    },
+                    "name": {
+                      "in": [
+                        "Bug"
+                      ]
+                    }
+                  }
+                },
+                "project": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "state": {
+                  "id": {
+                    "in": [
+                      "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+                    ]
+                  },
+                  "type": {
+                    "in": [
+                      "started"
+                    ]
+                  }
+                },
+                "team": {
+                  "id": {
+                    "eq": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                  }
+                },
+                "title": {
+                  "containsIgnoreCase": "panel",
+                  "eq": "Fire panel wiring"
+                },
+                "updatedAt": {
+                  "gt": "2026-01-01T00:00:00.000Z"
+                }
+              },
+              "first": 25,
+              "includeArchived": true,
+              "orderBy": "updatedAt"
             }
           },
           "requestHeaders": {
@@ -386,7 +728,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -407,16 +749,84 @@
         "uncertain": false
       },
       "input": {
-        "filter": {}
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 25
       },
-      "name": "searchIssues-invalid",
+      "name": "searchIssues-invalid-response",
       "operation": "searchIssues"
     },
     {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
+      "callId": "d97751ed-a881-593c-a729-9bab8b24fcb0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "issues": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "page-2",
+        "filter": {
+          "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+          "createdAfter": "2025-01-01T00:00:00Z",
+          "labelIds": [
+            "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+          ],
+          "labelNames": [
+            "Bug"
+          ],
+          "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "stateIds": [
+            "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
+          ],
+          "stateTypes": [
+            "started"
+          ],
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "Fire panel wiring",
+          "titleContains": "panel",
+          "updatedAfter": "2026-01-01T00:00:00Z"
+        },
+        "includesArchived": true,
+        "order": "updatedAt",
+        "pageSize": 101
+      },
+      "name": "searchIssues-defect",
+      "operation": "searchIssues"
+    },
+    {
+      "callId": "133fd0d0-b56b-5149-90bb-22101f4b647a",
       "exchanges": [
         {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"44444444-4444-4444-8444-444444444444\",\"identifier\":\"ENG-210\",\"title\":\"Monthly Fire Drill Checklist - February\",\"url\":\"https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"22222222-2222-4222-8222-222222222222\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"},\"priority\":2,\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"dueDate\":\"2026-11-30\",\"createdAt\":\"2026-10-26T09:00:00Z\",\"updatedAt\":\"2026-10-26T09:10:00Z\",\"archivedAt\":null,\"number\":210,\"priorityLabel\":\"High\",\"estimate\":3,\"description\":\"Check every panel on all floors.\",\"branchName\":\"eng-210-fire-drill\",\"trashed\":false,\"creator\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\",\"name\":\"Alice Nguyen\",\"displayName\":\"alice\"},\"labels\":{\"nodes\":[{\"id\":\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\",\"name\":\"Bug\",\"color\":\"#eb5757\"}]},\"project\":{\"id\":\"12345678-1234-4234-8234-123456789012\",\"name\":\"Facilities\"},\"cycle\":{\"id\":\"12345678-1234-4234-8234-123456789012\",\"number\":1,\"name\":\"November\"},\"parent\":{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-100\"},\"startedAt\":null,\"completedAt\":null,\"canceledAt\":null}]}}}",
+          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"},\"number\":7,\"priorityLabel\":\"High\",\"estimate\":3,\"description\":\"Inspect panel\",\"branchName\":\"eng-7-panel\",\"trashed\":false,\"creator\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\",\"name\":\"Alice\",\"displayName\":\"Alice\"},\"labels\":{\"nodes\":[{\"id\":\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\",\"name\":\"Bug\",\"color\":\"#ff0000\"}]},\"project\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"name\":\"Safety\"},\"cycle\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"number\":4,\"name\":\"Sprint 4\"},\"parent\":{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-1\"},\"startedAt\":null,\"completedAt\":null,\"canceledAt\":null}]}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -427,7 +837,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
                 }
               }
             }
@@ -437,7 +847,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -454,46 +864,46 @@
             "id": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f"
           },
           "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-          "branchName": "eng-210-fire-drill",
-          "createdAt": "2026-10-26T09:00:00Z",
+          "branchName": "eng-7-panel",
+          "createdAt": "2026-01-28T10:00:00Z",
           "creator": {
-            "displayName": "alice",
+            "displayName": "Alice",
             "id": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-            "name": "Alice Nguyen"
+            "name": "Alice"
           },
           "cycle": {
-            "id": "12345678-1234-4234-8234-123456789012",
-            "name": "November",
-            "number": 1
+            "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+            "name": "Sprint 4",
+            "number": 4
           },
-          "description": "Check every panel on all floors.",
-          "dueDate": "2026-11-30",
+          "description": "Inspect panel",
+          "dueDate": "2026-02-18",
           "estimate": 3,
-          "id": "44444444-4444-4444-8444-444444444444",
-          "identifier": "ENG-210",
+          "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+          "identifier": "ENG-7",
           "labelIds": [
             "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
           ],
           "labels": [
             {
-              "color": "#eb5757",
+              "color": "#ff0000",
               "id": "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a",
               "name": "Bug"
             }
           ],
-          "number": 210,
+          "number": 7,
           "parent": {
             "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
-            "identifier": "ENG-100"
+            "identifier": "ENG-1"
           },
           "priority": 2,
           "priorityLabel": "High",
           "project": {
-            "id": "12345678-1234-4234-8234-123456789012",
-            "name": "Facilities"
+            "id": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+            "name": "Safety"
           },
           "state": {
-            "id": "22222222-2222-4222-8222-222222222222",
+            "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
             "name": "Todo",
             "type": "unstarted"
           },
@@ -502,9 +912,9 @@
             "key": "ENG",
             "name": "Engineering"
           },
-          "title": "Monthly Fire Drill Checklist - February",
-          "updatedAt": "2026-10-26T09:10:00Z",
-          "url": "https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february"
+          "title": "Fire panel wiring",
+          "updatedAt": "2026-01-28T10:05:00Z",
+          "url": "https://linear.app/acme/issue/ENG-7"
         },
         "requestCount": 1,
         "retry": false,
@@ -512,16 +922,16 @@
         "uncertain": false
       },
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
       "name": "getIssue-success",
       "operation": "getIssue"
     },
     {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
+      "callId": "e63f531f-a704-51ee-be5c-f3eb1fca95bd",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -532,7 +942,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
                 }
               }
             }
@@ -542,7 +952,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -560,16 +970,16 @@
         "uncertain": false
       },
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
       "name": "getIssue-429",
       "operation": "getIssue"
     },
     {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
+      "callId": "09c0f366-8b69-5f47-a691-1f1fb9373de8",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -580,7 +990,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
                 }
               }
             }
@@ -590,7 +1000,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -608,13 +1018,13 @@
         "uncertain": false
       },
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
       "name": "getIssue-503",
       "operation": "getIssue"
     },
     {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
+      "callId": "d1aa2466-65f4-563c-a36e-0fc7febac305",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -626,7 +1036,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
                 }
               }
             }
@@ -636,7 +1046,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -654,16 +1064,16 @@
         "uncertain": false
       },
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
       "name": "getIssue-transport",
       "operation": "getIssue"
     },
     {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
+      "callId": "ff01dc58-0913-5d48-b9a8-c0e45c0f7b6f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -674,7 +1084,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
                 }
               }
             }
@@ -684,18 +1094,18 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 401
+          "status": 403
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "AUTHORIZATION",
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "id": "",
@@ -722,53 +1132,16 @@
         "uncertain": false
       },
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
-      "name": "getIssue-rejected",
+      "name": "getIssue-provider-rejected",
       "operation": "getIssue"
     },
     {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "createdAt": "0001-01-01T00:00:00Z",
-          "id": "",
-          "identifier": "",
-          "number": 0,
-          "priority": 0,
-          "state": {
-            "id": "",
-            "name": "",
-            "type": ""
-          },
-          "team": {
-            "id": "",
-            "key": "",
-            "name": ""
-          },
-          "title": "",
-          "updatedAt": "0001-01-01T00:00:00Z",
-          "url": ""
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "issueId": "invalid"
-      },
-      "name": "getIssue-defect",
-      "operation": "getIssue"
-    },
-    {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
+      "callId": "1b074ee3-2208-57af-b723-0e798225cc4e",
       "exchanges": [
         {
-          "body": "{\"data\": {\"issues\": null, \"users\": null, \"workflowStates\": null, \"issueUpdate\": null}}",
+          "body": "{\"data\":{\"nonsense\":true}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -779,7 +1152,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
                 }
               }
             }
@@ -789,7 +1162,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -827,48 +1200,17 @@
         "uncertain": false
       },
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
-      "name": "getIssue-invalid",
+      "name": "getIssue-invalid-response",
       "operation": "getIssue"
     },
     {
-      "callId": "dc24b049-dc7a-511e-a66e-ee0b7e816249",
-      "exchanges": [
-        {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearGetIssue",
-            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
-            "variables": {
-              "filter": {
-                "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
-                }
-              }
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "callId": "e67a1b7c-8786-5a53-b465-c25323a54e28",
+      "exchanges": [],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "createdAt": "0001-01-01T00:00:00Z",
           "id": "",
@@ -889,22 +1231,22 @@
           "updatedAt": "0001-01-01T00:00:00Z",
           "url": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "issueId": "bad"
       },
-      "name": "getIssue-missing",
+      "name": "getIssue-defect",
       "operation": "getIssue"
     },
     {
-      "callId": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "exchanges": [
         {
-          "body": "{\"data\":{\"issueCreate\":{\"success\":true,\"issue\":{\"id\":\"7a829188-ced1-400a-819b-dc454c738a04\",\"identifier\":\"ENG-210\",\"title\":\"Monthly Fire Drill Checklist - February\",\"url\":\"https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"22222222-2222-4222-8222-222222222222\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"},\"priority\":2,\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"dueDate\":\"2026-11-30\",\"createdAt\":\"2026-10-26T09:00:00Z\",\"updatedAt\":\"2026-10-26T09:10:00Z\",\"archivedAt\":null}}}}",
+          "body": "{\"data\":{\"issueCreate\":{\"success\":true,\"issue\":{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -915,18 +1257,18 @@
             "variables": {
               "input": {
                 "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-                "description": "Check every panel on all floors.",
-                "dueDate": "2026-11-30",
-                "id": "7a829188-ced1-400a-819b-dc454c738a04",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
                 "labelIds": [
                   "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
                 ],
-                "parentId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+                "parentId": "ENG-1",
                 "priority": 2,
-                "projectId": "12345678-1234-4234-8234-123456789012",
-                "stateId": "22222222-2222-4222-8222-222222222222",
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
                 "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-                "title": "Monthly Fire Drill Checklist - February"
+                "title": "New issue"
               }
             }
           },
@@ -935,7 +1277,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -950,16 +1292,16 @@
         "output": {
           "issue": {
             "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-            "createdAt": "2026-10-26T09:00:00Z",
-            "dueDate": "2026-11-30",
-            "id": "7a829188-ced1-400a-819b-dc454c738a04",
-            "identifier": "ENG-210",
+            "createdAt": "2026-01-28T10:00:00Z",
+            "dueDate": "2026-02-18",
+            "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+            "identifier": "ENG-7",
             "labelIds": [
               "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
             ],
             "priority": 2,
             "state": {
-              "id": "22222222-2222-4222-8222-222222222222",
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
               "name": "Todo",
               "type": "unstarted"
             },
@@ -968,42 +1310,42 @@
               "key": "ENG",
               "name": "Engineering"
             },
-            "title": "Monthly Fire Drill Checklist - February",
-            "updatedAt": "2026-10-26T09:10:00Z",
-            "url": "https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february"
+            "title": "Fire panel wiring",
+            "updatedAt": "2026-01-28T10:05:00Z",
+            "url": "https://linear.app/acme/issue/ENG-7"
           },
-          "issueId": "7a829188-ced1-400a-819b-dc454c738a04",
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
           "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-          "title": "Monthly Fire Drill Checklist - February"
+          "title": "New issue"
         },
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "input": {
         "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-        "description": "Check every panel on all floors.",
-        "dueDate": "2026-11-30",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
         "labelIds": [
           "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
         ],
-        "parentId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "parentId": "ENG-1",
         "priority": 2,
-        "projectId": "12345678-1234-4234-8234-123456789012",
-        "stateId": "22222222-2222-4222-8222-222222222222",
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-        "title": "Monthly Fire Drill Checklist - February"
+        "title": "New issue"
       },
       "name": "createIssue-success",
       "operation": "createIssue"
     },
     {
-      "callId": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1013,9 +1355,19 @@
             "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
               "input": {
-                "id": "7a829188-ced1-400a-819b-dc454c738a04",
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
                 "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-                "title": "Fire drill"
+                "title": "New issue"
               }
             }
           },
@@ -1024,7 +1376,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1041,19 +1393,29 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-        "title": "Fire drill"
+        "title": "New issue"
       },
       "name": "createIssue-429",
       "operation": "createIssue"
     },
     {
-      "callId": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1063,9 +1425,19 @@
             "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
               "input": {
-                "id": "7a829188-ced1-400a-819b-dc454c738a04",
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
                 "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-                "title": "Fire drill"
+                "title": "New issue"
               }
             }
           },
@@ -1074,7 +1446,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1083,7 +1455,7 @@
           "status": 503
         },
         {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1094,7 +1466,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "7a829188-ced1-400a-819b-dc454c738a04"
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
                 }
               }
             }
@@ -1104,13 +1476,13 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 200
+          "status": 503
         }
       ],
       "expected": {
@@ -1121,16 +1493,26 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-        "title": "Fire drill"
+        "title": "New issue"
       },
       "name": "createIssue-503",
       "operation": "createIssue"
     },
     {
-      "callId": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -1141,9 +1523,19 @@
             "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
               "input": {
-                "id": "7a829188-ced1-400a-819b-dc454c738a04",
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
                 "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-                "title": "Fire drill"
+                "title": "New issue"
               }
             }
           },
@@ -1152,7 +1544,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1161,7 +1553,7 @@
           "transportFailure": "before-send"
         },
         {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1172,7 +1564,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "7a829188-ced1-400a-819b-dc454c738a04"
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
                 }
               }
             }
@@ -1182,36 +1574,46 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 200
+          "status": 503
         }
       ],
       "expected": {
         "branch": "",
-        "failureKind": "TRANSPORT",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-        "title": "Fire drill"
+        "title": "New issue"
       },
       "name": "createIssue-transport",
       "operation": "createIssue"
     },
     {
-      "callId": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1221,9 +1623,19 @@
             "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
               "input": {
-                "id": "7a829188-ced1-400a-819b-dc454c738a04",
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
                 "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-                "title": "Fire drill"
+                "title": "New issue"
               }
             }
           },
@@ -1232,63 +1644,183 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 401
+          "status": 403
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "AUTHORIZATION",
         "output": {
           "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-          "title": "Fire drill"
+          "title": "New issue"
         },
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
-        "title": "Fire drill"
+        "title": "New issue"
       },
-      "name": "createIssue-rejected",
+      "name": "createIssue-provider-rejected",
       "operation": "createIssue"
     },
     {
-      "callId": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "input": {
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
+      },
+      "name": "createIssue-invalid-response",
+      "operation": "createIssue"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "exchanges": [],
       "expected": {
         "branch": "defect",
         "failureKind": "VALIDATION",
         "output": {
-          "teamId": "invalid",
-          "title": "Fire drill"
+          "teamId": "bad",
+          "title": "New issue"
         },
         "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "cedff4c2-dd44-51fa-8cde-805e59cb4f39",
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "input": {
-        "teamId": "invalid",
-        "title": "Fire drill"
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "bad",
+        "title": "New issue"
       },
       "name": "createIssue-defect",
       "operation": "createIssue"
     },
     {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "exchanges": [
         {
-          "body": "{\"data\":{\"issueUpdate\":{\"success\":true,\"issue\":{\"id\":\"44444444-4444-4444-8444-444444444444\",\"identifier\":\"ENG-210\",\"title\":\"Monthly Fire Drill Checklist - February\",\"url\":\"https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"22222222-2222-4222-8222-222222222222\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"},\"priority\":2,\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"dueDate\":\"2026-11-30\",\"createdAt\":\"2026-10-26T09:00:00Z\",\"updatedAt\":\"2026-10-26T09:10:00Z\",\"archivedAt\":null}}}}",
+          "body": "{\"data\":{\"issueUpdate\":{\"success\":true,\"issue\":{\"id\":\"9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1297,19 +1829,19 @@
             "operationName": "LinearUpdateIssue",
             "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
               "input": {
                 "addedLabelIds": [
                   "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
                 ],
                 "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-                "dueDate": "2026-11-30",
-                "priority": 2,
+                "dueDate": "2026-03-01",
+                "priority": 3,
                 "removedLabelIds": [
-                  "12345678-1234-4234-8234-123456789012"
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
                 ],
-                "stateId": "22222222-2222-4222-8222-222222222222",
-                "title": "Updated fire drill"
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
               }
             }
           },
@@ -1318,7 +1850,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1333,16 +1865,16 @@
         "output": {
           "issue": {
             "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-            "createdAt": "2026-10-26T09:00:00Z",
-            "dueDate": "2026-11-30",
-            "id": "44444444-4444-4444-8444-444444444444",
-            "identifier": "ENG-210",
+            "createdAt": "2026-01-28T10:00:00Z",
+            "dueDate": "2026-02-18",
+            "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+            "identifier": "ENG-7",
             "labelIds": [
               "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
             ],
             "priority": 2,
             "state": {
-              "id": "22222222-2222-4222-8222-222222222222",
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
               "name": "Todo",
               "type": "unstarted"
             },
@@ -1351,40 +1883,40 @@
               "key": "ENG",
               "name": "Engineering"
             },
-            "title": "Monthly Fire Drill Checklist - February",
-            "updatedAt": "2026-10-26T09:10:00Z",
-            "url": "https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february"
+            "title": "Fire panel wiring",
+            "updatedAt": "2026-01-28T10:05:00Z",
+            "url": "https://linear.app/acme/issue/ENG-7"
           },
-          "issueId": "44444444-4444-4444-8444-444444444444"
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
         },
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "input": {
         "addedLabelIds": [
           "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
         ],
         "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-        "dueDate": "2026-11-30",
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "priority": 2,
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
         "removedLabelIds": [
-          "12345678-1234-4234-8234-123456789012"
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
         ],
-        "stateId": "22222222-2222-4222-8222-222222222222",
-        "title": "Updated fire drill"
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
       },
       "name": "updateIssue-success",
       "operation": "updateIssue"
     },
     {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1393,9 +1925,19 @@
             "operationName": "LinearUpdateIssue",
             "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
               "input": {
-                "title": "Fire drill"
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
               }
             }
           },
@@ -1404,7 +1946,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1421,19 +1963,29 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "title": "Fire drill"
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
       },
       "name": "updateIssue-429",
       "operation": "updateIssue"
     },
     {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1442,9 +1994,19 @@
             "operationName": "LinearUpdateIssue",
             "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
               "input": {
-                "title": "Fire drill"
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
               }
             }
           },
@@ -1453,7 +2015,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1470,16 +2032,26 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "title": "Fire drill"
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
       },
       "name": "updateIssue-503",
       "operation": "updateIssue"
     },
     {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -1489,9 +2061,19 @@
             "operationName": "LinearUpdateIssue",
             "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
               "input": {
-                "title": "Fire drill"
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
               }
             }
           },
@@ -1500,7 +2082,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1517,19 +2099,29 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "title": "Fire drill"
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
       },
       "name": "updateIssue-transport",
       "operation": "updateIssue"
     },
     {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1538,9 +2130,19 @@
             "operationName": "LinearUpdateIssue",
             "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
               "input": {
-                "title": "Fire drill"
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
               }
             }
           },
@@ -1549,60 +2151,49 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 401
+          "status": 403
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "AUTHORIZATION",
         "output": {
-          "issueId": "44444444-4444-4444-8444-444444444444"
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
         },
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "title": "Fire drill"
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
       },
-      "name": "updateIssue-rejected",
+      "name": "updateIssue-provider-rejected",
       "operation": "updateIssue"
     },
     {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "issueId": "invalid"
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
-      "input": {
-        "issueId": "invalid"
-      },
-      "name": "updateIssue-defect",
-      "operation": "updateIssue"
-    },
-    {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "exchanges": [
         {
-          "body": "{\"data\": {\"issues\": null, \"users\": null, \"workflowStates\": null, \"issueUpdate\": null}}",
+          "body": "{\"data\":{\"nonsense\":true}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1611,9 +2202,19 @@
             "operationName": "LinearUpdateIssue",
             "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
               "input": {
-                "title": "Fire drill"
+                "addedLabelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "dueDate": "2026-03-01",
+                "priority": 3,
+                "removedLabelIds": [
+                  "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+                ],
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "title": "New title"
               }
             }
           },
@@ -1622,7 +2223,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1635,108 +2236,68 @@
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
         "output": {
-          "issueId": "44444444-4444-4444-8444-444444444444"
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
         },
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "title": "Fire drill"
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
       },
-      "name": "updateIssue-invalid",
+      "name": "updateIssue-invalid-response",
       "operation": "updateIssue"
     },
     {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
-      "exchanges": [
-        {
-          "body": "{\"errors\": [{\"extensions\": {\"code\": \"INPUT_ERROR\"}}]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearUpdateIssue",
-            "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
-            "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
-              "input": {
-                "title": "Fire drill"
-              }
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 400
-        },
-        {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearReadIssueSummary",
-            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
-            "variables": {
-              "filter": {
-                "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
-                }
-              }
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "exchanges": [],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
-          "issueId": "44444444-4444-4444-8444-444444444444"
+          "issueId": "bad"
         },
-        "requestCount": 2,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "input": {
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "title": "Fire drill"
+        "addedLabelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "dueDate": "2026-03-01",
+        "issueId": "bad",
+        "priority": 3,
+        "removedLabelIds": [
+          "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
+        ],
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "title": "New title"
       },
-      "name": "updateIssue-missing",
+      "name": "updateIssue-defect",
       "operation": "updateIssue"
     },
     {
-      "callId": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
       "exchanges": [
         {
-          "body": "{\"data\":{\"commentCreate\":{\"success\":true,\"comment\":{\"id\":\"16395e7f-2f1f-4b32-b9d7-2e7c730d9761\",\"url\":\"https://linear.app/contoso/issue/ENG-210/fire-drill#comment-1\",\"createdAt\":\"2026-10-26T09:11:00Z\"}}}}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1746,9 +2307,9 @@
             "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
             "variables": {
               "input": {
-                "body": "Facilities verified the alarms.",
-                "id": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761",
-                "issueId": "44444444-4444-4444-8444-444444444444"
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
               }
             }
           },
@@ -1757,63 +2318,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "added",
-        "failureKind": "",
-        "output": {
-          "commentId": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761",
-          "createdAt": "2026-10-26T09:11:00Z",
-          "issueId": "44444444-4444-4444-8444-444444444444",
-          "url": "https://linear.app/contoso/issue/ENG-210/fire-drill#comment-1"
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
-      "input": {
-        "body": "Facilities verified the alarms.",
-        "issueId": "44444444-4444-4444-8444-444444444444"
-      },
-      "name": "addComment-success",
-      "operation": "addComment"
-    },
-    {
-      "callId": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearAddComment",
-            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
-            "variables": {
-              "input": {
-                "body": "Reviewed.",
-                "id": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761",
-                "issueId": "44444444-4444-4444-8444-444444444444"
-              }
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1830,19 +2335,19 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
       "input": {
-        "body": "Reviewed.",
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
       "name": "addComment-429",
       "operation": "addComment"
     },
     {
-      "callId": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1852,9 +2357,9 @@
             "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
             "variables": {
               "input": {
-                "body": "Reviewed.",
-                "id": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761",
-                "issueId": "44444444-4444-4444-8444-444444444444"
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
               }
             }
           },
@@ -1863,7 +2368,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1872,7 +2377,7 @@
           "status": 503
         },
         {
-          "body": "{\"data\":{\"comments\":{\"nodes\":[]}}}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1883,7 +2388,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761"
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
                 }
               }
             }
@@ -1893,13 +2398,13 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 200
+          "status": 503
         }
       ],
       "expected": {
@@ -1910,16 +2415,16 @@
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
       "input": {
-        "body": "Reviewed.",
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
       "name": "addComment-503",
       "operation": "addComment"
     },
     {
-      "callId": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -1930,9 +2435,9 @@
             "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
             "variables": {
               "input": {
-                "body": "Reviewed.",
-                "id": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761",
-                "issueId": "44444444-4444-4444-8444-444444444444"
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
               }
             }
           },
@@ -1941,7 +2446,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -1950,7 +2455,7 @@
           "transportFailure": "before-send"
         },
         {
-          "body": "{\"data\":{\"comments\":{\"nodes\":[]}}}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -1961,7 +2466,7 @@
             "variables": {
               "filter": {
                 "id": {
-                  "eq": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761"
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
                 }
               }
             }
@@ -1971,36 +2476,36 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 200
+          "status": 503
         }
       ],
       "expected": {
         "branch": "",
-        "failureKind": "TRANSPORT",
+        "failureKind": "AVAILABILITY",
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
       "input": {
-        "body": "Reviewed.",
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
       "name": "addComment-transport",
       "operation": "addComment"
     },
     {
-      "callId": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2010,9 +2515,9 @@
             "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
             "variables": {
               "input": {
-                "body": "Reviewed.",
-                "id": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761",
-                "issueId": "44444444-4444-4444-8444-444444444444"
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
               }
             }
           },
@@ -2021,174 +2526,141 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 401
+          "status": 403
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "AUTHORIZATION",
         "output": {
-          "issueId": "44444444-4444-4444-8444-444444444444"
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
         },
         "requestCount": 1,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
       "input": {
-        "body": "Reviewed.",
-        "issueId": "44444444-4444-4444-8444-444444444444"
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
       },
-      "name": "addComment-rejected",
+      "name": "addComment-provider-rejected",
       "operation": "addComment"
     },
     {
-      "callId": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"nonsense\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"errors\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-invalid-response",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
       "exchanges": [],
       "expected": {
         "branch": "defect",
         "failureKind": "VALIDATION",
         "output": {
-          "issueId": "invalid"
+          "issueId": "bad"
         },
         "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
       "input": {
-        "body": "Reviewed.",
-        "issueId": "invalid"
+        "body": "A useful comment",
+        "issueId": "bad"
       },
       "name": "addComment-defect",
       "operation": "addComment"
     },
     {
-      "callId": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
+      "callId": "c428d74c-17df-57b7-9dd8-ec0d8b3d7d09",
       "exchanges": [
         {
-          "body": "{\"errors\": [{\"extensions\": {\"code\": \"INPUT_ERROR\"}}]}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearAddComment",
-            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
-            "variables": {
-              "input": {
-                "body": "Reviewed.",
-                "id": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761",
-                "issueId": "44444444-4444-4444-8444-444444444444"
-              }
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 400
-        },
-        {
-          "body": "{\"data\":{\"comments\":{\"nodes\":[]}}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearReadComment",
-            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
-            "variables": {
-              "filter": {
-                "id": {
-                  "eq": "16395e7f-2f1f-4b32-b9d7-2e7c730d9761"
-                }
-              }
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        },
-        {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearReadIssueSummary",
-            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
-            "variables": {
-              "filter": {
-                "id": {
-                  "eq": "44444444-4444-4444-8444-444444444444"
-                }
-              }
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "issueId": "44444444-4444-4444-8444-444444444444"
-        },
-        "requestCount": 3,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "8d1fb35c-4e6e-512b-9674-cb347eb4708c",
-      "input": {
-        "body": "Reviewed.",
-        "issueId": "44444444-4444-4444-8444-444444444444"
-      },
-      "name": "addComment-missing",
-      "operation": "addComment"
-    },
-    {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
-      "exchanges": [
-        {
-          "body": "{\"data\":{\"users\":{\"nodes\":[{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\",\"name\":\"Alice Nguyen\",\"displayName\":\"alice\",\"email\":\"alice@example.com\",\"active\":true,\"admin\":false,\"guest\":false,\"url\":\"https://linear.app/contoso/profiles/alice\"}]}}}",
+          "body": "{\"data\":{\"users\":{\"nodes\":[{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\",\"name\":\"Alice\",\"displayName\":\"Alice\",\"email\":\"Alice@Example.com\",\"active\":true,\"admin\":true,\"guest\":false,\"url\":\"https://linear.app/alice\"}]}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2197,7 +2669,7 @@
             "operationName": "LinearFindUserByEmail",
             "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
             "variables": {
-              "email": "alice@example.com",
+              "email": "Alice@Example.com",
               "includeDisabled": true
             }
           },
@@ -2206,7 +2678,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2220,11 +2692,12 @@
         "failureKind": "",
         "output": {
           "active": true,
-          "displayName": "alice",
-          "email": "alice@example.com",
+          "admin": true,
+          "displayName": "Alice",
+          "email": "Alice@Example.com",
           "id": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-          "name": "Alice Nguyen",
-          "url": "https://linear.app/contoso/profiles/alice"
+          "name": "Alice",
+          "url": "https://linear.app/alice"
         },
         "requestCount": 1,
         "retry": false,
@@ -2232,17 +2705,17 @@
         "uncertain": false
       },
       "input": {
-        "email": "alice@example.com",
+        "email": "Alice@Example.com",
         "includesDisabled": true
       },
       "name": "findUserByEmail-success",
       "operation": "findUserByEmail"
     },
     {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
+      "callId": "e8577e0c-116d-5114-8915-ff5e2894cd08",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2251,8 +2724,8 @@
             "operationName": "LinearFindUserByEmail",
             "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
             "variables": {
-              "email": "alice@example.com",
-              "includeDisabled": false
+              "email": "Alice@Example.com",
+              "includeDisabled": true
             }
           },
           "requestHeaders": {
@@ -2260,7 +2733,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2278,16 +2751,17 @@
         "uncertain": false
       },
       "input": {
-        "email": "alice@example.com"
+        "email": "Alice@Example.com",
+        "includesDisabled": true
       },
       "name": "findUserByEmail-429",
       "operation": "findUserByEmail"
     },
     {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
+      "callId": "9b6a79cb-f2a6-50ca-b515-cb2a087c3905",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2296,8 +2770,8 @@
             "operationName": "LinearFindUserByEmail",
             "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
             "variables": {
-              "email": "alice@example.com",
-              "includeDisabled": false
+              "email": "Alice@Example.com",
+              "includeDisabled": true
             }
           },
           "requestHeaders": {
@@ -2305,7 +2779,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2323,13 +2797,14 @@
         "uncertain": false
       },
       "input": {
-        "email": "alice@example.com"
+        "email": "Alice@Example.com",
+        "includesDisabled": true
       },
       "name": "findUserByEmail-503",
       "operation": "findUserByEmail"
     },
     {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
+      "callId": "ebde29ad-3c4b-569b-9573-822cb5d49717",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -2339,8 +2814,8 @@
             "operationName": "LinearFindUserByEmail",
             "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
             "variables": {
-              "email": "alice@example.com",
-              "includeDisabled": false
+              "email": "Alice@Example.com",
+              "includeDisabled": true
             }
           },
           "requestHeaders": {
@@ -2348,7 +2823,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2366,16 +2841,17 @@
         "uncertain": false
       },
       "input": {
-        "email": "alice@example.com"
+        "email": "Alice@Example.com",
+        "includesDisabled": true
       },
       "name": "findUserByEmail-transport",
       "operation": "findUserByEmail"
     },
     {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
+      "callId": "6717c270-40ec-50b0-b43f-2ff54791d38c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2384,8 +2860,8 @@
             "operationName": "LinearFindUserByEmail",
             "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
             "variables": {
-              "email": "alice@example.com",
-              "includeDisabled": false
+              "email": "Alice@Example.com",
+              "includeDisabled": true
             }
           },
           "requestHeaders": {
@@ -2393,18 +2869,18 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 401
+          "status": 403
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "AUTHORIZATION",
         "output": {
           "active": false,
           "displayName": "",
@@ -2418,40 +2894,17 @@
         "uncertain": false
       },
       "input": {
-        "email": "alice@example.com"
+        "email": "Alice@Example.com",
+        "includesDisabled": true
       },
-      "name": "findUserByEmail-rejected",
+      "name": "findUserByEmail-provider-rejected",
       "operation": "findUserByEmail"
     },
     {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "active": false,
-          "displayName": "",
-          "email": "",
-          "id": "",
-          "name": ""
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "email": "bad"
-      },
-      "name": "findUserByEmail-defect",
-      "operation": "findUserByEmail"
-    },
-    {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
+      "callId": "e16cb2a9-41dc-584b-981c-d379d4040bd2",
       "exchanges": [
         {
-          "body": "{\"data\": {\"issues\": null, \"users\": null, \"workflowStates\": null, \"issueUpdate\": null}}",
+          "body": "{\"data\":{\"nonsense\":true}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2460,8 +2913,8 @@
             "operationName": "LinearFindUserByEmail",
             "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
             "variables": {
-              "email": "alice@example.com",
-              "includeDisabled": false
+              "email": "Alice@Example.com",
+              "includeDisabled": true
             }
           },
           "requestHeaders": {
@@ -2469,7 +2922,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2494,45 +2947,18 @@
         "uncertain": false
       },
       "input": {
-        "email": "alice@example.com"
+        "email": "Alice@Example.com",
+        "includesDisabled": true
       },
-      "name": "findUserByEmail-invalid",
+      "name": "findUserByEmail-invalid-response",
       "operation": "findUserByEmail"
     },
     {
-      "callId": "ba0e9b14-c892-5611-9380-daeee525ace1",
-      "exchanges": [
-        {
-          "body": "{\"data\":{\"users\":{\"nodes\":[]}}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearFindUserByEmail",
-            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
-            "variables": {
-              "email": "alice@example.com",
-              "includeDisabled": false
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
+      "callId": "e16c1ede-2c16-548c-9f8b-9a0db6debcfe",
+      "exchanges": [],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "active": false,
           "displayName": "",
@@ -2540,22 +2966,23 @@
           "id": "",
           "name": ""
         },
-        "requestCount": 1,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "input": {
-        "email": "alice@example.com"
+        "email": "bad",
+        "includesDisabled": true
       },
-      "name": "findUserByEmail-missing",
+      "name": "findUserByEmail-defect",
       "operation": "findUserByEmail"
     },
     {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
+      "callId": "74f2be98-e58e-5f90-aa7e-22fe117abd5f",
       "exchanges": [
         {
-          "body": "{\"data\":{\"workflowStates\":{\"nodes\":[{\"id\":\"22222222-2222-4222-8222-222222222222\",\"name\":\"Todo\",\"type\":\"unstarted\",\"position\":1,\"color\":\"#eeeeee\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\"}}]}}}",
+          "body": "{\"data\":{\"workflowStates\":{\"nodes\":[{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\",\"position\":2.0,\"color\":\"#333333\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\"}}]}}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2572,7 +2999,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2587,10 +3014,10 @@
         "output": {
           "states": [
             {
-              "color": "#eeeeee",
-              "id": "22222222-2222-4222-8222-222222222222",
+              "color": "#333333",
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
               "name": "Todo",
-              "position": 1,
+              "position": 2,
               "type": "unstarted"
             }
           ],
@@ -2608,10 +3035,10 @@
       "operation": "listWorkflowStates"
     },
     {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
+      "callId": "74110523-0822-505f-8a61-bcb4c63dadac",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2628,7 +3055,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2652,10 +3079,10 @@
       "operation": "listWorkflowStates"
     },
     {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
+      "callId": "3938c56f-6bf7-5c06-8f89-4e651f672954",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2672,7 +3099,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2696,7 +3123,7 @@
       "operation": "listWorkflowStates"
     },
     {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
+      "callId": "9cb9055a-0004-5fc1-b0d3-d682bfec44a7",
       "exchanges": [
         {
           "keyMode": "absent",
@@ -2714,7 +3141,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2738,10 +3165,10 @@
       "operation": "listWorkflowStates"
     },
     {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
+      "callId": "5cd59b4f-52d0-5ec3-a5c8-609cd7c7830c",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2758,18 +3185,18 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
             ]
           },
-          "status": 401
+          "status": 403
         }
       ],
       "expected": {
         "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
+        "failureKind": "AUTHORIZATION",
         "output": {
           "states": [],
           "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
@@ -2782,35 +3209,14 @@
       "input": {
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
       },
-      "name": "listWorkflowStates-rejected",
+      "name": "listWorkflowStates-provider-rejected",
       "operation": "listWorkflowStates"
     },
     {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "states": [],
-          "teamId": "invalid"
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "teamId": "invalid"
-      },
-      "name": "listWorkflowStates-defect",
-      "operation": "listWorkflowStates"
-    },
-    {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
+      "callId": "e7d08346-03b5-5ffb-a399-5f2f64a41f55",
       "exchanges": [
         {
-          "body": "{\"data\": {\"issues\": null, \"users\": null, \"workflowStates\": null, \"issueUpdate\": null}}",
+          "body": "{\"data\":{\"nonsense\":true}}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2827,7 +3233,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2851,11 +3257,153 @@
       "input": {
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
       },
-      "name": "listWorkflowStates-invalid",
+      "name": "listWorkflowStates-invalid-response",
       "operation": "listWorkflowStates"
     },
     {
-      "callId": "71c234ac-1fd1-5362-b416-0fee520434b3",
+      "callId": "926861c6-2d5c-53bd-9eb1-a57244335804",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "states": [],
+          "teamId": "bad"
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "teamId": "bad"
+      },
+      "name": "listWorkflowStates-defect",
+      "operation": "listWorkflowStates"
+    },
+    {
+      "callId": "6dcabfd1-f921-5abe-be02-e7b9bcca38cc",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearGetIssue",
+            "query": "query LinearGetIssue($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier number title url priority priorityLabel estimate dueDate labelIds branchName trashed\n      description createdAt updatedAt archivedAt startedAt completedAt canceledAt\n      team { id key name } state { id name type } assignee { id name displayName } creator { id name displayName }\n      labels(first: 50) { nodes { id name color } } project { id name } cycle { id number name } parent { id identifier } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "0001-01-01T00:00:00Z",
+          "id": "",
+          "identifier": "",
+          "number": 0,
+          "priority": 0,
+          "state": {
+            "id": "",
+            "name": "",
+            "type": ""
+          },
+          "team": {
+            "id": "",
+            "key": "",
+            "name": ""
+          },
+          "title": "",
+          "updatedAt": "0001-01-01T00:00:00Z",
+          "url": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "getIssue-not-found",
+      "operation": "getIssue"
+    },
+    {
+      "callId": "8ef28e2d-69ac-5024-b809-6b8331b3501d",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"users\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearFindUserByEmail",
+            "query": "query LinearFindUserByEmail($email: String!, $includeDisabled: Boolean) {\n  users(filter: { email: { eqIgnoreCase: $email } }, first: 2, includeDisabled: $includeDisabled) {\n    nodes { id name displayName email active admin guest url }\n  }\n}",
+            "variables": {
+              "email": "Alice@Example.com",
+              "includeDisabled": true
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "active": false,
+          "displayName": "",
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "Alice@Example.com",
+        "includesDisabled": true
+      },
+      "name": "findUserByEmail-not-found",
+      "operation": "findUserByEmail"
+    },
+    {
+      "callId": "20a6fb1c-58fb-5226-8d44-3ef63a3747de",
       "exchanges": [
         {
           "body": "{\"data\":{\"workflowStates\":{\"nodes\":[]}}}",
@@ -2875,7 +3423,7 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2899,76 +3447,14 @@
       "input": {
         "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4"
       },
-      "name": "listWorkflowStates-missing",
+      "name": "listWorkflowStates-not-found",
       "operation": "listWorkflowStates"
     },
     {
-      "callId": "6a952f75-922b-56b7-adae-e05c844433a1",
+      "callId": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
       "exchanges": [
         {
-          "body": "{\"data\":{\"issues\":{\"nodes\":[],\"pageInfo\":{\"hasNextPage\":false}}}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/graphql",
-          "requestBody": {
-            "operationName": "LinearSearchIssues",
-            "query": "query LinearSearchIssues($filter: IssueFilter, $first: Int!, $after: String, $orderBy: PaginationOrderBy, $includeArchived: Boolean) {\n  issues(filter: $filter, first: $first, after: $after, orderBy: $orderBy, includeArchived: $includeArchived) {\n    nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } }\n    pageInfo { hasNextPage endCursor }\n  }\n}",
-            "variables": {
-              "filter": {
-                "assignee": {
-                  "null": true
-                },
-                "team": {
-                  "key": {
-                    "eq": "ENG"
-                  }
-                }
-              },
-              "first": 50,
-              "includeArchived": false,
-              "orderBy": "createdAt"
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "searched",
-        "failureKind": "",
-        "output": {
-          "issues": []
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "filter": {
-          "teamKey": "ENG",
-          "unassigned": true
-        }
-      },
-      "name": "searchIssues-team-key",
-      "operation": "searchIssues"
-    },
-    {
-      "callId": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
-      "exchanges": [
-        {
-          "body": "{\"data\":{\"issueUpdate\":{\"success\":true,\"issue\":{\"id\":\"44444444-4444-4444-8444-444444444444\",\"identifier\":\"ENG-210\",\"title\":\"Monthly Fire Drill Checklist - February\",\"url\":\"https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february\",\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"22222222-2222-4222-8222-222222222222\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"},\"priority\":2,\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"dueDate\":\"2026-11-30\",\"createdAt\":\"2026-10-26T09:00:00Z\",\"updatedAt\":\"2026-10-26T09:10:00Z\",\"archivedAt\":null}}}}",
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"INPUT_ERROR\"}}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2977,7 +3463,7 @@
             "operationName": "LinearUpdateIssue",
             "query": "mutation LinearUpdateIssue($id: String!, $input: IssueUpdateInput!) {\n  issueUpdate(id: $id, input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
             "variables": {
-              "id": "44444444-4444-4444-8444-444444444444",
+              "id": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
               "input": {
                 "assigneeId": null,
                 "dueDate": null
@@ -2989,7 +3475,37 @@
               "application/json"
             ],
             "Authorization": [
-              "lin_api_SENTINELKEY0123456789abcdefghijklmnopqrst"
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
             ],
             "Content-Type": [
               "application/json"
@@ -2999,21 +3515,371 @@
         }
       ],
       "expected": {
-        "branch": "updated",
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d73f708c-7c6f-59cf-9093-a04c5dee17a6",
+      "input": {
+        "clearsDueDate": true,
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+        "unassigns": true
+      },
+      "name": "updateIssue-not-found",
+      "operation": "updateIssue"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"extensions\":{\"code\":\"INPUT_ERROR\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"data\":{\"comments\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-not-found",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"commentCreate\":{\"success\":true,\"comment\":{\"id\":\"d1307927-9444-4d6c-86e3-7721a2174197\",\"url\":\"https://linear.app/acme/issue/ENG-7#comment\",\"createdAt\":\"2026-02-01T10:00:00Z\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "d1307927-9444-4d6c-86e3-7721a2174197",
+          "createdAt": "2026-02-01T10:00:00Z",
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+          "url": "https://linear.app/acme/issue/ENG-7#comment"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-added",
+      "operation": "addComment"
+    },
+    {
+      "callId": "439bc084-fef9-5832-b597-6282de58d208",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearAddComment",
+            "query": "mutation LinearAddComment($input: CommentCreateInput!) {\n  commentCreate(input: $input) { success comment { id url createdAt } }\n}",
+            "variables": {
+              "input": {
+                "body": "A useful comment",
+                "id": "d1307927-9444-4d6c-86e3-7721a2174197",
+                "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"data\":{\"comments\":{\"nodes\":[{\"id\":\"d1307927-9444-4d6c-86e3-7721a2174197\",\"url\":\"https://linear.app/acme/issue/ENG-7#comment\",\"createdAt\":\"2026-02-01T10:00:00Z\"}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadComment",
+            "query": "query LinearReadComment($filter: CommentFilter!) {\n  comments(filter: $filter, first: 1) { nodes { id url createdAt } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "d1307927-9444-4d6c-86e3-7721a2174197"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "commentId": "d1307927-9444-4d6c-86e3-7721a2174197",
+          "createdAt": "2026-02-01T10:00:00Z",
+          "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b",
+          "replayed": true,
+          "url": "https://linear.app/acme/issue/ENG-7#comment"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "439bc084-fef9-5832-b597-6282de58d208",
+      "input": {
+        "body": "A useful comment",
+        "issueId": "9e5f6a7b-8c9d-4e0f-8a1b-3c4d5e6f7a8b"
+      },
+      "name": "addComment-replayed",
+      "operation": "addComment"
+    },
+    {
+      "callId": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearCreateIssue",
+            "query": "mutation LinearCreateIssue($input: IssueCreateInput!) {\n  issueCreate(input: $input) { success issue { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "input": {
+                "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+                "description": "Inspect panel",
+                "dueDate": "2026-02-18",
+                "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+                "labelIds": [
+                  "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+                ],
+                "parentId": "ENG-1",
+                "priority": 2,
+                "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+                "title": "New issue"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"data\":{\"issues\":{\"nodes\":[{\"id\":\"db86c48a-1573-4c1d-b6cd-630eddbc2f01\",\"identifier\":\"ENG-7\",\"title\":\"Fire panel wiring\",\"url\":\"https://linear.app/acme/issue/ENG-7\",\"priority\":2,\"dueDate\":\"2026-02-18\",\"labelIds\":[\"8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a\"],\"createdAt\":\"2026-01-28T10:00:00.000Z\",\"updatedAt\":\"2026-01-28T10:05:00.000Z\",\"archivedAt\":null,\"team\":{\"id\":\"2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4\",\"key\":\"ENG\",\"name\":\"Engineering\"},\"state\":{\"id\":\"5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d\",\"name\":\"Todo\",\"type\":\"unstarted\"},\"assignee\":{\"id\":\"7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f\"}}]}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "operationName": "LinearReadIssueSummary",
+            "query": "query LinearReadIssueSummary($filter: IssueFilter!) {\n  issues(filter: $filter, first: 1, includeArchived: true) { nodes { id identifier title url priority dueDate labelIds createdAt updatedAt archivedAt\n      team { id key name } state { id name type } assignee { id } } }\n}",
+            "variables": {
+              "filter": {
+                "id": {
+                  "eq": "db86c48a-1573-4c1d-b6cd-630eddbc2f01"
+                }
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "linear-conformance-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
         "failureKind": "",
         "output": {
           "issue": {
             "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
-            "createdAt": "2026-10-26T09:00:00Z",
-            "dueDate": "2026-11-30",
-            "id": "44444444-4444-4444-8444-444444444444",
-            "identifier": "ENG-210",
+            "createdAt": "2026-01-28T10:00:00Z",
+            "dueDate": "2026-02-18",
+            "id": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+            "identifier": "ENG-7",
             "labelIds": [
               "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
             ],
             "priority": 2,
             "state": {
-              "id": "22222222-2222-4222-8222-222222222222",
+              "id": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
               "name": "Todo",
               "type": "unstarted"
             },
@@ -3022,25 +3888,37 @@
               "key": "ENG",
               "name": "Engineering"
             },
-            "title": "Monthly Fire Drill Checklist - February",
-            "updatedAt": "2026-10-26T09:10:00Z",
-            "url": "https://linear.app/contoso/issue/ENG-210/monthly-fire-drill-checklist-february"
+            "title": "Fire panel wiring",
+            "updatedAt": "2026-01-28T10:05:00Z",
+            "url": "https://linear.app/acme/issue/ENG-7"
           },
-          "issueId": "44444444-4444-4444-8444-444444444444"
+          "issueId": "db86c48a-1573-4c1d-b6cd-630eddbc2f01",
+          "replayed": true,
+          "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+          "title": "New issue"
         },
-        "requestCount": 1,
+        "requestCount": 2,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "643a5fd8-f8ce-5dba-8698-53479b90cb7e",
+      "idempotencyKey": "ce503c25-24ca-5820-aaf4-2c4204858c7f",
       "input": {
-        "clearsDueDate": true,
-        "issueId": "44444444-4444-4444-8444-444444444444",
-        "unassigns": true
+        "assigneeId": "7c3d4e5f-6a7b-4c8d-ae9f-1a2b3c4d5e6f",
+        "description": "Inspect panel",
+        "dueDate": "2026-02-18",
+        "labelIds": [
+          "8d4e5f6a-7b8c-4d9e-bf0a-2b3c4d5e6f7a"
+        ],
+        "parentId": "ENG-1",
+        "priority": 2,
+        "projectId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "stateId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+        "teamId": "2f6b7c1e-3d4a-4b5c-8d6e-7f8091a2b3c4",
+        "title": "New issue"
       },
-      "name": "updateIssue-clears",
-      "operation": "updateIssue"
+      "name": "createIssue-replayed",
+      "operation": "createIssue"
     }
   ],
   "schemaVersion": 1

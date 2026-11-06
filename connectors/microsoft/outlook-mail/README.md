@@ -2,6 +2,12 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go@v0.24.0`.
 
+The Python package `dex-connector-microsoft-outlook-mail==0.1.0` implements all
+six operations with the same branch identities and a generated OAuth refresh
+declaration. See the [Python package](python/README.md) and its
+[support reply example](python/examples/support_reply/README.md). TypeScript
+support remains a separate release.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack, through Dex Web and real-Dex tests, against a local Microsoft Graph stand-in; no Microsoft 365 tenant was used. See

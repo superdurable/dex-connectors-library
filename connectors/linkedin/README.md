@@ -102,3 +102,6 @@ GOWORK=off LINKEDIN_CONNECTOR_TEST_TOKEN=... go test -tags=live ./...
 ## Python package
 
 Install `dex-connector-linkedin==0.1.0` and use the [authenticated profile Python example](python/examples/authenticated_profile/README.md). Its project connection uses generated OAuth credential resolution and refresh. The Query returns only bounded UserInfo claims and a verified email. The Go-recorded provider conformance scenarios and Dex example use inert credentials; live LinkedIn authorization and UserInfo behavior remain unverified.
+## TypeScript package
+
+[`@superdurable/connector-linkedin`](typescript/README.md) implements `getAuthenticatedProfile` with manifest-generated OAuth refresh, private and shared credential decoding, and the static `linkedin-signup` example connection. The TypeScript [authenticated-profile Flow](typescript/examples/authenticated-profile/flow/workflow.ts) runs on a real Dex Worker and persists only bounded UserInfo claims. Go-recorded [conformance scenarios](../../conformance/connectors/linkedin/scenarios.json) cover provider branches, retries, transport failure, and missing credentials. Live LinkedIn OAuth and UserInfo behavior remains unverified.

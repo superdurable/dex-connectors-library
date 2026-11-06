@@ -1,0 +1,1191 @@
+[
+  {
+    "name": "custom-connection clientCredentials",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_client",
+      "invalid_grant",
+      "unauthorized_client",
+      "unsupported_grant_type",
+      "invalid_scope"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials without token type",
+    "expectedError": "retryable",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials with uppercase scope names",
+    "expectedError": "reauthorization",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "ACCOUNTING.INVOICES ACCOUNTING.PAYMENTS ACCOUNTING.CONTACTS.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials with comma-separated scopes",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.invoices,accounting.payments,accounting.contacts.read,accounting.invoices",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials without required scope 1",
+    "expectedError": "reauthorization",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.payments accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials without required scope 2",
+    "expectedError": "reauthorization",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.invoices accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials without required scope 3",
+    "expectedError": "reauthorization",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.invoices accounting.payments",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials with different reported scope",
+    "expectedError": "reauthorization",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "custom-connection clientCredentials without expires_in",
+    "expectedError": "retryable",
+    "methodId": "custom-connection",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "client_credentials",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_client",
+      "invalid_grant",
+      "unauthorized_client",
+      "unsupported_grant_type",
+      "invalid_scope"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh with uppercase scope names",
+    "expectedError": "reauthorization",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "ACCOUNTING.INVOICES ACCOUNTING.PAYMENTS ACCOUNTING.CONTACTS.READ",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh with comma-separated scopes",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.invoices,accounting.payments,accounting.contacts.read,accounting.invoices",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh without required scope 1",
+    "expectedError": "reauthorization",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.payments accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh without required scope 2",
+    "expectedError": "reauthorization",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.invoices accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh without required scope 3",
+    "expectedError": "reauthorization",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.invoices accounting.payments",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh with different reported scope",
+    "expectedError": "reauthorization",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "xero-oauth refresh without refresh_token",
+    "methodId": "xero-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://identity.xero.com/connect/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_basic",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "accounting.invoices accounting.payments accounting.contacts.read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  }
+]
