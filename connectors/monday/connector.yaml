@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: monday
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-monday
+      operations: [listItems, getItem, createItem, updateItemColumnValues, addUpdate]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-monday'

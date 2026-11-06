@@ -432,3 +432,9 @@ filter syntax; the ordering of invoices created in the same second; decimal
 precision of `Qty`, `UnitPrice`, and `TotalAmt`, and the length limit of
 `PaymentRefNum`; the length and character set of the Client ID and Client
 Secret; and the developer portal labels in the setup guidance.
+
+## Python package
+
+`dex-connector-intuit-quickbooks` v0.1.0 implements `findCustomer`, `createCustomer`, `createInvoice`, `getInvoice`, `listInvoices`, `sendInvoice`, and `recordPayment` with Dex Connector SDK 0.6.0. It uses the generated OAuth connection and refresh wiring from this manifest. Python application code imports `dex_connectors.intuit_quickbooks`; the [invoice lookup example](python/examples/get_invoice/) runs a Worker with the static connection name `quickbooks-invoice-reader` and wires only the `found` branch.
+
+The Python package replays [69 Go-recorded provider scenarios](../../../conformance/connectors/intuit/quickbooks/scenarios.json), covering all seven operations, 429 and 5xx retries, transport failures, terminal branches, and accepted write uncertainty. Its invoice lookup example has also run through a real `dexcli dev` Worker and Client against a local HTTP stand-in. Intuit OAuth consent, live token refresh, and live QuickBooks company behavior remain unverified.

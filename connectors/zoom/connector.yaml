@@ -9,6 +9,12 @@ metadata:
 spec:
   provider: zoom
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-zoom
+      timestampFormat: rfc3339Nano
+      operations: [listMeetings, getMeeting, createMeeting, updateMeeting, listPastMeetingParticipants]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-zoom'

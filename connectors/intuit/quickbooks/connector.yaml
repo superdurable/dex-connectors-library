@@ -8,15 +8,20 @@ metadata:
   version: v0.24.0
 spec:
   provider: quickbooks
-  codegen:
-    go:
-      package: quickbooks
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-intuit-quickbooks
+      operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-intuit-quickbooks"
       operations: [findCustomer, createCustomer, createInvoice, getInvoice, listInvoices, sendInvoice, recordPayment]
       triggers: []
+  codegen:
+    go:
+      package: quickbooks
   configuration:
     fields:
       - name: environment

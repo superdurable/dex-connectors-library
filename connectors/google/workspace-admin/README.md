@@ -252,6 +252,25 @@ Worker, retry, persistence, and duplicate-dispatch coverage:
 GOWORK=off go test -tags=integration ./... -count=1 -v
 ```
 
+## Python package
+
+Install `dex-connector-google-workspace-admin==0.1.0` to use the same seven
+Directory operations in Python Dex Flows. The package uses Connector SDK
+`0.5.0`; its generated connection binding loads either the default Workspace
+domain delegation method or administrator OAuth, refreshes credentials before
+expiry, and retries one rejected token through the shared credential source.
+The hand-written Directory client preserves Go's request, branch, retry,
+read-back, and receipt behavior. No account password or credential enters Flow
+state.
+
+The runnable [Python account-list example](python/examples/account_lifecycle/README.md)
+shows `new_project_connection`, a static `ConnectionName`, and a real Dex Worker.
+The [conformance scenarios](../../../conformance/connectors/google/workspace-admin/scenarios.json)
+replay provider responses through Go and Python. The Python integration test
+has run against a real local Dex stack and a local Directory stand-in. Google
+OAuth consent, domain-wide delegation, token minting, authorization forms, and
+Directory calls against a live Workspace tenant remain unverified.
+
 ## TypeScript package
 
 The [TypeScript package](typescript/README.md) implements all seven Directory API operations with generated Step factories and generated refresh handling for Workspace domain-wide delegation and Google OAuth. Its [get-user Flow](typescript/examples/get-user/README.md) uses the static connection name `workspace-admin-directory` and runs through a real Dex Worker. Go-recorded provider scenarios cover success, rejection, retry, transport failure, read-back convergence, and invalid responses. Live Google authorization and provider behavior still require a user-controlled Dex Web connection.

@@ -9,6 +9,12 @@ metadata:
 spec:
   provider: helpscout
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-helpscout
+      timestampFormat: rfc3339Nano
+      operations: [searchConversations, getConversation, replyToConversation, updateConversation, findCustomerByEmail]
+      triggers: []
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-helpscout'

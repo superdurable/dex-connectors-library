@@ -315,6 +315,11 @@ See [`sdkgo/connectormock`](../../sdkgo/README.md#connector-mocks) for scripting
 
 ## Examples
 
+- [`python/examples/list_workflow_states`](python/examples/list_workflow_states) is a Python Dex Flow that
+  lists one team's workflow states through the static `linear` connection. The package implements all seven
+  operations with generated personal-key and OAuth connection wiring; the Issue webhook Trigger remains
+  Go-only. Its 54 Go-recorded provider scenarios and real Dex Worker/Client integration test pass with
+  an inert provider stand-in. Live Linear behavior and OAuth consent were not verified for this Python port.
 - [`examples/issue-request`](go/examples/issue-request) is a Dex Web **Start Flow** example that uses all seven
   operations and the `teamPicker` unit: it resolves the assignee by email, reuses the team's open issue with
   the requested title or creates one, moves it to the requested workflow state, adds one comment, and reads it

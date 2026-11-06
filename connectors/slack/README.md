@@ -330,6 +330,17 @@ invalid responses, and uncertain post outcomes.
 `ListThreadMessages`, a typed reply RPC, and `PostThreadReply` in one runnable
 Flow.
 
+## Python package
+
+The [Python package](python/README.md) provides all four Slack operations:
+`listThreadMessages`, `getThreadReply`, `postChannelMessage`, and
+`postThreadReply`. It uses generated OAuth credential decoding and refresh for
+private or shared Dex project connections. Socket Mode Triggers remain Go-only.
+The runnable [thread messages example](python/examples/thread_messages/README.md)
+posts through a Mutation Step and reads the new thread through a Query Step.
+Its integration test uses a real Dex Worker and Client with a local Slack HTTP
+stand-in; live Slack authorization and Web API behavior are unverified.
+
 ## Verification
 
 ```bash

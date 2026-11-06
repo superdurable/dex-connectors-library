@@ -2,33 +2,35 @@
   "connector": "hubspot",
   "scenarios": [
     {
-      "attempts": 1,
-      "callId": "9aa411fa-0845-5d55-98c5-ce4f90b14592",
+      "callId": "584f1d5b-a812-54f2-a819-919030978614",
       "exchanges": [
         {
-          "body": "{\"total\":1,\"results\":[{\"id\":\"9001\",\"properties\":{\"dealname\":\"Opportunity\"},\"createdAt\":\"2026-01-01T00:00:00Z\",\"updatedAt\":\"2026-01-02T00:00:00Z\",\"archived\":false,\"url\":\"https://app.hubspot.com/contacts/123/record/0-3/9001\"}],\"paging\":{\"next\":{\"after\":\"2\"}}}",
-          "headers": {},
+          "body": "{\"total\": 1, \"results\": [{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\"}], \"paging\": {\"next\": {\"after\": \"3\"}}}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/search",
+          "path": "/crm/objects/2026-09/contacts/search",
           "requestBody": {
-            "after": "1",
+            "after": "2",
             "filterGroups": [
               {
                 "filters": [
                   {
                     "operator": "EQ",
-                    "propertyName": "dealname",
-                    "value": "Opportunity"
+                    "propertyName": "email",
+                    "value": "ada@example.com"
                   }
                 ]
               }
             ],
             "limit": 2,
             "properties": [
-              "dealname"
+              "email",
+              "firstname"
             ],
-            "query": "Opportunity",
+            "query": "Ada",
             "sorts": [
               {
                 "direction": "DESCENDING",
@@ -54,19 +56,20 @@
         "branch": "searched",
         "failureKind": "",
         "output": {
-          "nextAfter": "2",
-          "objectType": "deals",
+          "nextAfter": "3",
+          "objectType": "contacts",
           "objects": [
             {
               "archived": false,
-              "createdAt": "2026-01-01T00:00:00Z",
-              "id": "9001",
-              "objectType": "deals",
+              "createdAt": "2026-01-17T19:55:04.281Z",
+              "id": "501",
+              "objectType": "contacts",
               "properties": {
-                "dealname": "Opportunity"
+                "email": "ada@example.com",
+                "firstname": "Ada"
               },
-              "updatedAt": "2026-01-02T00:00:00Z",
-              "url": "https://app.hubspot.com/contacts/123/record/0-3/9001"
+              "updatedAt": "2026-09-11T13:27:39.356Z",
+              "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
             }
           ],
           "total": 1
@@ -77,24 +80,25 @@
         "uncertain": false
       },
       "input": {
-        "after": "1",
+        "after": "2",
         "filterGroups": [
           {
             "filters": [
               {
                 "operator": "EQ",
-                "propertyName": "dealname",
-                "value": "Opportunity"
+                "propertyName": "email",
+                "value": "ada@example.com"
               }
             ]
           }
         ],
         "limit": 2,
-        "objectType": "deals",
+        "objectType": "contacts",
         "properties": [
-          "dealname"
+          "email",
+          "firstname"
         ],
-        "query": "Opportunity",
+        "query": "Ada",
         "sort": {
           "direction": "DESCENDING",
           "propertyName": "createdate"
@@ -104,283 +108,33 @@
       "operation": "searchObjects"
     },
     {
-      "attempts": 1,
-      "callId": "13e9e63f-3c8a-5a99-887a-684e7c7c77ec",
+      "callId": "8909f4d5-fdc1-52a4-9e3e-0bafd5c15049",
       "exchanges": [
         {
-          "body": "{\"category\":\"RATE_LIMITS\"}",
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/search",
+          "path": "/crm/objects/2026-09/contacts/search",
           "requestBody": {
-            "after": "1",
+            "after": "2",
             "filterGroups": [
               {
                 "filters": [
                   {
                     "operator": "EQ",
-                    "propertyName": "dealname",
-                    "value": "Opportunity"
+                    "propertyName": "email",
+                    "value": "ada@example.com"
                   }
                 ]
               }
             ],
             "limit": 2,
             "properties": [
-              "dealname"
+              "email",
+              "firstname"
             ],
-            "query": "Opportunity",
-            "sorts": [
-              {
-                "direction": "DESCENDING",
-                "propertyName": "createdate"
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "after": "1",
-        "filterGroups": [
-          {
-            "filters": [
-              {
-                "operator": "EQ",
-                "propertyName": "dealname",
-                "value": "Opportunity"
-              }
-            ]
-          }
-        ],
-        "limit": 2,
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ],
-        "query": "Opportunity",
-        "sort": {
-          "direction": "DESCENDING",
-          "propertyName": "createdate"
-        }
-      },
-      "name": "searchObjects-rate-limit",
-      "operation": "searchObjects"
-    },
-    {
-      "attempts": 1,
-      "callId": "79274cb9-4859-5ae5-b4cb-ea555812494e",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"SERVICE_UNAVAILABLE\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/search",
-          "requestBody": {
-            "after": "1",
-            "filterGroups": [
-              {
-                "filters": [
-                  {
-                    "operator": "EQ",
-                    "propertyName": "dealname",
-                    "value": "Opportunity"
-                  }
-                ]
-              }
-            ],
-            "limit": 2,
-            "properties": [
-              "dealname"
-            ],
-            "query": "Opportunity",
-            "sorts": [
-              {
-                "direction": "DESCENDING",
-                "propertyName": "createdate"
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 503
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "after": "1",
-        "filterGroups": [
-          {
-            "filters": [
-              {
-                "operator": "EQ",
-                "propertyName": "dealname",
-                "value": "Opportunity"
-              }
-            ]
-          }
-        ],
-        "limit": 2,
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ],
-        "query": "Opportunity",
-        "sort": {
-          "direction": "DESCENDING",
-          "propertyName": "createdate"
-        }
-      },
-      "name": "searchObjects-server-error",
-      "operation": "searchObjects"
-    },
-    {
-      "attempts": 1,
-      "callId": "2fa2ceab-dd61-54b0-a3ee-73aad36d0bb3",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/search",
-          "requestBody": {
-            "after": "1",
-            "filterGroups": [
-              {
-                "filters": [
-                  {
-                    "operator": "EQ",
-                    "propertyName": "dealname",
-                    "value": "Opportunity"
-                  }
-                ]
-              }
-            ],
-            "limit": 2,
-            "properties": [
-              "dealname"
-            ],
-            "query": "Opportunity",
-            "sorts": [
-              {
-                "direction": "DESCENDING",
-                "propertyName": "createdate"
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "transportFailure": "before-send"
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "after": "1",
-        "filterGroups": [
-          {
-            "filters": [
-              {
-                "operator": "EQ",
-                "propertyName": "dealname",
-                "value": "Opportunity"
-              }
-            ]
-          }
-        ],
-        "limit": 2,
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ],
-        "query": "Opportunity",
-        "sort": {
-          "direction": "DESCENDING",
-          "propertyName": "createdate"
-        }
-      },
-      "name": "searchObjects-transport",
-      "operation": "searchObjects"
-    },
-    {
-      "attempts": 1,
-      "callId": "6f621a59-515b-56b3-b005-f8fed7f18e29",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"MISSING_SCOPES\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/search",
-          "requestBody": {
-            "after": "1",
-            "filterGroups": [
-              {
-                "filters": [
-                  {
-                    "operator": "EQ",
-                    "propertyName": "dealname",
-                    "value": "Opportunity"
-                  }
-                ]
-              }
-            ],
-            "limit": 2,
-            "properties": [
-              "dealname"
-            ],
-            "query": "Opportunity",
+            "query": "Ada",
             "sorts": [
               {
                 "direction": "DESCENDING",
@@ -416,60 +170,61 @@
         "uncertain": false
       },
       "input": {
-        "after": "1",
+        "after": "2",
         "filterGroups": [
           {
             "filters": [
               {
                 "operator": "EQ",
-                "propertyName": "dealname",
-                "value": "Opportunity"
+                "propertyName": "email",
+                "value": "ada@example.com"
               }
             ]
           }
         ],
         "limit": 2,
-        "objectType": "deals",
+        "objectType": "contacts",
         "properties": [
-          "dealname"
+          "email",
+          "firstname"
         ],
-        "query": "Opportunity",
+        "query": "Ada",
         "sort": {
           "direction": "DESCENDING",
           "propertyName": "createdate"
         }
       },
-      "name": "searchObjects-rejected",
+      "name": "searchObjects-provider-rejected",
       "operation": "searchObjects"
     },
     {
-      "attempts": 1,
-      "callId": "415165ad-e4f9-5ae3-8c53-1ce927a166f4",
+      "callId": "1d70a578-4191-5592-9586-9459231526fa",
       "exchanges": [
         {
-          "body": "{\"total\":-1}",
+          "body": "{broken",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/search",
+          "path": "/crm/objects/2026-09/contacts/search",
           "requestBody": {
-            "after": "1",
+            "after": "2",
             "filterGroups": [
               {
                 "filters": [
                   {
                     "operator": "EQ",
-                    "propertyName": "dealname",
-                    "value": "Opportunity"
+                    "propertyName": "email",
+                    "value": "ada@example.com"
                   }
                 ]
               }
             ],
             "limit": 2,
             "properties": [
-              "dealname"
+              "email",
+              "firstname"
             ],
-            "query": "Opportunity",
+            "query": "Ada",
             "sorts": [
               {
                 "direction": "DESCENDING",
@@ -505,24 +260,25 @@
         "uncertain": false
       },
       "input": {
-        "after": "1",
+        "after": "2",
         "filterGroups": [
           {
             "filters": [
               {
                 "operator": "EQ",
-                "propertyName": "dealname",
-                "value": "Opportunity"
+                "propertyName": "email",
+                "value": "ada@example.com"
               }
             ]
           }
         ],
         "limit": 2,
-        "objectType": "deals",
+        "objectType": "contacts",
         "properties": [
-          "dealname"
+          "email",
+          "firstname"
         ],
-        "query": "Opportunity",
+        "query": "Ada",
         "sort": {
           "direction": "DESCENDING",
           "propertyName": "createdate"
@@ -532,21 +288,321 @@
       "operation": "searchObjects"
     },
     {
-      "attempts": 1,
-      "callId": "c97d4684-6529-5a2d-8772-9746ad899ad5",
+      "callId": "ba53d988-76c8-5813-8c63-0cfeb9ea3362",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "objectType": "",
+          "objects": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "tickets",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-defect",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "824fe990-f49c-57d7-a37c-f60e4f6530b7",
       "exchanges": [
         {
-          "body": "{\"id\":\"9001\",\"properties\":{\"dealname\":\"Opportunity\"},\"createdAt\":\"2026-01-01T00:00:00Z\",\"updatedAt\":\"2026-01-02T00:00:00Z\",\"archived\":false,\"url\":\"https://app.hubspot.com/contacts/123/record/0-3/9001\"}",
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-rate-limit",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "caee7e74-cb59-5416-859c-30a8c8e61ad3",
+      "exchanges": [
+        {
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-server-failure",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "4de4b6fb-fbfa-5326-9600-baaf11a89cd2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/search",
+          "requestBody": {
+            "after": "2",
+            "filterGroups": [
+              {
+                "filters": [
+                  {
+                    "operator": "EQ",
+                    "propertyName": "email",
+                    "value": "ada@example.com"
+                  }
+                ]
+              }
+            ],
+            "limit": 2,
+            "properties": [
+              "email",
+              "firstname"
+            ],
+            "query": "Ada",
+            "sorts": [
+              {
+                "direction": "DESCENDING",
+                "propertyName": "createdate"
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2",
+        "filterGroups": [
+          {
+            "filters": [
+              {
+                "operator": "EQ",
+                "propertyName": "email",
+                "value": "ada@example.com"
+              }
+            ]
+          }
+        ],
+        "limit": 2,
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ],
+        "query": "Ada",
+        "sort": {
+          "direction": "DESCENDING",
+          "propertyName": "createdate"
+        }
+      },
+      "name": "searchObjects-transport-before-send",
+      "operation": "searchObjects"
+    },
+    {
+      "callId": "cbc9041f-dc9b-596c-9ceb-d5eb3a3da778",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\"}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
+          "keyMode": "absent",
           "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "query": {
             "archived": [
               "false"
             ],
             "properties": [
-              "dealname"
+              "email,firstname"
             ]
           },
           "requestHeaders": {
@@ -565,14 +621,15 @@
         "failureKind": "",
         "output": {
           "archived": false,
-          "createdAt": "2026-01-01T00:00:00Z",
-          "id": "9001",
-          "objectType": "deals",
+          "createdAt": "2026-01-17T19:55:04.281Z",
+          "id": "501",
+          "objectType": "contacts",
           "properties": {
-            "dealname": "Opportunity"
+            "email": "ada@example.com",
+            "firstname": "Ada"
           },
-          "updatedAt": "2026-01-02T00:00:00Z",
-          "url": "https://app.hubspot.com/contacts/123/record/0-3/9001"
+          "updatedAt": "2026-09-11T13:27:39.356Z",
+          "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
         },
         "requestCount": 1,
         "retry": false,
@@ -580,170 +637,31 @@
         "uncertain": false
       },
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": [
-          "dealname"
+          "email",
+          "firstname"
         ]
       },
       "name": "getObject-success",
       "operation": "getObject"
     },
     {
-      "attempts": 1,
-      "callId": "39b02c5b-d96b-523a-8e36-66721a344128",
+      "callId": "5faefd71-77e6-51b9-aa37-f213e996699c",
       "exchanges": [
         {
-          "body": "{\"category\":\"RATE_LIMITS\"}",
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "query": {
             "archived": [
               "false"
             ],
             "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-rate-limit",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "de6c72ce-e770-5b17-84e2-b7db0426daf9",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"SERVICE_UNAVAILABLE\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 503
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-server-error",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "91f6dd49-2cad-50f0-a372-5c0715d60af9",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "transportFailure": "before-send"
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-transport",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "61334213-87c9-5e36-b39a-34e8ae1df928",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"MISSING_SCOPES\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
+              "email,firstname"
             ]
           },
           "requestHeaders": {
@@ -771,31 +689,31 @@
         "uncertain": false
       },
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": [
-          "dealname"
+          "email",
+          "firstname"
         ]
       },
-      "name": "getObject-rejected",
+      "name": "getObject-provider-rejected",
       "operation": "getObject"
     },
     {
-      "attempts": 1,
-      "callId": "6ca5a559-0b1a-591a-a21c-ef480f6ff188",
+      "callId": "8489350d-c502-54b0-9c14-902e9f1d3a46",
       "exchanges": [
         {
-          "body": "{\"id\":123}",
+          "body": "{broken",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "query": {
             "archived": [
               "false"
             ],
             "properties": [
-              "dealname"
+              "email,firstname"
             ]
           },
           "requestHeaders": {
@@ -823,31 +741,60 @@
         "uncertain": false
       },
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": [
-          "dealname"
+          "email",
+          "firstname"
         ]
       },
       "name": "getObject-invalid-response",
       "operation": "getObject"
     },
     {
-      "attempts": 1,
-      "callId": "117822ee-1063-5e34-ae5f-c8b4b445ac58",
+      "callId": "f0dd22cc-d2bc-5081-9e54-669f5c8a9424",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "tickets",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-defect",
+      "operation": "getObject"
+    },
+    {
+      "callId": "cb2731f7-d999-5aa1-bf2c-6e1c976d360b",
       "exchanges": [
         {
-          "body": "{\"category\":\"OBJECT_NOT_FOUND\"}",
-          "headers": {},
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
           "keyMode": "absent",
           "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "query": {
             "archived": [
               "false"
             ],
             "properties": [
-              "dealname"
+              "email,firstname"
             ]
           },
           "requestHeaders": {
@@ -858,49 +805,139 @@
               "Bearer pat-na1-test-token"
             ]
           },
-          "status": 404
+          "status": 429
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
         "requestCount": 1,
-        "retry": false,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-rate-limit",
+      "operation": "getObject"
+    },
+    {
+      "callId": "4bfc1fc7-1932-5273-aa0e-d831d699be65",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": [
-          "dealname"
+          "email",
+          "firstname"
         ]
       },
-      "name": "getObject-not-found",
+      "name": "getObject-server-failure",
       "operation": "getObject"
     },
     {
-      "attempts": 1,
+      "callId": "8b568ee4-ec1f-51e1-8111-ef891ed761ca",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-transport-before-send",
+      "operation": "getObject"
+    },
+    {
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{\"results\":[{\"id\":\"9001\",\"properties\":{\"dealname\":\"Opportunity\"},\"createdAt\":\"2026-01-01T00:00:00Z\",\"updatedAt\":\"2026-01-02T00:00:00Z\",\"archived\":false,\"url\":\"https://app.hubspot.com/contacts/123/record/0-3/9001\",\"new\":true}]}",
-          "headers": {},
+          "body": "{\"results\": [{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\", \"new\": true}]}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
           "requestBody": {
             "inputs": [
               {
-                "id": "external-9001",
-                "idProperty": "external_id",
+                "id": "ada@example.com",
+                "idProperty": "email",
                 "properties": {
-                  "dealname": "Opportunity"
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
                 }
               }
             ]
@@ -926,14 +963,15 @@
           "created": true,
           "object": {
             "archived": false,
-            "createdAt": "2026-01-01T00:00:00Z",
-            "id": "9001",
-            "objectType": "deals",
+            "createdAt": "2026-01-17T19:55:04.281Z",
+            "id": "501",
+            "objectType": "contacts",
             "properties": {
-              "dealname": "Opportunity"
+              "email": "ada@example.com",
+              "firstname": "Ada"
             },
-            "updatedAt": "2026-01-02T00:00:00Z",
-            "url": "https://app.hubspot.com/contacts/123/record/0-3/9001"
+            "updatedAt": "2026-09-11T13:27:39.356Z",
+            "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
           }
         },
         "requestCount": 1,
@@ -943,196 +981,34 @@
       },
       "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "email": "ada@example.com",
+          "firstname": "Ada"
         }
       },
       "name": "upsertObject-success",
       "operation": "upsertObject"
     },
     {
-      "attempts": 1,
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{\"category\":\"RATE_LIMITS\"}",
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
           "requestBody": {
             "inputs": [
               {
-                "id": "external-9001",
-                "idProperty": "external_id",
+                "id": "ada@example.com",
+                "idProperty": "email",
                 "properties": {
-                  "dealname": "Opportunity"
-                }
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "upsertObject-rate-limit",
-      "operation": "upsertObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"SERVICE_UNAVAILABLE\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
-          "requestBody": {
-            "inputs": [
-              {
-                "id": "external-9001",
-                "idProperty": "external_id",
-                "properties": {
-                  "dealname": "Opportunity"
-                }
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 503
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "upsertObject-server-error",
-      "operation": "upsertObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
-          "requestBody": {
-            "inputs": [
-              {
-                "id": "external-9001",
-                "idProperty": "external_id",
-                "properties": {
-                  "dealname": "Opportunity"
-                }
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "transportFailure": "before-send"
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "upsertObject-transport",
-      "operation": "upsertObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"MISSING_SCOPES\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
-          "requestBody": {
-            "inputs": [
-              {
-                "id": "external-9001",
-                "idProperty": "external_id",
-                "properties": {
-                  "dealname": "Opportunity"
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
                 }
               }
             ]
@@ -1169,33 +1045,34 @@
       },
       "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "email": "ada@example.com",
+          "firstname": "Ada"
         }
       },
-      "name": "upsertObject-rejected",
+      "name": "upsertObject-provider-rejected",
       "operation": "upsertObject"
     },
     {
-      "attempts": 1,
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{\"results\":[{\"id\":123}]}",
+          "body": "{broken",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
           "requestBody": {
             "inputs": [
               {
-                "id": "external-9001",
-                "idProperty": "external_id",
+                "id": "ada@example.com",
+                "idProperty": "email",
                 "properties": {
-                  "dealname": "Opportunity"
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
                 }
               }
             ]
@@ -1232,84 +1109,23 @@
       },
       "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "email": "ada@example.com",
+          "firstname": "Ada"
         }
       },
       "name": "upsertObject-invalid-response",
       "operation": "upsertObject"
     },
     {
-      "attempts": 1,
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"CONFLICT\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
-          "requestBody": {
-            "inputs": [
-              {
-                "id": "external-9001",
-                "idProperty": "external_id",
-                "properties": {
-                  "dealname": "Opportunity"
-                }
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 409
-        },
-        {
-          "body": "{\"category\":\"CONFLICT\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
-          "requestBody": {
-            "inputs": [
-              {
-                "id": "external-9001",
-                "idProperty": "external_id",
-                "properties": {
-                  "dealname": "Opportunity"
-                }
-              }
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 409
-        }
-      ],
+      "exchanges": [],
       "expected": {
-        "branch": "conflict",
-        "failureKind": "CONFLICT",
+        "branch": "defect",
+        "failureKind": "VALIDATION",
         "output": {
           "created": false,
           "object": {
@@ -1318,40 +1134,43 @@
             "objectType": ""
           }
         },
-        "requestCount": 2,
+        "requestCount": 0,
         "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "tickets",
         "properties": {
-          "dealname": "Opportunity"
+          "email": "ada@example.com",
+          "firstname": "Ada"
         }
       },
-      "name": "upsertObject-conflict",
+      "name": "upsertObject-defect",
       "operation": "upsertObject"
     },
     {
-      "attempts": 1,
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{\"errors\":[{\"status\":\"429\",\"category\":\"RATE_LIMITS\"}]}",
-          "headers": {},
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
           "requestBody": {
             "inputs": [
               {
-                "id": "external-9001",
-                "idProperty": "external_id",
+                "id": "ada@example.com",
+                "idProperty": "email",
                 "properties": {
-                  "dealname": "Opportunity"
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
                 }
               }
             ]
@@ -1367,7 +1186,7 @@
               "application/json"
             ]
           },
-          "status": 200
+          "status": 429
         }
       ],
       "expected": {
@@ -1375,34 +1194,146 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-rate-limit",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
       "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "email": "ada@example.com",
+          "firstname": "Ada"
         }
       },
-      "name": "upsertObject-batch-error",
+      "name": "upsertObject-server-failure",
       "operation": "upsertObject"
     },
     {
-      "attempts": 1,
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-transport-before-send",
+      "operation": "upsertObject"
+    },
+    {
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{\"id\":\"9001\",\"properties\":{\"dealname\":\"Opportunity\"},\"createdAt\":\"2026-01-01T00:00:00Z\",\"updatedAt\":\"2026-01-02T00:00:00Z\",\"archived\":false,\"url\":\"https://app.hubspot.com/contacts/123/record/0-3/9001\"}",
-          "headers": {},
+          "body": "{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\"}",
+          "headers": {
+            "X-HubSpot-Correlation-Id": "c033cdaa-2c40-4a64-ae48-b4cec88dad24"
+          },
           "keyMode": "absent",
           "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "requestBody": {
             "properties": {
-              "dealname": "Opportunity"
+              "firstname": "Ada"
             }
           },
           "requestHeaders": {
@@ -1424,14 +1355,15 @@
         "failureKind": "",
         "output": {
           "archived": false,
-          "createdAt": "2026-01-01T00:00:00Z",
-          "id": "9001",
-          "objectType": "deals",
+          "createdAt": "2026-01-17T19:55:04.281Z",
+          "id": "501",
+          "objectType": "contacts",
           "properties": {
-            "dealname": "Opportunity"
+            "email": "ada@example.com",
+            "firstname": "Ada"
           },
-          "updatedAt": "2026-01-02T00:00:00Z",
-          "url": "https://app.hubspot.com/contacts/123/record/0-3/9001"
+          "updatedAt": "2026-09-11T13:27:39.356Z",
+          "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
         },
         "requestCount": 1,
         "retry": false,
@@ -1440,170 +1372,27 @@
       },
       "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "firstname": "Ada"
         }
       },
       "name": "updateObject-success",
       "operation": "updateObject"
     },
     {
-      "attempts": 1,
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{\"category\":\"RATE_LIMITS\"}",
+          "body": "{\"category\": \"MISSING_SCOPES\", \"errors\": [{\"code\": \"MISSING_SCOPES\"}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "requestBody": {
             "properties": {
-              "dealname": "Opportunity"
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "updateObject-rate-limit",
-      "operation": "updateObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"SERVICE_UNAVAILABLE\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "requestBody": {
-            "properties": {
-              "dealname": "Opportunity"
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "status": 503
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "AVAILABILITY",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "updateObject-server-error",
-      "operation": "updateObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "exchanges": [
-        {
-          "keyMode": "absent",
-          "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "requestBody": {
-            "properties": {
-              "dealname": "Opportunity"
-            }
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ],
-            "Content-Type": [
-              "application/json"
-            ]
-          },
-          "transportFailure": "before-send"
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
-        "requestCount": 0,
-        "retry": true,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "updateObject-transport",
-      "operation": "updateObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"MISSING_SCOPES\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "requestBody": {
-            "properties": {
-              "dealname": "Opportunity"
+              "firstname": "Ada"
             }
           },
           "requestHeaders": {
@@ -1635,28 +1424,27 @@
       },
       "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "firstname": "Ada"
         }
       },
-      "name": "updateObject-rejected",
+      "name": "updateObject-provider-rejected",
       "operation": "updateObject"
     },
     {
-      "attempts": 1,
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{\"id\":123}",
+          "body": "{broken",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "requestBody": {
             "properties": {
-              "dealname": "Opportunity"
+              "firstname": "Ada"
             }
           },
           "requestHeaders": {
@@ -1688,28 +1476,247 @@
       },
       "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "firstname": "Ada"
         }
       },
       "name": "updateObject-invalid-response",
       "operation": "updateObject"
     },
     {
-      "attempts": 1,
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "tickets",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-defect",
+      "operation": "updateObject"
+    },
+    {
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{\"category\":\"OBJECT_NOT_FOUND\"}",
+          "body": "{}",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-rate-limit",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "requestBody": {
             "properties": {
-              "dealname": "Opportunity"
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-server-failure",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": {
+          "firstname": "Ada"
+        }
+      },
+      "name": "updateObject-transport-before-send",
+      "operation": "updateObject"
+    },
+    {
+      "callId": "5abec72a-eef4-5746-a10e-3d4a3bf5dfe0",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "query": {
+            "archived": [
+              "false"
+            ],
+            "properties": [
+              "email,firstname"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "archived": false,
+          "id": "",
+          "objectType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "objectId": "501",
+        "objectType": "contacts",
+        "properties": [
+          "email",
+          "firstname"
+        ]
+      },
+      "name": "getObject-not-found",
+      "operation": "getObject"
+    },
+    {
+      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/crm/objects/2026-09/contacts/501",
+          "requestBody": {
+            "properties": {
+              "firstname": "Ada"
             }
           },
           "requestHeaders": {
@@ -1741,28 +1748,27 @@
       },
       "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "firstname": "Ada"
         }
       },
       "name": "updateObject-not-found",
       "operation": "updateObject"
     },
     {
-      "attempts": 1,
       "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "exchanges": [
         {
-          "body": "{\"category\":\"CONFLICT\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "path": "/crm/objects/2026-09/contacts/501",
           "requestBody": {
             "properties": {
-              "dealname": "Opportunity"
+              "firstname": "Ada"
             }
           },
           "requestHeaders": {
@@ -1794,467 +1800,32 @@
       },
       "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
+        "objectId": "501",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "firstname": "Ada"
         }
       },
       "name": "updateObject-conflict",
       "operation": "updateObject"
     },
     {
-      "attempts": 1,
-      "callId": "9aa411fa-0845-5d55-98c5-ce4f90b14592",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "objectType": "",
-          "objects": [],
-          "total": 0
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "after": "1",
-        "filterGroups": [
-          {
-            "filters": [
-              {
-                "operator": "EQ",
-                "propertyName": "dealname",
-                "value": "Opportunity"
-              }
-            ]
-          }
-        ],
-        "limit": 2,
-        "objectType": "widgets",
-        "properties": [
-          "dealname"
-        ],
-        "query": "Opportunity",
-        "sort": {
-          "direction": "DESCENDING",
-          "propertyName": "createdate"
-        }
-      },
-      "name": "searchObjects-defect",
-      "operation": "searchObjects"
-    },
-    {
-      "attempts": 1,
-      "callId": "c97d4684-6529-5a2d-8772-9746ad899ad5",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "widgets",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-defect",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "created": false,
-          "object": {
-            "archived": false,
-            "id": "",
-            "objectType": ""
-          }
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
-      "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "widgets",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "upsertObject-defect",
-      "operation": "upsertObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "exchanges": [],
-      "expected": {
-        "branch": "defect",
-        "failureKind": "VALIDATION",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
-        "requestCount": 0,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
-      "input": {
-        "objectId": "9001",
-        "objectType": "widgets",
-        "properties": {
-          "dealname": "Opportunity"
-        }
-      },
-      "name": "updateObject-defect",
-      "operation": "updateObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "307f73c2-a150-5a84-8773-c2753321c0c6",
-      "exchanges": [
-        {
-          "body": "{\"policyName\":\"DAILY\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "providerRejected",
-        "failureKind": "QUOTA_EXHAUSTED",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-daily-limit",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "48ec88f1-7c26-5afc-8b9f-1335f886086e",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 423
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 2000,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-locked",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "50e54a6c-9d67-5ee2-8378-a6b980221b14",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {
-            "X-HubSpot-RateLimit-Interval-Milliseconds": "2500"
-          },
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 429
-        }
-      ],
-      "expected": {
-        "branch": "",
-        "failureKind": "RATE_LIMIT",
-        "requestCount": 1,
-        "retry": true,
-        "retryAfterMs": 2500,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-rate-limit-interval",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "c432aec9-9ac6-5a22-aeea-00840fb40e92",
-      "exchanges": [
-        {
-          "body": "{\"category\":\"INVALID_AUTHENTICATION\"}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 401
-        }
-      ],
-      "expected": {
-        "branch": "providerRejected",
-        "failureKind": "AUTHENTICATION",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-unauthorized",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "75552791-0416-54c6-b1e5-bb7ed426adbc",
-      "exchanges": [
-        {
-          "body": "{}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 501
-        }
-      ],
-      "expected": {
-        "branch": "providerRejected",
-        "failureKind": "PROVIDER_REJECTION",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-not-implemented",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
-      "callId": "71841690-f320-512a-b505-388be940fb34",
-      "exchanges": [
-        {
-          "body": "{\"id\":\"9001\",\"properties\":{\"dealname\":42}}",
-          "headers": {},
-          "keyMode": "absent",
-          "method": "GET",
-          "path": "/crm/objects/2026-09/deals/9001",
-          "query": {
-            "archived": [
-              "false"
-            ],
-            "properties": [
-              "dealname"
-            ]
-          },
-          "requestHeaders": {
-            "Accept": [
-              "application/json"
-            ],
-            "Authorization": [
-              "Bearer pat-na1-test-token"
-            ]
-          },
-          "status": 200
-        }
-      ],
-      "expected": {
-        "branch": "invalidResponse",
-        "failureKind": "PROTOCOL",
-        "output": {
-          "archived": false,
-          "id": "",
-          "objectType": ""
-        },
-        "requestCount": 1,
-        "retry": false,
-        "retryAfterMs": 0,
-        "uncertain": false
-      },
-      "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": [
-          "dealname"
-        ]
-      },
-      "name": "getObject-wrong-property-type",
-      "operation": "getObject"
-    },
-    {
-      "attempts": 1,
       "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "exchanges": [
         {
-          "body": "{\"category\":\"CONFLICT\"}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
           "requestBody": {
             "inputs": [
               {
-                "id": "external-9001",
-                "idProperty": "external_id",
+                "id": "ada@example.com",
+                "idProperty": "email",
                 "properties": {
-                  "dealname": "Opportunity"
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
                 }
               }
             ]
@@ -2273,18 +1844,178 @@
           "status": 409
         },
         {
-          "body": "{\"results\":[{\"id\":\"9001\",\"new\":false,\"properties\":{\"dealname\":\"Opportunity\"}}]}",
+          "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
-          "path": "/crm/objects/2026-09/deals/batch/upsert",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
           "requestBody": {
             "inputs": [
               {
-                "id": "external-9001",
-                "idProperty": "external_id",
+                "id": "ada@example.com",
+                "idProperty": "email",
                 "properties": {
-                  "dealname": "Opportunity"
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "created": false,
+          "object": {
+            "archived": false,
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-conflict",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{\"errors\": [{\"status\": \"400\", \"category\": \"VALIDATION_ERROR\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "created": false,
+          "object": {
+            "archived": false,
+            "id": "",
+            "objectType": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "input": {
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
+        "properties": {
+          "email": "ada@example.com",
+          "firstname": "Ada"
+        }
+      },
+      "name": "upsertObject-batch-rejected",
+      "operation": "upsertObject"
+    },
+    {
+      "callId": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer pat-na1-test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 409
+        },
+        {
+          "body": "{\"results\": [{\"id\": \"501\", \"properties\": {\"email\": \"ada@example.com\", \"firstname\": \"Ada\"}, \"createdAt\": \"2026-01-17T19:55:04.281Z\", \"updatedAt\": \"2026-09-11T13:27:39.356Z\", \"archived\": false, \"url\": \"https://app.hubspot.com/contacts/123/record/0-1/501\", \"new\": true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/contacts/batch/upsert",
+          "requestBody": {
+            "inputs": [
+              {
+                "id": "ada@example.com",
+                "idProperty": "email",
+                "properties": {
+                  "email": "ada@example.com",
+                  "firstname": "Ada"
                 }
               }
             ]
@@ -2307,14 +2038,18 @@
         "branch": "upserted",
         "failureKind": "",
         "output": {
-          "created": false,
+          "created": true,
           "object": {
             "archived": false,
-            "id": "9001",
-            "objectType": "deals",
+            "createdAt": "2026-01-17T19:55:04.281Z",
+            "id": "501",
+            "objectType": "contacts",
             "properties": {
-              "dealname": "Opportunity"
-            }
+              "email": "ada@example.com",
+              "firstname": "Ada"
+            },
+            "updatedAt": "2026-09-11T13:27:39.356Z",
+            "url": "https://app.hubspot.com/contacts/123/record/0-1/501"
           }
         },
         "requestCount": 2,
@@ -2324,28 +2059,28 @@
       },
       "idempotencyKey": "778856d1-a2cd-5939-9ae5-02d7ba5fd015",
       "input": {
-        "idProperty": "external_id",
-        "idValue": "external-9001",
-        "objectType": "deals",
+        "idProperty": "email",
+        "idValue": "ada@example.com",
+        "objectType": "contacts",
         "properties": {
-          "dealname": "Opportunity"
+          "email": "ada@example.com",
+          "firstname": "Ada"
         }
       },
-      "name": "upsertObject-conflict-recovery",
+      "name": "upsertObject-conflict-then-success",
       "operation": "upsertObject"
     },
     {
-      "attempts": 1,
-      "callId": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
+      "callId": "06719d48-8d2b-56c8-a395-2446f10efac4",
       "exchanges": [
         {
+          "body": "{\"total\":0,\"results\":[]}",
+          "headers": {},
           "keyMode": "absent",
-          "method": "PATCH",
-          "path": "/crm/objects/2026-09/deals/9001",
+          "method": "POST",
+          "path": "/crm/objects/2026-09/deals/search",
           "requestBody": {
-            "properties": {
-              "dealname": "Opportunity"
-            }
+            "limit": 10
           },
           "requestHeaders": {
             "Accept": [
@@ -2358,27 +2093,27 @@
               "application/json"
             ]
           },
-          "transportFailure": "after-send"
+          "status": 200
         }
       ],
       "expected": {
-        "branch": "",
-        "failureKind": "TRANSPORT",
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "objectType": "deals",
+          "objects": [],
+          "total": 0
+        },
         "requestCount": 1,
-        "retry": true,
+        "retry": false,
         "retryAfterMs": 0,
         "uncertain": false
       },
-      "idempotencyKey": "ed5bb304-ec47-5a8c-96b7-b696c607b333",
       "input": {
-        "objectId": "9001",
-        "objectType": "deals",
-        "properties": {
-          "dealname": "Opportunity"
-        }
+        "objectType": "deals"
       },
-      "name": "updateObject-after-send-failure",
-      "operation": "updateObject"
+      "name": "searchObjects-empty-page",
+      "operation": "searchObjects"
     }
   ],
   "schemaVersion": 1

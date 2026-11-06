@@ -9,33 +9,29 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/connectors/google/drive/go"
+	drive "github.com/superdurable/dex-connectors-library/connectors/google/drive/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-const conformanceEndpointPath = ""
-const conformanceFixturePathPrefix = ""
+const conformanceEndpointPath, conformanceFixturePathPrefix = "", ""
 
-type conformanceDriveContext struct {
+type driveConformanceContext struct {
 	*dexContext
 	attempt       int32
 	lastHeartbeat json.RawMessage
 }
 
-func (context *conformanceDriveContext) Attempt() int32 {
-	if context.attempt > 0 {
-		return context.attempt
-	}
-	return 1
-}
-func (context *conformanceDriveContext) RecordHeartbeat(value any) error {
+func (context *driveConformanceContext) Attempt() int32 { return context.attempt }
+
+func (context *driveConformanceContext) RecordHeartbeat(value any) error {
 	encoded, err := json.Marshal(value)
 	if err == nil {
 		context.lastHeartbeat = encoded
 	}
 	return err
 }
-func (context *conformanceDriveContext) GetLastHeartbeatValue(value any) (bool, error) {
+
+func (context *driveConformanceContext) GetLastHeartbeatValue(value any) (bool, error) {
 	if len(context.lastHeartbeat) == 0 {
 		return false, nil
 	}
@@ -44,16 +40,20 @@ func (context *conformanceDriveContext) GetLastHeartbeatValue(value any) (bool, 
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	client, err := drive.New(drive.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[drive.Credentials]{
-		driveConnection: {AccessToken: sdkgo.NewSecretString(driveTestToken)},
+	client, err := drive.New(drive.Config{Endpoint: endpoint, MaxTextBytes: 8}, sdkgo.StaticCredentialProvider[drive.Credentials]{
+		driveConnection: {AccessToken: sdkgo.NewSecretString("drive-token-SENTINEL")},
 	}, drive.WithHTTPClient(transport))
 	require.NoError(t, err)
-	context := &conformanceDriveContext{dexContext: newDexContext("conformance")}
+	context := &driveConformanceContext{dexContext: newDexContext("conformance")}
 	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) { context.lastHeartbeat = raw })
-	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) { context.attempt = prior + int32(attempt) }, actions: map[string]conformanceOperationInvocation{
-		"searchFiles":  newConformanceQueryInvocation(t, scenario.Input, context, client.SearchFiles(), driveConnection),
-		"getFile":      newConformanceQueryInvocation(t, scenario.Input, context, client.GetFile(), driveConnection),
-		"readFileText": newConformanceQueryInvocation(t, scenario.Input, context, client.ReadFileText(), driveConnection),
-		"uploadFile":   newConformanceMutationInvocation(t, scenario.Input, context, client.UploadFile(), driveConnection, scenario.CallID),
-	}}
+	return &conformanceMappedInvoker{
+		t: t, scenario: scenario,
+		before: func(attempt int) { context.attempt = prior + int32(attempt) },
+		actions: map[string]conformanceOperationInvocation{
+			"searchFiles":  newConformanceQueryInvocation(t, scenario.Input, context, client.SearchFiles(), driveConnection),
+			"getFile":      newConformanceQueryInvocation(t, scenario.Input, context, client.GetFile(), driveConnection),
+			"readFileText": newConformanceQueryInvocation(t, scenario.Input, context, client.ReadFileText(), driveConnection),
+			"uploadFile":   newConformanceMutationInvocation(t, scenario.Input, context, client.UploadFile(), driveConnection, scenario.CallID),
+		},
+	}
 }

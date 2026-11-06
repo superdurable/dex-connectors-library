@@ -14,8 +14,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 )
 
-const conformanceEndpointPath = ""
-const conformanceFixturePathPrefix = ""
+const conformanceEndpointPath, conformanceFixturePathPrefix = "/v4", "/v4"
 
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
@@ -23,26 +22,14 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		sheetsConnection: {AccessToken: sdkgo.NewSecretString("sheets-token")},
 	}, spreadsheet.WithHTTPClient(transport))
 	require.NoError(t, err)
-	context := singledispatchtest.NewContext("conformance-flow", "conformance")
-	if len(scenario.PriorHeartbeat) > 0 {
-		var marker any
-		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &marker))
-		require.NoError(t, context.SetPersistedCheckpoint(marker))
-		var prior struct {
-			Attempt int `json:"attempt"`
-		}
-		require.NoError(t, json.Unmarshal(scenario.PriorHeartbeat, &prior))
-		for range prior.Attempt {
+	context := singledispatchtest.NewContext("conformance", "sheets-operation")
+	prior := conformancePriorAttempt(t, scenario.PriorHeartbeat, func(raw []byte) {
+		require.NoError(t, context.SetPersistedCheckpoint(json.RawMessage(raw)))
+	})
+	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(attempt int) {
+		for context.Attempt() < prior+int32(attempt) {
 			context.AdvanceAttempt()
 		}
-	}
-	first := true
-	return &conformanceMappedInvoker{t: t, scenario: scenario, before: func(int) {
-		if first {
-			first = false
-			return
-		}
-		context.AdvanceAttempt()
 	}, actions: map[string]conformanceOperationInvocation{
 		"getValues": newConformanceQueryInvocation(t, scenario.Input, context, client.GetValues(), sheetsConnection),
 		"findRow":   newConformanceQueryInvocation(t, scenario.Input, context, client.FindRow(), sheetsConnection),

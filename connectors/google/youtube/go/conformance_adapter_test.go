@@ -1,43 +1,30 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-package youtube
+package youtube_test
 
 import (
-	"context"
-	"net/http"
-	"testing"
-	"time"
+    "net/http"
+    "testing"
 
-	"github.com/stretchr/testify/require"
-	"github.com/superdurable/dex-connectors-library/sdkgo"
-	"github.com/superdurable/dex/sdk-go/dex"
+    youtube "github.com/superdurable/dex-connectors-library/connectors/google/youtube/go"
+    "github.com/superdurable/dex-connectors-library/sdkgo"
+    "github.com/stretchr/testify/require"
 )
 
 const conformanceEndpointPath = "/youtube/v3"
 const conformanceFixturePathPrefix = ""
 
-var conformanceConnection = sdkgo.ConnectionRef{Provider: "google", Name: "youtube"}
-
-type conformanceContext struct{ dex.Context }
-
-func (conformanceContext) FlowID() string              { return "youtube-conformance" }
-func (conformanceContext) StepExecutionID() string     { return "youtube-step" }
-func (conformanceContext) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (conformanceContext) Done() <-chan struct{}       { return nil }
-func (conformanceContext) Err() error                  { return nil }
-func (conformanceContext) Value(key any) any           { return context.Background().Value(key) }
-
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
-	client, err := New(Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{
-		conformanceConnection: {AuthMethodID: ManageAuthMethodID, AccessToken: sdkgo.NewSecretString("one-use-token")},
-	}, WithHTTPClient(transport))
-	require.NoError(t, err)
-	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"searchVideos":      newConformanceQueryInvocation(t, scenario.Input, conformanceContext{}, client.SearchVideos(), conformanceConnection),
-		"getVideo":          newConformanceQueryInvocation(t, scenario.Input, conformanceContext{}, client.GetVideo(), conformanceConnection),
-		"getChannel":        newConformanceQueryInvocation(t, scenario.Input, conformanceContext{}, client.GetChannel(), conformanceConnection),
-		"listPlaylistItems": newConformanceQueryInvocation(t, scenario.Input, conformanceContext{}, client.ListPlaylistItems(), conformanceConnection),
-		"addPlaylistItem":   newConformanceMutationInvocation(t, scenario.Input, conformanceContext{}, client.AddPlaylistItem(), conformanceConnection, scenario.CallID),
-	}}
+    client, err := youtube.New(youtube.Config{Endpoint: endpoint}, sdkgo.StaticCredentialProvider[youtube.Credentials]{
+        youtubeConnection: {AuthMethodID: youtube.ManageAuthMethodID, AccessToken: sdkgo.NewSecretString("youtube-token")},
+    }, youtube.WithHTTPClient(transport))
+    require.NoError(t, err)
+    return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
+        "searchVideos": newConformanceQueryInvocation(t, scenario.Input, newDexContext("conformance"), client.SearchVideos(), youtubeConnection),
+        "getVideo": newConformanceQueryInvocation(t, scenario.Input, newDexContext("conformance"), client.GetVideo(), youtubeConnection),
+        "getChannel": newConformanceQueryInvocation(t, scenario.Input, newDexContext("conformance"), client.GetChannel(), youtubeConnection),
+        "listPlaylistItems": newConformanceQueryInvocation(t, scenario.Input, newDexContext("conformance"), client.ListPlaylistItems(), youtubeConnection),
+        "addPlaylistItem": newConformanceMutationInvocation(t, scenario.Input, newDexContext("conformance"), client.AddPlaylistItem(), youtubeConnection, scenario.CallID),
+    }}
 }

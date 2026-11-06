@@ -4,9 +4,9 @@
 package workspaceadmin_test
 
 import (
+	"bytes"
 	"crypto/rand"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,28 +17,18 @@ import (
 const conformanceEndpointPath = ""
 const conformanceFixturePathPrefix = "/admin/directory/v1"
 
-type fixedConformancePasswordReader struct{}
-
-func (fixedConformancePasswordReader) Read(value []byte) (int, error) {
-	for index := range value {
-		value[index] = 0x42
-	}
-	return len(value), nil
-}
-
 func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint string, transport *http.Client) conformanceInvoker {
 	t.Helper()
-	// A fixed fake password makes generated request bodies reproducible across Go and TypeScript replay.
-	previousReader := rand.Reader
-	rand.Reader = fixedConformancePasswordReader{}
-	t.Cleanup(func() { rand.Reader = previousReader })
-	config := workspaceadmin.Config{Endpoint: endpoint}
-	if strings.HasSuffix(scenario.Name, "oversized") {
-		config.MaxResponseBytes = 1
+	if scenario.Operation == "createUser" {
+		// Fix generated passwords so exact request bodies replay across languages.
+		originalReader := rand.Reader
+		rand.Reader = bytes.NewReader(bytes.Repeat([]byte{0x42}, 32*100))
+		t.Cleanup(func() { rand.Reader = originalReader })
 	}
-	client, err := workspaceadmin.New(config, sdkgo.StaticCredentialProvider[workspaceadmin.Credentials]{
-		testConnection: {AccessToken: sdkgo.NewSecretString(testAccessToken)},
-	}, workspaceadmin.WithHTTPClient(transport))
+	client, err := workspaceadmin.New(workspaceadmin.Config{Endpoint: endpoint, MaxResponseBytes: 512},
+		sdkgo.StaticCredentialProvider[workspaceadmin.Credentials]{
+			testConnection: {AccessToken: sdkgo.NewSecretString(testAccessToken)},
+		}, workspaceadmin.WithHTTPClient(transport))
 	require.NoError(t, err)
 	context := newTestDexContext("conformance")
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
