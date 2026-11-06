@@ -59,6 +59,18 @@ retry instead of producing a branch.
 The `ui/` package builds the credential-safe Studio setup bundle published as
 `connector-ui.tgz` with the Connector release.
 
+## Python package
+
+Install `dex-connector-google-spreadsheet==0.1.0` to use the Python `getValues`,
+`findRow`, and `upsertRow` Step factories. The package uses the manifest-generated
+OAuth refresh driver and project connection. Its
+[`upsert_contact` example](python/examples/upsert_contact/README.md) binds the
+static `google-sheets-contacts` connection and verifies retry, deduplication
+checkpointing, and optional-branch failure through a local Dex Worker and Client.
+Go-recorded provider responses are replayed by the Python conformance suite.
+Live Google authorization, scope consent, and spreadsheet read/write behavior
+have not been verified for this Python port.
+
 ## Test with spreadsheetmock
 
 The generated `spreadsheetmock` package answers every operation's happy path by

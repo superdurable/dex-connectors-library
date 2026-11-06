@@ -89,6 +89,17 @@ inputs.
 **Start Flow** example that adds a channel's newest matching video to a
 playlist and reads the playlist back to confirm.
 
+## Python package
+
+[`python/`](python/) releases `dex-connector-google-youtube` v0.1.0 independently
+of Go. It implements all five operations with the generated OAuth connection,
+refresh driver, and operation-specific Step factories. The
+[`video_search` example](python/examples/video_search/) starts a Flow through
+the static `youtube-playlist-curator` connection. The Python conformance suite
+replays Go-recorded provider requests and outcomes, including retry and
+check-before-insert paths. Live Google OAuth and YouTube API behavior remain
+unverified.
+
 ## Verification
 
 ```bash

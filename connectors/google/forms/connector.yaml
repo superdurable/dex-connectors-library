@@ -8,6 +8,13 @@ metadata:
   version: v0.24.0
 spec:
   provider: google
+  languages:
+    python:
+      version: v0.1.0
+      timestampFormat: rfc3339Nano
+      package: dex-connector-google-forms
+      operations: [getForm, listResponses, getResponse]
+      triggers: []
   codegen:
     go:
       package: forms
