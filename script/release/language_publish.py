@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -33,8 +34,7 @@ LANGUAGE_RELEASE_MANIFEST = "language-release.json"
 PENDING_PYPI_NOTES_START = "<!-- pypi-upload-pending:start -->"
 PENDING_PYPI_NOTES_END = "<!-- pypi-upload-pending:end -->"
 STABLE_VERSION_PATTERN = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
-PYTHON_CONNECTOR_TAG_PATTERN = re.compile(
-    r"(?P<directory>connectors/[a-z0-9-]+(?:/[a-z0-9-]+)*)/python/(?P<version>v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))")
+PYTHON_TAG_SEPARATOR = "/python/"
 SOURCE_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 
@@ -134,12 +134,18 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
                             release_created_at: dict[str, str] | None = None,
                             release_package=None,
                             project_exists=has_registry_project,
-                            pypi_release_exists=has_pypi_release_files) -> dict[str, object]:
-    """Queue Python first releases for GitHub first and completed releases missing from PyPI for upload."""
+                            pypi_release_exists=has_pypi_release_files,
+                            pending_upload_directory: str | None = None) -> dict[str, object]:
+    """Queue Python first releases for GitHub first and completed releases missing from PyPI for upload.
+
+    ``pending_upload_directory`` limits pending uploads to that exact connector directory.
+    """
     if first_publish_limit < 1:
         raise ValueError("PyPI first publish limit must be positive")
     if github_release_limit < 1:
         raise ValueError("GitHub first release limit must be positive")
+    if pending_upload_directory is not None and not is_connector_directory(pending_upload_directory):
+        raise ValueError(f"pending upload directory is not a connector directory: {pending_upload_directory}")
     completed = completed_tags or set()
     updates: list[dict[str, str]] = []
     first: list[dict[str, str]] = []
@@ -148,7 +154,7 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     pypi_pending = select_pending_pypi_uploads(
         completed, first_publish_limit, deferred, release_created_at=release_created_at or {},
         release_package=release_package or read_release_package, project_exists=project_exists,
-        pypi_release_exists=pypi_release_exists)
+        pypi_release_exists=pypi_release_exists, pending_upload_directory=pending_upload_directory)
     github_first_count = 0
     for item in items:
         if is_release_complete(item, completed):
@@ -184,17 +190,18 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
 
 def select_pending_pypi_uploads(completed_tags: set[str], first_publish_limit: int, deferred: list[dict[str, str]],
                                 *, release_created_at: dict[str, str], release_package, project_exists,
-                                pypi_release_exists) -> list[dict[str, str]]:
-    """Queue every completed Python release missing from PyPI, oldest GitHub release first."""
-    python_tags = [tag for tag in completed_tags if PYTHON_CONNECTOR_TAG_PATTERN.fullmatch(tag)]
+                                pypi_release_exists, pending_upload_directory: str | None) -> list[dict[str, str]]:
+    """Queue completed Python releases missing from PyPI, oldest GitHub release first, optionally for one directory."""
+    python_releases = {tag: release for tag in completed_tags
+                       if (release := split_python_connector_tag(tag)) is not None
+                       and pending_upload_directory in (None, release[0])}
     # A tag without a recorded creation time sorts after every dated tag.
-    python_tags.sort(key=lambda tag: (release_created_at.get(tag) or "￿", tag))
+    python_tags = sorted(python_releases, key=lambda tag: (release_created_at.get(tag) or "￿", tag))
     pending: list[dict[str, str]] = []
     allocated_new_projects: set[str] = set()
     capped_new_projects: set[str] = set()
     for tag in python_tags:
-        match = PYTHON_CONNECTOR_TAG_PATTERN.fullmatch(tag)
-        directory, version = match.group("directory"), match.group("version")
+        directory, version = python_releases[tag]
         item: dict[str, object] = {"directory": directory, "tag_prefix": f"{directory}/python/", "version": version,
                                    "language": "python", "github_released": True}
         try:
@@ -223,6 +230,24 @@ def select_pending_pypi_uploads(completed_tags: set[str], first_publish_limit: i
             item["first_publish"] = True
             pending.append(item)
     return pending
+
+
+def split_python_connector_tag(tag: str) -> tuple[str, str] | None:
+    """Return the connector directory and stable version of a Python connector release tag, or None."""
+    directory, separator, version = tag.rpartition(PYTHON_TAG_SEPARATOR)
+    if not separator or not STABLE_VERSION_PATTERN.fullmatch(version) or not is_connector_directory(directory):
+        return None
+    return directory, version
+
+
+def is_connector_directory(directory: str) -> bool:
+    """Apply the rules of connectorctl validateConnectorDirectory."""
+    if (not directory or directory.startswith("/") or posixpath.normpath(directory) != directory
+            or "\\" in directory):
+        return False
+    if not directory.startswith("connectors/") or not directory.removeprefix("connectors/"):
+        return False
+    return all(segment not in ("", ".", "..") for segment in directory.split("/"))
 
 
 def read_release_package(directory: str, tag: str) -> str:
@@ -512,6 +537,8 @@ def main() -> int:
     select_parser.add_argument("--github-output", type=Path, required=True)
     select_parser.add_argument("--first-publish-limit", type=int, default=PYPI_FIRST_PUBLISH_LIMIT)
     select_parser.add_argument("--github-release-limit", type=int, default=GITHUB_FIRST_RELEASE_LIMIT)
+    select_parser.add_argument("--pending-upload-directory",
+                               help="upload only this connector directory's pending PyPI versions")
     completed_parser = commands.add_parser("completed-language-tags")
     completed_parser.add_argument("--output", type=Path, required=True)
     pypi_tags_parser = commands.add_parser("pypi-published-language-tags")
@@ -573,7 +600,8 @@ def main() -> int:
                 selection = select_release_matrices(items, args.first_publish_limit,
                                                     github_release_limit=args.github_release_limit,
                                                     completed_tags=completed_tags,
-                                                    release_created_at=read_release_created_at())
+                                                    release_created_at=read_release_created_at(),
+                                                    pending_upload_directory=args.pending_upload_directory)
             write_selection_outputs(args.github_output, selection, entries["matrix"], entries["count"])
             Path(os.environ.get("LANGUAGE_SELECTION_PATH", "/tmp/language-selection.json")).write_text(
                 json.dumps(selection) + "\n", encoding="utf-8")

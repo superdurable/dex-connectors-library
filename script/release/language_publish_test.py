@@ -111,6 +111,37 @@ class SelectReleaseMatricesTests(unittest.TestCase):
         self.assertEqual(["alpha", "undated"], names(selection["deferred"]))
         self.assertEqual({"first_publish_cap"}, {entry["defer_reason"] for entry in selection["deferred"]})
 
+    def test_targeted_repair_uploads_only_its_connector_versions(self) -> None:
+        created_at = {tag("other-a"): "2026-11-01T00:00:00Z", tag("other-b"): "2026-11-02T00:00:00Z",
+                      tag("other-c"): "2026-11-03T00:00:00Z", tag("target"): "2026-11-04T00:00:00Z",
+                      tag("target", version="v0.2.0"): "2026-11-05T00:00:00Z",
+                      tag("target/nested"): "2026-10-01T00:00:00Z", tag("targeted"): "2026-10-01T00:00:00Z"}
+        target = item("target")
+        target["version"] = "v0.3.0"
+        for scope, expected_pending in (
+                ("connectors/target", [tag("target"), tag("target", version="v0.2.0")]),
+                (None, [tag("target/nested"), tag("targeted"), tag("other-a")])):
+            with self.subTest(scope=scope):
+                selection = select(
+                    [dict(target)], 3, completed_tags=set(created_at), release_created_at=created_at,
+                    pending_upload_directory=scope,
+                    project_exists=lambda _language, _package: False, pypi_release_exists=never_on_pypi)
+                self.assertEqual(expected_pending, [entry["tag_prefix"] + entry["version"]
+                                                    for entry in selection["pypi_pending"]])
+                self.assertEqual(["v0.3.0"], [entry["version"] for entry in selection["github_first"]])
+        with self.assertRaisesRegex(ValueError, "not a connector directory"):
+            select([], 3, pending_upload_directory="connectors/../target")
+
+    def test_completed_tags_accept_every_valid_connector_directory(self) -> None:
+        completed = {"connectors/acme/chat_api/python/v0.1.0", "connectors/acme/python/tools/python/v0.1.0",
+                     "connectors/../acme/python/v0.1.0", "connectors//acme/python/v0.1.0", "connectors/python/v0.1.0",
+                     "connectors/acme/python/v0.1.0-rc.1", "sdkpython/v0.8.0", "connectors/acme/typescript/v0.1.0"}
+        selection = select([], 5, completed_tags=completed, project_exists=lambda _language, _package: True,
+                           pypi_release_exists=never_on_pypi)
+        self.assertEqual([("connectors/acme/chat_api", "v0.1.0"), ("connectors/acme/python/tools", "v0.1.0")],
+                         [(entry["directory"], entry["version"]) for entry in selection["pypi_pending"]])
+        self.assertEqual("connectors/acme/chat_api/python/", selection["pypi_pending"][0]["tag_prefix"])
+
     def test_later_versions_of_a_queued_new_project_share_its_slot(self) -> None:
         completed = {tag("acme"), tag("acme", version="v0.2.0"), tag("other")}
         created_at = {tag("acme"): "2026-11-01T00:00:00Z", tag("acme", version="v0.2.0"): "2026-11-02T00:00:00Z",
@@ -623,6 +654,30 @@ class WorkflowTests(unittest.TestCase):
                     TAG_PREFIX="connectors/acme/python/", RELEASE_VERSION="v0.1.0", **environment))
                 result = json.loads((Path(temporary) / "release-result" / "release-result.json").read_text())
                 self.assertEqual(expected, (result["status"], result["reason"]))
+
+    def test_only_targeted_repair_scopes_pending_pypi_uploads(self) -> None:
+        plan_job = self.job("plan")
+        step = plan_job.split("      - name: Build pending or targeted repair matrix\n", 1)[1].split("      - ", 1)[0]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        cases = ((("workflow_dispatch", "connectors/target", "false"), ["--pending-upload-directory", "connectors/target"]),
+                 (("schedule", "", "false"), []), (("workflow_dispatch", "", "true"), []), (("push", "", "false"), []))
+        for (event_name, repair_directory, drain), expected_scope in cases:
+            with self.subTest(event_name=event_name, drain=drain), tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                bin_directory = directory / "bin"
+                bin_directory.mkdir()
+                for command in ("go", "python3"):
+                    (bin_directory / command).write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "$LOG_DIRECTORY/{command}"\n')
+                    (bin_directory / command).chmod(0o755)
+                subprocess.run(("bash", "-e", "-o", "pipefail", "-c", script), check=True, env=dict(
+                    os.environ, PATH=f"{bin_directory}:{os.environ['PATH']}", LOG_DIRECTORY=temporary,
+                    EVENT_NAME=event_name, REPAIR_DIRECTORY=repair_directory, DRAIN_FIRST_PUBLISHES=drain,
+                    SOURCE_SHA="a" * 40, RUNNER_TEMP=temporary, GITHUB_OUTPUT=str(directory / "output"),
+                    FIRST_PUBLISH_LIMIT="3", PYTHON_GITHUB_FIRST_RELEASE_LIMIT="15"))
+                select_arguments = (directory / "python3").read_text().splitlines()
+                self.assertEqual("select", select_arguments[1])
+                scope = select_arguments[select_arguments.index("--github-release-limit") + 2:]
+                self.assertEqual(expected_scope, scope)
 
     def run_guard(self, temporary: Path, *, release_assets: list[str] | None, built_source_sha: str | None,
                   existing_archive: bytes | None = None, pypi_status: str = "deferred") -> subprocess.CompletedProcess:

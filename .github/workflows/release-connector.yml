@@ -121,8 +121,11 @@ jobs:
             exit
           fi
           arguments=(--catalog catalog.yaml --github-output "${RUNNER_TEMP}/release-matrix-output")
+          select_arguments=()
           if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n "${REPAIR_DIRECTORY}" ]; then
             arguments+=(--directory "${REPAIR_DIRECTORY}" --include-published)
+            # A targeted repair uploads only that connector's pending PyPI versions.
+            select_arguments+=(--pending-upload-directory "${REPAIR_DIRECTORY}")
           elif [ "${EVENT_NAME}" = schedule ] || [ "${DRAIN_FIRST_PUBLISHES}" = true ]; then
             arguments+=(--include-published-languages)
           else
@@ -133,7 +136,8 @@ jobs:
             --matrix-output "${RUNNER_TEMP}/release-matrix-output" \
             --github-output "${GITHUB_OUTPUT}" \
             --first-publish-limit "${FIRST_PUBLISH_LIMIT}" \
-            --github-release-limit "${PYTHON_GITHUB_FIRST_RELEASE_LIMIT}"
+            --github-release-limit "${PYTHON_GITHUB_FIRST_RELEASE_LIMIT}" \
+            "${select_arguments[@]}"
       - uses: actions/upload-artifact@v4
         with:
           name: release-inventory

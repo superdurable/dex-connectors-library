@@ -261,7 +261,13 @@ releases are GitHub-first:
    time, then tag) first; earlier pending uploads also take new-project slots
    before newer ones. A later version of a project queued in the same run
    shares its slot. A failed PyPI or tag lookup schedules no upload and is
-   reported as `pypi_pending` with `registry_lookup_failure`.
+   reported as `pypi_pending` with `registry_lookup_failure`. A tag counts when
+   its part before `/python/vX.Y.Z` is a valid connector directory under the
+   same rules as `catalog.yaml`, such as `connectors/acme/chat_api`. Push,
+   scheduled, and drain runs consider every connector. A manual run with
+   `connector_directory` uploads only that exact directory's pending versions,
+   all of them, so nested sibling connectors and the backlog cannot take its
+   new-project slot.
 3. **PyPI upload.** The `upload-pending-pypi` job downloads the release's
    archives, digests, and `language-release.json` from GitHub, checks every
    file against the manifest and its `.sha256` file, requires the manifest's
