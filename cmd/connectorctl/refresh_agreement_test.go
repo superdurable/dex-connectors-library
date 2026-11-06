@@ -22,10 +22,12 @@ func TestGenerateWritesChecksAndRemovesTheRefreshAgreementTest(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(directory, "go"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(directory, "go", "go.mod"), []byte("module example.com/tokengrants\n\ngo 1.24\n"), 0o600))
 	agreementPath := filepath.Join(directory, "go", codegen.RefreshAgreementTestOutputFile)
+	transportHookPath := filepath.Join(directory, "go", codegen.RefreshAgreementTransportHookOutputFile)
 
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated connector is missing")
 	require.NoError(t, generate([]string{manifestPath}))
 	require.FileExists(t, agreementPath)
+	require.FileExists(t, transportHookPath)
 	require.NoError(t, generate([]string{"--check", manifestPath}))
 
 	require.NoError(t, os.MkdirAll(filepath.Join(directory, "go", "testdata"), 0o755))
@@ -41,8 +43,32 @@ func TestGenerateWritesChecksAndRemovesTheRefreshAgreementTest(t *testing.T) {
 	require.NoError(t, os.WriteFile(manifestPath, withoutGrants, 0o600))
 	require.NoError(t, generate([]string{manifestPath}))
 	require.NoFileExists(t, agreementPath, "a manifest without token grants keeps no agreement test")
+	require.NoFileExists(t, transportHookPath, "a manifest without token grants keeps no transport hook")
 	require.NoError(t, os.WriteFile(agreementPath, []byte("package tokengrants_test\n"), 0o600))
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "credential refresh agreement test is stale")
+}
+
+func TestLanguageRefreshAgreementTimeoutRequiresConnectorSDKZeroEight(t *testing.T) {
+	cases := []byte(`[{"name":"refresh","tokenExchangeTimeout":"8s","tokenExchangeTimeoutNanoseconds":8000000000}]`)
+	for _, language := range []string{"python", "typescript"} {
+		for _, version := range []string{"0.6.0", "0.7.0", "0.8.0"} {
+			t.Run(language+"/"+version, func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "package.json")
+				contents := `{"dependencies":{"@superdurable/connectors-sdk":"` + version + `"}}`
+				if language == "python" {
+					contents = `[project]` + "\n" + `dependencies = ["dex-connectors-sdk==` + version + `"]`
+				}
+				require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
+				generated, err := languageRefreshAgreementCases(cases, path, language)
+				require.NoError(t, err)
+				if version == "0.8.0" {
+					require.Contains(t, string(generated), `"tokenExchangeTimeout":"8s"`)
+				} else {
+					require.NotContains(t, string(generated), "tokenExchangeTimeout")
+				}
+			})
+		}
+	}
 }
 
 func TestGeneratedRefreshAgreementFilesIncludeLanguageTests(t *testing.T) {

@@ -64,7 +64,8 @@ export const Authorization = {
             "invalid_client",
             "unauthorized_client",
             "invalid_token"
-          ]
+          ],
+          "tokenExchangeTimeout": "12s"
         },
         "scopes": [
           "boards:read",

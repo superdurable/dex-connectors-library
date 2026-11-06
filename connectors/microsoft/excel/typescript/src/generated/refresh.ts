@@ -63,7 +63,8 @@ export const Authorization = {
             "invalid_request",
             "unsupported_grant_type",
             "invalid_resource"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "offline_access",

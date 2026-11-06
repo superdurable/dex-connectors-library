@@ -629,7 +629,19 @@ from each returned scope, and `caseInsensitiveScopes` compares names without
 case for Microsoft Graph. `scopeResourcePrefixCaseInsensitive` also removes
 an uppercase prefix when the Go driver accepts it. `clientCredentials.scopeSeparators` applies the same
 comma-aware parsing to client-credentials grants.
-`refresh.expiryCap` limits a reported lifetime. A grant with
+`refresh.expiryCap` limits a reported lifetime.
+`refresh.tokenExchangeTimeout` declares the bound the Go driver applies on its
+production token exchange path. Declare a positive Go duration of at most one
+hour or `{fromSetting: requestTimeout}` naming a required or defaulted duration
+configuration field. A sourced timeout uses the validated connection value.
+The Go bound may come from a request context or from the driver's default
+`http.Client.Timeout`; a caller-supplied Go client can override a default-client
+timeout. Python and TypeScript always enforce the declared bound, including
+when a caller supplies a client. `clientCredentials.tokenExchangeTimeout`
+applies the same rule to client-credentials grants. A timeout is retryable.
+When one timeout-capable token grant declares this bound, every OAuth refresh
+and client-credentials grant in the connector must declare it. JWT bearer grants
+cannot declare this field yet.
 `accessTokenJWTExpiryFallback` reads the access token JWT `exp` for an undated
 stored token and a response without `expires_in`; an unreadable or past claim
 uses the declared fallback lifetime after refresh.

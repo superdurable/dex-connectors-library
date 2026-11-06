@@ -83,6 +83,7 @@ spec:
             - Open Certificates & secrets > Client secrets > New client secret, choose an expiry, and copy the Value shown once into client_secret. Renew it before it expires; to revoke access, delete the secret or the app registration.
             - To disable, enable, or revoke sessions for accounts that hold administrator roles, also assign the app the Privileged Authentication Administrator role under Entra ID > Roles & admins; without it Microsoft Graph answers 403 for those accounts.
         clientCredentials:
+          tokenExchangeTimeout: 25s
           trimClientID: true
           responseScopes: ignore
           missingExpiry: reject
@@ -149,6 +150,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 25s
             trimClientID: true
             scopeResourcePrefix: https://graph.microsoft.com/
             scopeResourcePrefixCaseInsensitive: true

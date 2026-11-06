@@ -100,6 +100,7 @@ spec:
           pkce: true
           tokenRequestEncoding: json
           refresh:
+            tokenExchangeTimeout: 12s
             scopeSeparators: whitespaceAndComma
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, invalid_token]

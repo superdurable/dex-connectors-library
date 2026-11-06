@@ -49,7 +49,8 @@ export const Authorization = {
         "unauthorized_client",
         "interaction_required",
         "consent_required"
-      ]
+      ],
+      "tokenExchangeTimeout": "15s"
     },
     "scopes": [
       "Team.ReadBasic.All",

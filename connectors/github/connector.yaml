@@ -122,6 +122,7 @@ spec:
         - {credential: refresh_token, source: refresh_token}
       pkce: true
       refresh:
+        tokenExchangeTimeout: 15s
         requiredScopes: [read:user, user:email]
         missingExpiry: reject
         scopeSeparators: whitespaceAndComma

@@ -106,6 +106,7 @@ spec:
           pkce: false
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            tokenExchangeTimeout: 25s
             responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh
@@ -136,6 +137,7 @@ spec:
           pkce: false
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            tokenExchangeTimeout: 25s
             responseScopes: ignore
             missingExpiry: reject
             storedMissingExpiry: refresh

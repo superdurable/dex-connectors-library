@@ -19,7 +19,8 @@ export const Authorization = {
       "invalid_client",
       "unauthorized_client"
     ],
-    "tokenEndpoint": "https://api.helpscout.net/v2/oauth2/token"
+    "tokenEndpoint": "https://api.helpscout.net/v2/oauth2/token",
+    "tokenExchangeTimeout": "25s"
   },
   "fields": [
     {

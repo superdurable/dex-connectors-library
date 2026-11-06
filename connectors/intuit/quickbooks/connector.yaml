@@ -95,6 +95,7 @@ spec:
       pkce: false
       tokenEndpointAuthMethod: client_secret_basic
       refresh:
+        tokenExchangeTimeout: 8s
         scopeSeparators: whitespaceAndComma
         requiredScopes: [com.intuit.quickbooks.accounting]
         missingExpiry: reject

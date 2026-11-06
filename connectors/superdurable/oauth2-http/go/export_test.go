@@ -33,7 +33,7 @@ func NewCredentialRefreshDriverThroughTransportForTest(config Config, transport 
 	if err != nil {
 		return nil, err
 	}
-	driver.httpClient = providerhttp.NewProviderHTTPClient(&http.Client{Transport: transport}, withConfigDefaults(config).RequestTimeout)
+	driver.httpClient.Transport = transport
 	return driver, nil
 }
 

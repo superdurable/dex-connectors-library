@@ -49,7 +49,8 @@ export const Authorization = {
         "invalid_client",
         "unauthorized_client",
         "access_denied"
-      ]
+      ],
+      "tokenExchangeTimeout": "15s"
     },
     "scopes": [
       "openid",

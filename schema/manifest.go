@@ -597,6 +597,7 @@ func (manifest Manifest) Validate() error {
 			problems = append(problems, "spec.auth may recommend at most one auth method")
 		}
 	}
+	problems = append(problems, validateConsistentTokenExchangeTimeouts(manifest.Spec.Auth)...)
 	problems = append(problems, validateConfigurationFieldNames(manifest.Spec)...)
 	problems = append(problems, validateConfigurationFieldStudioUnits(manifest.Spec)...)
 	if manifest.Spec.Studio != nil {

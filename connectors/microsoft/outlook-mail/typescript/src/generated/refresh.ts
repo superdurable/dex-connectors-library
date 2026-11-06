@@ -62,7 +62,8 @@ export const Authorization = {
             "interaction_required",
             "consent_required",
             "invalid_scope"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "offline_access",
@@ -117,7 +118,8 @@ export const Authorization = {
               "trimSpace": true
             }
           }
-        }
+        },
+        "tokenExchangeTimeout": "8s"
       },
       "fields": [
         {

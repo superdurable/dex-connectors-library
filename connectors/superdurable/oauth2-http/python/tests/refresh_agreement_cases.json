@@ -8,6 +8,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -82,6 +83,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -152,6 +154,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -220,6 +223,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -291,6 +295,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -359,6 +364,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -426,6 +432,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "http://127.0.0.1/token",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -500,6 +507,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "http://127.0.0.1/token",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -570,6 +578,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "http://127.0.0.1/token",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -638,6 +647,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "http://127.0.0.1/token",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -709,6 +719,7 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "http://127.0.0.1/token",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
@@ -777,10 +788,435 @@
       "refresh_token": "manifest-refresh-token"
     },
     "settings": {
+      "requestTimeout": "12s",
       "tokenEndpoint": "http://127.0.0.1/token",
       "tokenEndpointAuthMethod": "client_secret_post"
     },
     "endpoint": "http://127.0.0.1/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refreshIfRefreshTokenPresent",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated token without refresh token",
+        "credentials": {
+          "refresh_token": ""
+        },
+        "expiresAt": "missing",
+        "expected": false
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with requestTimeout \"2s\"",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "settings": {
+      "requestTimeout": "2s",
+      "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
+      "tokenEndpointAuthMethod": "client_secret_post"
+    },
+    "endpoint": "https://manifest.example.com/tokenEndpoint",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client"
+    ],
+    "storedMissingExpiry": "refreshIfRefreshTokenPresent",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated token without refresh token",
+        "credentials": {
+          "refresh_token": ""
+        },
+        "expiresAt": "missing",
+        "expected": false
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with requestTimeout \"2s\" with unaccepted token type",
+    "expectedError": "retryable",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "settings": {
+      "requestTimeout": "2s",
+      "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
+      "tokenEndpointAuthMethod": "client_secret_post"
+    },
+    "endpoint": "https://manifest.example.com/tokenEndpoint",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refreshIfRefreshTokenPresent",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated token without refresh token",
+        "credentials": {
+          "refresh_token": ""
+        },
+        "expiresAt": "missing",
+        "expected": false
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with requestTimeout \"2s\" without token type",
+    "expectedError": "retryable",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "settings": {
+      "requestTimeout": "2s",
+      "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
+      "tokenEndpointAuthMethod": "client_secret_post"
+    },
+    "endpoint": "https://manifest.example.com/tokenEndpoint",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refreshIfRefreshTokenPresent",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated token without refresh token",
+        "credentials": {
+          "refresh_token": ""
+        },
+        "expiresAt": "missing",
+        "expected": false
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with requestTimeout \"2s\" with different reported scope",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "settings": {
+      "requestTimeout": "2s",
+      "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
+      "tokenEndpointAuthMethod": "client_secret_post"
+    },
+    "endpoint": "https://manifest.example.com/tokenEndpoint",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refreshIfRefreshTokenPresent",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated token without refresh token",
+        "credentials": {
+          "refresh_token": ""
+        },
+        "expiresAt": "missing",
+        "expected": false
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with requestTimeout \"2s\" without expires_in",
+    "expectedError": "retryable",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "settings": {
+      "requestTimeout": "2s",
+      "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
+      "tokenEndpointAuthMethod": "client_secret_post"
+    },
+    "endpoint": "https://manifest.example.com/tokenEndpoint",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refreshIfRefreshTokenPresent",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated token without refresh token",
+        "credentials": {
+          "refresh_token": ""
+        },
+        "expiresAt": "missing",
+        "expected": false
+      }
+    ]
+  },
+  {
+    "name": "spec.auth refresh with requestTimeout \"2s\" without refresh_token",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "settings": {
+      "requestTimeout": "2s",
+      "tokenEndpoint": "https://manifest.example.com/tokenEndpoint",
+      "tokenEndpointAuthMethod": "client_secret_post"
+    },
+    "endpoint": "https://manifest.example.com/tokenEndpoint",
     "encoding": "form",
     "clientAuth": "client_secret_post",
     "clientId": "manifest-client-id",

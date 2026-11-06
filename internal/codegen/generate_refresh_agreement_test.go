@@ -400,6 +400,33 @@ func TestGenerateRefreshAgreementTestDeclaresEveryGrant(t *testing.T) {
 	require.NotContains(t, text, `"scope": "offline_access files.read", "token_type"`, "a response does not report offline_access")
 }
 
+func TestGoRefreshTimeoutDeclarationsReachAgreements(t *testing.T) {
+	for _, directory := range []string{"xero", "microsoft/excel", "microsoft/outlook-mail", "intuit/quickbooks", "zoom"} {
+		t.Run(directory, func(t *testing.T) {
+			manifestFile, err := os.Open(filepath.Join("..", "..", "connectors", directory, "connector.yaml"))
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
+			manifest, err := schema.Decode(manifestFile)
+			require.NoError(t, err)
+			generated, err := codegen.GenerateRefreshAgreementTest(manifest, "example.com/connector", nil)
+			require.NoError(t, err)
+			require.Regexp(t, `tokenExchangeTimeout:\s+time.Duration\(8000000000\)`, string(generated))
+			encoded, err := codegen.GenerateRefreshAgreementCases(manifest, nil)
+			require.NoError(t, err)
+			var cases []codegen.RefreshAgreementCase
+			require.NoError(t, json.Unmarshal(encoded, &cases))
+			require.NotEmpty(t, cases)
+			found := false
+			for _, agreementCase := range cases {
+				if agreementCase.TokenExchangeTimeout == "8s" {
+					found = true
+				}
+			}
+			require.True(t, found, "language agreement must carry the Go refresh timeout")
+		})
+	}
+}
+
 func TestGenerateRefreshAgreementTestReplaysResponseVariations(t *testing.T) {
 	generated := string(generateTokenGrantsAgreement(t, nil))
 	for _, suffix := range []string{

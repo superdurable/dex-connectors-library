@@ -3,8 +3,11 @@
 # SPDX-License-Identifier: MIT
 """Replay Go's refresh agreement through the generated Python declaration."""
 
+import asyncio
 import base64
 import json
+from collections.abc import AsyncIterator
+from copy import deepcopy
 from dataclasses import fields, make_dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -195,3 +198,81 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             with pytest.raises(expected_error):
                 await driver.refresh(state)
             assert len(requests) == 1
+
+
+def shorten_declared_exchange_timeout(authorization: dict[str, Any], case: dict[str, Any]) -> dict[str, str]:
+    """Set the selected grant's deadline and return its connection settings."""
+    methods = authorization.get("methods") or []
+    method = next((item for item in methods if item["id"] == case.get("methodId")), authorization)
+    grant = (method["clientCredentials"] if case["parameters"]["grant_type"] == "client_credentials"
+             else method["oauth2"]["refresh"])
+    timeout_source = grant["tokenExchangeTimeout"]
+    settings = dict(case.get("settings", {}))
+    if isinstance(timeout_source, dict):
+        settings[timeout_source["fromSetting"]] = "1s"
+    else:
+        grant["tokenExchangeTimeout"] = "10ms"
+    return settings
+
+
+def test_generated_timeout_grant_selection() -> None:
+    """The rendered harness selects refresh and client-credentials timeout declarations."""
+    authorization = {"methods": [
+        {"id": "oauth", "oauth2": {"refresh": {"tokenExchangeTimeout": "8s"}}},
+        {"id": "custom", "clientCredentials": {"tokenExchangeTimeout": {"fromSetting": "requestTimeout"}}},
+    ]}
+    refresh = {"methodId": "oauth", "parameters": {"grant_type": "refresh_token"}}
+    assert shorten_declared_exchange_timeout(authorization, refresh) == {}
+    assert authorization["methods"][0]["oauth2"]["refresh"]["tokenExchangeTimeout"] == "10ms"
+    mint = {"methodId": "custom", "parameters": {"grant_type": "client_credentials"}}
+    assert shorten_declared_exchange_timeout(authorization, mint) == {"requestTimeout": "1s"}
+
+
+@pytest.mark.parametrize("case", [case for case in CASES if case.get("tokenExchangeTimeout")][:1],
+                         ids=lambda case: case["name"])
+@pytest.mark.asyncio
+async def test_generated_declared_exchange_timeout_duration(case: dict[str, Any]) -> None:
+    """The SDK resolves the full manifest duration before a token exchange."""
+    methods = AUTHORIZATION.get("methods") or []
+    method = next((item for item in methods if item["id"] == case.get("methodId")), AUTHORIZATION)
+    grant = (method["clientCredentials"] if case["parameters"]["grant_type"] == "client_credentials"
+             else method["oauth2"]["refresh"])
+    async with httpx.AsyncClient() as client:
+        driver = ManifestCredentialRefreshDriver[Any](
+            "Agreement", AUTHORIZATION, CREDENTIAL_FIELDS, client, settings=case.get("settings", {})
+        )
+        assert driver._token_exchange_timeout_seconds(grant["tokenExchangeTimeout"]) == (
+            case["tokenExchangeTimeoutNanoseconds"] / 1_000_000_000
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", [case for case in CASES if case.get("tokenExchangeTimeout")],
+                         ids=lambda case: case["name"])
+async def test_generated_refresh_exchange_timeout(case: dict[str, Any]) -> None:
+    """A delayed valid token response must be cut off by the declared refresh deadline."""
+    authorization = deepcopy(AUTHORIZATION)
+    settings = shorten_declared_exchange_timeout(authorization, case)
+    requests: list[httpx.Request] = []
+
+    class SlowStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            await asyncio.sleep(1.2 if settings.get("requestTimeout") == "1s" else 0.05)
+            yield json.dumps(case["response"]).encode()
+
+        async def aclose(self) -> None:
+            pass
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, stream=SlowStream())
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Any](
+            "Agreement", authorization, CREDENTIAL_FIELDS, client, settings=settings
+        )
+        credentials = credentials_for(case, "")
+        state = CredentialRefreshState(credentials, datetime(2000, 1, 1, tzinfo=UTC), datetime.now(UTC))
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
+    assert len(requests) == 1
