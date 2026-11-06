@@ -239,3 +239,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 \
 
 The integration tests need a running `dexcli dev` and use a local fake
 HubSpot API; no live HubSpot account is required.
+
+## Python package
+
+The [Python package](python/README.md) implements the four CRM operations in this manifest at `v0.1.0`. Its generated connection supports private app tokens and manifest-driven HubSpot OAuth refresh; the [read contact example](python/examples/read_contact/README.md) binds the static `hubspot-crm` connection and includes a real Dex Worker and Client integration test. Go-recorded [conformance scenarios](../../conformance/connectors/hubspot/scenarios.json) cover provider requests, branches, and retries. Live HubSpot authorization and CRM calls remain unverified until a user configures a provider account in Dex Web.
