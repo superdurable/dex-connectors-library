@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { newQueryBranch, newQueryRetry, type Call, type Failure, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderStalledError, ProviderTransportError, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { GetItemDefinition, ListStoryIDsDefinition } from './generated/definitions.js';
 import type { Config, GetItemInput, Item, ListStoryIDsInput, StoryIDs } from './generated/models.js';
 
@@ -68,7 +68,8 @@ export class HackerNewsClient {
         if (status !== 200) return failed(operation, 'providerRejected', zero, 'PROVIDER_REJECTION', 'Hacker News rejected the request');
         return failed(operation, 'invalidResponse', zero, 'RESPONSE_TOO_LARGE', 'Hacker News response exceeded the configured limit');
       }
-      return newQueryRetry(failure(operation, 'AVAILABILITY', 'Hacker News request failed'), 0);
+      const isInterruptedResponse = (error instanceof ProviderTransportError || error instanceof ProviderStalledError) && error.status === 200;
+      return newQueryRetry(failure(operation, 'AVAILABILITY', isInterruptedResponse ? 'Hacker News response was interrupted' : 'Hacker News request failed'), 0);
     }
     const status = response.status;
     if (status === 408 || status === 429 || status >= 500) {
@@ -93,10 +94,16 @@ export class ListStoryIDsOperation implements Query<ListStoryIDsInput, StoryIDs>
     if (!Number.isInteger(limit) || limit < 1 || limit > 500) return Promise.resolve(failed('listStoryIDs', 'defect', zeroIds, 'VALIDATION', 'limit must be from 1 through 500'));
     return this.client.getJSON(call, 'listStoryIDs', `/${feed}stories.json`, zeroIds, body => {
       let ids: unknown;
-      try { ids = JSON.parse(Buffer.from(body).toString('utf8')); } catch { ids = undefined; }
-      if (!Array.isArray(ids) || !ids.every(id => Number.isSafeInteger(id))) return failed('listStoryIDs', 'invalidResponse', zeroIds, 'PROTOCOL', 'Hacker News returned an invalid feed');
-      if (ids.some(id => id <= 0)) return failed('listStoryIDs', 'invalidResponse', zeroIds, 'PROTOCOL', 'Hacker News returned an invalid item ID');
-      return newQueryBranch('listed', { ids: ids.slice(0, limit), hasMore: ids.length > limit, observedAt: goTimestamp(this.client.now()) }, {});
+      try { ids = parseProviderJSON(body); } catch { ids = undefined; }
+      if (!Array.isArray(ids)) return failed('listStoryIDs', 'invalidResponse', zeroIds, 'PROTOCOL', 'Hacker News returned an invalid feed');
+      const feedIDs: number[] = [];
+      for (const id of ids) {
+        if (id === null) return failed('listStoryIDs', 'invalidResponse', zeroIds, 'PROTOCOL', 'Hacker News returned an invalid item ID');
+        try { feedIDs.push(strictInteger(id, 'item ID')); }
+        catch (error) { return failed('listStoryIDs', 'invalidResponse', zeroIds, 'PROTOCOL', `Hacker News returned an invalid feed: ${fieldError(error)}`); }
+      }
+      if (feedIDs.some(id => id <= 0)) return failed('listStoryIDs', 'invalidResponse', zeroIds, 'PROTOCOL', 'Hacker News returned an invalid item ID');
+      return newQueryBranch('listed', { ids: feedIDs.slice(0, limit), hasMore: feedIDs.length > limit, observedAt: goTimestamp(this.client.now()) }, {});
     });
   }
 }
@@ -110,10 +117,10 @@ export class GetItemOperation implements Query<GetItemInput, Item> {
     if (!Number.isSafeInteger(input.id) || input.id <= 0) return Promise.resolve(failed('getItem', 'defect', zeroItem, 'VALIDATION', 'item ID must be positive'));
     return this.client.getJSON(call, 'getItem', `/item/${input.id}.json`, zeroItem, body => {
       let value: unknown;
-      try { value = JSON.parse(Buffer.from(body).toString('utf8')); } catch { return failed('getItem', 'invalidResponse', zeroItem, 'PROTOCOL', 'Hacker News returned malformed item JSON'); }
+      try { value = parseProviderJSON(body); } catch { return failed('getItem', 'invalidResponse', zeroItem, 'PROTOCOL', 'Hacker News returned malformed item JSON'); }
       if (value === null) return failed('getItem', 'notFound', zeroItem, 'NOT_FOUND', 'Hacker News item is deleted or dead');
       let item: Item;
-      try { item = decodeItem(value); } catch { return failed('getItem', 'invalidResponse', zeroItem, 'PROTOCOL', 'Hacker News returned malformed item JSON'); }
+      try { item = decodeItem(value); } catch (error) { return failed('getItem', 'invalidResponse', zeroItem, 'PROTOCOL', `Hacker News returned malformed item JSON: ${fieldError(error)}`); }
       if (item.deleted || item.dead) return failed('getItem', 'notFound', zeroItem, 'NOT_FOUND', 'Hacker News item is deleted or dead');
       if (item.id !== input.id) return failed('getItem', 'invalidResponse', zeroItem, 'PROTOCOL', 'Hacker News returned a different item ID');
       if (!validItemTypes.has(item.type)) return failed('getItem', 'invalidResponse', zeroItem, 'PROTOCOL', 'Hacker News returned an unknown item type');
@@ -127,19 +134,36 @@ function decodeItem(value: unknown): Item {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('item must be an object');
   const document = value as Record<string, unknown>;
   const string = (name: string) => { const field = document[name]; if (field === undefined || field === null) return ''; if (typeof field !== 'string') throw new TypeError(name); return field; };
-  const integer = (name: string) => { const field = document[name]; if (field === undefined || field === null) return 0; if (!Number.isSafeInteger(field)) throw new TypeError(name); return field as number; };
+  const integer = (name: string) => { const field = document[name]; if (field === undefined || field === null) return 0; return strictInteger(field, name); };
   const boolean = (name: string) => { const field = document[name]; if (field === undefined || field === null) return false; if (typeof field !== 'boolean') throw new TypeError(name); return field; };
   const kids = document.kids;
-  if (kids !== undefined && kids !== null && (!Array.isArray(kids) || !kids.every(id => Number.isSafeInteger(id)))) throw new TypeError('kids');
+  if (kids !== undefined && kids !== null && !Array.isArray(kids)) throw new TypeError('kids');
+  const childIDs = Array.isArray(kids) ? kids.map(id => id === null ? 0 : strictInteger(id, 'kids')) : [];
   const id = integer('id');
   const item: Item = { id, type: string('type'), discussionUrl: `https://news.ycombinator.com/item?id=${id}` };
   for (const name of ['by', 'title', 'text', 'url'] as const) { const field = string(name); if (field) item[name] = field; }
   for (const name of ['time', 'score', 'descendants', 'parent'] as const) { const field = integer(name); if (field) item[name] = field; }
-  if (Array.isArray(kids) && kids.length) item.kids = kids as number[];
+  if (childIDs.length) item.kids = childIDs;
   if (boolean('deleted')) item.deleted = true;
   if (boolean('dead')) item.dead = true;
   return item;
 }
+
+function parseProviderJSON(body: Uint8Array): unknown {
+  const exactJSON = JSON as typeof JSON & { rawJSON(source: string): { rawJSON: string } };
+  return exactJSON.parse(Buffer.from(body).toString('utf8'), (_key, value: unknown, context?: { source?: string }) =>
+    typeof value === 'number' && context?.source ? exactJSON.rawJSON(context.source) : value) as unknown;
+}
+
+function strictInteger(value: unknown, name: string): number {
+  const source = value && typeof value === 'object' && 'rawJSON' in value ? String(value.rawJSON) : '';
+  if (!/^-?(?:0|[1-9]\d*)$/.test(source)) throw new TypeError(name);
+  const integer = Number(source);
+  if (!Number.isSafeInteger(integer)) throw new TypeError(name);
+  return integer;
+}
+
+function fieldError(error: unknown): string { return error instanceof Error ? error.message : 'unknown field'; }
 
 function goTimestamp(time: Date): string {
   return time.toISOString().replace(/\.000Z$/, 'Z').replace(/(\.\d*?[1-9])0+Z$/, '$1Z');

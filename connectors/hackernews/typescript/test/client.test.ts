@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { HackerNewsClient } from '../src/client.js';
 import type { Call } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError } from '@superdurable/connectors-sdk/providerhttp';
 import { newProjectConnection } from '../src/index.js';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
 
@@ -43,19 +43,43 @@ describe('HackerNewsClient', () => {
     expect(result).toMatchObject({ kind: 'retry', failure: { kind: 'RATE_LIMIT' }, retryAfterMs: 2000 });
   });
 
-  it('rejects unsafe provider integers without rounding IDs', async () => {
-    const client = new HackerNewsClient({}, { send: async () => ({
-      status: 200, headers: {}, body: Buffer.from('{"id":9007199254740993,"type":"story"}'),
-    }) });
-    const result = await client.getItem().invoke(call, { id: 42 });
-    expect(result).toMatchObject({ branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
+  it('names an interrupted 200 response', async () => {
+    const client = new HackerNewsClient({}, { send: async () => { throw new ProviderTransportError(false, 200); } });
+    expect(await client.getItem().invoke(call, { id: 42001 })).toMatchObject({
+      kind: 'retry', failure: { kind: 'AVAILABILITY', message: 'Hacker News response was interrupted' },
+    });
   });
+
+  for (const score of ['5.0', '1e2', '9007199254740993']) {
+    it(`rejects noncanonical score ${score} and names the field`, async () => {
+      const client = new HackerNewsClient({}, { send: async () => ({
+        status: 200, headers: {}, body: Buffer.from(`{"id":42001,"type":"story","score":${score}}`),
+      }) });
+      const result = await client.getItem().invoke(call, { id: 42001 });
+      expect(result).toMatchObject({ branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('score') } });
+    });
+  }
+
+  for (const id of ['5.0', '1e2', '9007199254740993']) {
+    it(`rejects noncanonical feed ID ${id} and names the field`, async () => {
+      const client = new HackerNewsClient({}, { send: async () => ({ status: 200, headers: {}, body: Buffer.from(`[${id}]`) }) });
+      const result = await client.listStoryIDs().invoke(call, { feed: 'top', limit: 1 });
+      expect(result).toMatchObject({ branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('item ID') } });
+    });
+  }
 
   it('rejects a wrong-typed provider field', async () => {
     const client = new HackerNewsClient({}, { send: async () => ({
       status: 200, headers: {}, body: Buffer.from('{"id":42001,"type":"story","score":"5"}'),
     }) });
     const result = await client.getItem().invoke(call, { id: 42001 });
-    expect(result).toMatchObject({ branch: 'invalidResponse', failure: { kind: 'PROTOCOL' } });
+    expect(result).toMatchObject({ branch: 'invalidResponse', failure: { kind: 'PROTOCOL', message: expect.stringContaining('score') } });
+  });
+
+  it('classifies null feed and child IDs with Go messages', async () => {
+    const feed = new HackerNewsClient({}, { send: async () => ({ status: 200, headers: {}, body: Buffer.from('[null]') }) });
+    expect(await feed.listStoryIDs().invoke(call, { feed: 'top', limit: 1 })).toMatchObject({ failure: { message: 'Hacker News returned an invalid item ID' } });
+    const item = new HackerNewsClient({}, { send: async () => ({ status: 200, headers: {}, body: Buffer.from('{"id":42001,"type":"story","kids":[null]}') }) });
+    expect(await item.getItem().invoke(call, { id: 42001 })).toMatchObject({ failure: { message: 'Hacker News returned an invalid child ID' } });
   });
 });
