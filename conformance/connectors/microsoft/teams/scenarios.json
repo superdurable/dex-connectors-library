@@ -1765,6 +1765,122 @@
       },
       "name": "postChatMessage-transport",
       "operation": "postChatMessage"
+    },
+    {
+      "callId": "8b7fc0f6-83ce-5e3a-8f0b-9b0fe0ca87a2",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"1616989510409\",\"replyToId\":\"1616989510408\",\"messageType\":\"message\",\"createdDateTime\":\"2026-10-01T09:30:01Z\",\"lastEditedDateTime\":null,\"deletedDateTime\":null,\"subject\":null,\"importance\":\"normal\",\"webUrl\":\"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616989510409\",\"from\":{\"user\":{\"id\":\"8ea0e38b-efb3-4757-924a-5f94061cf8c2\",\"displayName\":\"Robin Kline\"}},\"body\":{\"contentType\":\"html\",\"content\":\"Ship R\u0026D\"}}],\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/teams/fbe2bf47-16c8-47cf-b4a5-4b9b187c508b/channels/19%3A4a95f7d8db4c4e7fae857bcebe0623e6%40thread.tacv2/messages/1616989510408/replies?$top=20\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/fbe2bf47-16c8-47cf-b4a5-4b9b187c508b/channels/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/messages/1616989510408/replies",
+          "query": {
+            "$top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "8b7fc0f6-83ce-5e3a-8f0b-9b0fe0ca87a2"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "replies": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-01T09:30:00Z",
+      "input": {
+        "channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+        "maxTextCharacters": 4000,
+        "messageId": "1616989510408",
+        "pageSize": 20,
+        "teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b"
+      },
+      "name": "listThreadReplies-html-encoded-cursor-614",
+      "operation": "listThreadReplies"
+    },
+    {
+      "callId": "8b7fc0f6-83ce-5e3a-8f0b-9b0fe0ca87a2",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"id\":\"1616989510409\",\"replyToId\":\"1616989510408\",\"messageType\":\"message\",\"createdDateTime\":\"2026-10-01T09:30:01Z\",\"lastEditedDateTime\":null,\"deletedDateTime\":\"2026-10-01T09:31:00Z\",\"subject\":\"A B‍C\\u0000�\",\"importance\":\"normal\",\"webUrl\":\"https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616989510409\",\"from\":{\"user\":{\"id\":\"8ea0e38b-efb3-4757-924a-5f94061cf8c2\",\"displayName\":\"A B‍C\\u0000�\"}},\"body\":{\"contentType\":\"text\",\"content\":\"Hello Teams\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/teams/fbe2bf47-16c8-47cf-b4a5-4b9b187c508b/channels/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/messages/1616989510408/replies",
+          "query": {
+            "$top": [
+              "20"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer teams-access-token"
+            ],
+            "Client-Request-Id": [
+              "8b7fc0f6-83ce-5e3a-8f0b-9b0fe0ca87a2"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "replies": [
+            {
+              "createdAt": "2026-10-01T09:30:01Z",
+              "id": "1616989510409",
+              "importance": "normal",
+              "isDeleted": true,
+              "messageType": "message",
+              "replyToId": "1616989510408",
+              "sender": {
+                "displayName": "A B‍C",
+                "userId": "8ea0e38b-efb3-4757-924a-5f94061cf8c2"
+              },
+              "subject": "A B‍C",
+              "text": "",
+              "webUrl": "https://teams.microsoft.com/l/message/19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2/1616989510409"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "fixedClock": "2026-10-01T09:30:00Z",
+      "input": {
+        "channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+        "maxTextCharacters": 4000,
+        "messageId": "1616989510408",
+        "pageSize": 20,
+        "teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b"
+      },
+      "name": "listThreadReplies-deleted-and-unicode-614",
+      "operation": "listThreadReplies"
     }
   ],
   "schemaVersion": 1

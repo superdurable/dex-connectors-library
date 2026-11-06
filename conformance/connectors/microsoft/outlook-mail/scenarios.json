@@ -6590,6 +6590,238 @@
           "outlookMailSendPhase": "sendDispatched"
         }
       }
+    },
+    {
+      "callId": "7804e272-780d-51f7-a524-8ab33185028d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "idempotencyMarker": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "7804e272-780d-51f7-a524-8ab33185028d",
+      "input": {
+        "bcc": [
+          "bcc@example.com"
+        ],
+        "cc": [
+          "cc@example.com"
+        ],
+        "replyTo": [
+          "reply@example.com"
+        ],
+        "subject": "Hello",
+        "text": "Body",
+        "to": [
+          "jane"
+        ]
+      },
+      "name": "sendMessage-invalid-bare-recipient-614",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "folder": "",
+          "hasMore": false,
+          "messages": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "a..b@x.com",
+        "isUnread": true,
+        "limit": 10,
+        "receivedAfter": "2026-01-01T00:00:00Z",
+        "receivedBefore": "2026-01-02T00:00:00Z",
+        "subjectContains": "Hello"
+      },
+      "name": "searchMessages-invalid-bare-from-614",
+      "operation": "searchMessages"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"message1\",\"subject\":\"Hello\",\"parentFolderId\":\"inbox1\",\"receivedDateTime\":\"2026-01-01T12:00:00Z\",\"isRead\":false,\"flag\":{\"flagStatus\":\"notFlagged\"},\"categories\":[],\"hasAttachments\":false,\"body\":{\"contentType\":\"html\",\"content\":\"\u003cp\u003eTom\u0026Jerry\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/message1",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "flagStatus": "notFlagged",
+          "folderId": "inbox1",
+          "hasAttachments": false,
+          "id": "message1",
+          "isRead": false,
+          "receivedAt": "2026-01-01T12:00:00Z",
+          "subject": "Hello",
+          "text": "Tom\u0026Jerry",
+          "textSource": "html"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "message1"
+      },
+      "name": "getMessage-unclosed-html-614",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"message1\",\"subject\":\"Hello\",\"parentFolderId\":\"inbox1\",\"receivedDateTime\":\"2026-01-01T12:00:00Z\",\"isRead\":false,\"flag\":{\"flagStatus\":\"notFlagged\"},\"categories\":[],\"hasAttachments\":false,\"body\":{\"contentType\":\"html\",\"content\":\"first\u003cbr/\u003esecond\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/messages/message1",
+          "query": {
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview,bccRecipients,body,webLink"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\"",
+              "outlook.body-content-type=\"text\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "flagStatus": "notFlagged",
+          "folderId": "inbox1",
+          "hasAttachments": false,
+          "id": "message1",
+          "isRead": false,
+          "receivedAt": "2026-01-01T12:00:00Z",
+          "subject": "Hello",
+          "text": "firstsecond",
+          "textSource": "html"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "messageId": "message1"
+      },
+      "name": "getMessage-self-closing-break-614",
+      "operation": "getMessage"
+    },
+    {
+      "callId": "61a2326b-dea4-5c92-987e-58e7d98bc451",
+      "exchanges": [
+        {
+          "body": "{\"value\":[1]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/me/mailFolders/inbox/messages",
+          "query": {
+            "$filter": [
+              "receivedDateTime ge 2026-01-01T00:00:00Z and receivedDateTime lt 2026-01-02T00:00:00Z and from/emailAddress/address eq 'jane@example.com' and isRead eq false and contains(subject,'Hello')"
+            ],
+            "$orderby": [
+              "receivedDateTime desc"
+            ],
+            "$select": [
+              "id,conversationId,internetMessageId,parentFolderId,subject,from,sender,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,isDraft,flag,categories,importance,hasAttachments,bodyPreview"
+            ],
+            "$top": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer OUTLOOK_CONFORMANCE_TOKEN"
+            ],
+            "Prefer": [
+              "IdType=\"ImmutableId\""
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "folder": "",
+          "hasMore": false,
+          "messages": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "folder": "inbox",
+        "from": "jane@example.com",
+        "isUnread": true,
+        "limit": 10,
+        "receivedAfter": "2026-01-01T00:00:00Z",
+        "receivedBefore": "2026-01-02T00:00:00Z",
+        "subjectContains": "Hello"
+      },
+      "name": "searchMessages-nonobject-item-614",
+      "operation": "searchMessages"
     }
   ],
   "schemaVersion": 1
