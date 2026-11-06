@@ -135,7 +135,7 @@ func (grant manifestGrant) refresh(t *testing.T, privateKeyPEM string, status in
 func (grant manifestGrant) refreshWithOverrides(t *testing.T, privateKeyPEM string, status int, response map[string]any, overrides map[string]string) (sdkgo.CredentialRefreshResult[oauth2http.Credentials], *manifestTokenEndpoint, error) {
 	t.Helper()
 	endpoint := &manifestTokenEndpoint{status: status, response: response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
 	result, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[oauth2http.Credentials]{
 		Credentials: grant.credentials(privateKeyPEM, overrides), Now: time.Now(),
 	})
@@ -185,7 +185,7 @@ func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKe
 
 func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, privateKeyPEM string, baseOverrides map[string]string, refreshCases []manifestRefreshRequiredCase) {
 	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
 	for _, refreshCase := range refreshCases {
 		t.Run(refreshCase.name, func(t *testing.T) {
 			now := time.Now().UTC()
@@ -505,7 +505,7 @@ func manifestGrants() []manifestGrant {
 				{name: "blank access token", credentials: map[string]string{"access_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
 				{name: "undated token without refresh token", credentials: map[string]string{"refresh_token": ""}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
 			},
-			settings:   map[string]string{"tokenEndpoint": "https://manifest.example.com/tokenEndpoint", "tokenEndpointAuthMethod": "client_secret_post"},
+			settings:   map[string]string{"requestTimeout": "12s", "tokenEndpoint": "https://manifest.example.com/tokenEndpoint", "tokenEndpointAuthMethod": "client_secret_post"},
 			endpoint:   "https://manifest.example.com/tokenEndpoint",
 			encoding:   "form",
 			clientAuth: "client_secret_post",
@@ -520,9 +520,10 @@ func manifestGrants() []manifestGrant {
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_grant", "invalid_client", "unauthorized_client"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_grant", "invalid_client", "unauthorized_client"},
+			tokenExchangeTimeout: time.Duration(12000000000),
 		},
 		{
 			name: "spec.auth refresh with tokenEndpoint \"http://127.0.0.1/token\"",
@@ -554,7 +555,7 @@ func manifestGrants() []manifestGrant {
 				{name: "blank access token", credentials: map[string]string{"access_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
 				{name: "undated token without refresh token", credentials: map[string]string{"refresh_token": ""}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
 			},
-			settings:   map[string]string{"tokenEndpoint": "http://127.0.0.1/token", "tokenEndpointAuthMethod": "client_secret_post"},
+			settings:   map[string]string{"requestTimeout": "12s", "tokenEndpoint": "http://127.0.0.1/token", "tokenEndpointAuthMethod": "client_secret_post"},
 			endpoint:   "http://127.0.0.1/token",
 			encoding:   "form",
 			clientAuth: "client_secret_post",
@@ -569,9 +570,60 @@ func manifestGrants() []manifestGrant {
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:       "refresh_token",
-			terminalErrorCodes: []string{"invalid_grant", "invalid_client", "unauthorized_client"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_grant", "invalid_client", "unauthorized_client"},
+			tokenExchangeTimeout: time.Duration(12000000000),
+		},
+		{
+			name: "spec.auth refresh with requestTimeout \"2s\"",
+			credentials: func(privateKeyPEM string, overrides map[string]string) oauth2http.Credentials {
+				credentials := oauth2http.Credentials{
+					OAuthClientID:     "manifest-client-id",
+					OAuthClientSecret: sdkgo.NewSecretString("manifest-client-secret"),
+					AccessToken:       sdkgo.NewSecretString("manifest-access-token"),
+					RefreshToken:      sdkgo.NewSecretString("manifest-refresh-token"),
+				}
+				if value, ok := overrides["oauth_client_id"]; ok {
+					credentials.OAuthClientID = value
+				}
+				if value, ok := overrides["oauth_client_secret"]; ok {
+					credentials.OAuthClientSecret = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["access_token"]; ok {
+					credentials.AccessToken = sdkgo.NewSecretString(value)
+				}
+				if value, ok := overrides["refresh_token"]; ok {
+					credentials.RefreshToken = sdkgo.NewSecretString(value)
+				}
+				return credentials
+			},
+			refreshRequiredCases: []manifestRefreshRequiredCase{
+				{name: "fresh token", credentials: map[string]string{}, expiresAt: "fresh", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "expired token", credentials: map[string]string{}, expiresAt: "expired", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token", credentials: map[string]string{}, expiresAt: "missing", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "blank access token", credentials: map[string]string{"access_token": ""}, expiresAt: "fresh", expected: true, jwtAccessTokenCredential: "", jwtExpiry: ""},
+				{name: "undated token without refresh token", credentials: map[string]string{"refresh_token": ""}, expiresAt: "missing", expected: false, jwtAccessTokenCredential: "", jwtExpiry: ""},
+			},
+			settings:   map[string]string{"requestTimeout": "2s", "tokenEndpoint": "https://manifest.example.com/tokenEndpoint", "tokenEndpointAuthMethod": "client_secret_post"},
+			endpoint:   "https://manifest.example.com/tokenEndpoint",
+			encoding:   "form",
+			clientAuth: "client_secret_post",
+			clientID:   "manifest-client-id",
+			secret:     "manifest-client-secret",
+			parameters: map[string]string{"grant_type": "refresh_token", "refresh_token": "manifest-refresh-token"},
+			response:   map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "token_type": "Bearer"},
+			variations: []manifestVariation{
+				{name: " with unaccepted token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "token_type": "manifest-unaccepted-token-type"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without token type", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "refresh_token": "manifest-refresh-token-2", "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
+				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
+			},
+			updates:              map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:         "refresh_token",
+			terminalErrorCodes:   []string{"invalid_grant", "invalid_client", "unauthorized_client"},
+			tokenExchangeTimeout: time.Duration(2000000000),
 		},
 	}
 }

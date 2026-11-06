@@ -97,8 +97,8 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if dependencies.now == nil {
 		return nil, errors.New("OAuth 2.0 HTTP connector clock is required")
 	}
-	if config.MaxBodyBytes < 1 || config.RequestTimeout < time.Second {
-		return nil, errors.New("OAuth 2.0 HTTP maxBodyBytes must be positive and requestTimeout at least one second")
+	if config.MaxBodyBytes < 1 || config.RequestTimeout < time.Second || config.RequestTimeout > time.Hour {
+		return nil, errors.New("OAuth 2.0 HTTP maxBodyBytes must be positive and requestTimeout between one second and one hour")
 	}
 	if _, err := parseHTTPURL(config.AuthorizationEndpoint); err != nil {
 		return nil, fmt.Errorf("OAuth 2.0 HTTP authorizationEndpoint: %w", err)

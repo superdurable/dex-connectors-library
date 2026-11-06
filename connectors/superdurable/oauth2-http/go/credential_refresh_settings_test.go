@@ -5,6 +5,7 @@ package oauth2http_test
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/superdurable/dex-connectors-library/connectors/superdurable/oauth2-http/go"
 )
@@ -13,8 +14,13 @@ import (
 // settings that connector.yaml's declarations read. The generated agreement test's token endpoint lives in its
 // transport, which the address policy cannot dial, so the driver sends its requests there directly.
 func newCredentialRefreshDriverWithSettings(httpClient *http.Client, settings map[string]string) *oauth2http.CredentialRefreshDriver {
+	requestTimeout, err := time.ParseDuration(settings["requestTimeout"])
+	if err != nil {
+		panic("invalid agreement requestTimeout: " + err.Error())
+	}
 	driver, err := oauth2http.NewCredentialRefreshDriverThroughTransportForTest(oauth2http.Config{
 		TokenEndpoint:           settings["tokenEndpoint"],
+		RequestTimeout:          requestTimeout,
 		TokenEndpointAuthMethod: oauth2http.TokenEndpointAuthMethod(settings["tokenEndpointAuthMethod"]),
 	}, httpClient.Transport)
 	if err != nil {

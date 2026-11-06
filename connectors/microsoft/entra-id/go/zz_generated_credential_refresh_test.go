@@ -135,7 +135,7 @@ func (grant manifestGrant) refresh(t *testing.T, privateKeyPEM string, status in
 func (grant manifestGrant) refreshWithOverrides(t *testing.T, privateKeyPEM string, status int, response map[string]any, overrides map[string]string) (sdkgo.CredentialRefreshResult[entraid.Credentials], *manifestTokenEndpoint, error) {
 	t.Helper()
 	endpoint := &manifestTokenEndpoint{status: status, response: response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
 	result, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[entraid.Credentials]{
 		Credentials: grant.credentials(privateKeyPEM, overrides), Now: time.Now(),
 	})
@@ -185,7 +185,7 @@ func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKe
 
 func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, privateKeyPEM string, baseOverrides map[string]string, refreshCases []manifestRefreshRequiredCase) {
 	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
 	for _, refreshCase := range refreshCases {
 		t.Run(refreshCase.name, func(t *testing.T) {
 			now := time.Now().UTC()
@@ -532,8 +532,9 @@ func manifestGrants() []manifestGrant {
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2"},
-			terminalErrorCodes: []string{"invalid_request", "invalid_grant", "unauthorized_client", "invalid_client", "unsupported_grant_type", "invalid_resource", "interaction_required", "consent_required", "invalid_scope"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2"},
+			terminalErrorCodes:   []string{"invalid_request", "invalid_grant", "unauthorized_client", "invalid_client", "unsupported_grant_type", "invalid_resource", "interaction_required", "consent_required", "invalid_scope"},
+			tokenExchangeTimeout: time.Duration(25000000000),
 		},
 		{
 			name:     "entra-app-only clientCredentials with client_id \"  manifest-client-id  \"",
@@ -592,8 +593,9 @@ func manifestGrants() []manifestGrant {
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2"},
-			terminalErrorCodes: []string{"invalid_request", "invalid_grant", "unauthorized_client", "invalid_client", "unsupported_grant_type", "invalid_resource", "interaction_required", "consent_required", "invalid_scope"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2"},
+			terminalErrorCodes:   []string{"invalid_request", "invalid_grant", "unauthorized_client", "invalid_client", "unsupported_grant_type", "invalid_resource", "interaction_required", "consent_required", "invalid_scope"},
+			tokenExchangeTimeout: time.Duration(25000000000),
 		},
 		{
 			name:     "entra-app-only clientCredentials with tenant_id \"  manifest.example.com  \"",
@@ -652,8 +654,9 @@ func manifestGrants() []manifestGrant {
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "scope": "https://graph.microsoft.com/.default", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"access_token": "manifest-access-token-2"},
-			terminalErrorCodes: []string{"invalid_request", "invalid_grant", "unauthorized_client", "invalid_client", "unsupported_grant_type", "invalid_resource", "interaction_required", "consent_required", "invalid_scope"},
+			updates:              map[string]string{"access_token": "manifest-access-token-2"},
+			terminalErrorCodes:   []string{"invalid_request", "invalid_grant", "unauthorized_client", "invalid_client", "unsupported_grant_type", "invalid_resource", "interaction_required", "consent_required", "invalid_scope"},
+			tokenExchangeTimeout: time.Duration(25000000000),
 		},
 		{
 			name:     "microsoft-oauth refresh",

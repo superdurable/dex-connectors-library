@@ -75,6 +75,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 25s
             missingExpiry: reject
             storedMissingExpiry: refresh
             acceptedScopeSets: [[https://www.googleapis.com/auth/youtube.readonly], [https://www.googleapis.com/auth/youtube]]

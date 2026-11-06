@@ -92,6 +92,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 25s
             responseScopeField: scopesArray
             requiredScopes: [crm.objects.contacts.read, crm.objects.contacts.write, crm.objects.companies.read, crm.objects.companies.write, crm.objects.deals.read, crm.objects.deals.write, crm.objects.owners.read]
             missingExpiry: reject

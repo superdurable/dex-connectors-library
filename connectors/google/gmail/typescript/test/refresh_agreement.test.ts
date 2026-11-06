@@ -171,24 +171,51 @@ describe('generated Go manifest refresh agreement', () => {
   });
 });
 
+function shortenDeclaredExchangeTimeout(authorization: Record<string, unknown>, agreement: Pick<AgreementCase, 'methodId' | 'parameters' | 'settings'>): Record<string, string> {
+    const methods = (authorization.methods ?? []) as Array<Record<string, unknown>>;
+    const method = methods.find(candidate => candidate.id === agreement.methodId) ?? authorization;
+    const grant = agreement.parameters.grant_type === 'client_credentials'
+      ? method.clientCredentials as Record<string, unknown>
+      : (method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>;
+    const timeoutSource = grant.tokenExchangeTimeout;
+    const settings = { ...agreement.settings };
+    if (timeoutSource && typeof timeoutSource === 'object') {
+      settings[String((timeoutSource as Record<string, unknown>).fromConfig)] = '1s';
+    } else grant.tokenExchangeTimeout = '10ms';
+    return settings;
+}
+
+describe('generated timeout grant selection', () => {
+  it('selects refresh and client credentials', () => {
+    const authorization: Record<string, unknown> = { methods: [
+      { id: 'oauth', oauth2: { refresh: { tokenExchangeTimeout: '8s' } } },
+      { id: 'custom', clientCredentials: { tokenExchangeTimeout: { fromConfig: 'requestTimeout' } } },
+    ] };
+    const refresh = { methodId: 'oauth', parameters: { grant_type: 'refresh_token' } };
+    expect(shortenDeclaredExchangeTimeout(authorization, refresh)).toEqual({});
+    expect(((authorization.methods as Array<Record<string, unknown>>)[0]!.oauth2 as Record<string, unknown>).refresh)
+      .toEqual({ tokenExchangeTimeout: '10ms' });
+    const mint = { methodId: 'custom', parameters: { grant_type: 'client_credentials' } };
+    expect(shortenDeclaredExchangeTimeout(authorization, mint)).toEqual({ requestTimeout: '1s' });
+  });
+});
+
 describe('generated refresh exchange timeout', () => {
   for (const agreement of cases.filter(candidate => candidate.tokenExchangeTimeout)) it(agreement.name, async () => {
     const authorization = structuredClone(Authorization) as Record<string, unknown>;
-    const methods = (authorization.methods ?? []) as Array<Record<string, unknown>>;
-    const method = methods.find(candidate => candidate.id === agreement.methodId) ?? authorization;
-    const oauth = method.oauth2 as Record<string, unknown>;
-    (oauth.refresh as Record<string, unknown>).tokenExchangeTimeout = '10ms';
+    const settings = shortenDeclaredExchangeTimeout(authorization, agreement);
     let requests = 0;
     const transport: typeof fetch = async (_input, init) => {
       requests++;
       return new Promise<Response>((resolve, reject) => {
-        const timer = setTimeout(() => resolve(Response.json(agreement.response)), 50);
+        const timer = setTimeout(() => resolve(Response.json(agreement.response)),
+          Object.values(settings).includes('1s') ? 1200 : 50);
         init?.signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('aborted')); }, { once: true });
       });
     };
     const driver = new ManifestCredentialRefreshDriver<Record<string, unknown>>({
       providerName: 'Agreement', auth: authorization, credentialFields: CredentialFields,
-      settings: agreement.settings ?? {}, fetch: transport,
+      settings, fetch: transport,
     });
     await expect(driver.refresh({ credentials: credentialsFor(agreement, ''), expiresAt: new Date(0), now: new Date() },
       new AbortController().signal)).rejects.toBeInstanceOf(RetryError);

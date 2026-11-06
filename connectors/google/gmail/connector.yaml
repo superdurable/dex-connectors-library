@@ -109,6 +109,7 @@ spec:
             - {credential: primary_email, endpoint: https://openidconnect.googleapis.com/v1/userinfo, source: email, verifiedBy: email_verified}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 25s
             missingExpiry: reject
             storedMissingExpiry: refresh
             scopeSeparators: whitespace

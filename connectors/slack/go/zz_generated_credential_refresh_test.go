@@ -135,7 +135,7 @@ func (grant manifestGrant) refresh(t *testing.T, privateKeyPEM string, status in
 func (grant manifestGrant) refreshWithOverrides(t *testing.T, privateKeyPEM string, status int, response map[string]any, overrides map[string]string) (sdkgo.CredentialRefreshResult[slack.Credentials], *manifestTokenEndpoint, error) {
 	t.Helper()
 	endpoint := &manifestTokenEndpoint{status: status, response: response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
 	result, err := driver.Refresh(context.Background(), sdkgo.CredentialRefreshState[slack.Credentials]{
 		Credentials: grant.credentials(privateKeyPEM, overrides), Now: time.Now(),
 	})
@@ -185,7 +185,7 @@ func requireManifestRefreshRequired(t *testing.T, grant manifestGrant, privateKe
 
 func requireManifestRefreshRequiredCases(t *testing.T, grant manifestGrant, privateKeyPEM string, baseOverrides map[string]string, refreshCases []manifestRefreshRequiredCase) {
 	endpoint := &manifestTokenEndpoint{status: http.StatusOK, response: grant.response}
-	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint}, grant.settings)
+	driver := newManifestRefreshDriver(&http.Client{Transport: endpoint, Timeout: grant.tokenExchangeTimeout}, grant.settings)
 	for _, refreshCase := range refreshCases {
 		t.Run(refreshCase.name, func(t *testing.T) {
 			now := time.Now().UTC()
@@ -541,9 +541,10 @@ func manifestGrants() []manifestGrant {
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history channels:read groups:read users:read chat:write", "token_type": "bot"}, credentials: map[string]string{}, updates: map[string]string{"bot_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"},
-			refreshToken:       "bot_refresh_token",
-			terminalErrorCodes: []string{"invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied"},
+			updates:              map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"},
+			refreshToken:         "bot_refresh_token",
+			terminalErrorCodes:   []string{"invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied"},
+			tokenExchangeTimeout: time.Duration(25000000000),
 		},
 		{
 			name: "spec.auth refresh bot_refresh_token without a client secret",
@@ -596,6 +597,7 @@ func manifestGrants() []manifestGrant {
 			updates:                 map[string]string{"bot_refresh_token": "manifest-refresh-token-2", "bot_token": "manifest-access-token-2"},
 			refreshToken:            "bot_refresh_token",
 			terminalErrorCodes:      []string{"invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied"},
+			tokenExchangeTimeout:    time.Duration(25000000000),
 			mayRefuseWithoutRequest: true,
 		},
 		{
@@ -658,9 +660,10 @@ func manifestGrants() []manifestGrant {
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "channels:history groups:history", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "channels:history groups:history", "token_type": "user"}, credentials: map[string]string{}, updates: map[string]string{"user_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:            map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"},
-			refreshToken:       "user_refresh_token",
-			terminalErrorCodes: []string{"invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied"},
+			updates:              map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"},
+			refreshToken:         "user_refresh_token",
+			terminalErrorCodes:   []string{"invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied"},
+			tokenExchangeTimeout: time.Duration(25000000000),
 		},
 		{
 			name: "spec.auth refresh user_refresh_token without a client secret",
@@ -713,6 +716,7 @@ func manifestGrants() []manifestGrant {
 			updates:                 map[string]string{"user_refresh_token": "manifest-refresh-token-2", "user_token": "manifest-access-token-2"},
 			refreshToken:            "user_refresh_token",
 			terminalErrorCodes:      []string{"invalid_refresh_token", "bad_client_secret", "invalid_client_id", "invalid_auth", "token_revoked", "account_inactive", "access_denied"},
+			tokenExchangeTimeout:    time.Duration(25000000000),
 			mayRefuseWithoutRequest: true,
 		},
 	}

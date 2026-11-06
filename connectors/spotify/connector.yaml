@@ -75,6 +75,7 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: client_secret_basic
       refresh:
+        tokenExchangeTimeout: 15s
         missingExpiry: reject
         scopeSeparators: whitespaceAndComma
         allowsPublicClient: true

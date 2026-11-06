@@ -200,20 +200,46 @@ async def test_generated_refresh_agreement(case: dict[str, Any]) -> None:
             assert len(requests) == 1
 
 
+def shorten_declared_exchange_timeout(authorization: dict[str, Any], case: dict[str, Any]) -> dict[str, str]:
+    """Set the selected grant's deadline and return its connection settings."""
+    methods = authorization.get("methods") or []
+    method = next((item for item in methods if item["id"] == case.get("methodId")), authorization)
+    grant = (method["clientCredentials"] if case["parameters"]["grant_type"] == "client_credentials"
+             else method["oauth2"]["refresh"])
+    timeout_source = grant["tokenExchangeTimeout"]
+    settings = dict(case.get("settings", {}))
+    if isinstance(timeout_source, dict):
+        settings[timeout_source["fromConfig"]] = "1s"
+    else:
+        grant["tokenExchangeTimeout"] = "10ms"
+    return settings
+
+
+def test_generated_timeout_grant_selection() -> None:
+    """The rendered harness selects refresh and client-credentials timeout declarations."""
+    authorization = {"methods": [
+        {"id": "oauth", "oauth2": {"refresh": {"tokenExchangeTimeout": "8s"}}},
+        {"id": "custom", "clientCredentials": {"tokenExchangeTimeout": {"fromConfig": "requestTimeout"}}},
+    ]}
+    refresh = {"methodId": "oauth", "parameters": {"grant_type": "refresh_token"}}
+    assert shorten_declared_exchange_timeout(authorization, refresh) == {}
+    assert authorization["methods"][0]["oauth2"]["refresh"]["tokenExchangeTimeout"] == "10ms"
+    mint = {"methodId": "custom", "parameters": {"grant_type": "client_credentials"}}
+    assert shorten_declared_exchange_timeout(authorization, mint) == {"requestTimeout": "1s"}
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", [case for case in CASES if case.get("tokenExchangeTimeout")],
                          ids=lambda case: case["name"])
 async def test_generated_refresh_exchange_timeout(case: dict[str, Any]) -> None:
     """A delayed valid token response must be cut off by the declared refresh deadline."""
     authorization = deepcopy(AUTHORIZATION)
-    methods = authorization.get("methods") or []
-    method = next((item for item in methods if item["id"] == case.get("methodId")), authorization)
-    method["oauth2"]["refresh"]["tokenExchangeTimeout"] = "10ms"
+    settings = shorten_declared_exchange_timeout(authorization, case)
     requests: list[httpx.Request] = []
 
     class SlowStream(httpx.AsyncByteStream):
         async def __aiter__(self) -> AsyncIterator[bytes]:
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(1.2 if settings.get("requestTimeout") == "1s" else 0.05)
             yield json.dumps(case["response"]).encode()
 
         async def aclose(self) -> None:
@@ -225,7 +251,7 @@ async def test_generated_refresh_exchange_timeout(case: dict[str, Any]) -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
         driver = ManifestCredentialRefreshDriver[Any](
-            "Agreement", authorization, CREDENTIAL_FIELDS, client, settings=case.get("settings", {})
+            "Agreement", authorization, CREDENTIAL_FIELDS, client, settings=settings
         )
         credentials = credentials_for(case, "")
         state = CredentialRefreshState(credentials, datetime(2000, 1, 1, tzinfo=UTC), datetime.now(UTC))

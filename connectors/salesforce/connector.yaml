@@ -87,6 +87,7 @@ spec:
             - {credential: instance_url, source: instance_url}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 25s
             refreshWhenCredentialBlank: instance_url
             responseURLValidation: {credential: instance_url, allowAnyHTTPS: true, allowLoopback: true}
             acceptedScopeSets: [[api], [full]]

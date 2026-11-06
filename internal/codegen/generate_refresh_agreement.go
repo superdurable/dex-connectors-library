@@ -184,7 +184,7 @@ func GenerateRefreshAgreementCases(manifest schema.Manifest, samples map[string]
 					Settings: settings, Endpoint: endpoint, Encoding: grant.encoding, ClientAuth: clientAuth, ClientID: clientID, ClientSecret: clientSecret,
 					Parameters: parameters, Response: response, Updates: updates, TerminalErrorCodes: append([]string{}, grant.terminalCodes...),
 					StoredMissingExpiry:  defaultString(grant.storedMissingExpiry, schema.StoredMissingExpiryKeep),
-					TokenExchangeTimeout: grant.tokenExchangeTimeout,
+					TokenExchangeTimeout: agreement.timeoutDuration(grant, settings),
 					MayRefuseWithoutCall: isPublicClient && !grant.allowsPublicClient}
 				result.RefreshRequiredCases = agreement.refreshRequiredCases(grant, credentials)
 				if result.MayRefuseWithoutCall {
@@ -597,7 +597,7 @@ type declaredGrant struct {
 	caseInsensitiveScopes              bool
 	scopeResourcePrefixCaseInsensitive bool
 	expiryCap                          string
-	tokenExchangeTimeout               string
+	tokenExchangeTimeout               *schema.TokenExchangeTimeout
 	accessTokenJWTExpiryFallback       string
 	responseURLValidation              *schema.ResponseURLValidation
 	refreshWhenCredentialBlank         string
@@ -821,7 +821,11 @@ func declaredGrants(manifest schema.Manifest) []declaredGrant {
 // variants returns one variant for each value that a values map translates, or one variant without a fixed value.
 func (agreement *refreshAgreementGenerator) variants(grant declaredGrant) []grantVariant {
 	if grant.method.OAuth2 != nil && grant.method.OAuth2.TokenEndpointNetworkPolicy == "privateNetworkHTTP" && grant.endpoint.FromSetting != "" {
-		return []grantVariant{{}, {field: grant.endpoint.FromSetting, value: "http://127.0.0.1/token"}}
+		variants := []grantVariant{{}, {field: grant.endpoint.FromSetting, value: "http://127.0.0.1/token"}}
+		if grant.tokenExchangeTimeout != nil && grant.tokenExchangeTimeout.FromConfig != "" {
+			variants = append(variants, grantVariant{field: grant.tokenExchangeTimeout.FromConfig, value: "2s"})
+		}
+		return variants
 	}
 	var translated []schema.ValueSource
 	translated = append(translated, grant.endpoint, grant.authMethod)
@@ -1035,8 +1039,8 @@ func (agreement *refreshAgreementGenerator) writeGrantCase(generation *generator
 		generation.mustWrite("\t\t\trefreshToken: %q,\n", grant.refreshToken)
 	}
 	generation.mustWrite("\t\t\tterminalErrorCodes: %s,\n", goStringSlice(grant.terminalCodes))
-	if grant.tokenExchangeTimeout != "" {
-		timeout, err := time.ParseDuration(grant.tokenExchangeTimeout)
+	if grant.tokenExchangeTimeout != nil {
+		timeout, err := time.ParseDuration(agreement.timeoutDuration(grant, settings))
 		if err != nil {
 			return fmt.Errorf("%s tokenExchangeTimeout: %w", name, err)
 		}
@@ -1202,10 +1206,38 @@ func (agreement *refreshAgreementGenerator) sampleSettings(grant declaredGrant, 
 	if variant.field != "" && !agreement.isMethodCredential(grant.method, variant.field) {
 		settings[variant.field] = variant.value
 	}
+	if grant.tokenExchangeTimeout != nil && grant.tokenExchangeTimeout.FromConfig != "" {
+		for _, field := range append(append([]schema.Field{}, agreement.manifest.Spec.Configuration.Fields...), methodConfigurationFields(grant.method)...) {
+			if field.Name == grant.tokenExchangeTimeout.FromConfig {
+				settings[field.Name] = fmt.Sprint(field.Default)
+				break
+			}
+		}
+	}
+	if variant.field != "" && !agreement.isMethodCredential(grant.method, variant.field) {
+		settings[variant.field] = variant.value
+	}
 	for name, value := range sample.Settings {
 		settings[name] = value
 	}
 	return settings
+}
+
+func methodConfigurationFields(method schema.AuthMethod) []schema.Field {
+	if method.Configuration == nil {
+		return nil
+	}
+	return method.Configuration.Fields
+}
+
+func (agreement *refreshAgreementGenerator) timeoutDuration(grant declaredGrant, settings map[string]string) string {
+	if grant.tokenExchangeTimeout == nil {
+		return ""
+	}
+	if grant.tokenExchangeTimeout.FromConfig != "" {
+		return settings[grant.tokenExchangeTimeout.FromConfig]
+	}
+	return grant.tokenExchangeTimeout.Duration
 }
 
 // sampleKeyMembers gives every JSON key member that a source reads a value; the private key member is added at run time.

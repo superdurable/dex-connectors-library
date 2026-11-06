@@ -39,6 +39,9 @@ type CredentialRefreshDriver struct {
 // URL without user information.
 func NewCredentialRefreshDriver(config Config, httpClient *http.Client) (*CredentialRefreshDriver, error) {
 	config = withConfigDefaults(config)
+	if config.RequestTimeout < time.Second || config.RequestTimeout > time.Hour {
+		return nil, errors.New("OAuth 2.0 HTTP requestTimeout must be between one second and one hour")
+	}
 	if _, err := parseHTTPURL(config.TokenEndpoint); err != nil {
 		return nil, fmt.Errorf("OAuth 2.0 HTTP tokenEndpoint: %w", err)
 	}

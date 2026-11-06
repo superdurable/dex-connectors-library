@@ -76,6 +76,7 @@ spec:
         - {credential: refresh_token, source: refresh_token}
       pkce: true
       refresh:
+        tokenExchangeTimeout: 15s
         responseScopes: ignore
         missingExpiry: reject
         storedMissingExpiry: refresh

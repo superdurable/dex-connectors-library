@@ -78,6 +78,7 @@ spec:
       pkce: false
       tokenRequestEncoding: json
       refresh:
+        tokenExchangeTimeout: 15s
         missingExpiry: reject
         storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma

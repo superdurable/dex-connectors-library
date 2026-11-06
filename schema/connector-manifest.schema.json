@@ -604,7 +604,13 @@
         "caseInsensitiveScopes": { "type": "boolean", "description": "Compare scope names without case." },
         "refreshWhenCredentialBlank": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$", "description": "Refresh when this credential is blank." },
         "expiryCap": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Maximum token lifetime." },
-        "tokenExchangeTimeout": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Maximum time for one refresh token exchange; the caller deadline may end it sooner." },
+        "tokenExchangeTimeout": {
+      "oneOf": [
+        { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"} },
+        { "type": "object", "additionalProperties": false, "required": ["fromConfig"],
+          "properties": { "fromConfig": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" } } }
+      ]
+    , "description": "Maximum time for one refresh token exchange; the caller deadline may end it sooner." },
         "accessTokenJWTExpiryFallback": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Use the access-token JWT exp claim, falling back to this lifetime." },
         "scopeSeparators": { "enum": ["whitespace", "whitespaceAndComma"], "description": "Split reported scopes on Unicode whitespace, or on ASCII space and comma. Defaults to whitespace." },
         "allowsPublicClient": { "type": "boolean", "description": "Permit refreshing with a blank client secret as a public OAuth client. Defaults to false." },
@@ -643,7 +649,13 @@
       "allOf": [{ "if": { "required": ["responseScopes"] }, "then": { "not": { "required": ["scopeSeparators"] } } }, { "not": { "properties": { "storedMissingExpiry": { "const": "refreshIfRefreshTokenPresent" } }, "required": ["storedMissingExpiry"] } }],
       "properties": {
         "trimClientID": { "type": "boolean", "description": "Trim Go Unicode whitespace around the client ID before a mint request." },
-        "tokenExchangeTimeout": { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"}, "description": "Maximum time for one client-credentials token exchange; the caller deadline may end it sooner." },
+        "tokenExchangeTimeout": {
+      "oneOf": [
+        { "type": "string", "pattern": "^\\+?(([0-9]+(\\.[0-9]*)?|\\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))+$", "not": {"pattern": "^\\+?((0+(\\.0*)?|\\.0+)(ns|us|µs|μs|ms|s|m|h))+$"} },
+        { "type": "object", "additionalProperties": false, "required": ["fromConfig"],
+          "properties": { "fromConfig": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" } } }
+      ]
+    , "description": "Maximum time for one client-credentials token exchange; the caller deadline may end it sooner." },
         "acceptsMissingTokenType": { "type": "boolean" },
         "acceptedTokenTypes": { "$ref": "#/$defs/acceptedTokenTypes" },
         "tokenEndpoint": { "$ref": "#/$defs/valueSource" },
