@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: calendly
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-calendly'
+      operations: [listScheduledEvents, getScheduledEvent, listEventInvitees, cancelScheduledEvent, createSchedulingLink, createWebhookSubscription]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-calendly

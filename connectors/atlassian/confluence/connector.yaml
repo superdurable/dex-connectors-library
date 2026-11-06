@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: atlassian
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-atlassian-confluence'
+      operations: [searchPages, getPage, createPage, updatePage, addComment]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-atlassian-confluence

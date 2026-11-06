@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: github
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-github'
+      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-github
@@ -117,6 +122,7 @@ spec:
         - {credential: refresh_token, source: refresh_token}
       pkce: true
       refresh:
+        requiredScopes: [read:user, user:email]
         missingExpiry: reject
         scopeSeparators: whitespaceAndComma
         exactScopes: true
