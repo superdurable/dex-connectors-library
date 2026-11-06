@@ -789,7 +789,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
   if scenario.RandomSeed != "" && (!strings.HasPrefix(scenario.RandomSeed, "SYNTHETIC_CONFORMANCE_") || len(scenario.RandomSeed) > 128) { return nil, errors.New("random seed must be an obvious synthetic conformance marker") }
   if len(scenario.RandomRequestFields) > 0 && scenario.RandomSeed == "" { return nil, errors.New("random request fields require a synthetic seed") }
   for _, field := range scenario.RandomRequestFields { if !strings.HasPrefix(field, "/") || strings.Contains(field, "~") { return nil, errors.New("random request field must be a simple JSON pointer") } }
-  if _, hasFixedClock := fields["fixedClock"]; hasFixedClock { if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) { return nil, errors.New("invalid fixed clock") }; if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil { return nil, fmt.Errorf("invalid fixed clock: %w", err) } }
+  if _, hasFixedClock := fields["fixedClock"]; hasFixedClock { if strings.HasPrefix(scenario.FixedClock, "0000-") || !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) { return nil, errors.New("invalid fixed clock") }; if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil { return nil, fmt.Errorf("invalid fixed clock: %w", err) } }
   var rawExchanges []json.RawMessage
   if err := json.Unmarshal(fields["exchanges"], &rawExchanges); err != nil { return nil, err }
   for _, rawExchange := range rawExchanges {
