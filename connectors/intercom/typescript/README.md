@@ -1,6 +1,6 @@
 # Intercom TypeScript connector
 
-Install `@superdurable/connector-intercom@0.1.0` and declare the static
+Install `@superdurable/connector-intercom@0.1.1` and declare the static
 Intercom connection used by the application in Dex Web Connections. The
 package implements `searchConversations`, `getConversation`,
 `replyToConversation`, `updateConversationState`, and `findContactByEmail`.

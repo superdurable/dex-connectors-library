@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: atlassian
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-atlassian-confluence
+      operations: [searchPages, getPage, createPage, updatePage, addComment]
+      triggers: []
   codegen:
     go:
       package: confluence

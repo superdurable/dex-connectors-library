@@ -15,6 +15,11 @@ spec:
       timestampFormat: rfc3339Nano
       operations: [searchObjects, getObject, listObjects, upsertObject, createObject, updateObject]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-pipedrive'
+      operations: [searchObjects, getObject, listObjects, upsertObject, createObject, updateObject]
+      triggers: []
   codegen:
     go:
       package: pipedrive

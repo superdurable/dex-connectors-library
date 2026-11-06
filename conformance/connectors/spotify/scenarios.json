@@ -2,14 +2,14 @@
   "connector": "spotify",
   "scenarios": [
     {
-      "callId": "c383f2ea-24c6-5c49-889c-2d6a19f92590",
+      "callId": "af5741ad-c248-59e3-845f-f6624163685c",
       "exchanges": [
         {
-          "body": "{\"limit\":2,\"offset\":5,\"total\":9,\"next\":\"https://api.spotify.com/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items?offset=7\",\"items\":[{\"added_at\":\"2026-09-01T12:30:00Z\",\"added_by\":{\"id\":\"playlist-owner\"},\"is_local\":false,\"item\":{\"id\":\"4iV5W9uYEdYUVa79Axb7Rh\",\"uri\":\"spotify:track:4iV5W9uYEdYUVa79Axb7Rh\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh\"},\"name\":\"A Song\",\"type\":\"track\",\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"name\":\"An Artist\"}],\"album\":{\"id\":\"1ATL5GLyefJaxhQzSPVrLX\",\"uri\":\"spotify:album:1ATL5GLyefJaxhQzSPVrLX\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX\"},\"name\":\"An Album\",\"release_date\":\"2026-08-14\",\"release_date_precision\":\"day\",\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"name\":\"An Artist\"}]},\"duration_ms\":213000,\"explicit\":true,\"is_playable\":true,\"is_local\":false,\"disc_number\":1,\"track_number\":2}},{\"item\":null}]}",
+          "body": "{\"limit\":2,\"offset\":5,\"total\":9,\"next\":\"https://api.spotify.com/v1/next\",\"items\":[{\"added_at\":\"2026-09-01T12:30:00Z\",\"added_by\":{\"id\":\"playlist-owner\"},\"is_local\":false,\"item\":{\"id\":\"4iV5W9uYEdYUVa79Axb7Rh\",\"uri\":\"spotify:track:4iV5W9uYEdYUVa79Axb7Rh\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh\"},\"name\":\"A Song\",\"type\":\"track\",\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"uri\":\"spotify:artist:0OdUWJ0sBjDrqHygGUXeCF\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF\"},\"name\":\"An Artist\"}],\"album\":{\"id\":\"1ATL5GLyefJaxhQzSPVrLX\",\"uri\":\"spotify:album:1ATL5GLyefJaxhQzSPVrLX\",\"external_urls\":{\"spotify\":\"https://open.spotify.com/album/1ATL5GLyefJaxhQzSPVrLX\"},\"name\":\"An Album\",\"release_date\":\"2026-08-14\",\"release_date_precision\":\"day\",\"artists\":[{\"id\":\"0OdUWJ0sBjDrqHygGUXeCF\",\"name\":\"An Artist\"}]},\"duration_ms\":213000,\"explicit\":true,\"is_playable\":true,\"is_local\":false,\"disc_number\":1,\"track_number\":2}},{\"item\":null}]}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
               "2"
@@ -53,9 +53,7 @@
                 "artists": [
                   {
                     "id": "0OdUWJ0sBjDrqHygGUXeCF",
-                    "name": "An Artist",
-                    "spotifyUrl": "https://open.spotify.com/artist/0OdUWJ0sBjDrqHygGUXeCF",
-                    "uri": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF"
+                    "name": "An Artist"
                   }
                 ],
                 "id": "1ATL5GLyefJaxhQzSPVrLX",
@@ -94,31 +92,28 @@
       },
       "input": {
         "limit": 2,
-        "market": "us",
+        "market": " us ",
         "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "listed-page",
+      "name": "listed",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "f63c5212-8f96-5404-a7fb-7a7490102758",
+      "callId": "00ee0610-d701-5248-a8be-95df9d798ffd",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -152,32 +147,26 @@
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "authorization-revoked",
+      "name": "authorizationRevoked",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "fffd70c0-fdaa-59ae-b850-5db5a288f713",
+      "callId": "b2aa0e3a-80f4-5d7e-9501-66d5918d809d",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -211,32 +200,26 @@
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "access-denied",
+      "name": "accessDenied",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "b8d01454-4531-580b-ad99-395dca818728",
+      "callId": "00c694f2-8a47-5d2a-a188-a3a9baf17404",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -270,32 +253,26 @@
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "not-found",
+      "name": "notFound",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "1bd6f592-79d5-5926-9c01-b6eaef4730be",
+      "callId": "6db17a6e-bd52-5c80-8656-0e6b4119e1de",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -329,32 +306,26 @@
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "provider-rejected",
+      "name": "providerRejected",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "2b15b600-69f1-5d8a-b588-e7bb708b9320",
+      "callId": "6e5761a9-1050-5199-9b9b-0fb376917c7f",
       "exchanges": [
         {
-          "body": "{\"limit\":2,\"offset\":5,\"total\":9,\"items\":null}",
+          "body": "{",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -388,34 +359,28 @@
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "invalid-response",
+      "name": "invalidResponse",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "09e13d17-1090-50c8-85f2-123f96e7b193",
+      "callId": "78502c29-b7e2-5db8-940c-af94cc6f46a3",
       "exchanges": [
         {
           "body": "{}",
           "headers": {
-            "Retry-After": "2"
+            "Retry-After": "7"
           },
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -437,36 +402,30 @@
         "failureKind": "RATE_LIMIT",
         "requestCount": 1,
         "retry": true,
-        "retryAfterMs": 2000,
+        "retryAfterMs": 7000,
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "retry-429",
+      "name": "rateLimit",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "615c6abe-4787-5b5a-9e5c-dd7a01668cad",
+      "callId": "b8604d2a-ceea-5cc8-a514-033e956ec101",
       "exchanges": [
         {
           "body": "{}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -492,30 +451,24 @@
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "retry-503",
+      "name": "availability",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "c6bacc98-4483-5d75-8c3e-9e7648201ffb",
+      "callId": "454ca507-cc2d-53a8-8f9e-049980d46e2e",
       "exchanges": [
         {
           "keyMode": "absent",
           "method": "GET",
-          "path": "/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
+          "path": "/v1/playlists/3cEYpjA9oz9GiPac4AsH4n/items",
           "query": {
             "limit": [
-              "2"
-            ],
-            "market": [
-              "US"
+              "20"
             ],
             "offset": [
-              "5"
+              "0"
             ]
           },
           "requestHeaders": {
@@ -541,16 +494,13 @@
         "uncertain": false
       },
       "input": {
-        "limit": 2,
-        "market": "us",
-        "offset": 5,
         "playlistId": "3cEYpjA9oz9GiPac4AsH4n"
       },
-      "name": "retry-transport",
+      "name": "transport",
       "operation": "listPlaylistTracks"
     },
     {
-      "callId": "9dad5ba8-06d8-5480-ab8c-f59f6e9ff275",
+      "callId": "086b779b-aa41-52d3-b521-f8280d624ce3",
       "exchanges": [],
       "expected": {
         "branch": "defect",
@@ -571,7 +521,7 @@
       "input": {
         "playlistId": "bad"
       },
-      "name": "defect-invalid-id",
+      "name": "defect",
       "operation": "listPlaylistTracks"
     }
   ],

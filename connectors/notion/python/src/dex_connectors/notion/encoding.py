@@ -5,8 +5,7 @@
 import math
 import re
 from datetime import datetime
-from email.errors import HeaderParseError
-from email.headerregistry import Address
+from email.utils import parseaddr
 from typing import cast
 from urllib.parse import urlsplit
 
@@ -201,11 +200,23 @@ def encode_property(value: PropertyValue) -> dict[str, object]:
             if not parsed.scheme or not parsed.netloc or len(text) > 2000:
                 raise ValueError("url must be absolute and at most 2000 characters")
         if value.type == "email":
-            try:
-                address = Address(addr_spec=text)
-            except (ValueError, HeaderParseError) as error:
-                raise ValueError("email must be one plain email address") from error
-            if address.addr_spec != text or len(text) > 200:
+            display_name, address = parseaddr(text)
+            local, separator, domain = text.partition("@")
+            forbidden = '()<>[]:;@\\,"'
+
+            def is_atom(part: str) -> bool:
+                return (
+                    bool(part)
+                    and not part.startswith(".")
+                    and not part.endswith(".")
+                    and ".." not in part
+                    and all(ord(character) >= 33 and character not in forbidden for character in part)
+                )
+
+            if (
+                display_name or address != text or not separator or not is_atom(local) or not is_atom(domain)
+                or len(text.encode()) > 200
+            ):
                 raise ValueError("email must be one plain email address")
         if value.type == "phone_number" and (len(text) > 200 or "\n" in text or "\r" in text):
             raise ValueError("phone number must be one line")

@@ -5,13 +5,20 @@ Install the Go module with `go get github.com/superdurable/dex-connectors-librar
 Moved from `github.com/superdurable/dex-connectors-library/connectors/resend`.
 
 This Dex connector calls the public Resend JSON API. Its
-manifest version is `v0.1.0`; the Go module requires connector SDK `v0.33.0`
-    and Dex Go SDK `v1.5.0` or newer. The runnable
+manifest version is `v0.2.0`; the Go module requires connector SDK `v0.33.0`
+    and Dex Go SDK `v1.26.0` or newer. The runnable
 [`welcome-email` example](go/examples/welcome-email/README.md) shows a
 complete Worker and the generated operation-specific Step factory.
 
 The Python package is [`dex-connector-resend`](python/README.md), imported as
 `dex_connectors.resend`.
+
+The TypeScript package is [`@superdurable/connector-resend`](typescript/README.md).
+Its [welcome email example](typescript/examples/welcome-email/README.md) registers
+the generated `newSendEmailStep` with the static `resend` connection name and
+verifies the Flow through a real Dex Worker and Client. Provider HTTP behavior
+is replayed against Go-recorded scenarios; live Resend authorization remains
+unverified.
 
 ## Operations
 

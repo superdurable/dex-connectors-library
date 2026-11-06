@@ -1,0 +1,44 @@
+{
+  "connectorId": "oauth2-http",
+  "releaseTag": "connectors/superdurable/oauth2-http/go/v0.2.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-superdurable-oauth2-http",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_send_request_step",
+      "kind": "mutation",
+      "operationId": "sendRequest",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "completed",
+          "field": "completed",
+          "optional": false
+        },
+        {
+          "id": "rejected",
+          "field": "rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

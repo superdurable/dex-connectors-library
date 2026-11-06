@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: monday
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-monday'
+      operations: [listItems, getItem, createItem, updateItemColumnValues, addUpdate]
+      triggers: []
   codegen:
     go:
       package: monday

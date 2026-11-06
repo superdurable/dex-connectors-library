@@ -15,6 +15,11 @@ spec:
       timestampFormat: rfc3339Nano
       operations: [listMeetings, getMeeting, createMeeting, updateMeeting, listPastMeetingParticipants]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-zoom'
+      operations: [listMeetings, getMeeting, createMeeting, updateMeeting, listPastMeetingParticipants]
+      triggers: []
   codegen:
     go:
       package: zoom

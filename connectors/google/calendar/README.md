@@ -23,6 +23,10 @@ operation-specific Dex Step factories:
 
 This release has no Triggers.
 
+## Python package
+
+The Python package `dex-connector-google-calendar==0.1.0` implements the same five operations with generated connection and OAuth refresh wiring. Its [runnable event listing example](python/examples/calendar_events/README.md) uses the static `google-calendar-events-reader` connection name and a real Dex Worker. Go-recorded provider scenarios cover the Python request and branch behavior. Google consent, Workspace delegated minting against Google, and live Calendar API calls remain unverified for Python.
+
 ## Scopes
 
 The OAuth grant requests exactly these scopes, each by its canonical URI:

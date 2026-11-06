@@ -44,6 +44,10 @@ key; see [Duplicate safety](#duplicate-safety).
 This release has no Triggers and no Studio pickers; see
 [Not in this release](#not-in-this-release).
 
+## TypeScript package
+
+The independent `@superdurable/connector-reamaze` package starts at `v0.1.0` and implements all six operations. Its [TypeScript README](typescript/README.md) documents installation, connection setup, the [runnable search Flow](typescript/examples/search-conversations/), and Go-recorded conformance coverage. The Go connector remains at `v0.23.0`.
+
 ## Re:amaze setup
 
 A connection needs three values:

@@ -14,6 +14,11 @@ spec:
       package: dex-connector-slack
       operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-slack"
+      operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
+      triggers: []
   codegen:
     go:
       package: slack

@@ -128,3 +128,7 @@ GOWORK=off \
   SPOTIFY_CONNECTOR_TEST_PLAYLIST_ID=... \
   go test -tags=live ./... -count=1 -v
 ```
+
+## TypeScript
+
+The [`@superdurable/connector-spotify`](typescript/README.md) package implements `listPlaylistTracks` as a Dex Query Step. Its checked-in [playlist tracks example](typescript/examples/playlist-tracks/README.md) uses the static `spotify-playlist-reader` connection and stores only bounded track metadata. The TypeScript port replays the Go connector's provider scenarios and uses manifest-driven OAuth renewal.
