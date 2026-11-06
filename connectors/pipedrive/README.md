@@ -281,6 +281,11 @@ func (flow *Flow) MapToUpsertLeadPersonInput(intake DealIntake) pipedrive.Upsert
 
 ## Example
 
+The [TypeScript `list-deals` example](typescript/examples/list-deals) runs a
+real Dex Worker and lists one bounded page through the static `pipedrive-crm`
+connection. Its integration test uses an HTTP stand-in on an OS-assigned port;
+live Pipedrive authorization and provider behavior remain unverified.
+
 [`examples/deal-intake`](go/examples/deal-intake) finds the lead's organization
 by exact name, upserts the lead person by email, lists the person's open deal
 in the configured pipeline, moves it to the configured stage and owner or

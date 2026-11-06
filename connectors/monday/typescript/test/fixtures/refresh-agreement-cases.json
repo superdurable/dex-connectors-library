@@ -1,0 +1,814 @@
+[
+  {
+    "name": "monday-oauth refresh",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:read boards:write updates:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_grant",
+      "invalid_client",
+      "unauthorized_client",
+      "invalid_token"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:read boards:write updates:write",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:read boards:write updates:write"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh with uppercase scope names",
+    "expectedError": "reauthorization",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "BOARDS:READ BOARDS:WRITE UPDATES:WRITE",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh with comma-separated scopes",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:read,boards:write,updates:write,boards:read",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh without required scope 1",
+    "expectedError": "reauthorization",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:write updates:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh without required scope 2",
+    "expectedError": "reauthorization",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:read updates:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh without required scope 3",
+    "expectedError": "reauthorization",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:read boards:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh with different reported scope",
+    "expectedError": "reauthorization",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  },
+  {
+    "name": "monday-oauth refresh without expires_in",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "boards:read boards:write updates:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ],
+    "expectedExpiryMilliseconds": 3600000
+  },
+  {
+    "name": "monday-oauth refresh without refresh_token",
+    "methodId": "monday-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "oauth_client_id": "manifest-client-id",
+      "oauth_client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://auth.monday.com/oauth_ms/oauth/token",
+    "encoding": "json",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "boards:read boards:write updates:write",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      },
+      {
+        "name": "undated JWT with future exp",
+        "expiresAt": "missing",
+        "expected": false,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "fresh"
+      },
+      {
+        "name": "undated JWT with past exp",
+        "expiresAt": "missing",
+        "expected": true,
+        "jwtAccessTokenCredential": "access_token",
+        "jwtExpiry": "expired"
+      }
+    ]
+  }
+]
