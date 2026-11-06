@@ -14,6 +14,12 @@ spec:
       version: v0.1.0
       operations: [listThreadReplies, postChannelMessage, postThreadReply, postChatMessage]
       triggers: []
+    python:
+      package: dex-connector-microsoft-teams
+      version: v0.1.0
+      timestampFormat: rfc3339Nano
+      operations: [listThreadReplies, postChannelMessage, postThreadReply, postChatMessage]
+      triggers: []
   codegen:
     go:
       package: teams

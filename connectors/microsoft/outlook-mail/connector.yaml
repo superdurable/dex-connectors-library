@@ -7,13 +7,19 @@ metadata:
   company: Microsoft
   version: v0.24.0
 spec:
+  provider: microsoft
   languages:
     typescript:
       version: v0.1.0
       package: '@superdurable/connector-microsoft-outlook-mail'
       operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setMessageFlags]
       triggers: []
-  provider: microsoft
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-outlook-mail
+      timestampFormat: rfc3339Nano
+      operations: [searchMessages, getMessage, sendMessage, replyToMessage, moveMessage, setMessageFlags]
+      triggers: []
   codegen:
     go:
       package: outlookmail

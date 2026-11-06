@@ -287,6 +287,14 @@ these units from the shared `@superdurable/dex-connectors-react` components.
 **Start Flow** example that matches a record by a field value, links the one
 match to an external ID or creates the record by that ID, and reads it back.
 
+The [Python record lookup](python/examples/record_lookup) is a runnable Dex Worker
+using the static `salesforce-crm` connection. Its real Dex integration test
+checks a successful `getRecord` and the unwired `notFound` branch against an
+inert local Salesforce HTTP fake. The authorization form and `getRecord`
+configuration UI use the manifest guidance above; no additional fields appear
+in this example. Live Salesforce OAuth consent, JWT bearer authorization, and
+org API access have not been verified for the Python port.
+
 ## Verification
 
 ### TypeScript port

@@ -14,6 +14,11 @@ spec:
       package: "@superdurable/connector-superdurable-oauth2-http"
       operations: [sendRequest]
       triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-superdurable-oauth2-http
+      operations: [sendRequest]
+      triggers: []
   codegen:
     go:
       package: oauth2http

@@ -2,6 +2,12 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail/go@v0.24.0`.
 
+The Python package `dex-connector-microsoft-outlook-mail==0.1.0` implements all
+six operations with the same branch identities and a generated OAuth refresh
+declaration. See the [Python package](python/README.md) and its
+[support reply example](python/examples/support_reply/README.md). TypeScript
+support remains a separate release.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/outlook-mail`.
 
 The TypeScript package `@superdurable/connector-microsoft-outlook-mail@0.1.0` implements all six operations with Connector SDK 0.7.0. See its [package guide](typescript/README.md) and [runnable Dex Flow](typescript/examples/read-message/flow.ts). The TypeScript port replays Go-recorded provider conformance scenarios; live Microsoft 365 authorization and delivery have not been verified for this port.

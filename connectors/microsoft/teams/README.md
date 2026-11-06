@@ -8,6 +8,12 @@ declaration. See its [runnable thread-reply example](typescript/examples/list-th
 and [package guide](typescript/README.md). The example passed against a real
 local Dex stack and a Graph stand-in; live Microsoft authorization and Graph
 requests remain unverified.
+The Python package `dex-connector-microsoft-teams==0.1.0` implements all four
+operations. See its [runnable thread-reply example](python/examples/list_thread_replies/README.md)
+and [package guide](python/README.md). It uses the manifest's generated OAuth
+refresh declaration and requires a named Dex Web Microsoft Teams connection.
+The Python example passed against a real local Dex stack and a Graph stand-in;
+live Microsoft authorization and Graph requests remain unverified.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/microsoft/teams`.
 

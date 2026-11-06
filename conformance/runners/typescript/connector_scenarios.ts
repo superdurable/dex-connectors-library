@@ -352,6 +352,7 @@ export class ExchangeRecorder {
     const bodyBytes = typeof request.body === 'string' ? Buffer.from(request.body) : Buffer.from(request.body ?? []);
     const bodyText = bodyBytes.toString();
     this.equal(index, 'method', request.method, exchange.method);
+    // Go records URL.Path, which decodes one layer of escaping; URL.pathname retains that layer.
     let decodedPath = url.pathname;
     try { decodedPath = decodeURIComponent(url.pathname); }
     catch { this.mismatches.push(`request ${index}: invalid percent-encoded path`); }

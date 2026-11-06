@@ -28,6 +28,9 @@ This release has no Triggers; see [Triggers](#triggers).
 ## TypeScript package
 
 `@superdurable/connector-microsoft-outlook-calendar` implements all five operations with Connector SDK `0.7.0`. Its [runnable read-event Flow](typescript/examples/read-event) binds the static Dex Web connection name `outlook-calendar-scheduler`; the package's generated OAuth grant supports delegated and app-only token renewal. Run `npm ci` and `npm run check` in `typescript/`, then use the example Worker with a configured Dex Web Connection. The example's integration test runs against a real local Dex Worker and Client with a controlled Graph transport. Live Microsoft authorization for this package remains unverified.
+## Python package
+
+The `dex-connector-microsoft-outlook-calendar` Python package implements all five operations at version `v0.1.0`, with no Triggers. It uses generated connector models, Step factories, connection bindings, and manifest OAuth grants. See the [Python package README](python/README.md) for its runnable `ReadOutlookEventFlow`, real Dex integration test, and local conformance commands. Microsoft authorization and Graph calls remain unverified for this language port.
 
 ## Authorization
 

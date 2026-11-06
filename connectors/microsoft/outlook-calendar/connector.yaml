@@ -14,6 +14,11 @@ spec:
       package: "@superdurable/connector-microsoft-outlook-calendar"
       operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
       triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-outlook-calendar
+      operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
+      triggers: []
   codegen:
     go:
       package: outlookcalendar

@@ -14,6 +14,11 @@ spec:
       package: "@superdurable/connector-salesforce"
       operations: [queryRecords, getRecord, upsertRecordByExternalId, updateRecord]
       triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-salesforce
+      operations: [queryRecords, getRecord, upsertRecordByExternalId, updateRecord]
+      triggers: []
   codegen:
     go:
       package: salesforce

@@ -312,6 +312,13 @@ for push delivery.
 
 ## Example
 
+The [Python package](python/README.md) implements all five operations with
+generated delegated OAuth refresh and app-only token minting. Its
+[getFile example](python/examples/get_file) runs through a real Dex Worker and
+Client with the static `onedrive-files` connection. The Python conformance
+suite replays the Go-recorded Graph requests and outcomes. Live Microsoft
+authorization has not been verified for the Python port.
+
 [`examples/text-copy`](go/examples/text-copy) is a runnable Dex Web
 **Start Flow** example that looks up a text file by name in a source folder,
 ensures a copy folder in a destination folder, copies the text into it with
