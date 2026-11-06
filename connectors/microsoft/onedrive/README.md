@@ -318,6 +318,15 @@ ensures a copy folder in a destination folder, copies the text into it with
 `fail` or `replace`, and reads the copy back. Both locations come from the site,
 drive, and folder pickers.
 
+## TypeScript
+
+The [TypeScript package](typescript/README.md) implements all five operations
+with Connector SDK 0.7.0 and generated OAuth and app-only credential refresh.
+Its [get-file Flow](typescript/examples/get-file/README.md) uses the static
+`onedrive-files` connection. Run `npm run check` in `typescript/`, then
+`DEX_FLOW_SERVICE_ADDRESS=<dex-address> npm run test:integration` against Dex
+development server. Live Microsoft authorization remains unverified.
+
 ## Verification
 
 ```bash
