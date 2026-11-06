@@ -173,6 +173,14 @@ def test_coql_rejects_non_go_date_spellings(value: COQLValue) -> None:
         _condition_value(value)
 
 
+@pytest.mark.parametrize(
+    "value", (COQLValue("date", "٢٠٢٤-01-05"), COQLValue("dateTime", "٢٠٢٤-01-05T10:00:00+00:00"))
+)
+def test_coql_rejects_non_ascii_digits(value: COQLValue) -> None:
+    with pytest.raises(ValueError):
+        _condition_value(value)
+
+
 def test_coql_rejects_c1_control_characters() -> None:
     with pytest.raises(ValueError):
         _condition_value(COQLValue("text", "bad\u0085value"))
@@ -186,6 +194,16 @@ def test_write_result_preserves_offset_and_fraction() -> None:
     )
     result = _write_result(Exchange("succeeded", body=response))
     assert result[3:] == ("2026-01-28T13:00:05.123456789+05:30", "2026-01-28T13:00:05+05:30")
+
+
+def test_write_result_renders_negative_zero_offset_as_utc() -> None:
+    response = (
+        b'{"data":[{"code":"SUCCESS","details":{"id":"123",'
+        b'"Created_Time":"2026-01-28T13:00:05-00:00",'
+        b'"Modified_Time":"2026-01-28T13:00:05.120-00:00"}}]}'
+    )
+    result = _write_result(Exchange("succeeded", body=response))
+    assert result[3:] == ("2026-01-28T13:00:05Z", "2026-01-28T13:00:05.12Z")
 
 
 @pytest.mark.asyncio

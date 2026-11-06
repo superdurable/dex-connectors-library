@@ -21,6 +21,8 @@ No operation has an `uncertain` branch. Unwired optional branches fail the Flow.
 `listModifiedRecords` accepts 50 selected fields when `Modified_Time` is already
 among them; otherwise 49 fields leave room for the added `Modified_Time`.
 Write results preserve Zoho's timestamp offset and fractional precision.
+Date and datetime inputs require ASCII digits. Write timestamps with a zero
+offset, including `-00:00`, render with `Z`.
 
 ## Authorization
 

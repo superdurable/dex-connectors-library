@@ -99,7 +99,8 @@ def _decimal_id_after(left: str, right: str) -> bool:
 
 def _zoho_time(value: str) -> datetime:
     if not isinstance(value, str) or not re.fullmatch(
-        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})", value
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+        r"(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})", value
     ):
         raise ValueError("invalid Zoho CRM timestamp")
     instant = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -217,12 +218,12 @@ def _condition_value(value: COQLValue) -> str:
         return "true" if value.boolean else "false"
     if value.kind in ("date", "dateTime"):
         if value.kind == "date":
-            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value.text):
+            if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value.text):
                 raise ValueError("a date value must be YYYY-MM-DD")
             datetime.strptime(value.text, "%Y-%m-%d")
         else:
             if not re.fullmatch(
-                r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?[+-]\d{2}:\d{2}",
+                r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?[+-][0-9]{2}:[0-9]{2}",
                 value.text,
             ):
                 raise ValueError("a datetime value must be built with COQLDateTime")
@@ -596,12 +597,12 @@ def _write_result(exchange: Exchange) -> tuple[str, str, str, str, str]:
         try:
             _zoho_time(value)
             timestamp = re.fullmatch(
-                r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})",
+                r"([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:\.([0-9]+))?(Z|[+-][0-9]{2}:[0-9]{2})",
                 value,
             )
             assert timestamp is not None
             fraction = (timestamp.group(2) or "")[:9].rstrip("0")
-            suffix = "Z" if timestamp.group(3) == "+00:00" else timestamp.group(3)
+            suffix = "Z" if timestamp.group(3) in ("+00:00", "-00:00") else timestamp.group(3)
             return timestamp.group(1) + ("." + fraction if fraction else "") + suffix
         except ValueError:
             return "0001-01-01T00:00:00Z"

@@ -94,12 +94,12 @@ def thread_replies_path(team_id: str, channel_id: str, message_id: str) -> str:
     return channel_messages_path(team_id, channel_id) + f"/{message_id}/replies"
 
 
-def safe_token(value: object) -> str:
-    """Keep a bounded printable provider identifier."""
+def safe_token(value: object, maximum_bytes: int = 128) -> str:
+    """Keep a printable provider identifier within its Go field limit."""
     return (
         value
         if isinstance(value, str)
-        and 0 < len(value.encode()) <= 64
+        and 0 < len(value.encode()) <= maximum_bytes
         and all(32 < ord(c) <= 126 for c in value)
         else ""
     )
@@ -262,7 +262,7 @@ def decode_message(resource: object, max_text_characters: int = 0) -> Message:
                 break
     deleted = resource.get("deletedDateTime") is not None
     body = resource.get("body")
-    content_type = safe_token(body.get("contentType")) if isinstance(body, dict) else ""
+    content_type = safe_token(body.get("contentType"), 64) if isinstance(body, dict) else ""
     text = (
         extract_message_text(content_type, str(body.get("content") or ""))
         if isinstance(body, dict) and not deleted
@@ -280,7 +280,7 @@ def decode_message(resource: object, max_text_characters: int = 0) -> Message:
     return Message(
         id=resource["id"],
         reply_to_id=reply_to_id if isinstance(reply_to_id, str) and MESSAGE_ID.fullmatch(reply_to_id) else "",
-        message_type=safe_token(resource.get("messageType"))
+        message_type=safe_token(resource.get("messageType"), 64)
         if isinstance(resource.get("messageType"), str)
         else "",
         created_at=created_at,
@@ -288,7 +288,7 @@ def decode_message(resource: object, max_text_characters: int = 0) -> Message:
         is_deleted=deleted,
         sender=sender,
         subject=strip_control_characters(subject)[:1024] if isinstance(subject, str) else "",
-        importance=safe_token(resource.get("importance")) or None,
+        importance=safe_token(resource.get("importance"), 64) or None,
         content_type=content_type if content_type and not deleted else None,
         text=text[:max_text_characters] if truncated else text,
         is_text_truncated=truncated,

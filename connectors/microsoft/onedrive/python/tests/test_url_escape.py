@@ -2,10 +2,22 @@
 # SPDX-License-Identifier: MIT
 """Go net/url.QueryEscape and PathEscape reference vectors."""
 
-import pytest
+from datetime import UTC, datetime
 
+import httpx
+import pytest
+from dex_connectors.sdk import (
+    Call,
+    CallID,
+    ConnectionRef,
+    OperationRef,
+    SecretString,
+    StaticCredentialProvider,
+)
+
+from dex_connectors.microsoft_onedrive import Client, Config, Credentials, GetFileInput
 from dex_connectors.microsoft_onedrive.client import path_escape, query_escape
-from dex_connectors.microsoft_onedrive.operations import _go_equal_fold, _go_path_extension
+from dex_connectors.microsoft_onedrive.operations import GetFileOperation, _go_equal_fold, _go_path_extension
 
 
 @pytest.mark.parametrize(
@@ -32,3 +44,26 @@ def test_go_equal_fold_does_not_expand_sharp_s() -> None:
 def test_go_path_extension_includes_leading_dot() -> None:
     assert _go_path_extension(".txt") == ".txt"
     assert _go_path_extension("folder/file.txt") == ".txt"
+
+
+@pytest.mark.asyncio
+async def test_submicrosecond_item_timestamp_is_invalid_response() -> None:
+    connection = ConnectionRef("microsoft", "onedrive-files")
+    call = Call(
+        CallID("11111111-1111-5111-8111-111111111111"),
+        connection,
+        OperationRef("microsoft-onedrive", "getFile"),
+    )
+    credentials = Credentials(access_token=SecretString("synthetic-token"))
+    body = b'{"id":"item-1","name":"file.txt","createdDateTime":"2026-01-28T13:00:05.123456789Z"}'
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, content=body))
+    async with httpx.AsyncClient(transport=transport) as http_client:
+        client = Client(
+            Config(endpoint="http://127.0.0.1:12345"),
+            StaticCredentialProvider({connection: credentials}),
+            http_client,
+            now=lambda: datetime(2026, 1, 1, tzinfo=UTC),
+        )
+        result = await GetFileOperation(client).invoke(call, GetFileInput(item_id="item-1"))
+    assert result.kind == "branch" and result.branch == "invalidResponse"
+    assert result.failure is not None and result.failure.kind.value == "PROTOCOL"

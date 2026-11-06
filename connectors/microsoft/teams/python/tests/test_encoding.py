@@ -86,9 +86,21 @@ def test_message_keeps_nbsp_and_zwj_but_omits_deleted_content_type() -> None:
     assert decode_message(resource).content_type is None
 
 
-def test_provider_token_is_limited_to_64_bytes() -> None:
-    assert safe_token("x" * 64) == "x" * 64
-    assert safe_token("x" * 65) == ""
+def test_provider_token_uses_128_byte_identifier_limit() -> None:
+    assert safe_token("x" * 128) == "x" * 128
+    assert safe_token("x" * 129) == ""
+
+
+def test_sender_id_and_content_type_use_distinct_go_limits() -> None:
+    resource = {
+        "id": "123",
+        "createdDateTime": "2026-10-01T00:00:00Z",
+        "from": {"user": {"id": "u" * 100}},
+        "body": {"contentType": "c" * 100, "content": "message"},
+    }
+    message = decode_message(resource)
+    assert message.sender.user_id == "u" * 100
+    assert message.content_type is None
 
 
 def test_request_build_error_is_a_defect() -> None:
