@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: intercom
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-intercom
+      operations: [searchConversations, getConversation, replyToConversation, updateConversationState, findContactByEmail]
+      triggers: []
     typescript:
       version: v0.1.0
       package: "@superdurable/connector-intercom"

@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: clickup
   languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-clickup
+      operations: [searchTasks, getTask, createTask, updateTask, updateTaskTags, addComment, findMemberByEmail]
+      triggers: []
     typescript:
       version: v0.1.1
       operations: [searchTasks, getTask, createTask, updateTask, updateTaskTags, addComment, findMemberByEmail]
