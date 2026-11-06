@@ -1,0 +1,59 @@
+{
+  "connectorId": "spotify",
+  "releaseTag": "connectors/spotify/go/v0.24.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-spotify",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListPlaylistTracksStep",
+      "kind": "query",
+      "operationId": "listPlaylistTracks",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "authorizationRevoked",
+          "field": "authorizationRevoked",
+          "optional": true
+        },
+        {
+          "id": "accessDenied",
+          "field": "accessDenied",
+          "optional": true
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

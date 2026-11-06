@@ -13,6 +13,8 @@ In Dex Web Connections, create a `harvest` connection named `harvest`. Open [Har
 The Python package is [`dex-connector-harvest`](python/README.md), imported as
 `dex_connectors.harvest`.
 
+The TypeScript package is [`@superdurable/connector-harvest`](typescript/README.md), with a [runnable Harvest lookup Flow](typescript/examples/harvest-lookup/README.md).
+
 ## Operations
 
 | Operation | Official API reference |

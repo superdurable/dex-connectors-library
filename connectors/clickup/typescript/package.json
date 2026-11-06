@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-clickup",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "ClickUp task operations for Dex Flows",
   "repository": {
     "type": "git",
