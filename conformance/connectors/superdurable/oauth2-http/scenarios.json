@@ -1,0 +1,693 @@
+{
+  "connector": "superdurable/oauth2-http",
+  "scenarios": [
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"Ada\"}",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Request-Id": "api-001"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "query": {
+            "lang": [
+              "en",
+              "fr"
+            ],
+            "search": [
+              "a b"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "body": "{\"name\":\"Ada\"}",
+          "contentType": "application/json",
+          "statusCode": 200
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/profile",
+        "query": {
+          "lang": [
+            "en",
+            "fr"
+          ],
+          "search": [
+            "a b"
+          ]
+        }
+      },
+      "name": "sendRequest-completed-query",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "item-1",
+          "derivedKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+          "headers": {
+            "Content-Type": "text/plain"
+          },
+          "keyMode": "derived",
+          "method": "POST",
+          "path": "/items",
+          "requestBody": "create item",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "text/plain"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "body": "item-1",
+          "contentType": "text/plain",
+          "statusCode": 201
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "body": "create item",
+        "headers": {
+          "Content-Type": "text/plain"
+        },
+        "idempotencyKeyHeader": "Idempotency-Key",
+        "method": "POST",
+        "path": "/items"
+      },
+      "name": "sendRequest-completed-post",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/missing",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "body": "{\"error\":\"missing\"}",
+          "contentType": "application/json",
+          "statusCode": 404
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "/missing"
+      },
+      "name": "sendRequest-rejected",
+      "operation": "sendRequest"
+    },
+    {
+      "attempts": 1,
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "slow",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "/profile"
+      },
+      "name": "sendRequest-rate-limited",
+      "operation": "sendRequest"
+    },
+    {
+      "attempts": 1,
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "/profile"
+      },
+      "name": "sendRequest-server-error-safe",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "failed",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/items",
+          "requestBody": "payload",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "output": {
+          "body": "failed",
+          "statusCode": 503
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "body": "payload",
+        "method": "POST",
+        "path": "/items"
+      },
+      "name": "sendRequest-server-error-unsafe",
+      "operation": "sendRequest"
+    },
+    {
+      "attempts": 1,
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/items",
+          "requestBody": "payload",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "body": "payload",
+        "method": "POST",
+        "path": "/items"
+      },
+      "name": "sendRequest-transport-before",
+      "operation": "sendRequest"
+    },
+    {
+      "attempts": 1,
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "/profile"
+      },
+      "name": "sendRequest-transport-after",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/items",
+          "requestBody": "payload",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "statusCode": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "body": "payload",
+        "method": "POST",
+        "path": "/items"
+      },
+      "name": "sendRequest-transport-after-post",
+      "operation": "sendRequest"
+    },
+    {
+      "attempts": 1,
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "slow",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/items",
+          "requestBody": "payload",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "body": "payload",
+        "method": "POST",
+        "path": "/items"
+      },
+      "name": "sendRequest-rate-limited-post",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "ok",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "query": {
+            "existing": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "body": "ok",
+          "statusCode": 200
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "url": "http://127.0.0.1:12345/v1/profile?existing=1"
+      },
+      "name": "sendRequest-absolute-url",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "statusCode": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "relative"
+      },
+      "name": "sendRequest-defect-invalid-path",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "expired",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "body": "expired",
+          "statusCode": 401
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "/profile"
+      },
+      "name": "sendRequest-authentication-rejected",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "redirect",
+          "headers": {
+            "Location": "http://outside.example/profile"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "rejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "body": "redirect",
+          "statusCode": 302
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "/profile"
+      },
+      "name": "sendRequest-redirect-rejected",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "conformance-access-token",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "body": "[REDACTED]",
+          "statusCode": 200
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "path": "/profile"
+      },
+      "name": "sendRequest-token-redaction",
+      "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"Ada\"}",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Request-Id": "api-001"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "query": {
+            "added": [
+              "x"
+            ],
+            "ok": [
+              "a b"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "body": "{\"name\":\"Ada\"}",
+          "contentType": "application/json",
+          "statusCode": 200
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "query": {
+          "added": [
+            "x"
+          ]
+        },
+        "url": "http://127.0.0.1:12345/v1/profile?bad=1;evil=2\u0026ok=a+b\u0026broken=%GG"
+      },
+      "name": "sendRequest-malformed-existing-query-614",
+      "operation": "sendRequest"
+    }
+  ],
+  "schemaVersion": 1
+}

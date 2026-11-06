@@ -1,0 +1,1741 @@
+{
+  "connector": "salesforce",
+  "scenarios": [
+    {
+      "callId": "b77da292-1878-599f-b946-0d1ad0cb479c",
+      "exchanges": [
+        {
+          "body": "{\"totalSize\":1,\"done\":true,\"records\":[{\"attributes\":{\"type\":\"Contact\"},\"Id\":\"003RM000001AbcdYAC\",\"Email\":\"priya@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "isDone": true,
+          "records": [
+            {
+              "fields": {
+                "Email": "priya@example.com",
+                "Id": "003RM000001AbcdYAC"
+              },
+              "id": "003RM000001AbcdYAC",
+              "type": "Contact"
+            }
+          ],
+          "totalSize": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-found",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "7f82fbe3-918f-5108-b5c0-4f78470fc2d7",
+      "exchanges": [
+        {
+          "body": "{\"totalSize\":1,\"done\":true,\"records\":[{\"attributes\":{\"type\":\"Contact\"},\"Id\":\"003RM000001AbcdYAC\",\"Email\":\"priya@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query/01gRM000001Bxy1YAC-200",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=200"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "isDone": true,
+          "records": [
+            {
+              "fields": {
+                "Email": "priya@example.com",
+                "Id": "003RM000001AbcdYAC"
+              },
+              "id": "003RM000001AbcdYAC",
+              "type": "Contact"
+            }
+          ],
+          "totalSize": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 200,
+        "nextRecordsCursor": "/services/data/v62.0/query/01gRM000001Bxy1YAC-200"
+      },
+      "name": "queryRecords-cursor",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "f81ec3af-9aa0-5703-b428-94caf14b1ed4",
+      "exchanges": [
+        {
+          "body": "{\"totalSize\":0,\"done\":true,\"records\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "isDone": true,
+          "records": [],
+          "totalSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-not-found",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "6e18f647-4b51-5188-8928-f9a933db9329",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"MALFORMED_QUERY\",\"message\":\"SENTINEL\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "queryRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "isDone": false,
+          "records": [],
+          "totalSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-query-rejected",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "2eb7f674-3706-5b16-b459-97a514ff9c6f",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"INSUFFICIENT_ACCESS\",\"message\":\"SENTINEL\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "isDone": false,
+          "records": [],
+          "totalSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-provider-rejected",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "2ebf51e9-eb3d-5ba8-ad04-ad902ef4d559",
+      "exchanges": [
+        {
+          "body": "{\"totalSize\":1,\"done\":\"bad\",\"records\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "isDone": false,
+          "records": [],
+          "totalSize": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-invalid-response",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "a7128635-71e1-5ca7-a5d3-0acc1087186e",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "isDone": false,
+          "records": [],
+          "totalSize": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "soql": ""
+      },
+      "name": "queryRecords-defect",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "a7eb2c2f-67e3-5a5a-bb78-ff4db1342ca3",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUEST_LIMIT_EXCEEDED\"}]",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-429",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "5325d036-72f1-5ca1-b23e-7a069ac78fea",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"SERVER_UNAVAILABLE\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-503",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "26ccb907-18ca-5f8e-bd31-cda9b3313a2e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/query",
+          "query": {
+            "q": [
+              "SELECT Id, Email FROM Contact WHERE Email = 'o\\'brien@example.com'"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Sforce-Query-Options": [
+              "batchSize=250"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "batchSize": 250,
+        "bindings": {
+          "email": {
+            "kind": "string",
+            "text": "o'brien@example.com"
+          }
+        },
+        "soql": "SELECT Id, Email FROM Contact WHERE Email = :email"
+      },
+      "name": "queryRecords-transport",
+      "operation": "queryRecords"
+    },
+    {
+      "callId": "0a4c5c21-b75a-561a-a236-2d989be33030",
+      "exchanges": [
+        {
+          "body": "{\"attributes\":{\"type\":\"Contact\"},\"Id\":\"003RM000001AbcdYAC\",\"Email\":\"priya@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "Email": "priya@example.com",
+            "Id": "003RM000001AbcdYAC"
+          },
+          "id": "003RM000001AbcdYAC",
+          "type": "Contact"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "c29b6564-2f7a-5e78-a8c4-5efcb53d8e66",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"NOT_FOUND\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": {},
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-not-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "70636432-7c14-5aeb-8445-b01e3c668a5c",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"INSUFFICIENT_ACCESS\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "fields": {},
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-provider-rejected",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "dd5b6716-a6bd-5afe-9e03-9810b5b06a1d",
+      "exchanges": [
+        {
+          "body": "{\"attributes\":{\"type\":\"Lead\"},\"Id\":\"003RM000001AbcdYAC\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-invalid-response",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "84619d37-1e38-58da-8bbb-a909484d4c40",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "type": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "bad-name"
+      },
+      "name": "getRecord-defect",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "cce002e1-c255-5f6f-b489-40d6adb7ca38",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUEST_LIMIT_EXCEEDED\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-429",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "19298b44-a0c8-5050-9c30-aeb91ee46be6",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"SERVER_UNAVAILABLE\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-503",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "ed022ca5-9fcd-5f4c-b796-9496de1f6fbb",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-transport",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"003RM000001AbcdYAC\",\"success\":true,\"created\":false}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "id": "003RM000001AbcdYAC"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-upserted",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "body": "[\"/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC\"]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 300
+        }
+      ],
+      "expected": {
+        "branch": "multipleMatches",
+        "failureKind": "CONFLICT",
+        "output": {
+          "matchingRecordIds": [
+            "003RM000001AbcdYAC"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-multiple-matches",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUIRED_FIELD_MISSING\",\"fields\":[\"LastName\"]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "REQUIRED_FIELD_MISSING",
+              "fields": [
+                "LastName"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-record-rejected",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"INSUFFICIENT_ACCESS\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "INSUFFICIENT_ACCESS"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-provider-rejected",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-defect",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUEST_LIMIT_EXCEEDED\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-429",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"SERVER_UNAVAILABLE\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-503",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-transport",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"created\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/ERP_Id__c/ERP-88213",
+          "requestBody": {
+            "LastName": "Raman",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "ERP-88213",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-unreadable",
+      "operation": "upsertRecordByExternalId"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestBody": {
+            "ERP_Id__c": "ERP-88213",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "003RM000001AbcdYAC"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-updated",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"NOT_FOUND\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestBody": {
+            "ERP_Id__c": "ERP-88213",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "NOT_FOUND"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-not-found",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"FIELD_CUSTOM_VALIDATION_EXCEPTION\",\"fields\":[\"Title\"]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestBody": {
+            "ERP_Id__c": "ERP-88213",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "FIELD_CUSTOM_VALIDATION_EXCEPTION",
+              "fields": [
+                "Title"
+              ]
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-record-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"INSUFFICIENT_ACCESS\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestBody": {
+            "ERP_Id__c": "ERP-88213",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "providerErrors": [
+            {
+              "errorCode": "INSUFFICIENT_ACCESS"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-provider-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-defect",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"REQUEST_LIMIT_EXCEEDED\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestBody": {
+            "ERP_Id__c": "ERP-88213",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-429",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [
+        {
+          "body": "[{\"errorCode\":\"SERVER_UNAVAILABLE\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestBody": {
+            "ERP_Id__c": "ERP-88213",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-503",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PATCH",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "requestBody": {
+            "ERP_Id__c": "ERP-88213",
+            "Title": "CTO"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d0ddd9e4-76c4-5caa-b3ad-ea89dfca839b",
+      "input": {
+        "fields": {
+          "ERP_Id__c": "ERP-88213",
+          "Title": "CTO"
+        },
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "updateRecord-transport",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "0a4c5c21-b75a-561a-a236-2d989be33030",
+      "exchanges": [
+        {
+          "body": "{\"attributes\":{\"type\":\"Contact\"},\"Id\":0,\"Email\":\"priya@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-falsy-id-614",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "badvalue",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-c1-control-614",
+      "operation": "upsertRecordByExternalId"
+    }
+  ],
+  "schemaVersion": 1
+}
