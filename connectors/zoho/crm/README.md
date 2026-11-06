@@ -1,5 +1,22 @@
 # Zoho CRM Connector
 
+## Python package
+
+Install `dex-connector-zoho-crm==0.1.0` with `dex-connectors-sdk==0.7.0`.
+It implements all six manifest operations with the same branch identities and
+OAuth data-center methods as Go. The package uses generated OAuth credential
+decoding, refresh declarations, connection bindings, definitions, models, Step
+factories, and mocks. Provider calls and outcome classification are handwritten.
+
+The runnable [record lookup example](python/examples/record_lookup/README.md)
+uses a static `zoho-crm` ConnectionName and the `getRecord` factory. Its
+integration test exercises the same Flow with a real Dex Worker and Client,
+retrying HTTP 503 and failing the unwired `notFound` branch. The
+[Python package README](python/README.md) lists the operation factories and
+verification commands. Zoho OAuth authorization and live provider requests
+have not been tested with an account; the Go-recorded provider fixture uses
+synthetic credentials and a local HTTP responder.
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/zoho/crm/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/zoho/crm`.

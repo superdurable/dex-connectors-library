@@ -1,0 +1,2431 @@
+[
+  {
+    "name": "microsoft-oauth refresh",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Mail.ReadWrite Mail.Send",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_request",
+      "invalid_grant",
+      "unauthorized_client",
+      "invalid_client",
+      "unsupported_grant_type",
+      "invalid_resource",
+      "interaction_required",
+      "consent_required",
+      "invalid_scope"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Mail.ReadWrite Mail.Send",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh without token type",
+    "expectedError": "retryable",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Mail.ReadWrite Mail.Send"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh with resource-prefixed scopes",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "HTTPS://GRAPH.MICROSOFT.COM/MAIL.READWRITE HTTPS://GRAPH.MICROSOFT.COM/MAIL.SEND",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh with uppercase scope names",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "MAIL.READWRITE MAIL.SEND",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh with comma-separated scopes",
+    "expectedError": "reauthorization",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Mail.ReadWrite,Mail.Send,Mail.ReadWrite",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh without required scope 1",
+    "expectedError": "reauthorization",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Mail.Send",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh without required scope 2",
+    "expectedError": "reauthorization",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Mail.ReadWrite",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh with different reported scope",
+    "expectedError": "reauthorization",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh without expires_in",
+    "expectedError": "retryable",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2",
+      "scope": "Mail.ReadWrite Mail.Send",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2",
+      "refresh_token": "manifest-refresh-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "microsoft-oauth refresh without refresh_token",
+    "methodId": "microsoft-oauth",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "refresh_token": "manifest-refresh-token"
+    },
+    "endpoint": "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "refresh_token",
+      "refresh_token": "manifest-refresh-token",
+      "scope": "offline_access Mail.ReadWrite Mail.Send"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "Mail.ReadWrite Mail.Send",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "manifest.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_request",
+      "invalid_grant",
+      "unauthorized_client",
+      "invalid_client",
+      "unsupported_grant_type",
+      "invalid_resource",
+      "interaction_required",
+      "consent_required",
+      "invalid_scope"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with sample tenant_id 01234567-89ab-cdef-0123-456789abcdef",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "01234567-89ab-cdef-0123-456789abcdef"
+    },
+    "endpoint": "https://login.microsoftonline.com/01234567-89ab-cdef-0123-456789abcdef/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with sample tenant_id 01234567-89AB-CDEF-0123-456789ABCDEF",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "01234567-89AB-CDEF-0123-456789ABCDEF"
+    },
+    "endpoint": "https://login.microsoftonline.com/01234567-89AB-CDEF-0123-456789ABCDEF/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with sample tenant_id manifest.example.com",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "manifest.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with sample tenant_id Manifest.Example.com",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "Manifest.Example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/Manifest.Example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with rejected tenant_id common",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "common"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with rejected tenant_id organizations",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "organizations"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with rejected tenant_id consumers",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "consumers"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with invalid tenant_id",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "invalid/tenant"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with non-ASCII tenant_id",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "é.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with oversized tenant_id",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "manifest.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials without token type",
+    "expectedError": "retryable",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "manifest.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with different reported scope",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "manifest.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials without expires_in",
+    "expectedError": "retryable",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "manifest.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \"",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "  manifest.example.com  "
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [
+      "invalid_request",
+      "invalid_grant",
+      "unauthorized_client",
+      "invalid_client",
+      "unsupported_grant_type",
+      "invalid_resource",
+      "interaction_required",
+      "consent_required",
+      "invalid_scope"
+    ],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with sample tenant_id 01234567-89ab-cdef-0123-456789abcdef",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "01234567-89ab-cdef-0123-456789abcdef"
+    },
+    "endpoint": "https://login.microsoftonline.com/01234567-89ab-cdef-0123-456789abcdef/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with sample tenant_id 01234567-89AB-CDEF-0123-456789ABCDEF",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "01234567-89AB-CDEF-0123-456789ABCDEF"
+    },
+    "endpoint": "https://login.microsoftonline.com/01234567-89AB-CDEF-0123-456789ABCDEF/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with sample tenant_id manifest.example.com",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "manifest.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with sample tenant_id Manifest.Example.com",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "Manifest.Example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/Manifest.Example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with rejected tenant_id common",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "common"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with rejected tenant_id organizations",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "organizations"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with rejected tenant_id consumers",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "consumers"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with invalid tenant_id",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "invalid/tenant"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with non-ASCII tenant_id",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "é.example.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with oversized tenant_id",
+    "expectedError": "reauthorization",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ],
+    "mayRefuseWithoutCall": true
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with unaccepted token type",
+    "expectedError": "retryable",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "  manifest.example.com  "
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "manifest-unaccepted-token-type"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" without token type",
+    "expectedError": "retryable",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "  manifest.example.com  "
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" with different reported scope",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "  manifest.example.com  "
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "expires_in": 3600,
+      "scope": "manifest-ungranted-scope",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  },
+  {
+    "name": "app-only clientCredentials with tenant_id \"  manifest.example.com  \" without expires_in",
+    "expectedError": "retryable",
+    "methodId": "app-only",
+    "credentials": {
+      "access_token": "manifest-access-token",
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "tenant_id": "  manifest.example.com  "
+    },
+    "endpoint": "https://login.microsoftonline.com/manifest.example.com/oauth2/v2.0/token",
+    "encoding": "form",
+    "clientAuth": "client_secret_post",
+    "clientId": "manifest-client-id",
+    "clientSecret": "manifest-client-secret",
+    "parameters": {
+      "client_id": "manifest-client-id",
+      "client_secret": "manifest-client-secret",
+      "grant_type": "client_credentials",
+      "scope": "https://graph.microsoft.com/.default"
+    },
+    "response": {
+      "access_token": "manifest-access-token-2",
+      "scope": "https://graph.microsoft.com/.default",
+      "token_type": "Bearer"
+    },
+    "updates": {
+      "access_token": "manifest-access-token-2"
+    },
+    "terminalErrorCodes": [],
+    "storedMissingExpiry": "refresh",
+    "refreshRequiredCases": [
+      {
+        "name": "fresh token",
+        "expiresAt": "fresh",
+        "expected": false
+      },
+      {
+        "name": "expired token",
+        "expiresAt": "expired",
+        "expected": true
+      },
+      {
+        "name": "undated token",
+        "expiresAt": "missing",
+        "expected": true
+      },
+      {
+        "name": "blank access token",
+        "credentials": {
+          "access_token": ""
+        },
+        "expiresAt": "fresh",
+        "expected": true
+      }
+    ]
+  }
+]
