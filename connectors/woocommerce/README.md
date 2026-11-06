@@ -9,6 +9,8 @@ Read-only Dex Query Steps for WooCommerce. The module is `github.com/superdurabl
 The Python package is [`dex-connector-woocommerce`](python/README.md), imported as
 `dex_connectors.woocommerce`.
 
+The TypeScript package is [`@superdurable/connector-woocommerce`](typescript/README.md), with a [runnable resource-read Flow](typescript/examples/resource-read/README.md).
+
 ## Operations
 
 | Factory | Input | Output | Happy branch |

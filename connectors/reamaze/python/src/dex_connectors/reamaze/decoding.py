@@ -22,10 +22,22 @@ from .models import (
 _CONVERSATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$")
 
 
+class _WireFloat(float):
+    lexeme: str
+
+    def __new__(cls, lexeme: str) -> _WireFloat:
+        value = float.__new__(cls, lexeme)
+        value.lexeme = lexeme
+        return value
+
+    def __str__(self) -> str:
+        return self.lexeme
+
+
 def parse_document(body: bytes) -> Any:
     """Decode a complete JSON response or report a protocol error."""
     try:
-        return json.loads(body)
+        return json.loads(body, parse_float=_WireFloat)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ValueError("response is malformed JSON") from error
 
@@ -77,6 +89,17 @@ def decode_conversation(wire: object, *, first_message: bool = True, expected_id
     message = wire.get("message") or {}
     if not isinstance(message, dict):
         raise ValueError("conversation message is invalid")
+    if "body" in message and message["body"] is not None and not isinstance(message["body"], str):
+        raise ValueError("conversation message body is invalid")
+    for field in ("last_customer_message", "last_staff_message"):
+        item = wire.get(field)
+        if (
+            isinstance(item, dict)
+            and "body" in item
+            and item["body"] is not None
+            and not isinstance(item["body"], str)
+        ):
+            raise ValueError("conversation message body is invalid")
     text, truncated = _bounded_text(message.get("body") or "") if first_message else ("", False)
 
     def message_time(field: str) -> datetime | None:
@@ -142,7 +165,7 @@ def decode_message(wire: object) -> ConversationMessage:
     origin_id = wire.get("origin_id")
     if origin_id is None:
         origin_id = ""
-    elif isinstance(origin_id, (str, int)) and not isinstance(origin_id, bool):
+    elif isinstance(origin_id, (str, int, float)) and not isinstance(origin_id, bool):
         origin_id = str(origin_id)
     else:
         raise ValueError("message origin_id is neither a string nor a number")
@@ -170,6 +193,11 @@ def decode_message_page(body: bytes) -> tuple[tuple[ConversationMessage, ...], i
 def decode_matching_contacts(body: bytes, email: str) -> FindContactByEmailOutput:
     """Keep exact case-insensitive email matches from a fuzzy provider search."""
     items, count, _ = validate_page(parse_document(body), "contacts")
+    for item in items:
+        if isinstance(item, dict):
+            for field in ("name", "friendly_name"):
+                if field in item and item[field] is not None and not isinstance(item[field], str):
+                    raise ValueError("contact name is invalid")
     contacts = tuple(
         Contact(item.get("name") or "", item["email"], item.get("friendly_name") or "")
         for item in items

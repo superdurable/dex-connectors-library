@@ -1,0 +1,6004 @@
+{
+  "connector": "github",
+  "scenarios": [
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[{\"email\": \"octocat@example.com\", \"primary\": true, \"verified\": true}]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "profileLoaded",
+        "failureKind": "",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "octocat",
+          "name": "Mona",
+          "publicRepos": 2,
+          "subject": "42",
+          "verifiedEmail": "octocat@example.com"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-success",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-revoked",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-scope",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-not-found",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-rejected",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-rate-limit",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-server-error",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-invalid-response",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-transport",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-defect",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "verifiedEmailRequired",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-no-verified-email",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 1, \"name\": \"hello-world\", \"full_name\": \"octocat/hello-world\", \"visibility\": \"public\", \"pushed_at\": \"2026-01-01T00:00:00Z\"}]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "repositoriesLoaded",
+        "failureKind": "",
+        "output": {
+          "repositories": [
+            {
+              "archived": false,
+              "disabled": false,
+              "fork": false,
+              "forksCount": 0,
+              "fullName": "octocat/hello-world",
+              "id": 1,
+              "name": "hello-world",
+              "openIssuesCount": 0,
+              "pushedAt": "2026-01-01T00:00:00Z",
+              "stargazersCount": 0
+            }
+          ],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-success",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-revoked",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-scope",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-not-found",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-rejected",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-rate-limit",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-server-error",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-invalid-response",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-transport",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "login": "?"
+      },
+      "name": "listPublicRepositories-defect",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"total_count\": 1, \"incomplete_results\": false, \"items\": [{\"number\": 4, \"title\": \"Fix bug\", \"body\": \"Fixed it\", \"pull_request\": {\"merged_at\": \"2026-01-04T00:00:00Z\"}, \"user\": {\"login\": \"octocat\"}, \"labels\": [{\"name\": \"bug\"}]}]}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [
+            {
+              "authorLogin": "octocat",
+              "body": "Fixed it",
+              "bodyTruncated": false,
+              "labels": [
+                "bug"
+              ],
+              "mergedAt": "2026-01-04T00:00:00Z",
+              "number": 4,
+              "title": "Fix bug"
+            }
+          ],
+          "totalCount": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-success",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-revoked",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-scope",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-not-found",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-rejected",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-rate-limit",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-server-error",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-invalid-response",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-transport",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "?",
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-defect",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"filename\": \"src/main.go\", \"status\": \"modified\", \"additions\": 2, \"deletions\": 1, \"changes\": 3, \"patch\": \"@@ -1 +1 @@\"}]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "files": [
+            {
+              "additions": 2,
+              "changes": 3,
+              "deletions": 1,
+              "filename": "src/main.go",
+              "patch": "@@ -1 +1 @@",
+              "patchTruncated": false,
+              "status": "modified"
+            }
+          ],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-success",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-revoked",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-scope",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-not-found",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-rejected",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-rate-limit",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-server-error",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-invalid-response",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-transport",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "?",
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-defect",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 5, \"tag_name\": \"v1.0.0\", \"name\": \"First\", \"body\": \"Release notes\", \"draft\": false, \"prerelease\": false, \"created_at\": \"2026-01-03T00:00:00Z\", \"published_at\": \"2026-01-04T00:00:00Z\"}]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPage": 0,
+          "releases": [
+            {
+              "body": "Release notes",
+              "bodyTruncated": false,
+              "createdAt": "2026-01-03T00:00:00Z",
+              "id": 5,
+              "isDraft": false,
+              "isPrerelease": false,
+              "name": "First",
+              "publishedAt": "2026-01-04T00:00:00Z",
+              "tagName": "v1.0.0"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-success",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-revoked",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-scope",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-not-found",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-rejected",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-rate-limit",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-server-error",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-invalid-response",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-transport",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "?",
+        "repository": "hello-world"
+      },
+      "name": "listReleases-defect",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"sha\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"commit\": {\"message\": \"Fix bug\", \"author\": {\"name\": \"Mona\", \"date\": \"2026-01-03T00:00:00Z\"}, \"committer\": {\"date\": \"2026-01-04T00:00:00Z\"}}, \"author\": {\"login\": \"octocat\"}}]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "commits": [
+            {
+              "authorLogin": "octocat",
+              "authorName": "Mona",
+              "authoredAt": "2026-01-03T00:00:00Z",
+              "committedAt": "2026-01-04T00:00:00Z",
+              "message": "Fix bug",
+              "messageTruncated": false,
+              "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-success",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "authorizationRevoked",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-revoked",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-scope",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-not-found",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-rejected",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-rate-limit",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-server-error",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-invalid-response",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-transport",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "?",
+        "repository": "hello-world"
+      },
+      "name": "listCommits-defect",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-empty-repository",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-email-rate-limit",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-email-server-error",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-email-transport",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-email-invalid",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[]",
+          "headers": {
+            "X-OAuth-Scopes": "read:user"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "insufficientScope",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-email-scope",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-secondary-rate-limit",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-secondary-rate-limit",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-secondary-rate-limit",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-secondary-rate-limit",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-secondary-rate-limit",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-secondary-rate-limit",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"public_repos\": \"wrong\"}",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-wrong-profile-field",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 1, \"private\": false, \"name\": 5}]",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-wrong-repository-field",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"total_count\": \"one\", \"items\": []}",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-wrong-search-field",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"filename\": \"a\", \"status\": \"modified\", \"additions\": \"one\"}]",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-wrong-file-field",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 1, \"tag_name\": \"v1\", \"created_at\": \"2026-02-30T00:00:00Z\"}]",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-wrong-release-field",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"sha\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"commit\": {\"message\": \"ok\", \"author\": {\"date\": \"2026-02-30T00:00:00Z\"}, \"committer\": {\"date\": \"2026-01-01T00:00:00Z\"}}}]",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-wrong-commit-field",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[{\"email\": 5, \"primary\": false, \"verified\": true}]",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-wrong-email-field",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-oversized",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "repositories": [],
+          "truncated": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-oversized",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "incompleteResults": false,
+          "nextPage": 0,
+          "pullRequests": [],
+          "totalCount": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-oversized",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "files": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-oversized",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "nextPage": 0,
+          "releases": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-oversized",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "commits": [],
+          "nextPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-oversized",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "headers": {
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "",
+          "publicRepos": 0,
+          "subject": "",
+          "verifiedEmail": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-email-oversized",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 1, \"name\": \"first\", \"full_name\": \"octocat/first\", \"visibility\": \"public\", \"pushed_at\": \"2026-01-01T00:00:00Z\"}, {\"id\": 2, \"private\": true, \"visibility\": \"private\"}]",
+          "headers": {
+            "Link": "\u003chttps://api.github.com/users/octocat/repos?page=2\u003e; rel=\"next\"",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[{\"id\": 1, \"name\": \"first\", \"full_name\": \"octocat/first\", \"visibility\": \"public\"}, {\"id\": 3, \"name\": \"second\", \"full_name\": \"octocat/second\", \"visibility\": \"public\", \"pushed_at\": \"2026-02-01T00:00:00Z\"}]",
+          "headers": {
+            "Link": "\u003chttps://api.github.com/users/octocat/repos?page=3\u003e; rel=\"next\"",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "repositoriesLoaded",
+        "failureKind": "",
+        "output": {
+          "repositories": [
+            {
+              "archived": false,
+              "disabled": false,
+              "fork": false,
+              "forksCount": 0,
+              "fullName": "octocat/second",
+              "id": 3,
+              "name": "second",
+              "openIssuesCount": 0,
+              "pushedAt": "2026-02-01T00:00:00Z",
+              "stargazersCount": 0
+            },
+            {
+              "archived": false,
+              "disabled": false,
+              "fork": false,
+              "forksCount": 0,
+              "fullName": "octocat/first",
+              "id": 1,
+              "name": "first",
+              "openIssuesCount": 0,
+              "pushedAt": "2026-01-01T00:00:00Z",
+              "stargazersCount": 0
+            }
+          ],
+          "truncated": true
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-pagination",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 1, \"name\": \"first\", \"full_name\": \"octocat/first\", \"visibility\": \"public\", \"pushed_at\": \"2026-01-01T00:00:00Z\"}, {\"id\": 2, \"private\": true, \"visibility\": \"private\"}]",
+          "headers": {
+            "Link": "\u003chttps://api.github.com/users/octocat/repos?page=2\u003e; rel=\"next\"",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-page-two-rate-limit",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 1, \"name\": \"first\", \"full_name\": \"octocat/first\", \"visibility\": \"public\", \"pushed_at\": \"2026-01-01T00:00:00Z\"}, {\"id\": 2, \"private\": true, \"visibility\": \"private\"}]",
+          "headers": {
+            "Link": "\u003chttps://api.github.com/users/octocat/repos?page=2\u003e; rel=\"next\"",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-page-two-server-error",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "[{\"id\": 1, \"name\": \"first\", \"full_name\": \"octocat/first\", \"visibility\": \"public\", \"pushed_at\": \"2026-01-01T00:00:00Z\"}, {\"id\": 2, \"private\": true, \"visibility\": \"private\"}]",
+          "headers": {
+            "Link": "\u003chttps://api.github.com/users/octocat/repos?page=2\u003e; rel=\"next\"",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-page-two-transport",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"secondary rate limit exceeded\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-headerless-rate-limit",
+      "operation": "getAuthenticatedProfile"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"secondary rate limit exceeded\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/octocat/repos",
+          "query": {
+            "direction": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "100"
+            ],
+            "sort": [
+              "pushed"
+            ],
+            "type": [
+              "owner"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "login": "octocat"
+      },
+      "name": "listPublicRepositories-headerless-rate-limit",
+      "operation": "listPublicRepositories"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"secondary rate limit exceeded\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/search/issues",
+          "query": {
+            "order": [
+              "desc"
+            ],
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "q": [
+              "repo:octocat/hello-world is:pr is:merged merged:2026-01-01T00:00:00Z..2026-02-01T00:00:00Z"
+            ],
+            "sort": [
+              "created"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "mergedAfter": "2026-01-01T00:00:00Z",
+        "mergedBefore": "2026-02-01T00:00:00Z",
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listMergedPullRequests-headerless-rate-limit",
+      "operation": "listMergedPullRequests"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"secondary rate limit exceeded\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/pulls/4/files",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "number": 4,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listPullRequestFiles-headerless-rate-limit",
+      "operation": "listPullRequestFiles"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"secondary rate limit exceeded\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/releases",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "per_page": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "maxBodyCharacters": 64,
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "repository": "hello-world"
+      },
+      "name": "listReleases-headerless-rate-limit",
+      "operation": "listReleases"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"secondary rate limit exceeded\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/repos/octocat/hello-world/commits",
+          "query": {
+            "page": [
+              "1"
+            ],
+            "path": [
+              "src"
+            ],
+            "per_page": [
+              "2"
+            ],
+            "sha": [
+              "main"
+            ],
+            "since": [
+              "2026-01-01T00:00:00Z"
+            ],
+            "until": [
+              "2026-02-01T00:00:00Z"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer manifest-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 60000,
+        "uncertain": false
+      },
+      "input": {
+        "owner": "octocat",
+        "page": 1,
+        "pageSize": 2,
+        "path": "src",
+        "ref": "main",
+        "repository": "hello-world",
+        "since": "2026-01-01T00:00:00Z",
+        "until": "2026-02-01T00:00:00Z"
+      },
+      "name": "listCommits-headerless-rate-limit",
+      "operation": "listCommits"
+    },
+    {
+      "callId": "6f6c91db-fbf6-57ad-b6b5-eebcbcb31c23",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer rejected-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 401
+        },
+        {
+          "body": "{\"id\": 42, \"login\": \"octocat\", \"name\": \"Mona\", \"public_repos\": 2}",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user",
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer replacement-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "[{\"email\": \"octocat@example.com\", \"primary\": true, \"verified\": true}]",
+          "headers": {
+            "X-GitHub-Request-Id": "request-1",
+            "X-OAuth-Scopes": "read:user, user:email"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/emails",
+          "query": {
+            "per_page": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/vnd.github+json"
+            ],
+            "Authorization": [
+              "Bearer replacement-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-github-connector/0.1"
+            ],
+            "X-Github-Api-Version": [
+              "2026-03-10"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "profileLoaded",
+        "failureKind": "",
+        "output": {
+          "followers": 0,
+          "following": 0,
+          "login": "octocat",
+          "name": "Mona",
+          "publicRepos": 2,
+          "subject": "42",
+          "verifiedEmail": "octocat@example.com"
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "getAuthenticatedProfile-refresh-after-rejection",
+      "operation": "getAuthenticatedProfile"
+    }
+  ],
+  "schemaVersion": 1
+}
