@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-atlassian-trello"
-version = "0.1.0"
+version = "0.1.1"
 description = "Dex-native Trello card and comment connector"
 readme = "README.md"
 requires-python = ">=3.11"
