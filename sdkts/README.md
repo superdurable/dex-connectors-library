@@ -119,6 +119,9 @@ if (result.kind !== 'branch' || retryPolicy.totalDurationMs !== 3600000 || crede
 
 The [complete runnable HTTP example](examples/providerhttp.mjs) sends one bounded request to a local server. `sendProviderRequest` resolves every address before connecting, pins the chosen address for IP literals and hostnames, and returns redirects without following them. `ProviderTransportError.isProvablyNotSent` is true for DNS, TCP connect, or TLS handshake failures before a usable connection could send HTTP bytes. Failures after connection or request writing have an unknown dispatch outcome, matching the Go connectors' DNS, connect, TLS, and obtained-connection trace.
 `BodyTooLargeError` preserves the response `status` and `headers`, so a caller can classify a 429 or 503 and its `Retry-After` even when the response body exceeds its limit.
+`ProviderTransportError` also preserves `status` and `headers` when body reading fails after response headers arrive. A connector can distinguish an interrupted 2xx exchange from a failure before any response; its message never includes header values.
+`ProviderStalledError` preserves the same metadata when the stall occurs after response headers.
+`encodeQueryValues` encodes a string multimap exactly like Go `url.Values.Encode`: UTF-8 byte-sorted keys, repeated values in order, `+` for spaces, and Go's query escaping. Empty value lists are omitted.
 `ProviderRequest.onBodyLimit` defaults to `destroy`, closing an oversized response immediately. Set it to `drain` for provider calls that continue or bill work after a client disconnect: the SDK releases buffered bytes, delivers callback bytes only through the limit, reads to EOF, then rejects with `BodyTooLargeError`. Drain requires at least one positive `timeoutMs`, positive `stallTimeoutMs`, or `signal`; otherwise `sendProviderRequest` throws `TypeError`. These bounds remain active while draining. For non-2xx responses, an explicit `maxErrorResponseBytes` takes precedence and truncates the body immediately instead of draining. Once drain begins, a later read failure still rejects with `BodyTooLargeError`, including when `ignoreErrorBodyReadFailure` is set. The runnable example exercises `drain` with a local server.
 
 ```js
@@ -280,6 +283,10 @@ await fence.recordProviderId(result.providerId);
 ```
 
 ## Release notes
+
+### 0.8.0
+
+Manifest OAuth refresh and client-credentials minting honor `tokenExchangeTimeout` in addition to the caller's deadline; a timeout is retryable, matching Go's credential refresh drivers. The declaration accepts a fixed Go duration of at most one hour or `{fromSetting: "requestTimeout"}`; pass the pinned setting as a Go duration string or integer nanoseconds within the same bound. Provider HTTP preserves response metadata on interrupted body reads, and `encodeQueryValues` supplies Go-compatible query encoding for connector ports. These additions are not breaking; existing connectors keep their current query serialization until migrated.
 
 ### 0.7.0
 
