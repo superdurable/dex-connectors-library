@@ -57,4 +57,23 @@ describe('Go Desk client parity', () => {
   it('does not expose malformed provider JSON in a failure message', () => {
     expect(() => decodeObject(Buffer.from('{"secret":"partial'))).toThrow('ticket response is not a ticket object');
   });
+
+  it('requests five threads when getTicket omits threadLimit', async () => {
+    const urls: string[] = [];
+    const client = new ZohoDeskClient({ orgId: '2389290' }, source('zoho-us-oauth'), {
+      apiBaseURL: 'http://127.0.0.1:12345/api/v1',
+      send: async request => {
+        urls.push(request.url);
+        if (request.url.includes('/threads') || request.url.includes('/comments')) {
+          return { status: 204, headers: {}, body: Buffer.alloc(0) };
+        }
+        return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({
+          id: '1892000000042034', status: 'Open', createdTime: '2026-01-28T09:00:00Z', modifiedTime: '2026-01-28T09:03:00Z',
+        })) };
+      },
+    });
+    const result = await client.getTicket().invoke(call, { ticketId: '1892000000042034' });
+    expect(result).toMatchObject({ kind: 'branch', branch: 'found' });
+    expect(new URL(urls[1]!).searchParams.get('limit')).toBe('5');
+  });
 });

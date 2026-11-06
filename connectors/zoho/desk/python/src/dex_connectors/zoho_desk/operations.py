@@ -718,7 +718,7 @@ class CreateTicketOperation:
                 .replace("&quot;", "&#34;")
                 .replace("\n", "<br>")
             )
-            if len(description.encode()) > 65535:
+            if len(description) > 65535:
                 raise ValueError(
                     "description is longer than Zoho Desk's 65,535-character limit once escaped as HTML"
                 )

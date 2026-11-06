@@ -58,3 +58,27 @@ async def test_connector_conformance(scenario: dict[str, object]) -> None:
         return await ADAPTER.invoke(scenario_value, recorder, context)
 
     await replay(scenario, invoke, "/api/v1")
+
+
+@pytest.mark.parametrize(
+    ("description", "escaped_description", "is_valid"),
+    [
+        ('a"b', "a&#34;b", True),
+        ("中" * 30000, "中" * 30000, True),
+        ("a" * 65530 + '"', "a" * 65530 + "&#34;", True),
+        ("a" * 65531 + '"', "", False),
+    ],
+    ids=["quote-escape", "multibyte-runes", "escaped-limit", "escaped-over-limit"],
+)
+async def test_create_ticket_escaped_description_limit(
+    description: str, escaped_description: str, is_valid: bool
+) -> None:
+    """Send Go's escaped HTML through the provider request up to its rune limit."""
+    fixture_name = "createTicket-success" if is_valid else "createTicket-defect"
+    scenario: dict[str, Any] = copy.deepcopy(next(item for item in SCENARIOS if item["name"] == fixture_name))
+    scenario["input"]["description"] = description
+    if is_valid:
+        scenario["exchanges"][0]["requestBody"]["description"] = escaped_description
+    else:
+        scenario["input"]["subject"] = "Billing question"
+    await replay(scenario, ADAPTER.invoke, "/api/v1")

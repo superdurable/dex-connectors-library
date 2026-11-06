@@ -5,7 +5,7 @@
 import asyncio
 
 import pytest
-from dex_connectors.sdk import Call, ConnectionRef, OperationRef, SecretString
+from dex_connectors.sdk import Call, CallID, ConnectionRef, OperationRef, SecretString
 
 from dex_connectors.zoho_desk.client import Client, Config, Credentials
 
@@ -18,7 +18,9 @@ class NeverResolvedCredentials:
 @pytest.mark.asyncio
 async def test_expired_operation_deadline_does_not_send() -> None:
     client = Client(Config(org_id="2389290"), NeverResolvedCredentials())
-    call = Call("deadline-test", ConnectionRef("zoho", "desk"), OperationRef("zoho-desk", "getTicket"))
+    call = Call(
+        CallID("deadline-test"), ConnectionRef("zoho", "desk"), OperationRef("zoho-desk", "getTicket")
+    )
     client._operation_deadlines[str(call.id)] = asyncio.get_running_loop().time() - 1
     credentials = Credentials(access_token=SecretString("synthetic-access"))
     result = await client.exchange(
