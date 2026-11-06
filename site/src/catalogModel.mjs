@@ -6,6 +6,8 @@ import { parse } from "yaml";
 export const rawRepositoryRoot =
   "https://raw.githubusercontent.com/superdurable/dex-connectors-library";
 
+export const connectorLibraryRepositoryUrl = "https://github.com/superdurable/dex-connectors-library";
+
 export function companyDirectory(directory) {
   if (!directory.startsWith("connectors/")) {
     throw new Error(`connector directory must start with connectors/: ${directory}`);
@@ -43,13 +45,15 @@ export function readCatalog(text) {
   }
   return document.connectors.map((connector) => {
     const directory = requiredText(connector.directory, "directory");
+    const languages = readLanguages(connector.languages, connector.version);
     return {
       company: requiredText(connector.company, "company"),
       id: requiredText(connector.id, "id"),
       name: requiredText(connector.name, "name"),
       description: requiredText(connector.description, "description"),
       version: requiredText(connector.version, "version"),
-      languages: readLanguages(connector.languages, connector.version),
+      languages,
+      pythonPackage: readPythonPackage(connector.pythonPackage, directory, languages.python),
       directory,
       companyDirectory: companyDirectory(directory),
       uiUnits: readCapabilities(connector.uiUnits, "ui-unit"),
@@ -70,6 +74,39 @@ function readLanguages(value, goVersion) {
     }
   }
   return languages;
+}
+
+function readPythonPackage(value, directory, pythonVersion) {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value !== "object" || Array.isArray(value) || !pythonVersion ||
+      value.tag !== `${directory}/python/${pythonVersion}` || typeof value.pypiPublished !== "boolean") {
+    throw new Error("catalog pythonPackage must match the listed Python release");
+  }
+  return {
+    name: requiredText(value.name, "Python package name"),
+    tag: value.tag,
+    isPyPIPublished: value.pypiPublished,
+  };
+}
+
+/** Returns the Python install command, using the release tag while the PyPI upload is pending. */
+export function pythonInstall(connector) {
+  const pythonPackage = connector.pythonPackage;
+  const version = connector.languages.python;
+  if (!pythonPackage || !version) {
+    return null;
+  }
+  if (pythonPackage.isPyPIPublished) {
+    return { isPyPIPublished: true, command: `pip install ${pythonPackage.name}==${version.slice(1)}` };
+  }
+  return {
+    isPyPIPublished: false,
+    command: `pip install "${pythonPackage.name} @ git+${connectorLibraryRepositoryUrl}@${pythonPackage.tag}` +
+      `#subdirectory=${connector.directory}/python"`,
+    releaseUrl: `${connectorLibraryRepositoryUrl}/releases/tag/${pythonPackage.tag}`,
+  };
 }
 
 export function connectorMatchesQuery(connector, query) {

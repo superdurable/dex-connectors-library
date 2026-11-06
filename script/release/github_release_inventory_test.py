@@ -35,6 +35,16 @@ class GitHubReleaseInventoryTests(unittest.TestCase):
                           "connectors/acme/go/v0.1.0": []}, inventory.release_inventory(fetch=fetch))
         self.assertEqual("https://api.github.com/next", calls[1])
 
+    def test_records_release_creation_times_by_tag(self) -> None:
+        def fetch(_url: str):
+            return ([{"tag_name": "connectors/acme/python/v0.1.0", "created_at": "2026-11-06T18:00:00Z", "assets": []},
+                     {"tag_name": "connectors/draft/python/v0.1.0", "draft": True, "created_at": "2026-11-06T19:00:00Z"},
+                     {"tag_name": "connectors/undated/python/v0.1.0", "assets": []}], "")
+
+        assets, created_at = inventory.release_inventory_with_creation_times(fetch=fetch)
+        self.assertEqual({"connectors/acme/python/v0.1.0": [], "connectors/undated/python/v0.1.0": []}, assets)
+        self.assertEqual({"connectors/acme/python/v0.1.0": "2026-11-06T18:00:00Z"}, created_at)
+
     def test_waits_for_reported_reset_then_reads_release(self) -> None:
         limited = urllib.error.HTTPError("https://api.github.com/test", 403, "Forbidden",
                                         {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1009"},

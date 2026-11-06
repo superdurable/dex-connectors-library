@@ -267,9 +267,10 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
 - Use one released module per PR unless a repository-wide mechanical change
   requires several. A connector batch port PR may contain 5-8 connectors of one
   language when every package is a first `v0.1.0` release and passes conformance.
-  The coordinator merges one batch at a time and confirms its Release run,
-  including first publish of new PyPI or npm projects, succeeded before merging
-  the next batch because PyPI limits new-project creation rates.
+  The coordinator merges one batch at a time and confirms its Release run
+  created every package's GitHub release, and published each new npm project,
+  before merging the next batch. Python first uploads to PyPI may lag behind
+  their GitHub releases because PyPI limits new-project creation rates.
 - Use `sdkgo:`, `sdkpython:`, `sdkts:`, `connector(<slug>):`,
   `connectors(python):`, `connectors(typescript):`, `tooling:`, or `docs:` subjects.
 - Put the exact lowercase token `(breaking)` in the PR title or body and final

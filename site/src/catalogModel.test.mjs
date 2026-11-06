@@ -13,6 +13,7 @@ import {
   catalogTotals,
   connectorMatchesQuery,
   connectorMatchesLanguage,
+  pythonInstall,
   readCatalog,
   readOperations,
 } from "./catalogModel.mjs";
@@ -113,6 +114,52 @@ connectors:
   assert.equal(connectorMatchesLanguage(connectors[0], "python"), true);
   assert.equal(connectorMatchesLanguage(connectors[0], "typescript"), true);
   assert.equal(connectorMatchesLanguage(connectors[0], "all"), true);
+});
+
+function pythonCatalog(pythonPackage) {
+  return `
+connectors:
+  - company: Calendly
+    id: calendly
+    name: Calendly
+    description: Scheduling connector.
+    version: v0.2.0
+    languages: {go: v0.2.0, python: v0.1.0}
+${pythonPackage}
+    directory: connectors/calendly
+    uiUnits: []
+    triggers: []
+    operations: []
+`;
+}
+
+test("Python install uses PyPI only after the upload is published", () => {
+  const [published] = readCatalog(pythonCatalog(
+    "    pythonPackage: {name: dex-connector-calendly, tag: connectors/calendly/python/v0.1.0, pypiPublished: true}"));
+  assert.deepEqual(pythonInstall(published), {
+    isPyPIPublished: true,
+    command: "pip install dex-connector-calendly==0.1.0",
+  });
+  const [pending] = readCatalog(pythonCatalog(
+    "    pythonPackage: {name: dex-connector-calendly, tag: connectors/calendly/python/v0.1.0, pypiPublished: false}"));
+  assert.deepEqual(pythonInstall(pending), {
+    isPyPIPublished: false,
+    command: 'pip install "dex-connector-calendly @ git+https://github.com/superdurable/dex-connectors-library' +
+      '@connectors/calendly/python/v0.1.0#subdirectory=connectors/calendly/python"',
+    releaseUrl: "https://github.com/superdurable/dex-connectors-library/releases/tag/connectors/calendly/python/v0.1.0",
+  });
+  const [unknown] = readCatalog(pythonCatalog(""));
+  assert.equal(unknown.pythonPackage, null);
+  assert.equal(pythonInstall(unknown), null);
+});
+
+test("catalog rejects a Python package that differs from the listed Python release", () => {
+  assert.throws(() => readCatalog(pythonCatalog(
+    "    pythonPackage: {name: dex-connector-calendly, tag: connectors/calendly/python/v0.0.9, pypiPublished: true}")),
+  /pythonPackage/);
+  assert.throws(() => readCatalog(pythonCatalog(
+    "    pythonPackage: {name: dex-connector-calendly, tag: connectors/calendly/python/v0.1.0, pypiPublished: maybe}")),
+  /pythonPackage/);
 });
 
 test("catalog reads per-capability support and language filter composes with search", () => {

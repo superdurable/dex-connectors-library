@@ -65,8 +65,14 @@ def github_json(url: str, *, sleep=time.sleep, clock=time.time) -> tuple[object,
 
 
 def release_inventory(*, fetch=github_json) -> dict[str, list[str]]:
+    return release_inventory_with_creation_times(fetch=fetch)[0]
+
+
+def release_inventory_with_creation_times(*, fetch=github_json) -> tuple[dict[str, list[str]], dict[str, str]]:
+    """Return published release asset names and GitHub release creation times, both keyed by tag."""
     url = f"https://api.github.com/repos/{REPOSITORY}/releases?per_page=100"
     inventory: dict[str, list[str]] = {}
+    created_at: dict[str, str] = {}
     while url:
         response, links = fetch(url)
         if not isinstance(response, list):
@@ -77,8 +83,10 @@ def release_inventory(*, fetch=github_json) -> dict[str, list[str]]:
             if release.get("draft") or release.get("prerelease"):
                 continue
             inventory[release["tag_name"]] = [asset["name"] for asset in release.get("assets", [])]
+            if isinstance(release.get("created_at"), str):
+                created_at[release["tag_name"]] = release["created_at"]
         url = next_page_url(links)
-    return inventory
+    return inventory, created_at
 
 
 def next_page_url(links: str) -> str:
@@ -110,13 +118,16 @@ def main() -> None:
     destination.add_argument("--output", type=Path)
     destination.add_argument("--tag")
     parser.add_argument("--live", action="store_true", help="ignore a run-level inventory for a fresh release lookup")
+    parser.add_argument("--created-at-output", type=Path, help="also write GitHub release creation times by tag")
     args = parser.parse_args()
     if args.tag:
         assets = release_assets(args.tag, None if args.live else os.environ.get("GH_RELEASE_INVENTORY_PATH"))
         print(json.dumps(sorted(assets) if assets is not None else None))
         return
-    inventory = release_inventory()
+    inventory, created_at = release_inventory_with_creation_times()
     args.output.write_text(json.dumps(inventory, sort_keys=True) + "\n", encoding="utf-8")
+    if args.created_at_output:
+        args.created_at_output.write_text(json.dumps(created_at, sort_keys=True) + "\n", encoding="utf-8")
     print(f"GitHub release inventory: {len(inventory)} releases", flush=True)
 
 

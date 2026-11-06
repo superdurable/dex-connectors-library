@@ -475,7 +475,7 @@ func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
 			},
 		},
 	}}
-	encoded, err := encodeConnectorCatalog(entries, nil, "")
+	encoded, err := encodeConnectorCatalog(entries, nil, nil, "")
 	require.NoError(t, err)
 	catalog := string(encoded)
 	require.Contains(t, catalog, "name: channelPicker")
@@ -550,12 +550,58 @@ func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	require.Empty(t, document.Connectors[0].Operations[0].Languages)
 }
 
+func TestCatalogJSONReportsPendingAndPublishedPyPIPackages(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	directory := "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
+	manifestPath := filepath.Join(repositoryRoot, directory, "connector.yaml")
+	replaceInFile(t, manifestPath, "spec:\n", "spec:\n  languages:\n    python: {version: v0.1.0, operations: [appendRows], triggers: []}\n    typescript: {version: v0.1.0, operations: [appendRows], triggers: []}\n")
+	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "python"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, directory, "python", "pyproject.toml"), []byte("[project]\nname = \"dex-connector-acme-chat\"\nversion = \"0.1.0\"\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(repositoryRoot, directory, "typescript"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(repositoryRoot, directory, "typescript", "package.json"),
+		[]byte(`{"name":"@superdurable/connector-acme-chat","version":"0.1.0"}`), 0o600))
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	outputDirectory := t.TempDir()
+	jsonPath := filepath.Join(outputDirectory, "catalog.json")
+	completedTagsPath := filepath.Join(outputDirectory, "completed-tags")
+	require.NoError(t, os.WriteFile(completedTagsPath,
+		[]byte(directory+"/python/v0.1.0\n"+directory+"/typescript/v0.1.0\n"), 0o600))
+	pypiPublishedTagsPath := filepath.Join(outputDirectory, "pypi-published-tags")
+	readPythonPackage := func(arguments ...string) map[string]any {
+		require.NoError(t, catalogCommand(append([]string{"--catalog", catalogPath,
+			"--output", filepath.Join(outputDirectory, "catalog.yaml"), "--json-output", jsonPath,
+			"--completed-language-tags", completedTagsPath}, arguments...)))
+		contents, err := os.ReadFile(jsonPath)
+		require.NoError(t, err)
+		var document struct {
+			Connectors []struct {
+				Languages     map[string]string `json:"languages"`
+				PythonPackage map[string]any    `json:"pythonPackage"`
+			} `json:"connectors"`
+		}
+		require.NoError(t, json.Unmarshal(contents, &document))
+		require.Equal(t, map[string]string{"go": "v0.1.0", "python": "v0.1.0", "typescript": "v0.1.0"},
+			document.Connectors[0].Languages)
+		return document.Connectors[0].PythonPackage
+	}
+
+	require.Nil(t, readPythonPackage(), "unknown PyPI state omits the field")
+	require.NoError(t, os.WriteFile(pypiPublishedTagsPath, nil, 0o600))
+	require.Equal(t, map[string]any{"name": "dex-connector-acme-chat", "tag": directory + "/python/v0.1.0",
+		"pypiPublished": false}, readPythonPackage("--pypi-published-language-tags", pypiPublishedTagsPath))
+	require.NoError(t, os.WriteFile(pypiPublishedTagsPath, []byte(directory+"/python/v0.1.0\n"), 0o600))
+	require.Equal(t, map[string]any{"name": "dex-connector-acme-chat", "tag": directory + "/python/v0.1.0",
+		"pypiPublished": true}, readPythonPackage("--pypi-published-language-tags", pypiPublishedTagsPath))
+}
+
 func TestGoOnlyCatalogCapabilityBytesStayUnchanged(t *testing.T) {
 	entry := connectorDirectoryEntry{Directory: "connectors/example", Manifest: schema.Manifest{
 		Metadata: schema.Metadata{Name: "example", DisplayName: "Example", Description: "Example.", Company: "Example", Version: "v0.1.0"},
 		Spec:     schema.Spec{Operations: []schema.Operation{{Name: "getThing", Kind: "query", Description: "Get a thing."}}},
 	}}
-	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, "")
+	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, nil, "")
 	require.NoError(t, err)
 	require.Equal(t, `apiVersion: connectors.dex.dev/catalog/v1alpha1
 kind: ConnectorCatalog
@@ -574,7 +620,7 @@ connectors:
           description: Get a thing.
 `, string(baseline))
 	entry.Manifest.Spec.Languages = &schema.Languages{}
-	withEmptyLanguages, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, "")
+	withEmptyLanguages, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, nil, "")
 	require.NoError(t, err)
 	require.Equal(t, baseline, withEmptyLanguages)
 	require.NotContains(t, string(baseline), "languages:")

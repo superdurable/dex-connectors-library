@@ -621,6 +621,10 @@ h2, h3 {
 .detail-description { max-width: 42rem; font-size: 18px; }
 .install-command { overflow-wrap: anywhere; }
 
+.install-note { margin-top: -4px; }
+
+.install-note a { color: var(--forest); }
+
 .back { margin: 0 0 18px; }
 
 .back a { color: var(--forest); }
