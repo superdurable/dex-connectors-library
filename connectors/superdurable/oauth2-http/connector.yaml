@@ -49,7 +49,7 @@ spec:
       - name: requestTimeout
         goName: RequestTimeout
         type: duration
-        description: "Longest time one HTTP request to the API or to the token endpoint may take, as a Go duration from 1s through 1h, such as 15s. It must leave room for a token refresh and a second request inside the 30-second Execute limit, so keep it at or below the default unless the Step's Execute timeout is raised. Blank uses the default."
+        description: "Longest time one HTTP request to the API or to the token endpoint may take, as a positive Go duration such as 15s. It must leave room for a token refresh and a second request inside the 30-second Execute limit, so keep it at or below the default unless the Step's Execute timeout is raised. Blank uses the default."
         required: false
         default: 12s
   auth:
@@ -98,7 +98,7 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: {fromSetting: tokenEndpointAuthMethod}
       refresh:
-        tokenExchangeTimeout: {fromConfig: requestTimeout}
+        tokenExchangeTimeout: {fromSetting: requestTimeout}
         responseScopes: ignore
         missingExpiry: reject
         storedMissingExpiry: refreshIfRefreshTokenPresent

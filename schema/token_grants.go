@@ -54,69 +54,6 @@ const (
 	StoredMissingExpiryRefreshIfPossible = "refreshIfRefreshTokenPresent"
 )
 
-// TokenExchangeTimeout is a fixed duration or a duration read from connection configuration.
-type TokenExchangeTimeout struct {
-	// Duration is a literal Go duration.
-	Duration string `yaml:"-" json:"-"`
-	// FromConfig names a duration field in spec.configuration or method configuration.
-	FromConfig string `yaml:"fromConfig,omitempty" json:"fromConfig,omitempty"`
-}
-
-// UnmarshalYAML accepts a duration or a configuration field reference.
-func (timeout *TokenExchangeTimeout) UnmarshalYAML(node *yaml.Node) error {
-	if node.Kind == yaml.ScalarNode {
-		*timeout = TokenExchangeTimeout{Duration: node.Value}
-		return nil
-	}
-	var source struct {
-		FromConfig string `yaml:"fromConfig"`
-	}
-	if err := decodeKnownYAMLMapping(node, &source, "fromConfig"); err != nil {
-		return fmt.Errorf("tokenExchangeTimeout: %w", err)
-	}
-	*timeout = TokenExchangeTimeout{FromConfig: source.FromConfig}
-	return nil
-}
-
-// MarshalYAML preserves the scalar or source form of a timeout.
-func (timeout TokenExchangeTimeout) MarshalYAML() (any, error) {
-	if timeout.Duration != "" {
-		return timeout.Duration, nil
-	}
-	return struct {
-		FromConfig string `yaml:"fromConfig"`
-	}{timeout.FromConfig}, nil
-}
-
-// UnmarshalJSON accepts a duration or a configuration field reference.
-func (timeout *TokenExchangeTimeout) UnmarshalJSON(contents []byte) error {
-	var duration string
-	if json.Unmarshal(contents, &duration) == nil {
-		*timeout = TokenExchangeTimeout{Duration: duration}
-		return nil
-	}
-	var source struct {
-		FromConfig string `json:"fromConfig"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(contents))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&source); err != nil {
-		return fmt.Errorf("tokenExchangeTimeout: %w", err)
-	}
-	*timeout = TokenExchangeTimeout{FromConfig: source.FromConfig}
-	return nil
-}
-
-// MarshalJSON preserves the scalar or source form of a timeout.
-func (timeout TokenExchangeTimeout) MarshalJSON() ([]byte, error) {
-	if timeout.Duration != "" {
-		return json.Marshal(timeout.Duration)
-	}
-	return json.Marshal(struct {
-		FromConfig string `json:"fromConfig"`
-	}{timeout.FromConfig})
-}
-
 // OAuthRefresh declares how a host refreshes an OAuth method's access token with the stored refresh token. The
 // method's tokenEndpoint, tokenEndpointAuthMethod, tokenRequestEncoding, client credentials and credentialMappings
 // apply to the refresh request and response too.
@@ -138,7 +75,7 @@ type OAuthRefresh struct {
 	// ExpiryCap limits a reported token lifetime.
 	ExpiryCap string `yaml:"expiryCap,omitempty" json:"expiryCap,omitempty"`
 	// TokenExchangeTimeout bounds one refresh exchange independently of the caller deadline.
-	TokenExchangeTimeout *TokenExchangeTimeout `yaml:"tokenExchangeTimeout,omitempty" json:"tokenExchangeTimeout,omitempty"`
+	TokenExchangeTimeout *ValueSource `yaml:"tokenExchangeTimeout,omitempty" json:"tokenExchangeTimeout,omitempty"`
 	// AccessTokenJWTExpiryFallback uses JWT exp for an undated token and this lifetime if exp is unreadable.
 	AccessTokenJWTExpiryFallback string `yaml:"accessTokenJWTExpiryFallback,omitempty" json:"accessTokenJWTExpiryFallback,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
@@ -206,7 +143,7 @@ type ClientCredentialsGrant struct {
 	// TrimClientID removes surrounding Go Unicode whitespace from the client ID before a mint request.
 	TrimClientID bool `yaml:"trimClientID,omitempty" json:"trimClientID,omitempty"`
 	// TokenExchangeTimeout bounds one token mint independently of the caller deadline.
-	TokenExchangeTimeout *TokenExchangeTimeout `yaml:"tokenExchangeTimeout,omitempty" json:"tokenExchangeTimeout,omitempty"`
+	TokenExchangeTimeout *ValueSource `yaml:"tokenExchangeTimeout,omitempty" json:"tokenExchangeTimeout,omitempty"`
 	// ScopeSeparators selects whitespace or space-and-comma parsing for reported scopes.
 	ScopeSeparators string `yaml:"scopeSeparators,omitempty" json:"scopeSeparators,omitempty"`
 	// AcceptsMissingTokenType permits a successful response without token_type.
@@ -703,28 +640,27 @@ func (grantContext tokenGrantContext) validateClientCredentials(grant *ClientCre
 	return problems
 }
 
-func (grantContext tokenGrantContext) validateTokenExchangeTimeout(label string, timeout *TokenExchangeTimeout) []string {
-	if timeout == nil {
+func (grantContext tokenGrantContext) validateTokenExchangeTimeout(label string, source *ValueSource) []string {
+	if source == nil {
 		return nil
 	}
-	if timeout.Duration != "" && timeout.FromConfig != "" {
-		return []string{label + " tokenExchangeTimeout must use one duration source"}
+	if !isLiteralOrSettingSource(*source) {
+		return []string{label + " tokenExchangeTimeout must be a positive duration or a configuration field source"}
 	}
-	if timeout.FromConfig != "" {
-		field, exists := grantContext.settings[timeout.FromConfig]
-		if !exists || field.Type != "duration" {
-			return []string{label + " tokenExchangeTimeout fromConfig must name a duration configuration field"}
+	if source.Value != "" {
+		if duration, err := time.ParseDuration(source.Value); err != nil || duration <= 0 || duration > time.Hour {
+			return []string{label + " tokenExchangeTimeout must be a positive duration at most 1h"}
 		}
-		if field.Default == nil {
-			return []string{label + " tokenExchangeTimeout fromConfig requires a duration field default"}
-		}
+		return nil
+	}
+	field, found := grantContext.settings[source.FromSetting]
+	if !found || field.Type != "duration" || (!field.Required && field.Default == nil) {
+		return []string{label + " tokenExchangeTimeout fromSetting must name a required or defaulted duration configuration field"}
+	}
+	if field.Default != nil {
 		if duration, err := time.ParseDuration(fmt.Sprint(field.Default)); err != nil || duration <= 0 || duration > time.Hour {
-			return []string{label + " tokenExchangeTimeout fromConfig default must be a positive duration at most 1h"}
+			return []string{label + " tokenExchangeTimeout fromSetting default must be a positive duration at most 1h"}
 		}
-		return nil
-	}
-	if duration, err := time.ParseDuration(timeout.Duration); err != nil || duration <= 0 || duration > time.Hour {
-		return []string{label + " tokenExchangeTimeout must be a positive duration at most 1h"}
 	}
 	return nil
 }

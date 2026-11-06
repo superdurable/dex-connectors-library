@@ -139,11 +139,13 @@ func TestNewRefreshDeclarationsRejectInvalidValues(t *testing.T) {
 	refresh.ExpiryCap = "-1h"
 	require.ErrorContains(t, manifest.Validate(), "expiryCap must be a positive duration")
 	refresh.ExpiryCap = ""
-	refresh.TokenExchangeTimeout = &schema.TokenExchangeTimeout{Duration: "-1s"}
+	refresh.TokenExchangeTimeout = &schema.ValueSource{Value: "-1s"}
 	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be a positive duration")
-	refresh.TokenExchangeTimeout = &schema.TokenExchangeTimeout{Duration: "not-a-duration"}
+	refresh.TokenExchangeTimeout = &schema.ValueSource{Value: "not-a-duration"}
 	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be a positive duration")
-	refresh.TokenExchangeTimeout = &schema.TokenExchangeTimeout{Duration: "8s"}
+	refresh.TokenExchangeTimeout = &schema.ValueSource{Value: "2h"}
+	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be a positive duration at most 1h")
+	refresh.TokenExchangeTimeout = &schema.ValueSource{Value: "8s"}
 	refresh.ScopeResourcePrefixCaseInsensitive = true
 	require.ErrorContains(t, manifest.Validate(), "scopeResourcePrefixCaseInsensitive requires scopeResourcePrefix")
 	refresh.ScopeResourcePrefixCaseInsensitive = false
@@ -166,13 +168,13 @@ func TestClientCredentialsTokenExchangeTimeoutMatchesGoDuration(t *testing.T) {
 	manifest, err := schema.Decode(manifestFile)
 	require.NoError(t, err)
 	grant := manifest.Spec.Auth.Methods[0].ClientCredentials
-	grant.TokenExchangeTimeout = &schema.TokenExchangeTimeout{Duration: "-1s"}
+	grant.TokenExchangeTimeout = &schema.ValueSource{Value: "-1s"}
 	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout must be a positive duration")
-	grant.TokenExchangeTimeout = &schema.TokenExchangeTimeout{Duration: "8s"}
+	grant.TokenExchangeTimeout = &schema.ValueSource{Value: "8s"}
 	require.NoError(t, manifest.Validate())
 }
 
-func TestRefreshTimeoutCanUseDurationConfigurationDefault(t *testing.T) {
+func TestTokenExchangeTimeoutCanReadDefaultedDurationSetting(t *testing.T) {
 	manifestFile, err := os.Open("../connectors/superdurable/oauth2-http/connector.yaml")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, manifestFile.Close()) })
@@ -180,12 +182,17 @@ func TestRefreshTimeoutCanUseDurationConfigurationDefault(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, manifest.Validate())
 	refresh := manifest.Spec.Auth.OAuth2.Refresh
-	refresh.TokenExchangeTimeout = &schema.TokenExchangeTimeout{FromConfig: "maxBodyBytes"}
-	require.ErrorContains(t, manifest.Validate(), "fromConfig must name a duration configuration field")
-	refresh.TokenExchangeTimeout = &schema.TokenExchangeTimeout{FromConfig: "requestTimeout"}
+	refresh.TokenExchangeTimeout = &schema.ValueSource{FromSetting: "tokenEndpoint"}
+	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout fromSetting must name a required or defaulted duration")
+	refresh.TokenExchangeTimeout = &schema.ValueSource{FromSetting: "requestTimeout"}
 	require.NoError(t, manifest.Validate())
-	refresh.TokenExchangeTimeout = &schema.TokenExchangeTimeout{Duration: "2h"}
-	require.ErrorContains(t, manifest.Validate(), "at most 1h")
+	for index := range manifest.Spec.Configuration.Fields {
+		if manifest.Spec.Configuration.Fields[index].Name == "requestTimeout" {
+			manifest.Spec.Configuration.Fields[index].Default = "2h"
+			break
+		}
+	}
+	require.ErrorContains(t, manifest.Validate(), "tokenExchangeTimeout fromSetting default must be a positive duration at most 1h")
 }
 
 func TestDecodeTokenGrantDeclarations(t *testing.T) {

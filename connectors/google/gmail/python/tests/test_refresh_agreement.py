@@ -209,7 +209,7 @@ def shorten_declared_exchange_timeout(authorization: dict[str, Any], case: dict[
     timeout_source = grant["tokenExchangeTimeout"]
     settings = dict(case.get("settings", {}))
     if isinstance(timeout_source, dict):
-        settings[timeout_source["fromConfig"]] = "1s"
+        settings[timeout_source["fromSetting"]] = "1s"
     else:
         grant["tokenExchangeTimeout"] = "10ms"
     return settings
@@ -219,7 +219,7 @@ def test_generated_timeout_grant_selection() -> None:
     """The rendered harness selects refresh and client-credentials timeout declarations."""
     authorization = {"methods": [
         {"id": "oauth", "oauth2": {"refresh": {"tokenExchangeTimeout": "8s"}}},
-        {"id": "custom", "clientCredentials": {"tokenExchangeTimeout": {"fromConfig": "requestTimeout"}}},
+        {"id": "custom", "clientCredentials": {"tokenExchangeTimeout": {"fromSetting": "requestTimeout"}}},
     ]}
     refresh = {"methodId": "oauth", "parameters": {"grant_type": "refresh_token"}}
     assert shorten_declared_exchange_timeout(authorization, refresh) == {}

@@ -180,7 +180,7 @@ function shortenDeclaredExchangeTimeout(authorization: Record<string, unknown>, 
     const timeoutSource = grant.tokenExchangeTimeout;
     const settings = { ...agreement.settings };
     if (timeoutSource && typeof timeoutSource === 'object') {
-      settings[String((timeoutSource as Record<string, unknown>).fromConfig)] = '1s';
+      settings[String((timeoutSource as Record<string, unknown>).fromSetting)] = '1s';
     } else grant.tokenExchangeTimeout = '10ms';
     return settings;
 }
@@ -189,7 +189,7 @@ describe('generated timeout grant selection', () => {
   it('selects refresh and client credentials', () => {
     const authorization: Record<string, unknown> = { methods: [
       { id: 'oauth', oauth2: { refresh: { tokenExchangeTimeout: '8s' } } },
-      { id: 'custom', clientCredentials: { tokenExchangeTimeout: { fromConfig: 'requestTimeout' } } },
+      { id: 'custom', clientCredentials: { tokenExchangeTimeout: { fromSetting: 'requestTimeout' } } },
     ] };
     const refresh = { methodId: 'oauth', parameters: { grant_type: 'refresh_token' } };
     expect(shortenDeclaredExchangeTimeout(authorization, refresh)).toEqual({});

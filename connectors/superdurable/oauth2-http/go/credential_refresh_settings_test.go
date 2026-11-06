@@ -16,12 +16,12 @@ import (
 func newCredentialRefreshDriverWithSettings(httpClient *http.Client, settings map[string]string) *oauth2http.CredentialRefreshDriver {
 	requestTimeout, err := time.ParseDuration(settings["requestTimeout"])
 	if err != nil {
-		panic("invalid agreement requestTimeout: " + err.Error())
+		panic("the agreement test's request timeout must be a Go duration: " + err.Error())
 	}
 	driver, err := oauth2http.NewCredentialRefreshDriverThroughTransportForTest(oauth2http.Config{
 		TokenEndpoint:           settings["tokenEndpoint"],
-		RequestTimeout:          requestTimeout,
 		TokenEndpointAuthMethod: oauth2http.TokenEndpointAuthMethod(settings["tokenEndpointAuthMethod"]),
+		RequestTimeout:          requestTimeout,
 	}, httpClient.Transport)
 	if err != nil {
 		panic("the agreement test's settings must build a credential refresh driver: " + err.Error())

@@ -29,6 +29,7 @@ type CredentialRefreshDriver struct {
 	tokenEndpointURL string
 	authMethod       oauthtoken.ClientAuthenticationMethod
 	httpClient       *http.Client
+	requestTimeout   time.Duration
 	now              func() time.Time
 }
 
@@ -54,7 +55,8 @@ func NewCredentialRefreshDriver(config Config, httpClient *http.Client) (*Creden
 		authMethod = oauthtoken.ClientSecretBasic
 	}
 	return &CredentialRefreshDriver{
-		tokenEndpointURL: config.TokenEndpoint, authMethod: authMethod, httpClient: httpClient, now: time.Now,
+		tokenEndpointURL: config.TokenEndpoint, authMethod: authMethod, httpClient: httpClient,
+		requestTimeout: config.RequestTimeout, now: time.Now,
 	}, nil
 }
 
@@ -81,6 +83,8 @@ func (driver *CredentialRefreshDriver) Refresh(
 		return sdkgo.CredentialRefreshResult[Credentials]{}, errors.New("OAuth 2.0 HTTP credential refresh driver is not configured")
 	}
 	credentials := state.Credentials
+	ctx, cancel := context.WithTimeout(ctx, driver.requestTimeout)
+	defer cancel()
 	tokenEndpoint := oauthtoken.TokenEndpoint{
 		ProviderName:       providerName,
 		URL:                driver.tokenEndpointURL,
