@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { ReauthorizationRequiredError, type Call } from '@superdurable/connectors-sdk';
+import { ReauthorizationRequiredError, SecretString, type Call } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { encodeGoQuery, escapeGoPath, ZohoClient } from '../src/client.js';
 import { buildFindRecordsQuery, buildListModifiedRecordsQuery } from '../src/coql.js';
 import { decodeModuleFields, decodeRecordPage, parseZohoTime, validateWriteFields } from '../src/records.js';
 import type { CredentialSource } from '../src/models.js';
+import { ZohoHTTPClient } from '../src/http.js';
 
 const bytes = (value: unknown) => Buffer.from(JSON.stringify(value));
 
@@ -57,5 +59,43 @@ describe('Go wire parity at provider boundaries', () => {
       expect(() => buildListModifiedRecordsQuery({ ...input, cursor: `${at}/123` })).toThrow('cursor must be a cursor returned by listModifiedRecords');
     }
     expect(() => buildListModifiedRecordsQuery({ ...input, modifiedSince: '0001-01-01T00:00:00Z' })).toThrow('modifiedSince or cursor is required');
+  });
+
+  it('uses one operation signal for credential resolution and repeated requests', async () => {
+    let credentialSignal: AbortSignal | undefined;
+    const requestSignals: (AbortSignal | undefined)[] = [];
+    const credentials = {
+      authMethodId: 'zoho-us-oauth', accessToken: new SecretString('synthetic-access'),
+    };
+    const source = { resolveWithRefresh: async (_call: Call, _driver: unknown, signal?: AbortSignal) => {
+      credentialSignal = signal; return credentials;
+    } } as unknown as CredentialSource;
+    const http = new ZohoHTTPClient({}, source, { apiBaseURL: 'http://127.0.0.1:12345/crm/v8', transport: async (request: ProviderRequest) => {
+      requestSignals.push(request.signal);
+      return { status: 200, headers: {}, body: bytes({ data: [] }) };
+    } });
+    const call = { id: 'shared-deadline', context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    const session = await http.session(call, 'findRecords');
+    if ('outcome' in session) throw new Error('session did not start');
+    await http.exchange(call, 'findRecords', session, 'POST', '/coql');
+    await http.exchange(call, 'findRecords', session, 'POST', '/coql');
+    expect(requestSignals).toEqual([credentialSignal, credentialSignal]);
+  });
+
+  it('retains remaining credits on oversized and credential-reflecting success responses', async () => {
+    const credentials = { authMethodId: 'zoho-us-oauth', accessToken: new SecretString('synthetic-access') };
+    const source = { resolveWithRefresh: async () => credentials } as unknown as CredentialSource;
+    const call = { id: 'credit-test', context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    for (const transport of [
+      async () => { throw new BodyTooLargeError(200, { 'X-API-CREDITS-REMAINING': '42' }); },
+      async () => ({ status: 200, headers: { 'X-API-CREDITS-REMAINING': '42' }, body: Buffer.from('synthetic-access') }),
+    ]) {
+      const http = new ZohoHTTPClient({}, source, { apiBaseURL: 'http://127.0.0.1:12345/crm/v8', transport });
+      const session = await http.session(call, 'getRecord');
+      if ('outcome' in session) throw new Error('session did not start');
+      const result = await http.exchange(call, 'getRecord', session, 'GET', '/Deals/123');
+      expect(result.outcome).toBe('invalid');
+      expect(http.receipt(call, result).metadata).toEqual({ remainingCredits: '42' });
+    }
   });
 });

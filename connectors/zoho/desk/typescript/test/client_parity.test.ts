@@ -4,6 +4,7 @@
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
 import { describe, expect, it } from 'vitest';
 import { ZohoDeskClient } from '../src/client.js';
+import { decodeObject } from '../src/ticket.js';
 import type { CredentialSource, Credentials } from '../src/generated/models.js';
 
 const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
@@ -30,5 +31,30 @@ describe('Go Desk client parity', () => {
     const session = await client.startSession(call, 'getTicket');
     if ('disposition' in session) throw new Error('session did not start');
     expect(await client.exchange(call, 'getTicket', session, 'GET', '/tickets/1')).toMatchObject({ outcome: { disposition: 'unavailable', failure: { kind: 'AVAILABILITY' }, response: { status: 503 } } });
+  });
+
+  it('shares the operation signal across credential resolution and all requests', async () => {
+    let credentialSignal: AbortSignal | undefined;
+    const requestSignals: (AbortSignal | undefined)[] = [];
+    const credentials: CredentialSource = {
+      resolve: async () => credential('zoho-us-oauth'),
+      resolveWithRefresh: async (_call, _driver, signal) => {
+        credentialSignal = signal;
+        return credential('zoho-us-oauth');
+      },
+    };
+    const client = new ZohoDeskClient({ orgId: '2389290' }, credentials, {
+      apiBaseURL: 'http://127.0.0.1:12345/api/v1',
+      send: async request => { requestSignals.push(request.signal); return { status: 200, headers: {}, body: Buffer.from('{}') }; },
+    });
+    const session = await client.startSession(call, 'getTicket');
+    if ('disposition' in session) throw new Error('session did not start');
+    await client.exchange(call, 'getTicket', session, 'GET', '/tickets/1');
+    await client.exchange(call, 'getTicket', session, 'GET', '/tickets/1/threads');
+    expect(requestSignals).toEqual([credentialSignal, credentialSignal]);
+  });
+
+  it('does not expose malformed provider JSON in a failure message', () => {
+    expect(() => decodeObject(Buffer.from('{"secret":"partial'))).toThrow('ticket response is not a ticket object');
   });
 });
