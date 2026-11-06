@@ -278,6 +278,11 @@ spec:
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-zoho-crm'
+      operations: [findRecords, getRecord, listModifiedRecords, listModuleFields, upsertRecord, updateRecord]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-zoho-crm
