@@ -137,7 +137,7 @@ jobs:
         run: |
           uv sync --locked --project sdkpython
           mkdir -p sdkpython/.dexcli-data/logs
-          .bin/dexcli dev -dex-port 19881 -web-port 19882 -open=false \
+          .bin/dexcli dev -dex-port 19881 -web-port 19882 -open=false -durability process-crash-safe \
             -zd-data-dir sdkpython/.dexcli-data/zd \
             -server-log-folder sdkpython/.dexcli-data/logs > sdkpython/.dexcli-data/server.log 2>&1 &
           dex_pid=$!
@@ -187,7 +187,7 @@ jobs:
         run: |
           npm ci --prefix sdkts
           mkdir -p "$RUNNER_TEMP/sdkts-dex/logs"
-          .bin/dexcli dev -dex-port 19891 -web-port 19892 -open=false \
+          .bin/dexcli dev -dex-port 19891 -web-port 19892 -open=false -durability process-crash-safe \
             -zd-data-dir "$RUNNER_TEMP/sdkts-dex/zd" \
             -server-log-folder "$RUNNER_TEMP/sdkts-dex/logs" > "$RUNNER_TEMP/sdkts-dex/server.log" 2>&1 &
           dex_pid=$!
@@ -619,7 +619,7 @@ jobs:
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
       - name: Run shared SDK integration suite
         run: |
-          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
+          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false -durability process-crash-safe \
             -zd-data-dir /tmp/dex-connectors/zd \
             -server-log-folder /tmp/dex-connectors/logs > /tmp/dex-connectors-server.log 2>&1 &
           dex_pid=$!
@@ -670,7 +670,7 @@ jobs:
           python3 script/dex_compatibility.py install-dexcli --output ./dexcli
       - name: Run affected Connector integration suites
         run: |
-          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false \
+          ./dexcli dev -dex-port 18801 -web-port 18802 -open=false -durability process-crash-safe \
             -zd-data-dir /tmp/dex-connectors/zd \
             -server-log-folder /tmp/dex-connectors/logs > /tmp/dex-connectors-server.log 2>&1 &
           dex_pid=$!
