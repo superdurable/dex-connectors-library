@@ -28,8 +28,6 @@ async function invokeFront(scenario: Scenario, recorder: ExchangeRecorder, conte
     if (exchange !== undefined && decodeURIComponent(target.pathname) !== exchange.path) {
       throw new Error(`decoded Front path ${decodeURIComponent(target.pathname)} differs from ${exchange.path}`);
     }
-    // The shared recorder parses URL.pathname, while Go records a decoded path.
-    if (exchange !== undefined) exchange.path = target.pathname;
     return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
   const client = new FrontClient({}, { resolve: async () => ({ apiToken: new SecretString('front-unit-test-token-0123456789') }) },

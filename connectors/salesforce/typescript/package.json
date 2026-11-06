@@ -20,13 +20,13 @@
   "files": ["dist", "dex-connector.json", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsup src/index.ts src/mock.ts --format esm --dts --clean",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npm run build && tsc --noEmit",
     "lint": "eslint src test examples",
     "test": "npm run build && vitest run test/*.test.ts",
     "test:integration": "npm run build && vitest run examples/record-lookup/integration.test.ts",
     "example:worker": "npm run build && tsx examples/record-lookup/main.ts",
     "example:start": "npm run build && tsx examples/record-lookup/start.ts",
-    "check": "npm run build && npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
     "@superdurable/connectors-sdk": "0.7.0",

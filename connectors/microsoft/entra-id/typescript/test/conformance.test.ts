@@ -19,10 +19,8 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 
 async function invokeEntra(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const sender = (request: ProviderRequest) => {
-    // Go records URL.Path after decoding PathEscape's apostrophe; the replay matcher reads URL.pathname.
     if (scenario.name === 'getUser-special-upn' && !request.url.includes('%27%27')) throw new TypeError('Graph path did not use Go PathEscape');
-    const replayURL = request.url.replace(/%27/gi, "'");
-    return answerRecordedRequest(recorder, { ...request, url: replayURL }, before => new ProviderTransportError(before));
+    return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
   const randomSource = scenario.randomSeed ? new SyntheticRandomSource(scenario.randomSeed) : undefined;
   const credentials = { authMethodId: 'microsoft-oauth', accessToken: new SecretString('entra-token'), clientId: 'inert-client', clientSecret: new SecretString('inert-secret'), refreshToken: new SecretString('inert-refresh') };

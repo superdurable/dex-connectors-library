@@ -24,10 +24,7 @@ async function invokeAttempt(scenario: Scenario, recorder: ExchangeRecorder, con
   const refreshDriver: CredentialRefreshDriver<Credentials> = { refreshRequired: () => false,
     refresh: async () => { recorder.mismatches.push('unexpected credential refresh'); throw new Error('unexpected credential refresh'); } };
   const transport = (request: ProviderRequest) => {
-    const url = new URL(request.url);
-    // Go records Request.URL.Path after percent decoding; the transport still receives the escaped URL.
-    url.pathname = decodeURIComponent(url.pathname);
-    return answerRecordedRequest(recorder, { ...request, url: url.toString() }, before => new ProviderTransportError(before));
+    return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
   const client = new ExcelClient({}, new StaticCredentialProvider([[connection, credentials]]),
     { endpoint: 'http://127.0.0.1:12345/v1.0', transport, refreshDriver, now: () => context.fixedClock });

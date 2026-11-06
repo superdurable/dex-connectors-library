@@ -17,10 +17,6 @@ async function invokeKlaviyo(scenario: Scenario, recorder: ExchangeRecorder) {
   const sender = (request: ProviderRequest) => {
     if (scenario.name === 'profile-punctuation-id') {
       expect(request.url).toBe('http://127.0.0.1:12345/api/profiles/profile%2Cone%3Btwo%21');
-      // Go records URL.Path, which contains the decoded profile ID.
-      const decodedUrl = new URL(request.url);
-      decodedUrl.pathname = decodeURIComponent(decodedUrl.pathname);
-      return answerRecordedRequest(recorder, { ...request, url: decodedUrl.toString() }, before => new ProviderTransportError(before));
     }
     return answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
   };
