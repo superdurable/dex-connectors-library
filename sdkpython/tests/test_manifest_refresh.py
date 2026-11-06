@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Manifest refresh contracts against a fake provider token endpoint."""
 
+import asyncio
 import base64
 import json
 import pickle
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime, timedelta
@@ -77,6 +79,112 @@ AUTH = {
 FIELDS = {
     name: name for name in ("access_token", "refresh_token", "client_id", "client_secret", "instance_url")
 }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("grant_kind", ["refresh", "client_credentials"])
+@pytest.mark.parametrize("from_setting", [False, True])
+async def test_manifest_refresh_token_exchange_timeout_is_retryable(
+    grant_kind: str, from_setting: bool
+) -> None:
+    """The declared exchange deadline aborts the request and remains retryable."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    method = auth["methods"][0]
+    if grant_kind == "client_credentials":
+        method.pop("oauth2")
+        method["type"] = "apiKey"
+        method["clientCredentials"] = {
+            "tokenEndpoint": "https://oauth.example.test/token",
+            "clientIDCredential": "client_id", "clientSecretCredential": "client_secret",
+            "scopes": ["files.read"],
+            "credentialMappings": [{"credential": "access_token", "source": "access_token"}],
+        }
+        grant = method["clientCredentials"]
+    else:
+        grant = method["oauth2"]["refresh"]
+    grant["tokenExchangeTimeout"] = {"fromSetting": "requestTimeout"} if from_setting else "10ms"
+    settings = {"requestTimeout": 10_000_000} if from_setting else {}
+
+    class SlowStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            await asyncio.sleep(0.1)
+            yield b'{"access_token":"new","expires_in":3600,"token_type":"Bearer","scope":"files.read"}'
+
+        async def aclose(self) -> None:
+            pass
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda _request: httpx.Response(200, stream=SlowStream())
+    )) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials](
+            "Example", auth, FIELDS, client, settings=settings
+        )
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+        )
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
+    grant["tokenExchangeTimeout"] = {"fromSetting": "requestTimeout"} if from_setting else "-1s"
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError, match="tokenExchangeTimeout"):
+            ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+
+@pytest.mark.asyncio
+async def test_manifest_refresh_rejects_oversized_exchange_deadlines() -> None:
+    """Durations beyond the shared one-hour bound fail before a token request."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    grant = auth["methods"][0]["oauth2"]["refresh"]
+    async with httpx.AsyncClient() as client:
+        for duration in ("1h1s", "3000000000ms", "5000000000ms"):
+            grant["tokenExchangeTimeout"] = duration
+            with pytest.raises(ValueError, match="at most 1h"):
+                ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        grant["tokenExchangeTimeout"] = {"fromSetting": "requestTimeout"}
+        for nanoseconds in (3_000_000_000_000_000, 5_000_000_000_000_000):
+            with pytest.raises(ValueError, match="at most 1h"):
+                ManifestCredentialRefreshDriver[Credentials](
+                    "Example", auth, FIELDS, client, settings={"requestTimeout": nanoseconds}
+                )
+
+
+@pytest.mark.asyncio
+async def test_private_token_endpoint_uses_declared_exchange_deadline() -> None:
+    """The private network transport also stops a stalled token response."""
+    requests = 0
+
+    async def serve_token(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        nonlocal requests
+        try:
+            await reader.readuntil(b"\r\n\r\n")
+            requests += 1
+            writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n")
+            await writer.drain()
+            await reader.read()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    server = await asyncio.start_server(serve_token, "127.0.0.1", 0)
+    try:
+        socket = server.sockets[0]
+        port = socket.getsockname()[1]
+        auth: dict[str, Any] = deepcopy(AUTH)
+        oauth = auth["methods"][0]["oauth2"]
+        oauth["tokenEndpoint"] = f"http://127.0.0.1:{port}/token"
+        oauth["tokenEndpointNetworkPolicy"] = "privateNetworkHTTP"
+        oauth["refresh"]["tokenExchangeTimeout"] = "100ms"
+        async with httpx.AsyncClient() as client:
+            driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+            state = CredentialRefreshState(
+                Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
+            )
+            with pytest.raises(RetryError):
+                await driver.refresh(state)
+        assert requests == 1
+    finally:
+        server.close()
+        await server.wait_closed()
 
 
 @pytest.mark.asyncio
