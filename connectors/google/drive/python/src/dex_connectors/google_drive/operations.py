@@ -116,6 +116,8 @@ def _timestamp(value: object) -> datetime:
     if match is None:
         raise ValueError("timestamp has an invalid format")
     date, clock, fraction, zone = match.groups()
+    if int(clock[:2]) > 23:
+        raise ValueError("timestamp has an invalid hour")
     parsed = datetime.fromisoformat(f"{date}T{clock}")
     nanoseconds = int(((fraction or "") + "000000000")[:9])
     parsed = parsed.replace(microsecond=nanoseconds // 1000)

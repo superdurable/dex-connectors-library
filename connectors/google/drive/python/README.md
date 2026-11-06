@@ -6,6 +6,8 @@ domain delegation use manifest-generated credential refresh and Dex project
 storage. Configure `google / google-drive-files` in Dex Web **Connections**,
 following the [connector authorization guide](../README.md). Do not put
 access or refresh tokens in Flow input.
+File timestamps follow Go JSON timestamp validation, including rejection of
+hour 24 before a file Result is stored.
 
 The [text copy example](examples/text_copy) searches by exact source name,
 reads bounded UTF-8 text, uploads one copy behind a durable dispatch fence,

@@ -17,6 +17,7 @@ from dex_connectors.sdk.singledispatch import (
     InsufficientAttemptTimeError,
 )
 
+from ._generated.timestamps import canonical_go_timestamp
 from .client import (
     CREATED_FIELDS,
     DRIVE_ID,
@@ -83,7 +84,8 @@ def _created(resource: Any) -> CreatedDocument:
         raise ValueError("invalid file metadata")
     timestamp = datetime.min.replace(tzinfo=UTC)
     if created_time:
-        timestamp = datetime.fromisoformat(created_time.replace("Z", "+00:00"))
+        canonical_time = canonical_go_timestamp(created_time, "created_time")
+        timestamp = datetime.fromisoformat(canonical_time.replace("Z", "+00:00"))
         if timestamp.utcoffset() is None:
             raise ValueError("invalid file timestamp")
     return CreatedDocument(resource["id"], title, tuple(parents), link, timestamp, trashed)
