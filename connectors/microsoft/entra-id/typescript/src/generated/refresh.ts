@@ -52,6 +52,7 @@ export const Authorization = {
             }
           }
         },
+        "tokenExchangeTimeout": "25s",
         "trimClientID": true
       },
       "fields": [
@@ -136,6 +137,7 @@ export const Authorization = {
             "consent_required",
             "invalid_scope"
           ],
+          "tokenExchangeTimeout": "25s",
           "trimClientID": true
         },
         "scopes": [

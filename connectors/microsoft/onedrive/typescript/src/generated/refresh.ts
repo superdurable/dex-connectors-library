@@ -62,7 +62,8 @@ export const Authorization = {
             "invalid_scope",
             "interaction_required",
             "consent_required"
-          ]
+          ],
+          "tokenExchangeTimeout": "25s"
         },
         "scopes": [
           "Files.ReadWrite.All",
@@ -117,6 +118,7 @@ export const Authorization = {
             }
           }
         },
+        "tokenExchangeTimeout": "25s",
         "trimClientID": true
       },
       "fields": [

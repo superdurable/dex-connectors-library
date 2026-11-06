@@ -47,7 +47,10 @@ export const Authorization = {
         "invalid_grant",
         "invalid_client",
         "unauthorized_client"
-      ]
+      ],
+      "tokenExchangeTimeout": {
+        "fromSetting": "requestTimeout"
+      }
     },
     "scopes": {
       "fromSetting": "scopes"

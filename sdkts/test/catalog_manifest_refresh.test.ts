@@ -18,6 +18,22 @@ function list(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function referencedSettingNames(value: unknown): Set<string> {
+  const names = new Set<string>();
+  function visit(source: unknown): void {
+    if (Array.isArray(source)) {
+      source.forEach(visit);
+      return;
+    }
+    if (!source || typeof source !== 'object') return;
+    const fields = source as ManifestObject;
+    if (typeof fields.fromSetting === 'string') names.add(fields.fromSetting);
+    Object.values(fields).forEach(visit);
+  }
+  visit(value);
+  return names;
+}
+
 function hasTokenGrant(auth: ManifestObject): boolean {
   const methods = list(auth.methods).length ? list(auth.methods).map(object) : [auth];
   return methods.some(method => {
@@ -33,7 +49,8 @@ const catalog = object(parse(readFileSync(new URL('../../catalog.yaml', import.m
 const manifests = list(catalog.directories).map(directory => {
   const path = String(directory);
   const manifest = object(parse(readFileSync(new URL(`../../${path}/connector.yaml`, import.meta.url), 'utf8')));
-  return { path, auth: object(object(manifest.spec).auth) };
+  const spec = object(manifest.spec);
+  return { path, auth: object(spec.auth), configuration: object(spec.configuration) };
 }).filter(item => hasTokenGrant(item.auth));
 
 describe('catalog manifest refresh declarations', () => {
@@ -42,14 +59,19 @@ describe('catalog manifest refresh declarations', () => {
     expect(manifests.some(item => item.path === 'connectors/salesforce')).toBe(true);
   });
 
-  it.each(manifests)('$path constructs every grant', ({ path, auth }) => {
+  it.each(manifests)('$path constructs every grant', ({ path, auth, configuration }) => {
     const fields = [
       ...list(auth.fields),
       ...list(auth.methods).flatMap(method => list(object(method).fields)),
     ].map(object);
     const credentialFields = Object.fromEntries(fields.map(field => [String(field.name), String(field.name)]));
+    const settingNames = referencedSettingNames(auth);
+    const settings = Object.fromEntries(list(configuration.fields).map(object)
+      .filter(field => settingNames.has(String(field.name)) &&
+        (typeof field.default === 'string' || typeof field.default === 'number'))
+      .map(field => [String(field.name), field.default as string | number]));
     const driver = new ManifestCredentialRefreshDriver<Record<string, unknown>>({
-      providerName: path, auth, credentialFields,
+      providerName: path, auth, credentialFields, settings,
     });
     expect(driver).toBeDefined();
   });

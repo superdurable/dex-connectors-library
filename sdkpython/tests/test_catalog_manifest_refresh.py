@@ -36,35 +36,56 @@ def _has_token_grant(auth: dict[str, Any]) -> bool:
     return False
 
 
-def _token_grant_manifests() -> list[tuple[str, dict[str, Any]]]:
+def _referenced_setting_names(value: Any) -> set[str]:
+    names: set[str] = set()
+    if isinstance(value, dict):
+        if isinstance(value.get("fromSetting"), str):
+            names.add(value["fromSetting"])
+        for nested in value.values():
+            names.update(_referenced_setting_names(nested))
+    elif isinstance(value, list):
+        for nested in value:
+            names.update(_referenced_setting_names(nested))
+    return names
+
+
+def _token_grant_manifests() -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
     catalog = yaml.safe_load((REPOSITORY / "catalog.yaml").read_text())
-    manifests: list[tuple[str, dict[str, Any]]] = []
+    manifests: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
     for directory in catalog["directories"]:
         manifest = yaml.safe_load((REPOSITORY / directory / "connector.yaml").read_text())
         auth = manifest["spec"].get("auth") or {}
         if _has_token_grant(auth):
-            manifests.append((directory, auth))
+            manifests.append((directory, auth, manifest["spec"].get("configuration") or {}))
     return manifests
 
 
 TOKEN_GRANT_MANIFESTS = _token_grant_manifests()
 assert len(TOKEN_GRANT_MANIFESTS) >= 35
-assert any(directory == "connectors/salesforce" for directory, _ in TOKEN_GRANT_MANIFESTS)
+assert any(directory == "connectors/salesforce" for directory, _, _ in TOKEN_GRANT_MANIFESTS)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "directory,auth", TOKEN_GRANT_MANIFESTS, ids=[item[0] for item in TOKEN_GRANT_MANIFESTS]
+    "directory,auth,configuration", TOKEN_GRANT_MANIFESTS, ids=[item[0] for item in TOKEN_GRANT_MANIFESTS]
 )
-async def test_catalog_token_grant_constructs(directory: str, auth: dict[str, Any]) -> None:
+async def test_catalog_token_grant_constructs(
+    directory: str, auth: dict[str, Any], configuration: dict[str, Any]
+) -> None:
     """Validate every declared grant shape, including Salesforce's credential-backed JWT key."""
     fields = list(auth.get("fields") or [])
     for method in auth.get("methods") or []:
         fields.extend(method.get("fields") or [])
     credential_fields = {field["name"]: field["name"] for field in fields}
+    setting_names = _referenced_setting_names(auth)
+    settings = {
+        field["name"]: field["default"]
+        for field in configuration.get("fields") or []
+        if field["name"] in setting_names and isinstance(field.get("default"), (str, int))
+    }
     async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(500))) as client:
         driver = ManifestCredentialRefreshDriver[dict[str, object]](
-            directory, auth, credential_fields, client,
+            directory, auth, credential_fields, client, settings=settings,
         )
     assert driver is not None
 
@@ -85,7 +106,7 @@ class SalesforceJWTCredentials:
 @pytest.mark.asyncio
 async def test_salesforce_credential_private_key_mints_without_key_credential() -> None:
     """Replay the manifest's credential-backed JWT grant through a signed token request."""
-    auth = next(auth for directory, auth in TOKEN_GRANT_MANIFESTS if directory == "connectors/salesforce")
+    auth = next(auth for directory, auth, _ in TOKEN_GRANT_MANIFESTS if directory == "connectors/salesforce")
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     private_key_pem = private_key.private_bytes(
         serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()

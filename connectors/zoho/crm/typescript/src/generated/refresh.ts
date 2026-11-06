@@ -72,7 +72,8 @@ export const Authorization = {
             "invalid_code",
             "invalid_client",
             "invalid_client_secret"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "ZohoCRM.modules.READ",
@@ -151,7 +152,8 @@ export const Authorization = {
             "invalid_code",
             "invalid_client",
             "invalid_client_secret"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "ZohoCRM.modules.READ",
@@ -230,7 +232,8 @@ export const Authorization = {
             "invalid_code",
             "invalid_client",
             "invalid_client_secret"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "ZohoCRM.modules.READ",
@@ -309,7 +312,8 @@ export const Authorization = {
             "invalid_code",
             "invalid_client",
             "invalid_client_secret"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "ZohoCRM.modules.READ",
@@ -388,7 +392,8 @@ export const Authorization = {
             "invalid_code",
             "invalid_client",
             "invalid_client_secret"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "ZohoCRM.modules.READ",
@@ -467,7 +472,8 @@ export const Authorization = {
             "invalid_code",
             "invalid_client",
             "invalid_client_secret"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "ZohoCRM.modules.READ",
@@ -546,7 +552,8 @@ export const Authorization = {
             "invalid_code",
             "invalid_client",
             "invalid_client_secret"
-          ]
+          ],
+          "tokenExchangeTimeout": "8s"
         },
         "scopes": [
           "ZohoCRM.modules.READ",
