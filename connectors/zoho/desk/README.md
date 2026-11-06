@@ -237,7 +237,7 @@ with optional names, and optional status, priority, and assignee. Zoho Desk
 uses the contact with that email or adds one, and the connector also sets the
 ticket's email to it, which `contactEmail` searches match. The description is
 HTML-escaped with line breaks kept, so text is never interpreted as markup;
-the escaped HTML must fit Zoho Desk's 65,535-character limit.
+the escaped HTML must fit Zoho Desk's 65,535-byte limit.
 
 ### updateTicket
 
@@ -450,3 +450,11 @@ answer 204; whether the comments list returns `plainText`; whether an
 unchanged `PATCH` triggers workflows; whether every 429 is returned before a
 write is applied; the credit headers; and the **Setup > Developer Space > API**
 path to the organization ID.
+
+## Python
+
+The Python package under `python/` implements all five ticket operations with the generated OAuth refresh wiring. Its [runnable search Flow](python/examples/search_tickets/README.md) uses the static `zoho-desk-helpdesk` connection and is verified through a local Dex Worker and Client with a generated mock. The Go-recorded conformance fixture covers provider requests, branches, retry, uncertainty, and heartbeat behavior. Live Zoho authorization and provider calls have not been verified for this language port.
+
+## TypeScript
+
+The TypeScript package under `typescript/` implements all five ticket operations with generated OAuth refresh wiring. Its [runnable search Flow](typescript/examples/search-tickets/README.md) uses the static `zoho-desk-helpdesk` connection. Go-recorded replay covers provider requests, branches, retry, uncertainty, and heartbeat behavior. Live Zoho authorization and provider calls have not been verified for this language port.
