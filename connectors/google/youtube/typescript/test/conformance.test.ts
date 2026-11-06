@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 
 import { it } from 'vitest';
-import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
+import { RetryError, runMutation, SecretString, StaticCredentialProvider, type Call, type Mutation } from '@superdurable/connectors-sdk';
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
-import { answerRecordedRequest, ExchangeRecorder, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
+import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type Scenario } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { YouTubeClient } from '../src/client.js';
 
 const scenarios = loadScenarios(new URL('../../../../../conformance/connectors/google/youtube/scenarios.json', import.meta.url));
@@ -22,7 +22,9 @@ async function invokeYouTube(scenario: Scenario, recorder: ExchangeRecorder) {
     case 'getVideo': return client.getVideo().invoke(call, scenario.input as never);
     case 'getChannel': return client.getChannel().invoke(call, scenario.input as never);
     case 'listPlaylistItems': return client.listPlaylistItems().invoke(call, scenario.input as never);
-    case 'addPlaylistItem': return client.addPlaylistItem().invoke(call, scenario.input as never);
+    case 'addPlaylistItem': return invokeProductionMutation(client.addPlaylistItem(), scenario.idempotencyKey!,
+      recording => runMutation(recording as Mutation<{ playlistId: string; videoId: string }, unknown>, call,
+        scenario.input as { playlistId: string; videoId: string }), error => error instanceof RetryError);
     default: throw new Error(`unknown YouTube operation ${scenario.operation}`);
   }
 }
