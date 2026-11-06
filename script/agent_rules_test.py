@@ -106,7 +106,8 @@ class AgentRulesTest(unittest.TestCase):
                 self.assertIn("connectors(python):", contents)
                 self.assertIn("connectors(typescript):", contents)
                 self.assertIn("PyPI limits new-project creation rates", contents)
-                self.assertIn("confirms its Release run", contents)
+                self.assertIn("confirms its Release run created every package's GitHub release", contents)
+                self.assertIn("Python first uploads to PyPI may lag behind their GitHub releases", contents)
 
     def test_repository_owns_connector_contribution_rules(self) -> None:
         paths = (

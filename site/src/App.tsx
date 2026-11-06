@@ -15,15 +15,17 @@ import {
   catalogTotals,
   capabilityMatchesLanguage,
   companyLogoUrl,
+  connectorLibraryRepositoryUrl,
   connectorMatchesQuery,
   connectorMatchesLanguage,
+  pythonInstall,
   readCatalog,
   type CatalogCapability,
   type CatalogConnector,
+  type PythonInstall,
 } from "./catalogModel.mjs";
 
 const logoOrigin = import.meta.env.DEV ? "local" : "published";
-const connectorLibraryRepositoryUrl = "https://github.com/superdurable/dex-connectors-library";
 const connectorLibraryRepositoryApiUrl = "https://api.github.com/repos/superdurable/dex-connectors-library";
 const connectorLibraryStarCountCacheKey = "superdurable-dex-connectors-library-star-count";
 
@@ -269,6 +271,7 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
       </div>
       <p className="description detail-description">{connector.description}</p>
       <p className="install-command"><code>go get github.com/superdurable/dex-connectors-library/{connector.directory}/go@{connector.languages.go}</code></p>
+      <PythonInstallCommand install={pythonInstall(connector)} />
       <p className="connector-source">
         <a className="repository-source-link" href={`${connectorLibraryRepositoryUrl}/tree/main/${connector.directory}`}>
           <GitHubMarkIcon />
@@ -279,6 +282,23 @@ function ConnectorPage({ catalog }: { catalog: LoadState<CatalogConnector[]> }) 
       <CapabilityList title="Triggers" capabilities={connector.triggers} versions={connector.languages} />
       <CapabilityList title="Operations" capabilities={connector.operations} versions={connector.languages} />
     </article>
+  );
+}
+
+function PythonInstallCommand({ install }: { install: PythonInstall | null }) {
+  if (!install) {
+    return null;
+  }
+  return (
+    <>
+      <p className="install-command"><code>{install.command}</code></p>
+      {install.isPyPIPublished ? null : (
+        <p className="install-note">
+          The PyPI upload is pending. Install from the release tag, or download the wheel from
+          the <a href={install.releaseUrl}>GitHub release</a>.
+        </p>
+      )}
+    </>
   );
 }
 

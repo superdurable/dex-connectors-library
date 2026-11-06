@@ -41,8 +41,9 @@ Developers do not run Docker locally. Python integration tests live in
 
 A connector batch port PR may contain 5-8 connectors of one language when every
 package is a first `v0.1.0` release and passes conformance. The coordinator
-merges one batch at a time and confirms its Release run, including first publish
-of new PyPI or npm projects, succeeded before merging the next batch because
+merges one batch at a time and confirms its Release run created every package's
+GitHub release, and published each new npm project, before merging the next
+batch. Python first uploads to PyPI may lag behind their GitHub releases because
 PyPI limits new-project creation rates. Other PRs follow the one released module
 rule in `AGENTS.md`. Use `connectors(python):` or `connectors(typescript):`
 subjects for batch ports.

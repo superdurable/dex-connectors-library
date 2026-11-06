@@ -52,9 +52,11 @@ field, and separate 5xx and 429 Retry coverage for each operation.
 New or edited Python and TypeScript packages must add these fixtures. Existing
 packages without fixtures receive a `missing conformance (legacy)` warning on
 Go-only edits; fixture-backed connectors always replay their scenarios.
-The coordinator merges one batch at a time and confirms its Release run,
-including first publish of new PyPI or npm projects, succeeded before merging
-the next batch because PyPI limits new-project creation rates. Use
+The coordinator merges one batch at a time and confirms its Release run
+created every package's GitHub release, and published each new npm project,
+before merging the next batch. Python first uploads to PyPI may lag behind
+their GitHub releases by days because PyPI limits new-project creation rates.
+Use
 `connectors(python):` or `connectors(typescript):` for a batch commit and PR.
 
 GitHub Release titles are human-readable labels. SDK releases use
@@ -216,7 +218,10 @@ for npm provenance: `type` is `git`, `url` is
 
 The workflows build a wheel and source distribution or npm tarball, publish the archives
 to PyPI or npm, then upload those same files, SHA-256 digests, and
-`language-release.json` to GitHub Releases. `dry_run` builds and tests without creating a tag, release,
+`language-release.json` to GitHub Releases. A Python connector first release,
+whose PyPI project does not exist yet, reverses that order: it ships on GitHub
+first and PyPI receives the same archives later, as described below.
+`dry_run` builds and tests without creating a tag, release,
 registry upload, or catalog deployment.
 
 Language builds run with read-only repository access. A separate publish job
@@ -229,18 +234,52 @@ also confirms the package name and version reported by its publish dry run.
 After a PyPI upload, release jobs wait up to 120 seconds for the JSON API to
 show every archive with its expected SHA-256 digest.
 
-New PyPI projects have a separate first-publish queue. The release workflow
-tries at most three new PyPI projects per run by default, one at a time, while
-updates to existing projects keep their parallel publish path. Set the
+PyPI lets one account create only a few new projects per day, so Python first
+releases are GitHub-first:
+
+1. **GitHub release.** When a Python package's PyPI project does not exist, the
+   `publish-language-github-first` job builds and tests it, creates the tag and
+   GitHub release with the wheel, sdist, SHA-256 digests, and
+   `language-release.json`, and uploads `language-release.complete`. It does
+   not call PyPI. The release notes end with an Install section, between
+   `<!-- pypi-upload-pending:start -->` and `<!-- pypi-upload-pending:end -->`,
+   that gives two version-pinned installs that work at once: the release's
+   wheel URL (the exact archive PyPI receives later) and a
+   `git+https://...@<tag>#subdirectory=<directory>/python` source build. The
+   text stays true after the PyPI upload. At most 15 such releases are created
+   per run, three at a time, to bound GitHub API use. Set the
+   `PYTHON_GITHUB_FIRST_RELEASE_LIMIT` repository variable or the manual
+   workflow's `github_first_release_limit` input to change that cap; packages
+   beyond it are deferred with `github_release_cap`.
+2. **PyPI pending.** Selection checks every completed Python release against
+   PyPI. A version whose wheel and sdist PyPI does not both serve joins the
+   `upload-pending-pypi` queue. Earlier pending uploads take new-project slots
+   before newer ones.
+3. **PyPI upload.** The `upload-pending-pypi` job downloads the release's
+   archives, digests, and `language-release.json` from GitHub, checks every
+   file against the manifest and its `.sha256` file, checks the archive
+   identities, and uploads those bytes to PyPI. It never rebuilds, so a GitHub
+   install and a PyPI install of one version are identical. After PyPI shows
+   both archives with matching digests, the job replaces the pending Install
+   block with `pip install <package>==<version>`. A failed notes edit only
+   warns.
+
+The upload job tries at most three new PyPI projects per run by default, one at
+a time; uploads to existing projects are not capped. Set the
 `PYPI_FIRST_PUBLISH_LIMIT` repository variable or the manual workflow's
-`first_publish_limit` input to change that cap. npm first publishes share the
-serialized queue, but npm documents no comparable project-creation cap; they
-do not consume the PyPI cap. Packages beyond the cap are deferred. If PyPI
-responds `429 Too many new projects created`, the job retries after 20, 60,
-and 120 seconds, then reports a deferral without failing the release run.
-Later first publishes in that run defer immediately after the limit is hit.
-Other publish errors still fail the run. A deferred upload creates no GitHub
-tag or release until the registry artifact is verified.
+`first_publish_limit` input to change that cap. If PyPI responds
+`429 Too many new projects created`, the job retries after 20, 60, and 120
+seconds, then reports the upload as still pending without failing the run.
+Later new-project uploads in that run defer immediately after the limit is
+hit. Other upload errors fail the run, and the next run retries; uv skips
+archives that PyPI already serves with the same digest. Updates to existing
+PyPI projects keep the PyPI-then-GitHub order. npm first publishes keep the
+serialized `publish-language-first` queue; npm documents no comparable
+project-creation cap.
+
+Only a package's current manifest version is checked against PyPI. If a newer
+Python version is declared before an older pending version reaches PyPI, the
+older version stays GitHub-only.
 
 The same workflow runs hourly at minute 17 to drain pending language releases
 and pending Go releases. A scheduled run repairs an incomplete language release
@@ -251,10 +290,13 @@ artifacts. A mismatch fails without creating a tag. Concurrent push and
 scheduled runs can cancel a queued run, so check
 the release summary for remaining work; the next scheduled run selects pending
 Go releases again.
-The `summarize-language` job writes published, deferred, and failed tags plus
-the pending count to its job summary and `result` JSON output. Deferred tags
-carry a reason such as `first_publish_cap`, `registry_lookup_failure`, or
-`project_creation_limit`. To recover
+The `summarize-language` job writes published, `pypi_pending`, deferred, and
+failed tags plus the pending count to its job summary and `result` JSON output.
+A `pypi_pending` tag has a complete GitHub release whose PyPI upload is still
+due, with a reason such as `github_first_release`, `first_publish_cap`, or
+`project_creation_limit`. A deferred tag has no complete GitHub release yet,
+with a reason such as `github_release_cap`, `registry_lookup_failure`, or
+`matrix_limit`. To recover
 manually, run `Release Connectors and Catalog` on `main` with the affected
 `connector_directory`; leave `dry_run` disabled. For a broad backlog, set
 `drain_first_publishes` on a manual run or wait for the next hourly run. A
@@ -263,7 +305,9 @@ but GitHub release creation failed, the scheduled run can repair an identical
 rebuild. If the archive differs, rerun the original workflow at its source
 commit as described below.
 
-Catalog deployment still requires successful release jobs. Its event gate is:
+Catalog deployment still requires successful release jobs, except
+`upload-pending-pypi`: the catalog build reads PyPI state itself, so a failed
+PyPI upload fails the run without blocking the catalog. Its event gate is:
 
 | Event | Pending Go selected | Language published | Deploy catalog |
 | --- | --- | --- | --- |
@@ -278,7 +322,15 @@ newer manifest language version is pending, it keeps the latest completed
 version and reads that version's capability declarations from its release tag. The
 catalog generator accepts a completed-tag inventory with
 `--completed-language-tags`; without one, it omits language entries rather than
-advertising a pending version. An idle scheduled run skips the Pages deploy.
+advertising a pending version. The catalog build also asks PyPI which listed
+Python releases it serves and passes those tags with
+`--pypi-published-language-tags`. Each listed Python release then carries
+`pythonPackage` with its package `name`, release `tag`, and `pypiPublished`.
+The directory site shows `pip install <package>==<version>` only when
+`pypiPublished` is true; otherwise it shows the tag install and links the
+GitHub release that holds the wheel. A failed PyPI lookup counts as pending, so
+the site never shows a PyPI command that cannot install. Without the flag the
+catalog omits `pythonPackage`. An idle scheduled run skips the Pages deploy.
 
 If registry publication succeeds but GitHub tag or release creation fails,
 the scheduled connector workflow retries the release and accepts only identical

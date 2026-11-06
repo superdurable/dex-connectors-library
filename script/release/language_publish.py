@@ -1,13 +1,15 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
 
-"""Select first registry publishes and defer PyPI project-creation throttling."""
+"""Select language releases, ship Python first releases on GitHub, and upload them to PyPI later."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -22,9 +24,14 @@ else:
     from github_release_inventory import github_json, next_page_url, release_inventory
 
 PYPI_FIRST_PUBLISH_LIMIT = 3
+GITHUB_FIRST_RELEASE_LIMIT = 15
 PYPI_RETRY_DELAYS = (20, 60, 120)
 LOOKUP_RETRY_DELAYS = (1, 3, 7)
 MAXIMUM_GITHUB_MATRIX_JOBS = 256
+LANGUAGE_RELEASE_MANIFEST = "language-release.json"
+PENDING_PYPI_NOTES_START = "<!-- pypi-upload-pending:start -->"
+PENDING_PYPI_NOTES_END = "<!-- pypi-upload-pending:end -->"
+STABLE_VERSION_PATTERN = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
 
 
 def has_registry_project(language: str, package: str) -> bool:
@@ -38,23 +45,57 @@ def has_registry_project(language: str, package: str) -> bool:
 
 
 def has_registry_url(url: str, description: str, *, sleep=time.sleep) -> bool:
+    return request_registry(url, description, lambda _response: True, sleep=sleep) is not None
+
+
+def read_registry_json(url: str, description: str, *, sleep=time.sleep) -> object | None:
+    """Return the registry's JSON document, or None when the registry reports 404."""
+    return request_registry(url, description, json.load, sleep=sleep)
+
+
+def request_registry(url: str, description: str, read_response, *, sleep=time.sleep):
     request = urllib.request.Request(url, headers={"User-Agent": "dex-connector-release/1"})
     for attempt in range(len(LOOKUP_RETRY_DELAYS) + 1):
         try:
-            with urllib.request.urlopen(request, timeout=20):
-                return True
+            with urllib.request.urlopen(request, timeout=20) as response:
+                return read_response(response)
         except urllib.error.HTTPError as error:
             if error.code == 404:
-                return False
+                return None
             if error.code != 429 and error.code < 500:
                 raise RuntimeError(f"registry lookup failed for {description}: HTTP {error.code}") from error
             reason = f"HTTP {error.code}"
         except (urllib.error.URLError, TimeoutError) as error:
             reason = str(error)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise RuntimeError(f"registry lookup failed for {description}: invalid JSON") from error
         if attempt == len(LOOKUP_RETRY_DELAYS):
             raise RuntimeError(f"registry lookup failed for {description} after retries: {reason}")
         sleep(LOOKUP_RETRY_DELAYS[attempt])
     raise AssertionError("unreachable")
+
+
+def pypi_public_version(version: str) -> str:
+    return version.removeprefix("v").replace("-rc.", "rc")
+
+
+def has_wheel_and_sdist(files: object) -> bool:
+    if not isinstance(files, list):
+        return False
+    package_types = {entry.get("packagetype") for entry in files if isinstance(entry, dict)}
+    return {"bdist_wheel", "sdist"} <= package_types
+
+
+def has_pypi_release_files(package: str, version: str, *, read=read_registry_json) -> bool:
+    """Report whether PyPI serves both the wheel and the sdist of one release."""
+    url = (f"https://pypi.org/pypi/{urllib.parse.quote(package, safe='')}/"
+           f"{urllib.parse.quote(pypi_public_version(version), safe='')}/json")
+    release = read(url, f"PyPI release {package} {version}")
+    if release is None:
+        return False
+    if not isinstance(release, dict):
+        raise RuntimeError(f"PyPI release lookup returned invalid data for {package} {version}")
+    return has_wheel_and_sdist(release.get("urls"))
 
 
 def list_completed_language_tags() -> set[str]:
@@ -84,16 +125,46 @@ def is_release_complete(item: dict[str, str], completed_tags: set[str]) -> bool:
 
 
 def select_release_matrices(items: list[dict[str, str]], first_publish_limit: int,
-                            *, completed_tags: set[str] | None = None,
-                            project_exists=has_registry_project) -> dict[str, object]:
+                            *, github_release_limit: int = GITHUB_FIRST_RELEASE_LIMIT,
+                            completed_tags: set[str] | None = None,
+                            project_exists=has_registry_project,
+                            pypi_release_exists=has_pypi_release_files) -> dict[str, object]:
+    """Queue Python first releases for GitHub first and completed releases missing from PyPI for upload."""
     if first_publish_limit < 1:
         raise ValueError("PyPI first publish limit must be positive")
+    if github_release_limit < 1:
+        raise ValueError("GitHub first release limit must be positive")
+    completed = completed_tags or set()
     updates: list[dict[str, str]] = []
     first: list[dict[str, str]] = []
+    github_first: list[dict[str, str]] = []
+    pypi_pending: list[dict[str, str]] = []
     deferred: list[dict[str, str]] = []
-    python_first_count = 0
+    # Earlier GitHub releases take PyPI project-creation slots before newer ones.
+    pypi_first_count = 0
     for item in items:
-        if is_release_complete(item, completed_tags or set()):
+        if item["language"] != "python" or not is_release_complete(item, completed):
+            continue
+        try:
+            if pypi_release_exists(item["package"], item["version"]):
+                continue
+            has_project = project_exists(item["language"], item["package"])
+        except RuntimeError as error:
+            print(f"::warning::{error}; checking the PyPI upload of {item['package']} again next run", file=sys.stderr)
+            continue
+        item["github_released"] = True
+        if has_project:
+            pypi_pending.append(item)
+        elif pypi_first_count >= first_publish_limit:
+            item["defer_reason"] = "first_publish_cap"
+            deferred.append(item)
+        else:
+            item["first_publish"] = True
+            pypi_pending.append(item)
+            pypi_first_count += 1
+    github_first_count = 0
+    for item in items:
+        if is_release_complete(item, completed):
             continue
         try:
             has_project = project_exists(item["language"], item["package"])
@@ -104,43 +175,47 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
             continue
         if has_project:
             updates.append(item)
-        elif item["language"] == "python" and python_first_count >= first_publish_limit:
-            item["defer_reason"] = "first_publish_cap"
+        elif item["language"] != "python":
+            item["first_publish"] = True
+            first.append(item)
+        elif github_first_count >= github_release_limit:
+            item["defer_reason"] = "github_release_cap"
             deferred.append(item)
         else:
             item["first_publish"] = True
-            first.append(item)
-            if item["language"] == "python":
-                python_first_count += 1
-    if len(updates) + len(first) > MAXIMUM_GITHUB_MATRIX_JOBS:
-        available_first = max(0, MAXIMUM_GITHUB_MATRIX_JOBS - len(updates))
-        if len(updates) > MAXIMUM_GITHUB_MATRIX_JOBS:
-            for item in updates[MAXIMUM_GITHUB_MATRIX_JOBS:] + first:
-                item["defer_reason"] = "matrix_limit"
-            deferred.extend(updates[MAXIMUM_GITHUB_MATRIX_JOBS:])
-            updates = updates[:MAXIMUM_GITHUB_MATRIX_JOBS]
-            deferred.extend(first)
-            first = []
-        else:
-            for item in first[available_first:]:
-                item["defer_reason"] = "matrix_limit"
-            deferred.extend(first[available_first:])
-            first = first[:available_first]
-    for index, item in enumerate(updates + first):
+            item["pypi_deferred_reason"] = "github_first_release"
+            github_first.append(item)
+            github_first_count += 1
+    defer_beyond_matrix_limit([updates, first, github_first], deferred)
+    defer_beyond_matrix_limit([pypi_pending], deferred)
+    for index, item in enumerate(updates + first + github_first):
         item["artifact_index"] = index
-    return {"updates": updates, "first": first, "deferred": deferred,
-            "pending_count": len(updates) + len(first) + len(deferred)}
+    return {"updates": updates, "first": first, "github_first": github_first, "pypi_pending": pypi_pending,
+            "deferred": deferred,
+            "pending_count": len(updates) + len(first) + len(github_first) + len(pypi_pending) + len(deferred)}
+
+
+def defer_beyond_matrix_limit(queues: list[list[dict[str, str]]], deferred: list[dict[str, str]]) -> None:
+    """Keep earlier queues whole and defer later entries once one matrix reaches the GitHub job limit."""
+    remaining = MAXIMUM_GITHUB_MATRIX_JOBS
+    for queue in queues:
+        for item in queue[remaining:]:
+            item["defer_reason"] = "matrix_limit"
+            deferred.append(item)
+        del queue[remaining:]
+        remaining -= len(queue)
 
 
 def write_selection_outputs(output_path: Path, selection: dict[str, object], go_matrix: str, go_count: str) -> None:
+    built = selection["updates"] + selection["first"] + selection["github_first"]
     with output_path.open("a", encoding="utf-8") as output:
         output.write(f"matrix={go_matrix}\ncount={go_count}\n")
-        for name in ("updates", "first", "deferred"):
+        for name in ("updates", "first", "github_first", "pypi_pending", "deferred"):
             items = selection[name]
             output.write(f"{name}_matrix={json.dumps({'include': items}, separators=(',', ':'))}\n")
             output.write(f"{name}_count={len(items)}\n")
-        output.write(f"language_count={len(selection['updates']) + len(selection['first'])}\n")
-        output.write(f"language_matrix={json.dumps({'include': selection['updates'] + selection['first']}, separators=(',', ':'))}\n")
+        output.write(f"language_count={len(built)}\n")
+        output.write(f"language_matrix={json.dumps({'include': built}, separators=(',', ':'))}\n")
         output.write(f"pending_count={selection['pending_count']}\n")
 
 
@@ -168,6 +243,121 @@ def publish_pypi(assets: list[str], *, delays: tuple[int, ...] = PYPI_RETRY_DELA
     raise AssertionError("unreachable")
 
 
+def pending_pypi_notes_block(repository: str, tag: str, package: str, version: str, directory: str,
+                             wheel_name: str) -> str:
+    """Describe GitHub install commands in words that stay true after the PyPI upload."""
+    repository_url = f"https://github.com/{repository}"
+    wheel_url = f"{repository_url}/releases/download/{urllib.parse.quote(tag, safe='')}/{urllib.parse.quote(wheel_name)}"
+    public_version = pypi_public_version(version)
+    return "\n".join([
+        PENDING_PYPI_NOTES_START,
+        "## Install",
+        "",
+        "This release reached GitHub before PyPI: PyPI limits how many new projects one account can",
+        "create each day, so the release workflow uploads these exact archives to PyPI when the limit",
+        f"allows. If `pip install {package}=={public_version}` cannot find this version yet, install the",
+        "wheel attached to this release:",
+        "",
+        "```sh",
+        f"pip install {wheel_url}",
+        "```",
+        "",
+        "Or build the same version from its release tag:",
+        "",
+        "```sh",
+        f'pip install "{package} @ git+{repository_url}@{tag}#subdirectory={directory}/python"',
+        "```",
+        PENDING_PYPI_NOTES_END,
+        "",
+    ])
+
+
+def add_pending_pypi_notes(notes: str, block: str) -> str:
+    """Append the pending PyPI block, replacing an earlier one so reruns stay idempotent."""
+    return without_pending_pypi_notes(notes).rstrip("\n") + "\n\n" + block
+
+
+def published_pypi_notes(notes: str, package: str, version: str) -> str:
+    """Replace the pending PyPI block with the registry install command; leave other notes unchanged."""
+    if PENDING_PYPI_NOTES_START not in notes:
+        return notes
+    install = "\n".join(["## Install", "", "```sh", f"pip install {package}=={pypi_public_version(version)}", "```", ""])
+    return without_pending_pypi_notes(notes).rstrip("\n") + "\n\n" + install
+
+
+def without_pending_pypi_notes(notes: str) -> str:
+    start = notes.find(PENDING_PYPI_NOTES_START)
+    if start < 0:
+        return notes
+    end = notes.find(PENDING_PYPI_NOTES_END, start)
+    if end < 0:
+        raise ValueError("release notes have an unterminated pending PyPI block")
+    return notes[:start] + notes[end + len(PENDING_PYPI_NOTES_END):].lstrip("\n")
+
+
+def verify_release_archives(directory: Path, tag: str, package: str, version: str) -> list[Path]:
+    """Check downloaded release files against language-release.json; return the wheel and sdist paths."""
+    manifest_path = directory / LANGUAGE_RELEASE_MANIFEST
+    manifest_bytes = manifest_path.read_bytes()
+    try:
+        manifest = json.loads(manifest_bytes)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} is invalid JSON") from error
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} must be an object")
+    expected_identity = {"language": "python", "package": package, "version": version, "tag": tag}
+    actual_identity = {name: manifest.get(name) for name in expected_identity}
+    if actual_identity != expected_identity:
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} identity {actual_identity} differs from {expected_identity}")
+    artifacts = manifest.get("artifacts")
+    if (not isinstance(artifacts, dict) or len(artifacts) != 2 or
+            any(not isinstance(name, str) or not isinstance(digest, str) or "/" in name or "\\" in name
+                or name.startswith(".") for name, digest in artifacts.items())):
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} must list two archive digests")
+    wheels = [name for name in artifacts if name.endswith(".whl")]
+    sdists = [name for name in artifacts if name.endswith(".tar.gz")]
+    if len(wheels) != 1 or len(sdists) != 1:
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST} must list one wheel and one sdist")
+    expected_names = set(artifacts) | {name + ".sha256" for name in artifacts} | {
+        LANGUAGE_RELEASE_MANIFEST, LANGUAGE_RELEASE_MANIFEST + ".sha256"}
+    entries = list(directory.iterdir())
+    if any(entry.is_symlink() or not entry.is_file() for entry in entries):
+        raise ValueError("downloaded release directory contains non-regular files")
+    if {entry.name for entry in entries} != expected_names:
+        raise ValueError("downloaded release directory differs from the release manifest")
+    expected_manifest_digest = f"{hashlib.sha256(manifest_bytes).hexdigest()}  {LANGUAGE_RELEASE_MANIFEST}\n"
+    if (directory / (LANGUAGE_RELEASE_MANIFEST + ".sha256")).read_text(encoding="utf-8") != expected_manifest_digest:
+        raise ValueError(f"{LANGUAGE_RELEASE_MANIFEST}.sha256 differs from the downloaded manifest")
+    for name, digest in artifacts.items():
+        actual_digest = hashlib.sha256((directory / name).read_bytes()).hexdigest()
+        if actual_digest != digest:
+            raise ValueError(f"{name} SHA-256 differs from {LANGUAGE_RELEASE_MANIFEST}")
+        if (directory / (name + ".sha256")).read_text(encoding="utf-8") != f"{digest}  {name}\n":
+            raise ValueError(f"{name}.sha256 differs from {LANGUAGE_RELEASE_MANIFEST}")
+    return [directory / wheels[0], directory / sdists[0]]
+
+
+def pypi_published_language_tags(items: list[dict[str, str]], completed_tags: set[str], *,
+                                 release_exists=has_pypi_release_files) -> set[str]:
+    """Return each package's latest completed Python tag that PyPI serves; a failed lookup omits it."""
+    published: set[str] = set()
+    for item in items:
+        if item["language"] != "python":
+            continue
+        prefix = item["tag_prefix"]
+        versions = [tag[len(prefix):] for tag in completed_tags
+                    if tag.startswith(prefix) and STABLE_VERSION_PATTERN.fullmatch(tag[len(prefix):])]
+        if not versions:
+            continue
+        latest = max(versions, key=lambda version: tuple(int(part) for part in version[1:].split(".")))
+        try:
+            if release_exists(item["package"], latest):
+                published.add(prefix + latest)
+        except RuntimeError as error:
+            print(f"::warning::{error}; the catalog shows the GitHub install for {prefix + latest}", file=sys.stderr)
+    return published
+
+
 def summarize(expected: list[dict[str, str]], results_directory: Path, deferred: list[dict[str, str]]) -> dict[str, object]:
     results: dict[str, dict[str, str]] = {}
     for result_file in results_directory.rglob("release-result.json"):
@@ -177,22 +367,52 @@ def summarize(expected: list[dict[str, str]], results_directory: Path, deferred:
             raise ValueError(f"duplicate release result: {tag}")
         results[tag] = result
     published: list[str] = []
-    deferred_tags = [item["tag_prefix"] + item["version"] for item in deferred]
-    deferred_reasons = {item["tag_prefix"] + item["version"]: item.get("defer_reason", "unspecified") for item in deferred}
+    pypi_pending: list[str] = []
+    pypi_pending_reasons: dict[str, str] = {}
+    deferred_tags: list[str] = []
+    deferred_reasons: dict[str, str] = {}
     failed: list[str] = []
+    for item in deferred:
+        tag = item["tag_prefix"] + item["version"]
+        if item.get("github_released"):
+            pypi_pending.append(tag)
+            pypi_pending_reasons[tag] = item.get("defer_reason", "unspecified")
+        else:
+            deferred_tags.append(tag)
+            deferred_reasons[tag] = item.get("defer_reason", "unspecified")
     for item in expected:
         tag = item["tag_prefix"] + item["version"]
         result = results.get(tag, {"status": "failed"})
         status = result["status"]
         if status == "published":
             published.append(tag)
+        elif status == "pypi_pending" or (status == "deferred" and item.get("github_released")):
+            pypi_pending.append(tag)
+            pypi_pending_reasons[tag] = result.get("reason") or "unspecified"
         elif status == "deferred":
             deferred_tags.append(tag)
-            deferred_reasons[tag] = result.get("reason", "unspecified")
+            deferred_reasons[tag] = result.get("reason") or "unspecified"
         else:
             failed.append(tag)
-    return {"published": published, "deferred": deferred_tags, "deferred_reasons": deferred_reasons, "failed": failed,
-            "pending_count": len(deferred_tags) + len(failed)}
+    return {"published": published, "pypi_pending": pypi_pending, "pypi_pending_reasons": pypi_pending_reasons,
+            "deferred": deferred_tags, "deferred_reasons": deferred_reasons, "failed": failed,
+            "pending_count": len(pypi_pending) + len(deferred_tags) + len(failed)}
+
+
+def write_step_summary(path: Path, summary: dict[str, object]) -> None:
+    with path.open("a", encoding="utf-8") as output:
+        output.write("## Language releases\n\n")
+        for status, reasons in (("published", None), ("pypi_pending", "pypi_pending_reasons"),
+                                ("deferred", "deferred_reasons"), ("failed", None)):
+            tags = summary[status]
+            labels = [f"{tag} ({summary[reasons][tag]})" for tag in tags] if reasons else tags
+            output.write(f"- {status}: {len(tags)} — {', '.join(labels) or 'none'}\n")
+        output.write(f"- pending: {summary['pending_count']}\n")
+
+
+def read_language_matrix(matrix_output: Path) -> tuple[dict[str, str], list[dict[str, str]]]:
+    entries = dict(line.split("=", 1) for line in matrix_output.read_text(encoding="utf-8").splitlines())
+    return entries, json.loads(entries["language_matrix"])["include"]
 
 
 def main() -> int:
@@ -202,8 +422,13 @@ def main() -> int:
     select_parser.add_argument("--matrix-output", type=Path, required=True)
     select_parser.add_argument("--github-output", type=Path, required=True)
     select_parser.add_argument("--first-publish-limit", type=int, default=PYPI_FIRST_PUBLISH_LIMIT)
+    select_parser.add_argument("--github-release-limit", type=int, default=GITHUB_FIRST_RELEASE_LIMIT)
     completed_parser = commands.add_parser("completed-language-tags")
     completed_parser.add_argument("--output", type=Path, required=True)
+    pypi_tags_parser = commands.add_parser("pypi-published-language-tags")
+    pypi_tags_parser.add_argument("--matrix-output", type=Path, required=True)
+    pypi_tags_parser.add_argument("--completed-language-tags", type=Path, required=True)
+    pypi_tags_parser.add_argument("--output", type=Path, required=True)
     limit_parser = commands.add_parser("check-project-limit")
     limit_parser.add_argument("--repository", required=True)
     limit_parser.add_argument("--run-id", required=True)
@@ -211,6 +436,24 @@ def main() -> int:
     publish_parser = commands.add_parser("publish-pypi")
     publish_parser.add_argument("--github-output", type=Path, required=True)
     publish_parser.add_argument("assets", nargs="+")
+    pending_notes_parser = commands.add_parser("pending-pypi-notes")
+    pending_notes_parser.add_argument("--notes", type=Path, required=True)
+    pending_notes_parser.add_argument("--repository", required=True)
+    pending_notes_parser.add_argument("--tag", required=True)
+    pending_notes_parser.add_argument("--package", required=True)
+    pending_notes_parser.add_argument("--version", required=True)
+    pending_notes_parser.add_argument("--directory", required=True)
+    pending_notes_parser.add_argument("--wheel", type=Path, required=True)
+    published_notes_parser = commands.add_parser("published-pypi-notes")
+    published_notes_parser.add_argument("--notes", type=Path, required=True)
+    published_notes_parser.add_argument("--output", type=Path, required=True)
+    published_notes_parser.add_argument("--package", required=True)
+    published_notes_parser.add_argument("--version", required=True)
+    archives_parser = commands.add_parser("verify-release-archives")
+    archives_parser.add_argument("--directory", type=Path, required=True)
+    archives_parser.add_argument("--tag", required=True)
+    archives_parser.add_argument("--package", required=True)
+    archives_parser.add_argument("--version", required=True)
     summary_parser = commands.add_parser("summarize")
     summary_parser.add_argument("--selection", type=Path, required=True)
     summary_parser.add_argument("--results-directory", type=Path, required=True)
@@ -218,25 +461,34 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "select":
-            entries = dict(line.split("=", 1) for line in args.matrix_output.read_text(encoding="utf-8").splitlines())
-            items = json.loads(entries["language_matrix"])["include"]
+            entries, items = read_language_matrix(args.matrix_output)
             try:
                 completed_tags = list_completed_language_tags()
             except RuntimeError as error:
                 print(f"::warning::{error}; deferring language selection without blocking Go releases", file=sys.stderr)
                 for item in items:
                     item["defer_reason"] = "release_inventory_unavailable"
-                selection = {"updates": [], "first": [], "deferred": items, "pending_count": len(items)}
+                selection = {"updates": [], "first": [], "github_first": [], "pypi_pending": [], "deferred": items,
+                             "pending_count": len(items)}
             else:
-                selection = select_release_matrices(items, args.first_publish_limit, completed_tags=completed_tags)
+                selection = select_release_matrices(items, args.first_publish_limit,
+                                                    github_release_limit=args.github_release_limit,
+                                                    completed_tags=completed_tags)
             write_selection_outputs(args.github_output, selection, entries["matrix"], entries["count"])
             Path(os.environ.get("LANGUAGE_SELECTION_PATH", "/tmp/language-selection.json")).write_text(
                 json.dumps(selection) + "\n", encoding="utf-8")
             print(f"Language release selection: {len(selection['updates'])} updates, "
-                  f"{len(selection['first'])} first publishes, {len(selection['deferred'])} deferred")
+                  f"{len(selection['first'])} first publishes, {len(selection['github_first'])} GitHub-first "
+                  f"Python releases, {len(selection['pypi_pending'])} pending PyPI uploads, "
+                  f"{len(selection['deferred'])} deferred")
         elif args.command == "completed-language-tags":
             completed_tags = list_completed_language_tags()
             args.output.write_text("\n".join(sorted(completed_tags)) + "\n", encoding="utf-8")
+        elif args.command == "pypi-published-language-tags":
+            _, items = read_language_matrix(args.matrix_output)
+            completed_tags = {line for line in args.completed_language_tags.read_text(encoding="utf-8").splitlines() if line}
+            published = pypi_published_language_tags(items, completed_tags)
+            args.output.write_text("".join(f"{tag}\n" for tag in sorted(published)), encoding="utf-8")
         elif args.command == "check-project-limit":
             if has_run_project_limit_artifact(args.repository, args.run_id):
                 with args.github_output.open("a", encoding="utf-8") as output:
@@ -246,23 +498,26 @@ def main() -> int:
             status = publish_pypi(args.assets)
             with args.github_output.open("a", encoding="utf-8") as output:
                 output.write(f"status={status}\n")
+        elif args.command == "pending-pypi-notes":
+            block = pending_pypi_notes_block(args.repository, args.tag, args.package, args.version, args.directory,
+                                             args.wheel.name)
+            args.notes.write_text(add_pending_pypi_notes(args.notes.read_text(encoding="utf-8"), block), encoding="utf-8")
+        elif args.command == "published-pypi-notes":
+            args.output.write_text(published_pypi_notes(args.notes.read_text(encoding="utf-8"), args.package,
+                                                        args.version), encoding="utf-8")
+        elif args.command == "verify-release-archives":
+            archives = verify_release_archives(args.directory, args.tag, args.package, args.version)
+            print("\n".join(str(archive) for archive in archives))
         else:
             selection = json.loads(args.selection.read_text(encoding="utf-8"))
-            expected = selection["updates"] + selection["first"]
+            expected = (selection["updates"] + selection["first"] + selection.get("github_first", [])
+                        + selection.get("pypi_pending", []))
             summary = summarize(expected, args.results_directory, selection["deferred"])
             with args.github_output.open("a", encoding="utf-8") as output:
                 output.write(f"result={json.dumps(summary, separators=(',', ':'))}\n")
                 output.write(f"pending_count={summary['pending_count']}\n")
                 output.write(f"published_count={len(summary['published'])}\n")
-            with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as output:
-                output.write("## Language releases\n\n")
-                for status in ("published", "deferred", "failed"):
-                    if status == "deferred":
-                        labels = [f"{tag} ({summary['deferred_reasons'][tag]})" for tag in summary[status]]
-                    else:
-                        labels = summary[status]
-                    output.write(f"- {status}: {len(summary[status])} — {', '.join(labels) or 'none'}\n")
-                output.write(f"- pending: {summary['pending_count']}\n")
+            write_step_summary(Path(os.environ["GITHUB_STEP_SUMMARY"]), summary)
             print(json.dumps(summary))
     except (OSError, ValueError, RuntimeError, KeyError, json.JSONDecodeError) as error:
         print(error, file=sys.stderr)

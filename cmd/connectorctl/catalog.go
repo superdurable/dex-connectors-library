@@ -47,20 +47,30 @@ type connectorCatalog struct {
 }
 
 type connectorCatalogItem struct {
-	Company     string              `yaml:"company" json:"company"`
-	ID          string              `yaml:"id" json:"id"`
-	Name        string              `yaml:"name" json:"name"`
-	Description string              `yaml:"description" json:"description"`
-	Version     string              `yaml:"version" json:"version"`
-	Languages   map[string]string   `yaml:"languages,omitempty" json:"languages,omitempty"`
-	Directory   string              `yaml:"directory" json:"directory"`
-	UIUnits     []catalogCapability `yaml:"uiUnits" json:"uiUnits"`
-	Triggers    []catalogCapability `yaml:"triggers" json:"triggers"`
-	Operations  []catalogCapability `yaml:"operations" json:"operations"`
+	Company     string            `yaml:"company" json:"company"`
+	ID          string            `yaml:"id" json:"id"`
+	Name        string            `yaml:"name" json:"name"`
+	Description string            `yaml:"description" json:"description"`
+	Version     string            `yaml:"version" json:"version"`
+	Languages   map[string]string `yaml:"languages,omitempty" json:"languages,omitempty"`
+	// PythonPackage locates the listed Python release when the catalog knows which tags PyPI serves.
+	PythonPackage *catalogPythonPackage `yaml:"pythonPackage,omitempty" json:"pythonPackage,omitempty"`
+	Directory     string                `yaml:"directory" json:"directory"`
+	UIUnits       []catalogCapability   `yaml:"uiUnits" json:"uiUnits"`
+	Triggers      []catalogCapability   `yaml:"triggers" json:"triggers"`
+	Operations    []catalogCapability   `yaml:"operations" json:"operations"`
 	// MockPackage is the Go import path of the generated mock package, or empty when the connector has no mocks.
 	MockPackage string `yaml:"mockPackage,omitempty" json:"mockPackage,omitempty"`
 	// Mocks lists the maintained mock outcomes that the mock package offers.
 	Mocks []catalogMock `yaml:"mocks,omitempty" json:"mocks,omitempty"`
+}
+
+// catalogPythonPackage names a completed Python GitHub release and whether PyPI serves it yet.
+type catalogPythonPackage struct {
+	Name string `yaml:"name" json:"name"`
+	Tag  string `yaml:"tag" json:"tag"`
+	// IsPyPIPublished is false while the PyPI upload is pending; install from the GitHub release instead.
+	IsPyPIPublished bool `yaml:"pypiPublished" json:"pypiPublished"`
 }
 
 type catalogMock struct {
@@ -112,11 +122,12 @@ func catalogCommand(args []string) error {
 	outputPath := flags.String("output", "", "generated catalog path")
 	jsonOutputPath := flags.String("json-output", "", "generated JSON catalog path")
 	completedLanguageTagsPath := flags.String("completed-language-tags", "", "file listing completed language release tags")
+	pypiPublishedLanguageTagsPath := flags.String("pypi-published-language-tags", "", "file listing completed Python release tags that PyPI serves")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || *catalogPath == "" || (*check && (*outputPath != "" || *jsonOutputPath != "")) || (!*check && *outputPath == "") {
-		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH [--json-output PATH] [--completed-language-tags PATH])")
+		return errors.New("usage: connectorctl catalog --catalog PATH (--check | --output PATH [--json-output PATH] [--completed-language-tags PATH] [--pypi-published-language-tags PATH])")
 	}
 	entries, err := loadConnectorDirectoryEntries(*catalogPath)
 	if err != nil {
@@ -127,17 +138,18 @@ func catalogCommand(args []string) error {
 	}
 	completedLanguageTags := make(map[string]bool)
 	if *completedLanguageTagsPath != "" {
-		contents, readErr := os.ReadFile(*completedLanguageTagsPath)
-		if readErr != nil {
-			return fmt.Errorf("read completed language release tags: %w", readErr)
-		}
-		for _, tag := range strings.Split(string(contents), "\n") {
-			if tag != "" {
-				completedLanguageTags[tag] = true
-			}
+		if completedLanguageTags, err = readReleaseTagSet(*completedLanguageTagsPath); err != nil {
+			return fmt.Errorf("read completed language release tags: %w", err)
 		}
 	}
-	generated, err := encodeConnectorCatalog(entries, completedLanguageTags, filepath.Dir(*catalogPath))
+	// A nil set means PyPI state is unknown, so the catalog omits pythonPackage.
+	var pypiPublishedLanguageTags map[string]bool
+	if *pypiPublishedLanguageTagsPath != "" {
+		if pypiPublishedLanguageTags, err = readReleaseTagSet(*pypiPublishedLanguageTagsPath); err != nil {
+			return fmt.Errorf("read PyPI-published language release tags: %w", err)
+		}
+	}
+	generated, err := encodeConnectorCatalog(entries, completedLanguageTags, pypiPublishedLanguageTags, filepath.Dir(*catalogPath))
 	if err != nil {
 		return err
 	}
@@ -161,6 +173,20 @@ func catalogCommand(args []string) error {
 		}
 	}
 	return nil
+}
+
+func readReleaseTagSet(path string) (map[string]bool, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	tags := make(map[string]bool)
+	for _, tag := range strings.Split(string(contents), "\n") {
+		if tag != "" {
+			tags[tag] = true
+		}
+	}
+	return tags, nil
 }
 
 func releaseMatrixCommand(args []string) error {
@@ -533,7 +559,8 @@ func validateDiscoveredConnectorDirectories(repositoryRoot string, registeredDir
 	})
 }
 
-func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguageTags map[string]bool, repositoryRoot string) ([]byte, error) {
+func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguageTags, pypiPublishedLanguageTags map[string]bool,
+	repositoryRoot string) ([]byte, error) {
 	catalog := connectorCatalog{
 		APIVersion: connectorCatalogAPIVersion,
 		Kind:       "ConnectorCatalog",
@@ -583,6 +610,13 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 			item.Languages = map[string]string{"go": metadata.Version}
 			if python := releasedLanguages.Python; python != nil {
 				item.Languages["python"] = python.Version
+				if pypiPublishedLanguageTags != nil {
+					tag := entry.Directory + "/python/" + python.Version
+					item.PythonPackage = &catalogPythonPackage{
+						Name: languagePackageName(entry.Directory, "python", python.Package), Tag: tag,
+						IsPyPIPublished: pypiPublishedLanguageTags[tag],
+					}
+				}
 			}
 			if typeScript := releasedLanguages.TypeScript; typeScript != nil {
 				item.Languages["typescript"] = typeScript.Version

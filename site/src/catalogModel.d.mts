@@ -2,6 +2,17 @@
 // SPDX-License-Identifier: MIT
 
 export const rawRepositoryRoot: string;
+export const connectorLibraryRepositoryUrl: string;
+
+export type CatalogPythonPackage = {
+  name: string;
+  tag: string;
+  isPyPIPublished: boolean;
+};
+
+export type PythonInstall =
+  | { isPyPIPublished: true; command: string }
+  | { isPyPIPublished: false; command: string; releaseUrl: string };
 
 export type CatalogConnector = {
   company: string;
@@ -10,6 +21,7 @@ export type CatalogConnector = {
   description: string;
   version: string;
   languages: Partial<Record<"go" | "python" | "typescript", string>>;
+  pythonPackage: CatalogPythonPackage | null;
   directory: string;
   companyDirectory: string;
   uiUnits: CatalogCapability[];
@@ -43,6 +55,7 @@ export function connectorManifestUrl(directory: string, version: string): string
 export function companyLogoUrl(company: string, origin: "local" | "published"): string;
 export function catalogDocumentUrl(isDev: boolean, baseUrl: string): string;
 export function readCatalog(text: string): CatalogConnector[];
+export function pythonInstall(connector: CatalogConnector): PythonInstall | null;
 export function connectorMatchesQuery(connector: CatalogConnector, query: string): boolean;
 export function connectorMatchesLanguage(connector: CatalogConnector, language: "all" | "go" | "python" | "typescript"): boolean;
 export function capabilityMatchesLanguage(capability: CatalogCapability, language: "all" | "go" | "python" | "typescript"): boolean;
