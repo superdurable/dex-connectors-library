@@ -121,7 +121,7 @@ def _search_query(input: SearchObjectsInput) -> str:
 
 def _go_time(value: str) -> str:
     """Render whole-second UTC times used in Pipedrive filters."""
-    instant, _ = parse_go_rfc3339(value)
+    instant, _ = parse_go_rfc3339(value, is_go_json_time=True)
     return instant.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -132,8 +132,10 @@ def _list_query(input: ListObjectsInput) -> str:
     if input.updated_since != zero:
         query["updated_since"] = _go_time(input.updated_since)
     if input.updated_until != zero:
-        if input.updated_since != zero and parse_go_rfc3339(input.updated_until) <= parse_go_rfc3339(
-            input.updated_since
+        if input.updated_since != zero and parse_go_rfc3339(
+            input.updated_until, is_go_json_time=True
+        ) <= parse_go_rfc3339(
+            input.updated_since, is_go_json_time=True
         ):
             raise ValueError("updatedUntil must be after updatedSince")
         query["updated_until"] = _go_time(input.updated_until)

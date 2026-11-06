@@ -22,11 +22,23 @@ ADAPTER = PythonOperationAdapter(
     CONNECTION,
     xero,
     lambda client, recorder: xero.Client(
-        xero.Config(),
+        xero.Config(
+            organisation=(
+                "Maple Florist"
+                if "named-tenant" in recorder.scenario["name"]
+                else "70784a63-d24b-46a9-a4db-0e70a274b056"
+                if recorder.scenario["name"].startswith("oauth-")
+                else ""
+            )
+        ),
         sdk.StaticCredentialProvider(
             {
                 CONNECTION: xero.Credentials(
-                    auth_method_id="custom-connection",
+                    auth_method_id=(
+                        "xero-oauth"
+                        if recorder.scenario["name"].startswith("oauth-")
+                        else "custom-connection"
+                    ),
                     client_id="0F1E2D3C4B5A69788796A5B4C3D2E1F0",
                     client_secret=sdk.SecretString("client-secret"),
                     access_token=sdk.SecretString("xero-test-access-token-0123456789"),
@@ -43,4 +55,4 @@ ADAPTER = PythonOperationAdapter(
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     """Match Go's request, exact model output, branch, retry, and uncertainty."""
-    await replay(scenario, ADAPTER.invoke, "/api.xro/2.0")
+    await replay(scenario, ADAPTER.invoke)

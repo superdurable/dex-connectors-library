@@ -2,7 +2,7 @@
 
 `dex-connector-xero` v0.1.0 exposes all six Xero contact, invoice, and payment
 operations through generated Dex Step factories. It requires
-`dex-connectors-sdk==0.6.0` and uses generated Custom Connection and OAuth
+`dex-connectors-sdk==0.7.0` and uses generated Custom Connection and OAuth
 refresh wiring. Configure `xero-books` in Dex Web **Connections** using the
 [connector setup](../README.md#xero-setup). Provider operations use exact
 decimal strings and send writes under the Call ID as `Idempotency-Key`.

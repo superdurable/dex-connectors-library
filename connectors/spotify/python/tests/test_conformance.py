@@ -37,4 +37,4 @@ ADAPTER = PythonOperationAdapter(
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda scenario: scenario["name"])
 async def test_connector_conformance(scenario: dict[str, object]) -> None:
     """Check the provider request and SDK-coded attempt against Go."""
-    await replay(scenario, ADAPTER.invoke, "/v1")
+    await replay(scenario, ADAPTER.invoke)

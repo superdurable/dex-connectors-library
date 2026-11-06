@@ -96,15 +96,18 @@ def _string(value: object) -> str:
     return value if isinstance(value, str) else ""
 
 
-def parse_go_rfc3339(value: str) -> tuple[datetime, int]:
-    """Parse provider RFC 3339 using Go's date and offset bounds."""
+def parse_go_rfc3339(value: str, *, is_go_json_time: bool = False) -> tuple[datetime, int]:
+    """Parse provider RFC 3339, or Go JSON time with its wider offset bounds."""
     match = _RFC3339.fullmatch(value)
     if match is None:
         raise ValueError("invalid RFC 3339 timestamp")
     year, month, day, hour, minute, second, fraction, zone, sign, zone_hour, zone_minute = match.groups()
     if int(hour) > 23 or int(minute) > 59 or int(second) > 59:
         raise ValueError("invalid RFC 3339 clock")
-    if zone != "Z" and (int(zone_hour) > 99 or int(zone_minute) > 59):
+    if zone != "Z" and (
+        int(zone_hour) > (24 if is_go_json_time else 99)
+        or int(zone_minute) > (60 if is_go_json_time else 59)
+    ):
         raise ValueError("invalid RFC 3339 offset")
     nanoseconds = int((fraction or "")[:9].ljust(9, "0"))
     local = datetime(int(year), int(month), int(day), int(hour), int(minute), int(second), tzinfo=UTC)
