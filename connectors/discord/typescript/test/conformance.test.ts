@@ -11,11 +11,7 @@ import { AddReactionInputSchema, CreateMessageInputSchema, GetChannelInputSchema
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/discord/scenarios.json', import.meta.url));
 const connection = { provider: 'discord', name: 'discord' };
 
-it.each(scenarios)('matches Go conformance: $name', scenario => replay({
-  ...scenario,
-  // Go records decoded URL paths; Node reports the encoded pathname.
-  exchanges: scenario.exchanges.map(exchange => ({ ...exchange, path: encodeURI(exchange.path) })),
-}, invokeDiscord));
+it.each(scenarios)('matches Go conformance: $name', scenario => replay(scenario, invokeDiscord));
 
 function productionMutation<Input, Output>(operation: Mutation<Input, Output>, call: Call, input: Input, key: string) {
   return invokeProductionMutation(operation, key,

@@ -356,7 +356,11 @@ export class ExchangeRecorder {
     const bodyBytes = typeof request.body === 'string' ? Buffer.from(request.body) : Buffer.from(request.body ?? []);
     const bodyText = bodyBytes.toString();
     this.equal(index, 'method', request.method, exchange.method);
-    this.equal(index, 'path', url.pathname, this.pathPrefix + exchange.path);
+    // Go records URL.Path, which decodes one layer of escaping; URL.pathname retains that layer.
+    let decodedPath = url.pathname;
+    try { decodedPath = decodeURIComponent(url.pathname); }
+    catch { this.mismatches.push(`request ${index}: invalid percent-encoded path`); }
+    this.equal(index, 'path', decodedPath, this.pathPrefix + exchange.path);
     for (const [key, value] of Object.entries(exchange.query ?? {})) this.equal(index, `query ${key}`, url.searchParams.getAll(key), Array.isArray(value) ? value : [value]);
     for (const key of new Set(url.searchParams.keys())) if (!(key in (exchange.query ?? {}))) this.mismatches.push(`request ${index}: unasserted query ${key}=${JSON.stringify(url.searchParams.getAll(key))}`);
     const contentType = Object.entries(request.headers ?? {}).find(([name]) => name.toLowerCase() === 'content-type')?.[1];

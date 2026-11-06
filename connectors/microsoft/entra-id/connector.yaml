@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: microsoft
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-microsoft-entra-id'
+      operations: [getUser, listUsers, createUser, disableUser, enableUser, revokeSignInSessions, addUserToGroup, removeUserFromGroup]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-microsoft-entra-id

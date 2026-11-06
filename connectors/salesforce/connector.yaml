@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: salesforce
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-salesforce"
+      operations: [queryRecords, getRecord, upsertRecordByExternalId, updateRecord]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-salesforce

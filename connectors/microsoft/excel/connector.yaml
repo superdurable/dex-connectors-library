@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: microsoft
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-microsoft-excel"
+      operations: [getTableRows, getValues, updateValues, appendTableRows]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-microsoft-excel

@@ -297,6 +297,23 @@ org API access have not been verified for the Python port.
 
 ## Verification
 
+### TypeScript port
+
+The first TypeScript package release is `@superdurable/connector-salesforce@0.1.0`.
+It implements all four operations through the Connector SDK 0.7.0 and uses
+generated Salesforce OAuth and JWT bearer refresh declarations. The runnable
+[`examples/record-lookup`](typescript/examples/record-lookup) Flow reads a
+Contact using the static `salesforce-crm` connection. Its integration test
+starts `dexcli dev`, runs a real Dex Worker and Client, and uses an inert local
+Salesforce HTTP fake for the provider boundary. Live Salesforce OAuth consent,
+JWT bearer authorization, and org API access remain unverified.
+
+```bash
+npm ci --prefix connectors/salesforce/typescript
+npm run check --prefix connectors/salesforce/typescript
+npm run test:integration --prefix connectors/salesforce/typescript
+```
+
 ```bash
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
