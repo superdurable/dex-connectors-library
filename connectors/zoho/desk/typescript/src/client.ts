@@ -90,13 +90,14 @@ export class ZohoDeskClient {
       return this.failure('unavailable', operation, 'AUTHENTICATION', 'Zoho credentials are temporarily unavailable');
     }
     if (!this.hasValidCredentials(credentials)) return this.failure('defect', operation, 'AUTHENTICATION', 'Zoho Desk connection credentials are missing or invalid');
-    const host = dataCenterHosts[credentials.authMethodId || 'zoho-us-oauth'];
+    const host = dataCenterHosts[credentials.authMethodId ?? ''];
     if (!host) return this.failure('defect', operation, 'AUTHENTICATION', 'Zoho Desk connection credentials are missing or invalid');
     return { credentials, baseURL: this.apiBaseURL ?? `https://${host}/api/v1` };
   }
 
   /** Send one provider exchange and refresh a rejected access token once. */
   async exchange(call: Call, operation: string, session: { credentials: Credentials; baseURL: string }, method: string, path: string, query?: Record<string, string>, payload?: unknown): Promise<ExchangeResult> {
+    if (this.operationSignal(call).aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
     let encoded: Uint8Array | undefined;
     try { if (payload !== undefined) encoded = Buffer.from(JSON.stringify(payload)); }
     catch { return { outcome: this.failure('defect', operation, 'LOCAL_DEFECT', 'Zoho Desk request could not be built') }; }
@@ -105,6 +106,7 @@ export class ZohoDeskClient {
       let observedStatus = 0;
       let observedHeaders: ProviderResponse['headers'] = {};
       const token = session.credentials.accessToken.reveal();
+      if (this.operationSignal(call).aborted) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'the operation deadline passed before Zoho Desk could send a request') };
       const request: ProviderRequest = {
         url: target, method, headers: { Authorization: `Zoho-oauthtoken ${token}`, orgId: this.orgId, Accept: 'application/json', ...(encoded ? { 'Content-Type': 'application/json' } : {}) },
         ...(encoded ? { body: encoded } : {}), maxResponseBytes: this.maxResponseBytes, maxErrorResponseBytes: MaxErrorBodyBytes,
@@ -116,11 +118,14 @@ export class ZohoDeskClient {
       try { response = await this.send(request); }
       catch (error) {
         if (error instanceof BodyTooLargeError) {
-          const responseWithoutBody = error.status === undefined ? undefined : { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+          const status = error.status ?? observedStatus;
+          const responseWithoutBody = status === 0 ? undefined : { status, headers: error.headers ?? observedHeaders, body: new Uint8Array() };
+          if (responseWithoutBody && (responseWithoutBody.status < 200 || responseWithoutBody.status >= 300)) return { outcome: classifyStatus(responseWithoutBody, operation, this.now()) };
           return { outcome: this.failure('invalid', operation, 'RESPONSE_TOO_LARGE', 'Zoho Desk response exceeds the configured maxResponseBytes limit', 0, responseWithoutBody) };
         }
         if (observedStatus !== 0) {
           const partialResponse = { status: observedStatus, headers: observedHeaders, body: new Uint8Array() };
+          if (observedStatus === 503) return { outcome: classifyStatus(partialResponse, operation, this.now()) };
           return { outcome: this.failure('unavailable', operation, 'TRANSPORT', 'Zoho Desk response could not be read', 0, partialResponse) };
         }
         if (error instanceof ProviderTransportError && error.isProvablyNotSent) return { outcome: this.failure('notSent', operation, 'TRANSPORT', 'Zoho Desk could not be reached; no request was sent') };
@@ -144,15 +149,14 @@ export class ZohoDeskClient {
   }
 
   private hasValidCredentials(credentials: Credentials): boolean {
-    return !!credentials && !!dataCenterHosts[credentials.authMethodId || 'zoho-us-oauth'] &&
-      !!credentials.accessToken?.reveal() && isHeaderSafeCredential(credentials.accessToken.reveal()) &&
-      !!credentials.oauthClientId && !!credentials.oauthClientSecret?.reveal() && !!credentials.refreshToken?.reveal();
+    return !!credentials && !!dataCenterHosts[credentials.authMethodId ?? ''] &&
+      !!credentials.accessToken?.reveal() && isHeaderSafeCredential(credentials.accessToken.reveal());
   }
 
   private operationSignal(call: Call): AbortSignal {
     const existing = this.operationSignals.get(call);
     if (existing) return existing;
-    const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(30_000)]);
+    const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(25_000)]);
     this.operationSignals.set(call, signal);
     return signal;
   }

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json
 import re
@@ -147,6 +148,12 @@ class Client:
         self.api_base_url = api_base_url.rstrip("/")
         self.http_client = http_client or new_provider_http_client(10)
         self._owns_http_client = http_client is None
+        self._operation_deadlines: dict[str, float] = {}
+
+    def _remaining_seconds(self, call: Call) -> float:
+        clock = asyncio.get_running_loop()
+        deadline = self._operation_deadlines[str(call.id)]
+        return max(0.0, deadline - clock.time())
 
     def search_tickets(self) -> Any:
         """Return the searchTickets Query bound to this client."""
@@ -185,8 +192,16 @@ class Client:
 
     async def resolve(self, call: Call, operation: str) -> tuple[Credentials | None, str | None, str]:
         """Resolve generated OAuth credentials and the matching Desk data center."""
+        clock = asyncio.get_running_loop()
+        self._operation_deadlines = {
+            call_id: deadline for call_id, deadline in self._operation_deadlines.items()
+            if deadline > clock.time()
+        }
+        self._operation_deadlines[str(call.id)] = clock.time() + 25
         try:
-            credentials = await self.credentials.resolve(call)
+            credentials = await asyncio.wait_for(
+                self.credentials.resolve(call), self._remaining_seconds(call)
+            )
         except Exception as error:
             from dex_connectors.sdk import ReauthorizationRequiredError
 
@@ -217,11 +232,33 @@ class Client:
                 f"{_query_escape(key)}={_query_escape(value)}" for key, value in sorted(query.items())
             )
         for attempt in range(2):
-            result = await self._exchange_once(operation, credentials, method, target, payload)
+            if self._remaining_seconds(call) <= 0:
+                return Exchange(
+                    "not_sent",
+                    failure=failure(
+                        operation, FailureKind.TRANSPORT,
+                        "the operation deadline passed before Zoho Desk could send a request",
+                    ),
+                )
+            try:
+                result = await asyncio.wait_for(
+                    self._exchange_once(operation, credentials, method, target, payload),
+                    self._remaining_seconds(call),
+                )
+            except TimeoutError:
+                return Exchange(
+                    "unavailable",
+                    failure=failure(
+                        operation, FailureKind.TRANSPORT,
+                        "the operation deadline passed before Zoho Desk answered",
+                    ),
+                )
             if result.status != 401 or attempt or not hasattr(self.credentials, "resolve_after_rejection"):
                 return result
             try:
-                replacement = await self.credentials.resolve_after_rejection(call)
+                replacement = await asyncio.wait_for(
+                    self.credentials.resolve_after_rejection(call), self._remaining_seconds(call)
+                )
                 if (
                     not isinstance(replacement, Credentials)
                     or replacement.auth_method_id != credentials.auth_method_id

@@ -134,9 +134,21 @@ export function validateWriteFields(fields: Record<string, unknown> | null): Rec
   if (!fields || Object.keys(fields).length < 1 || Object.keys(fields).length > 200) throw new TypeError('fields must set 1 to 200 fields');
   for (const [name, value] of Object.entries(fields)) {
     if (!isFieldName(name) || name.toLowerCase() === 'id') throw new TypeError(`field name "${name}" must be a Zoho CRM field API name other than id`);
-    if (value === undefined || (typeof value === 'number' && !Number.isFinite(value))) throw new TypeError(`field ${name} must hold one JSON value`);
-    if (typeof value === 'number' && !Number.isSafeInteger(value)) throw new TypeError(`field ${name} exceeds exact numeric precision`);
-    try { JSON.stringify(value); } catch { throw new TypeError(`field ${name} must hold one JSON value`); }
+    validateExactJSONValue(value, name, new Set());
   }
   return fields;
+}
+
+function validateExactJSONValue(value: unknown, fieldName: string, ancestors: Set<object>): void {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError(`field ${fieldName} must hold one JSON value`);
+    if (Number.isInteger(value) && !Number.isSafeInteger(value)) throw new TypeError(`field ${fieldName} exceeds exact numeric precision`);
+    return;
+  }
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
+  if (!value || typeof value !== 'object' || (Object.getPrototypeOf(value) !== Object.prototype && !Array.isArray(value))) throw new TypeError(`field ${fieldName} must hold one JSON value`);
+  if (ancestors.has(value)) throw new TypeError(`field ${fieldName} must hold one JSON value`);
+  ancestors.add(value);
+  for (const item of Object.values(value)) validateExactJSONValue(item, fieldName, ancestors);
+  ancestors.delete(value);
 }

@@ -89,9 +89,9 @@ def _count(value: Any) -> int:
 
 
 def _flag(value: Any) -> bool:
-    if value in (True, "true"):
+    if value is True or value == "true":
         return True
-    if value in (False, "false", None, ""):
+    if value is False or value is None or value in ("false", ""):
         return False
     raise ValueError("flag is not a boolean")
 
@@ -109,9 +109,9 @@ def _optional_timestamp(field_name: str, value: Any) -> datetime | None:
 
 
 def _truncate(value: str) -> tuple[str, bool]:
-    encoded = value.encode()
+    encoded = re.sub(r"[\ud800-\udfff]", "\ufffd", value).encode()
     if len(encoded) <= 16384:
-        return value, False
+        return encoded.decode(), False
     return encoded[:16384].decode(errors="ignore"), True
 
 
@@ -170,13 +170,19 @@ def _ticket_body(body: bytes, expected_id: str = "") -> tuple[Ticket, dict[str, 
 
 
 def _contact(value: dict[str, Any] | None) -> TicketContact | None:
-    if value is None or not _id(value.get("id")):
+    if value is None:
+        return None
+    contact_id = _id(value.get("id"))
+    first_name = _string(value.get("firstName"))
+    last_name = _string(value.get("lastName"))
+    email = _string(value.get("email"))
+    if not contact_id:
         return None
     return TicketContact(
-        _id(value["id"]),
-        _string(value.get("firstName")),
-        _string(value.get("lastName")),
-        _string(value.get("email")),
+        contact_id,
+        first_name,
+        last_name,
+        email,
     )
 
 
@@ -403,9 +409,10 @@ class SearchTicketsOperation:
             tickets = []
             for row in rows:
                 ticket, contact = _ticket(row)
+                validated_contact = _contact(contact)
                 if input.contact_email and input.contact_email.casefold() not in (
                     ticket.email.casefold(),
-                    _string(contact.get("email")).casefold() if contact else "",
+                    validated_contact.email.casefold() if validated_contact else "",
                 ):
                     continue
                 from dataclasses import replace
@@ -468,6 +475,7 @@ class GetTicketOperation:
             return _with_query_value(routed, empty)
         try:
             ticket, contact_wire = _ticket_body(result.body, input.ticket_id)
+            contact = _contact(contact_wire)
         except ValueError as error:
             return QueryAttempt.branch_result(
                 d.INVALID_RESPONSE,
@@ -547,7 +555,7 @@ class GetTicketOperation:
             d.FOUND,
             TicketDetails(
                 ticket,
-                _contact(contact_wire),
+                contact,
                 threads,
                 ticket.thread_count > len(threads),
                 comments,
@@ -707,9 +715,10 @@ class CreateTicketOperation:
             description = (
                 html.escape(input.description.replace("\r\n", "\n"), quote=True)
                 .replace("&#x27;", "&#39;")
+                .replace("&quot;", "&#34;")
                 .replace("\n", "<br>")
             )
-            if len(description) > 65535:
+            if len(description.encode()) > 65535:
                 raise ValueError(
                     "description is longer than Zoho Desk's 65,535-character limit once escaped as HTML"
                 )
@@ -862,10 +871,11 @@ class UpdateTicketOperation:
             change["status"] = input.status
         if input.priority and input.priority.casefold() != (current.priority or "").casefold():
             change["priority"] = input.priority
-        if input.department_id and input.department_id != current.department_id:
-            change["departmentId"] = input.department_id
-        if input.assignee_id and (input.assignee_id != current.assignee_id or "departmentId" in change):
+        has_department_change = bool(input.department_id and input.department_id != current.department_id)
+        if input.assignee_id and (input.assignee_id != current.assignee_id or has_department_change):
             change["assigneeId"] = input.assignee_id
+        if has_department_change:
+            change["departmentId"] = input.department_id
         if not change:
             return MutationAttempt.branch_result(d.UPDATED, UpdateTicketOutput(current, True), receipt)
         result = await self.client.exchange(

@@ -33,6 +33,7 @@ function emptyList(): ListModifiedRecordsOutput { return { module: '', records: 
 function emptyFields(): ListModuleFieldsOutput { return { module: '', fields: [] }; }
 function emptyUpsert(): UpsertRecordOutput { return { module: '' }; }
 function emptyUpdate(): UpdateRecordOutput { return { module: '' }; }
+function errorMessage(error: unknown): string { return error instanceof Error ? error.message : 'invalid response'; }
 
 function queryFailure<Output>(http: ZohoHTTPClient, call: Call, result: Exchange, zero: Output, hasNotFound: boolean, isSessionFailure = false): QueryAttempt<Output> | undefined {
   if (result.outcome === 'success') return undefined;
@@ -49,7 +50,7 @@ function mutationFailure<Output>(http: ZohoHTTPClient, call: Call, result: Excha
   else if (result.outcome === 'defect') branch = 'defect';
   else if (result.summary.code === 'DUPLICATE_DATA') branch = 'conflict';
   else if (hasNotFound && isMissingRecord(result.summary)) branch = 'notFound';
-  else if (['OAUTH_SCOPE_MISMATCH', 'NO_PERMISSION', 'AUTHORIZATION_FAILED', 'INVALID_MODULE', 'NOT_SUPPORTED', 'INVALID_URL_PATTERN', 'INVALID_REQUEST_METHOD'].includes(result.summary.code) || (result.status >= 300 && result.status !== 400 && result.status !== 422)) branch = 'providerRejected';
+  else if (isSessionFailure || ['OAUTH_SCOPE_MISMATCH', 'NO_PERMISSION', 'AUTHORIZATION_FAILED', 'INVALID_MODULE', 'NOT_SUPPORTED', 'INVALID_URL_PATTERN', 'INVALID_REQUEST_METHOD'].includes(result.summary.code) || (result.status >= 300 && result.status !== 400 && result.status !== 422)) branch = 'providerRejected';
   else branch = 'recordRejected';
   return newMutationBranch(branch, value, isSessionFailure ? zeroReceipt() : http.receipt(call, result, recordId), result.failure);
 }
@@ -104,7 +105,7 @@ export class ZohoClient implements Operations {
       const receipt = http.receipt(call, result);
       let page: ReturnType<typeof decodeRecordPage>;
       try { page = decodeRecordPage(input.module, result.body); }
-      catch (error) { return newQueryBranch('invalidResponse', emptyFind(), receipt, crmFailure('PROTOCOL', 'findRecords', `Zoho CRM returned an invalid page: ${String(error)}`)); }
+      catch (error) { return newQueryBranch('invalidResponse', emptyFind(), receipt, crmFailure('PROTOCOL', 'findRecords', `Zoho CRM returned an invalid page: ${errorMessage(error)}`)); }
       if (page.records.length > (input.limit || 10)) return newQueryBranch('invalidResponse', emptyFind(), receipt, crmFailure('PROTOCOL', 'findRecords', 'Zoho CRM returned more records than the page size'));
       const nextOffset = (input.offset ?? 0) + page.records.length;
       const output: FindRecordsOutput = { module: input.module, records: page.records, ...(page.hasMore && page.records.length && nextOffset < 100_000 ? { nextOffset } : {}) };
@@ -130,7 +131,7 @@ export class ZohoClient implements Operations {
       if (result.status === 204 || !new TextDecoder().decode(result.body).trim()) return newQueryBranch('notFound', emptyRecord(), receipt, crmFailure('NOT_FOUND', 'getRecord', 'Zoho CRM found no record with the ID (HTTP 204)'));
       let page: ReturnType<typeof decodeRecordPage>;
       try { page = decodeRecordPage(input.module, result.body); }
-      catch (error) { return newQueryBranch('invalidResponse', emptyRecord(), receipt, crmFailure('PROTOCOL', 'getRecord', `Zoho CRM returned an invalid record: ${String(error)}`)); }
+      catch (error) { return newQueryBranch('invalidResponse', emptyRecord(), receipt, crmFailure('PROTOCOL', 'getRecord', `Zoho CRM returned an invalid record: ${errorMessage(error)}`)); }
       if (!page.records.length) return newQueryBranch('notFound', emptyRecord(), receipt, crmFailure('NOT_FOUND', 'getRecord', 'Zoho CRM returned no record with the ID'));
       if (page.records.length !== 1 || page.records[0]!.id !== input.recordId) return newQueryBranch('invalidResponse', emptyRecord(), receipt, crmFailure('PROTOCOL', 'getRecord', 'Zoho CRM returned a record other than the one requested'));
       return newQueryBranch('found', page.records[0]!, receipt);
@@ -163,7 +164,7 @@ export class ZohoClient implements Operations {
           cursor = `${at}/${id}`;
         }
         return newQueryBranch('listed', { module: input.module, records: page.records, ...(page.hasMore && page.records.length ? { hasMore: true } : {}), cursor }, receipt);
-      } catch (error) { return newQueryBranch('invalidResponse', emptyList(), receipt, crmFailure('PROTOCOL', 'listModifiedRecords', `Zoho CRM returned an invalid page: ${String(error)}`)); }
+      } catch (error) { return newQueryBranch('invalidResponse', emptyList(), receipt, crmFailure('PROTOCOL', 'listModifiedRecords', `Zoho CRM returned an invalid page: ${errorMessage(error)}`)); }
     } };
   }
 
@@ -233,7 +234,7 @@ export class ZohoClient implements Operations {
       if (failed) return failed;
       const receipt = http.receipt(call, result);
       try { return newQueryBranch('listed', { module: input.module, fields: decodeModuleFields(result.body) }, receipt); }
-      catch (error) { return newQueryBranch('invalidResponse', emptyFields(), receipt, crmFailure('PROTOCOL', 'listModuleFields', `Zoho CRM returned an invalid field list: ${String(error)}`)); }
+      catch (error) { return newQueryBranch('invalidResponse', emptyFields(), receipt, crmFailure('PROTOCOL', 'listModuleFields', `Zoho CRM returned an invalid field list: ${errorMessage(error)}`)); }
     } };
   }
 }

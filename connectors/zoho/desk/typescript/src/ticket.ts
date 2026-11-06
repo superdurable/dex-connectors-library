@@ -10,14 +10,15 @@ class GoJSONNumber {
 }
 
 /** Decode a provider JSON object without coercing wrong-typed fields. */
-export function decodeObject(body: Uint8Array): Wire {
-  const value: unknown = JSON.parse(Buffer.from(body).toString('utf8'), (_key: string, parsed: unknown, context?: { source?: string }) => {
+export function decodeObject(body: Uint8Array, malformedMessage = 'ticket response is not a ticket object'): Wire {
+  let value: unknown;
+  try { value = JSON.parse(Buffer.from(body).toString('utf8'), (_key: string, parsed: unknown, context?: { source?: string }) => {
     if (typeof parsed !== 'number') return parsed;
     const source = context?.source;
     if (source === undefined) throw new Error('JSON numeric source is unavailable');
     return /^[0-9]+$/.test(source) && Number.isSafeInteger(parsed) ? parsed : new GoJSONNumber(source);
-  });
-  return object(value);
+  }); } catch (error) { if (error instanceof SyntaxError) throw new Error(malformedMessage); throw error; }
+  try { return object(value); } catch { throw new Error(malformedMessage); }
 }
 function object(value: unknown): Wire { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('response is not an object'); return value as Wire; }
 function text(value: unknown): string { if (value === undefined || value === null) return ''; if (typeof value !== 'string') throw new Error('field is not a string'); return value; }
@@ -139,7 +140,7 @@ export function decodeComment(wire: Wire): TicketComment {
 /** Read a bounded list response, allowing Zoho Desk's empty 204. */
 export function decodeList(body: Uint8Array, status: number, limit: number): Wire[] {
   if (status === 204) return [];
-  const page = decodeObject(body);
+  const page = decodeObject(body, 'list is not a JSON object with a data array');
   if (!Array.isArray(page.data) || page.data.length > limit) throw new Error('list is not a JSON object with a data array');
   return page.data.map(object);
 }

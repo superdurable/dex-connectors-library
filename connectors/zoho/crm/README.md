@@ -316,7 +316,9 @@ keys starting with `$` cannot be written.
 
 `updateRecord` sends `PUT /crm/v8/{module}/{id}` with 1 to 200 fields, such as
 a deal's `Stage` and `Owner`; fields it does not name keep their values and
-JSON `null` clears one. `INVALID_DATA` about the `id` selects `notFound`, and a
+JSON `null` clears one. Fractional numbers are accepted, while JavaScript callers
+must avoid integers beyond exact numeric precision. `INVALID_DATA` about the
+`id` selects `notFound`, and a
 blueprint or approval lock selects `recordRejected` with `RECORD_LOCKED` or
 Zoho's other code. This release sends no `If-Unmodified-Since`: a retry after
 an attempt that already applied would see `ALREADY_MODIFIED` and report a

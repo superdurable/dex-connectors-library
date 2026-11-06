@@ -114,6 +114,7 @@ export class ZohoHTTPClient {
   readonly #apiBaseURL: string | undefined;
   readonly #maxResponseBytes: number;
   readonly #now: () => Date;
+  readonly #operationSignals = new WeakMap<Call, AbortSignal>();
 
   /** Validate configuration and bind host-owned credentials. */
   constructor(config: Config, credentials: CredentialSource, options: ZohoClientOptions = {}) {
@@ -131,13 +132,13 @@ export class ZohoHTTPClient {
   /** Resolve the credential and classify admission errors like Go. */
   async session(call: Call, operation: string): Promise<{ credentials: Credentials; baseURL: string } | Exchange> {
     let credentials: Credentials;
-    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal); }
+    try { credentials = await resolveCredential(this.#credentials, call, this.#refreshDriver, this.#operationSignal(call)); }
     catch (error) {
       if (error instanceof ReauthorizationRequiredError) return emptyExchange('rejected', crmFailure('AUTHENTICATION', operation, 'Zoho authorization is revoked or expired; reconnect the connection'));
       return emptyExchange('retry', crmFailure('AUTHENTICATION', operation, 'Zoho credentials are temporarily unavailable'));
     }
     try { return { credentials, baseURL: apiBaseURL(credentials, this.#apiBaseURL) }; }
-    catch (error) { return emptyExchange('defect', crmFailure('AUTHENTICATION', operation, `Zoho CRM connection credentials are missing or invalid: ${String(error)}`)); }
+    catch (error) { return emptyExchange('defect', crmFailure('AUTHENTICATION', operation, `Zoho CRM connection credentials are missing or invalid: ${error instanceof Error ? error.message : 'invalid credentials'}`)); }
   }
 
   /** Send a provider request, retrying once after a rejected token. */
@@ -151,7 +152,7 @@ export class ZohoHTTPClient {
       const result = await this.#exchangeOnce(call, operation, session, method, pathAndQuery, encoded);
       if (result.status !== 401 || result.summary.code === 'OAUTH_SCOPE_MISMATCH' || attempt > 0 || !('resolveAfterRejection' in this.#credentials)) return result;
       try {
-        const replacement = await resolveCredentialAfterRejection(this.#credentials, call, this.#refreshDriver, call.context.cancellationSignal);
+        const replacement = await resolveCredentialAfterRejection(this.#credentials, call, this.#refreshDriver, this.#operationSignal(call));
         if (replacement.authMethodId !== session.credentials.authMethodId) return result;
         session.credentials = replacement;
         session.baseURL = apiBaseURL(replacement, this.#apiBaseURL);
@@ -161,9 +162,8 @@ export class ZohoHTTPClient {
   }
 
   async #exchangeOnce(call: Call, operation: string, session: { credentials: Credentials; baseURL: string }, method: string, pathAndQuery: string, body?: Uint8Array): Promise<Exchange> {
-    if (call.context.cancellationSignal?.aborted) return emptyExchange('retry', crmFailure('TRANSPORT', operation, 'the operation deadline passed before Zoho CRM answered'));
-    const deadline = AbortSignal.timeout(25_000);
-    const signal = call.context.cancellationSignal ? AbortSignal.any([deadline, call.context.cancellationSignal]) : deadline;
+    const signal = this.#operationSignal(call);
+    if (signal.aborted) return emptyExchange('retry', crmFailure('TRANSPORT', operation, 'the operation deadline passed before Zoho CRM answered'));
     let observedStatus = 0;
     const request: ProviderRequest = {
       url: `${session.baseURL}${pathAndQuery}`, method,
@@ -176,18 +176,17 @@ export class ZohoHTTPClient {
     catch (error) {
       const status = error instanceof BodyTooLargeError ? error.status ?? observedStatus : observedStatus;
       const headers = error instanceof BodyTooLargeError ? error.headers ?? {} : {};
-      if (error instanceof BodyTooLargeError && status >= 200 && status < 300) return { ...emptyExchange('invalid', crmFailure('RESPONSE_TOO_LARGE', operation, 'Zoho CRM response exceeds the configured maxResponseBytes limit')), status, headers };
+      if (error instanceof BodyTooLargeError && status >= 200 && status < 300) return { ...emptyExchange('invalid', crmFailure('RESPONSE_TOO_LARGE', operation, 'Zoho CRM response exceeds the configured maxResponseBytes limit')), status, headers, remainingCredits: this.#credits(headers) };
       if (error instanceof BodyTooLargeError && status && (status < 200 || status >= 300)) return this.#classify(operation, status, headers, new Uint8Array());
       return { ...emptyExchange('retry', crmFailure('TRANSPORT', operation, status ? 'Zoho CRM response could not be read' : 'Zoho CRM request failed before a response arrived')), status };
     }
     const headers = response.headers as Exchange['headers'];
     if (session.credentials.accessToken.reveal() && new TextDecoder().decode(response.body).includes(session.credentials.accessToken.reveal())) {
-      if (response.status >= 200 && response.status < 300) return { ...emptyExchange('invalid', crmFailure('PROTOCOL', operation, 'Zoho CRM response reflected the connection credential')), status: response.status, headers };
+      if (response.status >= 200 && response.status < 300) return { ...emptyExchange('invalid', crmFailure('PROTOCOL', operation, 'Zoho CRM response reflected the connection credential')), status: response.status, headers, remainingCredits: this.#credits(headers) };
       response = { ...response, body: new Uint8Array() };
     }
     if (response.status >= 200 && response.status < 300) {
-      const credits = header(headers, 'X-API-CREDITS-REMAINING');
-      return { ...emptyExchange('success'), status: response.status, headers, body: response.body, remainingCredits: /^[0-9]{1,12}$/.test(credits) ? credits : '' };
+      return { ...emptyExchange('success'), status: response.status, headers, body: response.body, remainingCredits: this.#credits(headers) };
     }
     return this.#classify(operation, response.status, headers, response.body);
   }
@@ -200,6 +199,19 @@ export class ZohoHTTPClient {
     if (status === 408 || status >= 500) return { ...result, outcome: 'retry', retryAfterMs: parseRetryAfter(header(headers, 'Retry-After'), this.#now()), failure: crmFailure('AVAILABILITY', operation, detailText(summary, `Zoho CRM could not complete the request (HTTP ${status})`)) };
     if (status >= 300 && status < 400) return { ...result, failure: crmFailure('PROTOCOL', operation, `Zoho CRM redirected the request (HTTP ${status}); check that the connection uses the account's data center`) };
     return this.rejectRecord(result, operation);
+  }
+
+  #credits(headers: Exchange['headers']): string {
+    const credits = header(headers, 'X-API-CREDITS-REMAINING');
+    return /^[0-9]{1,12}$/.test(credits) ? credits : '';
+  }
+
+  #operationSignal(call: Call): AbortSignal {
+    const existing = this.#operationSignals.get(call);
+    if (existing) return existing;
+    const signal = AbortSignal.any([call.context.cancellationSignal, AbortSignal.timeout(25_000)]);
+    this.#operationSignals.set(call, signal);
+    return signal;
   }
 
   /** Classify a conclusive record-level rejection inside a successful HTTP response. */

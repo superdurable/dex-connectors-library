@@ -77,7 +77,7 @@ export class SearchTicketsOperation implements Query<SearchTicketsInput, SearchT
     if ('outcome' in result) return queryOutcome(result.outcome, zeroSearch, receipt);
     try {
       if (result.response.status === 204) return newQueryBranch('searched', zeroSearch, receipt);
-      const page = decodeObject(result.response.body);
+      const page = decodeObject(result.response.body, 'search page is not a JSON object with data and count');
       if (!Array.isArray(page.data)) throw new Error('search page has no data array');
       const limit = Number(query.limit);
       if (page.data.length > limit) throw new Error('search page holds more tickets than requested');
@@ -112,19 +112,19 @@ export class GetTicketOperation implements Query<GetTicketInput, TicketDetails> 
     let decoded: ReturnType<typeof decodeTicket>;
     try { decoded = decodeTicket(decodeObject(first.response.body), input.ticketId); }
     catch (error) { return newQueryBranch('invalidResponse', zeroDetails, receipt, failure(operation, 'PROTOCOL', `Zoho Desk returned an invalid ticket: ${errorMessage(error)}`)); }
-    const threadLimit = input.threadLimit || 10;
+    const threadLimit = input.threadLimit || 5;
     const threadsResponse = await this.client.exchange(call, operation, session, 'GET', ticketPath(input.ticketId) + '/threads', { from: '0', limit: String(threadLimit), sortBy: '-sendDateTime' });
     receipt = exchangeReceipt(this.client, call, threadsResponse, input.ticketId);
     if ('outcome' in threadsResponse) return queryOutcome(threadsResponse.outcome, zeroDetails, receipt, 'providerRejected', 'notFound');
     let threads: TicketDetails['threads'];
-    try { threads = decodeList(threadsResponse.response.body, threadsResponse.response.status, threadLimit).map(decodeThread).sort((left, right) => right.createdAt.localeCompare(left.createdAt)); }
+    try { threads = decodeList(threadsResponse.response.body, threadsResponse.response.status, threadLimit).map(decodeThread).sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt)); }
     catch (error) { return newQueryBranch('invalidResponse', zeroDetails, receipt, failure(operation, 'PROTOCOL', `Zoho Desk returned an invalid thread list: ${errorMessage(error)}`)); }
     const commentLimit = input.commentLimit || 5;
     const commentsResponse = await this.client.exchange(call, operation, session, 'GET', ticketPath(input.ticketId) + '/comments', { from: '0', limit: String(commentLimit), sortBy: '-commentedTime' });
     receipt = exchangeReceipt(this.client, call, commentsResponse, input.ticketId);
     if ('outcome' in commentsResponse) return queryOutcome(commentsResponse.outcome, zeroDetails, receipt, 'providerRejected', 'notFound');
     try {
-      const comments = decodeList(commentsResponse.response.body, commentsResponse.response.status, commentLimit).map(decodeComment).sort((left, right) => right.commentedAt.localeCompare(left.commentedAt));
+      const comments = decodeList(commentsResponse.response.body, commentsResponse.response.status, commentLimit).map(decodeComment).sort((left, right) => Date.parse(right.commentedAt) - Date.parse(left.commentedAt));
       const details: TicketDetails = { ticket: decoded.ticket, ...(decoded.contact ? { contact: decoded.contact } : {}), threads, comments,
         ...(decoded.ticket.threadCount && decoded.ticket.threadCount > threads.length ? { hasMoreThreads: true } : {}),
         ...(decoded.ticket.commentCount && decoded.ticket.commentCount > comments.length ? { hasMoreComments: true } : {}) };
@@ -178,8 +178,9 @@ export class UpdateTicketOperation implements Mutation<UpdateTicketInput, Update
     const change: Record<string, string> = {};
     if (input.status && input.status.toLowerCase() !== current.status.toLowerCase()) change.status = input.status;
     if (input.priority && input.priority.toLowerCase() !== (current.priority ?? '').toLowerCase()) change.priority = input.priority;
-    if (input.departmentId && input.departmentId !== current.departmentId) change.departmentId = input.departmentId;
-    if (input.assigneeId && (input.assigneeId !== current.assigneeId || change.departmentId)) change.assigneeId = input.assigneeId;
+    const hasDepartmentChange = !!input.departmentId && input.departmentId !== current.departmentId;
+    if (input.assigneeId && (input.assigneeId !== current.assigneeId || hasDepartmentChange)) change.assigneeId = input.assigneeId;
+    if (hasDepartmentChange) change.departmentId = input.departmentId!;
     if (!Object.keys(change).length) return newMutationBranch('updated', { ticket: current, wasAlreadyApplied: true }, receipt);
     const write = await this.client.exchange(call, operation, session, 'PATCH', ticketPath(input.ticketId), undefined, change);
     receipt = exchangeReceipt(this.client, call, write, input.ticketId);

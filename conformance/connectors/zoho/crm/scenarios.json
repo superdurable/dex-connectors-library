@@ -3409,6 +3409,139 @@
       },
       "name": "listModifiedRecords-fifty-fields-with-modified-614",
       "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"action\":\"insert\",\"details\":{\"id\":\"123\",\"Created_Time\":\"2026-10-25T01:00:00+00:00\",\"Modified_Time\":\"2026-10-25T01:00:00+00:00\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Amount": 1250.5,
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-10-25T01:00:00Z",
+          "id": "123",
+          "isCreated": true,
+          "modifiedAt": "2026-10-25T01:00:00Z",
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Amount": 1250.5,
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-decimal-field-622",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"details\":{\"id\":\"123\",\"Modified_Time\":\"2026-10-25T01:00:00+00:00\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Amount": 1250.5,
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "modifiedAt": "2026-10-25T01:00:00Z",
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Amount": 1250.5,
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-decimal-field-622",
+      "operation": "updateRecord"
     }
   ],
   "schemaVersion": 1

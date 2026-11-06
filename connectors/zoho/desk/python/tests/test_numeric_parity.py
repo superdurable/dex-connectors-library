@@ -4,7 +4,7 @@
 
 import pytest
 
-from dex_connectors.zoho_desk.operations import _count, _id
+from dex_connectors.zoho_desk.operations import _count, _flag, _id, _truncate
 
 
 def test_go_count_string_forms() -> None:
@@ -23,3 +23,13 @@ def test_go_count_rejects_noninteger_or_out_of_range(value: object) -> None:
 
 def test_go_id_keeps_exact_20_digit_number() -> None:
     assert _id(9007199254740993) == "9007199254740993"
+
+
+@pytest.mark.parametrize("value", [1, 1.0, 0, 0.0])
+def test_go_boolean_rejects_json_numbers(value: object) -> None:
+    with pytest.raises(ValueError, match="flag is not a boolean"):
+        _flag(value)
+
+
+def test_go_utf8_replaces_lone_surrogate_before_truncation() -> None:
+    assert _truncate("before\ud800after") == ("before\ufffdafter", False)

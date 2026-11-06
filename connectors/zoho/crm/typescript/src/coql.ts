@@ -96,7 +96,7 @@ function renderConditions(conditions: RecordCondition[]): string {
   conditions.forEach((condition, index) => {
     let part: string;
     try { part = renderCondition(condition); }
-    catch (error) { throw new TypeError(`condition ${index + 1}: ${String(error)}`); }
+    catch (error) { throw new TypeError(`condition ${index + 1}: ${error instanceof Error ? error.message : 'invalid condition'}`); }
     rendered = index === 0 ? part : `(${rendered} and ${part})`;
   });
   return rendered;
@@ -129,15 +129,16 @@ export function buildListModifiedRecordsQuery(input: ListModifiedRecordsInput): 
   validateFields(fields, 1);
   const limit = input.limit || 100;
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) throw new TypeError('limit must be 1 to 200');
-  if (input.cursor && input.modifiedSince) throw new TypeError('set modifiedSince to start a feed or cursor to continue one, not both');
-  if (!input.cursor && !input.modifiedSince) throw new TypeError('modifiedSince or cursor is required');
+  const modifiedSince = input.modifiedSince === '0001-01-01T00:00:00Z' ? undefined : input.modifiedSince;
+  if (input.cursor && modifiedSince) throw new TypeError('set modifiedSince to start a feed or cursor to continue one, not both');
+  if (!input.cursor && !modifiedSince) throw new TypeError('modifiedSince or cursor is required');
   let at: string, id: string;
   if (input.cursor) {
     const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\/([0-9]{1,20})$/.exec(input.cursor);
-    if (!match || Number.isNaN(Date.parse(match[1]!))) throw new TypeError('cursor must be a cursor returned by listModifiedRecords');
+    if (!match || Number.isNaN(Date.parse(match[1]!)) || new Date(match[1]!).toISOString().slice(0, 19) + 'Z' !== match[1]) throw new TypeError('cursor must be a cursor returned by listModifiedRecords');
     at = match[1]!; id = match[2]!.replace(/^0+/, '') || '0';
   } else {
-    const date = new Date(input.modifiedSince!);
+    const date = new Date(modifiedSince!);
     if (Number.isNaN(date.getTime())) throw new TypeError('modifiedSince or cursor is required');
     at = date.toISOString().replace(/\.\d{3}Z$/, 'Z'); id = '0';
   }

@@ -237,7 +237,7 @@ with optional names, and optional status, priority, and assignee. Zoho Desk
 uses the contact with that email or adds one, and the connector also sets the
 ticket's email to it, which `contactEmail` searches match. The description is
 HTML-escaped with line breaks kept, so text is never interpreted as markup;
-the escaped HTML must fit Zoho Desk's 65,535-character limit.
+the escaped HTML must fit Zoho Desk's 65,535-byte limit.
 
 ### updateTicket
 

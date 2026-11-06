@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { describe, expect, it } from 'vitest';
-import { encodeGoQuery, escapeGoPath } from '../src/client.js';
-import { buildFindRecordsQuery } from '../src/coql.js';
-import { decodeModuleFields, decodeRecordPage, parseZohoTime } from '../src/records.js';
+import { ReauthorizationRequiredError, type Call } from '@superdurable/connectors-sdk';
+import { encodeGoQuery, escapeGoPath, ZohoClient } from '../src/client.js';
+import { buildFindRecordsQuery, buildListModifiedRecordsQuery } from '../src/coql.js';
+import { decodeModuleFields, decodeRecordPage, parseZohoTime, validateWriteFields } from '../src/records.js';
+import type { CredentialSource } from '../src/models.js';
 
 const bytes = (value: unknown) => Buffer.from(JSON.stringify(value));
 
@@ -32,5 +34,28 @@ describe('Go wire parity at provider boundaries', () => {
 
   it('keeps Go null collection semantics for record pages', () => {
     expect(decodeRecordPage('Contacts', bytes({ data: null, info: { more_records: null } }))).toEqual({ records: [], hasMore: false });
+  });
+
+  it('routes revoked credentials on both writes to providerRejected before sending', async () => {
+    const credentials = { resolve: async () => { throw new ReauthorizationRequiredError(); } } as unknown as CredentialSource;
+    const client = new ZohoClient({}, credentials);
+    const call = { context: { cancellationSignal: new AbortController().signal } } as unknown as Call;
+    const upsert = await client.upsertRecord().invoke(call, { module: 'Contacts', fields: { Email: 'ada@example.test' }, duplicateCheckFields: ['Email'] });
+    const update = await client.updateRecord().invoke(call, { module: 'Deals', recordId: '123', fields: { Amount: 1250.5 } });
+    expect(upsert).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
+    expect(update).toMatchObject({ kind: 'branch', branch: 'providerRejected', failure: { kind: 'AUTHENTICATION' } });
+  });
+
+  it('accepts exact fractional JSON values and rejects unsafe integer fields', () => {
+    expect(validateWriteFields({ Amount: 1250.5 })).toEqual({ Amount: 1250.5 });
+    expect(() => validateWriteFields({ Amount: 9007199254740992 })).toThrow('field Amount exceeds exact numeric precision');
+  });
+
+  it('rejects normalized cursor dates and treats Go zero time as absent', () => {
+    const input = { module: 'Deals', fields: ['Modified_Time'] };
+    for (const at of ['2026-02-30T00:00:00Z', '2026-01-01T24:00:00Z']) {
+      expect(() => buildListModifiedRecordsQuery({ ...input, cursor: `${at}/123` })).toThrow('cursor must be a cursor returned by listModifiedRecords');
+    }
+    expect(() => buildListModifiedRecordsQuery({ ...input, modifiedSince: '0001-01-01T00:00:00Z' })).toThrow('modifiedSince or cursor is required');
   });
 });
