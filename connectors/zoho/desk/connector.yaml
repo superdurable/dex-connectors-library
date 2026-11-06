@@ -11,6 +11,17 @@ spec:
   codegen:
     go:
       package: desk
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-zoho-desk'
+      operations: [searchTickets, getTicket, createTicket, updateTicket, addComment]
+      triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-zoho-desk
+      operations: [searchTickets, getTicket, createTicket, updateTicket, addComment]
+      triggers: []
   configuration:
     fields:
       - name: orgId

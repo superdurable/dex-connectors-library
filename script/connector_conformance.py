@@ -310,6 +310,8 @@ def mutation_self_test(connectors: list[Path]) -> None:
                                                for exchange in item["exchanges"])), None)
         form_scenario = next((item for item in original["scenarios"]
                               if any(exchange.get("form") for exchange in item["exchanges"])), None)
+        header_scenario = next((item for item in original["scenarios"]
+                                if any(exchange.get("requestHeaders") for exchange in item["exchanges"])), None)
         read_server_error = next((item for item in original["scenarios"] if item["expected"]["retry"]
                                   and declared_operations[item["operation"]]["kind"] == "query"
                                   and any(500 <= exchange.get("status", 0) <= 599
@@ -353,6 +355,7 @@ def mutation_self_test(connectors: list[Path]) -> None:
             ("dropped-query", query_scenario), ("renamed-query", query_scenario),
             ("renamed-optional-query", optional_query_scenario),
             ("changed-form-value", form_scenario), ("read-5xx-classification", read_server_error),
+            ("changed-header-value", header_scenario),
             ("mime-subject", mime_scenario), ("mime-recipient", mime_scenario),
             ("mime-body", mime_scenario), ("random-idempotency-key", keyed_scenario),
             ("multipart-part-name", multipart_named_scenario), ("multipart-part-body", multipart_scenario),
@@ -374,6 +377,7 @@ def mutation_self_test(connectors: list[Path]) -> None:
                 "renamed-query": "__wrong_conformance_query__",
                 "changed-form-value": "__wrong_conformance_form__",
                 "read-5xx-classification": "__wrong_read_5xx_branch__",
+                "changed-header-value": "__wrong_conformance_header__",
                 "wrong-output-field": "__wrong_output_field__",
                 "mime-subject": "__wrong_mime_subject__",
                 "mime-recipient": "__wrong_mime_recipient__",
@@ -400,6 +404,10 @@ def mutation_self_test(connectors: list[Path]) -> None:
                              and field in exchange["query"])
                 renamed = re.sub(r"(?<!^)(?=[A-Z])", "_", field).lower()
                 exchange["query"][renamed if renamed != field else field + "_renamed"] = exchange["query"].pop(field)
+            elif mutation == "changed-header-value":
+                exchange = next(exchange for exchange in changed["exchanges"] if exchange.get("requestHeaders"))
+                name = next(iter(exchange["requestHeaders"]))
+                exchange["requestHeaders"][name] = marker
             elif mutation == "wrong-output-field":
                 changed["expected"]["output"][marker] = "wrong"
             elif mutation == "wrong-nonempty-list":
