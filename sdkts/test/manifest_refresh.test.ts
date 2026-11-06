@@ -62,6 +62,22 @@ describe('manifest credential refresh', () => {
       credentialFields })).toThrow('tokenExchangeTimeout');
   });
 
+  it('reads the exchange timeout from a pinned duration setting', async () => {
+    const configured = structuredClone(auth) as Record<string, unknown>;
+    const method = (configured.methods as Record<string, unknown>[])[0]!;
+    ((method.oauth2 as Record<string, unknown>).refresh as Record<string, unknown>).tokenExchangeTimeout = { fromSetting: 'requestTimeout' };
+    const caller = new AbortController();
+    const options = { providerName: 'Example', auth: configured, credentialFields,
+      settings: { requestTimeout: 15_000_000 }, fetch: async (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+        }) };
+    const driver = new ManifestCredentialRefreshDriver<Credentials>(options);
+    await expect(driver.refresh(state(), caller.signal)).rejects.toBeInstanceOf(RetryError);
+    expect(caller.signal.aborted).toBe(false);
+    expect(() => new ManifestCredentialRefreshDriver<Credentials>({ ...options, settings: {} })).toThrow('tokenExchangeTimeout');
+  });
+
   it('limits a client-credentials exchange as the Go Xero driver does', async () => {
     const configured = structuredClone(auth) as Record<string, unknown>;
     const method = (configured.methods as Record<string, unknown>[])[0]!;
