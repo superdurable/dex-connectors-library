@@ -383,7 +383,7 @@ Dex Flow tests, install the latest stable CLI with
 `python3 ../script/dex_compatibility.py install-dexcli --output ../.bin/dexcli`,
 then from `sdkpython/` run `mkdir -p .dexcli-data/logs` and start
 `../.bin/dexcli dev -dex-port 19881 -web-port 19882 -open=false
--zd-data-dir .dexcli-data/zd -server-log-folder .dexcli-data/logs`. Run
+-durability process-crash-safe -zd-data-dir .dexcli-data/zd -server-log-folder .dexcli-data/logs`. Run
 `make test-sdkpython-integration` from the repository root. CI runs this suite
 for Python SDK changes against the Dex CLI selected once for the workflow run.
 The integration suite checks
