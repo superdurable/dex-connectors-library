@@ -4870,6 +4870,204 @@
       ],
       "name": "createTask-whitespace-uncertain",
       "operation": "createTask"
+    },
+    {
+      "callId": "cae662d4-4d2e-54ea-87f2-b2f1299afbe4",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}],\"custom_fields\":[{\"id\":\"decimal1\",\"value\":0.1},{\"id\":\"decimal2\",\"value\":19.99}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/task/86b2x4k7q",
+          "query": {
+            "custom_task_ids": [
+              "true"
+            ],
+            "include_markdown_description": [
+              "true"
+            ],
+            "team_id": [
+              "9014123456"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "assignees": [
+            {
+              "id": 183,
+              "username": "Ada Lovelace"
+            }
+          ],
+          "createdAt": "2026-01-01T00:00:01Z",
+          "customFields": [
+            {
+              "id": "decimal1",
+              "name": "",
+              "type": "",
+              "value": 0.1
+            },
+            {
+              "id": "decimal2",
+              "name": "",
+              "type": "",
+              "value": 19.99
+            }
+          ],
+          "id": "86b2x4k7q",
+          "listId": "901410000001",
+          "listName": "Tasks",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "priority": 1,
+          "priorityName": "urgent",
+          "status": {
+            "name": "open",
+            "type": "open"
+          },
+          "tags": [
+            "escalation"
+          ],
+          "updatedAt": "2026-01-01T00:00:02Z",
+          "url": "https://app.clickup.com/t/86b2x4k7q",
+          "workspaceId": "9014123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "isCustomTaskId": true,
+        "taskId": "86b2x4k7q",
+        "workspaceId": "9014123456"
+      },
+      "name": "getTask-custom-field-decimals",
+      "operation": "getTask"
+    },
+    {
+      "callId": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"86b2x4k7q\",\"name\":\"Escalation: Fix login [86b2x4k00]\",\"url\":\"https://app.clickup.com/t/86b2x4k7q\",\"status\":{\"status\":\"open\",\"type\":\"open\"},\"priority\":{\"id\":\"1\",\"priority\":\"urgent\"},\"date_created\":\"1767225601000\",\"date_updated\":\"1767225602000\",\"team_id\":\"9014123456\",\"list\":{\"id\":\"901410000001\",\"name\":\"Tasks\"},\"assignees\":[{\"id\":183,\"username\":\"Ada Lovelace\"}],\"tags\":[{\"name\":\"escalation\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/list/901410000001/task",
+          "requestBody": {
+            "assignees": [
+              183
+            ],
+            "custom_fields": [
+              {
+                "id": "field1",
+                "value": null
+              }
+            ],
+            "due_date": 1767484800000,
+            "due_date_time": true,
+            "markdown_content": "Blocked task: **Fix login**",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "notify_all": true,
+            "parent": "86b2x4k00",
+            "priority": 1,
+            "status": "to do",
+            "tags": [
+              "escalation"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "pk_4411723_TESTTOKEN0123456789ABCDEFGHIJ"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "clickupDispatchedAt": 1767225600000,
+          "clickupDispatchedCallId": "bef06aa7-8066-5d69-a408-c3d4547c0405"
+        },
+        "output": {
+          "listId": "901410000001",
+          "name": "Escalation: Fix login [86b2x4k00]",
+          "task": {
+            "assignees": [
+              {
+                "id": 183,
+                "username": "Ada Lovelace"
+              }
+            ],
+            "createdAt": "2026-01-01T00:00:01Z",
+            "id": "86b2x4k7q",
+            "listId": "901410000001",
+            "listName": "Tasks",
+            "name": "Escalation: Fix login [86b2x4k00]",
+            "priority": 1,
+            "priorityName": "urgent",
+            "status": {
+              "name": "open",
+              "type": "open"
+            },
+            "tags": [
+              "escalation"
+            ],
+            "updatedAt": "2026-01-01T00:00:02Z",
+            "url": "https://app.clickup.com/t/86b2x4k7q",
+            "workspaceId": "9014123456"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bef06aa7-8066-5d69-a408-c3d4547c0405",
+      "input": {
+        "assigneeIds": [
+          183
+        ],
+        "customFields": [
+          {
+            "id": "field1",
+            "value": null
+          }
+        ],
+        "dueAt": "2026-01-04T00:00:00Z",
+        "isCreatorNotified": true,
+        "listId": "901410000001",
+        "markdownDescription": "Blocked task: **Fix login**",
+        "name": "Escalation: Fix login [86b2x4k00]",
+        "parentTaskId": "86b2x4k00",
+        "priority": 1,
+        "status": "to do",
+        "tags": [
+          "escalation"
+        ]
+      },
+      "name": "createTask-null-custom-field",
+      "operation": "createTask"
     }
   ],
   "schemaVersion": 1

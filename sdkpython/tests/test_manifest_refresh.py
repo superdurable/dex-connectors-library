@@ -27,6 +27,7 @@ from dex_connectors.sdk.oauthtoken import (
     TokenEndpoint,
 )
 from dex_connectors.sdk.oauthtoken.manifest_refresh import _read_jwt_expiry_seconds
+from dex_connectors.sdk.providerhttp import AddressRefusal
 
 
 @dataclass(frozen=True, slots=True)
@@ -612,6 +613,124 @@ async def test_manifest_template_uses_go_path_segment_escaping() -> None:
     assert str(requests[0].url) == (
         "https://oauth.example.test/a:b@c&d=e+f$%2Fg%3Bh%2Ci%3Fj/token"
     )
+
+
+@pytest.mark.asyncio
+async def test_manifest_template_rejects_aliases_and_lowercases_valid_tenant() -> None:
+    """An invalid tenant cannot reach the token transport; accepted domains use Go casing."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    auth["methods"][0]["oauth2"]["tokenEndpoint"] = {
+        "template": "https://login.microsoftonline.com/{client_id}/oauth2/v2.0/token",
+        "templateValueRules": {"client_id": {
+            "trimSpace": True, "lowercase": True, "maxBytes": 253,
+            "patterns": [
+                r"^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$",
+                r"^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$",
+            ],
+            "reject": ["common", "organizations", "consumers"],
+        }},
+    }
+    auth["methods"][0]["oauth2"]["refresh"]["trimClientID"] = True
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"access_token": "next", "expires_in": 3600, "token_type": "Bearer"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Microsoft", auth, FIELDS, client)
+
+        async def refresh(tenant: str) -> None:
+            state = CredentialRefreshState(
+                Credentials(SecretString("old"), SecretString("prior"), client_id=tenant),
+                None, datetime.now(UTC),
+            )
+            await driver.refresh(state)
+
+        for tenant in ("common", " Organizations ", "CONSUMERS", "contoso", "a/b.com", "x" * 254):
+            with pytest.raises(ReauthorizationRequiredError):
+                await refresh(tenant)
+        assert requests == []
+        await refresh("  Contoso.OnMicrosoft.com  ")
+        auth["methods"][0]["oauth2"]["refresh"]["trimClientID"] = False
+        driver = ManifestCredentialRefreshDriver[Credentials]("Microsoft", auth, FIELDS, client)
+        await refresh("  Contoso.OnMicrosoft.com  ")
+    assert str(requests[0].url) == (
+        "https://login.microsoftonline.com/contoso.onmicrosoft.com/oauth2/v2.0/token"
+    )
+    assert base64.b64decode(requests[0].headers["authorization"].split()[1]) == (
+        b"Contoso.OnMicrosoft.com:client-secret"
+    )
+    assert base64.b64decode(requests[1].headers["authorization"].split()[1]) == (
+        b"  Contoso.OnMicrosoft.com  :client-secret"
+    )
+
+
+@pytest.mark.asyncio
+async def test_template_value_rules_match_complete_ascii_values_and_validate_at_construction() -> None:
+    """Template alternatives and byte limits follow the cross-language grant contract."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    oauth = auth["methods"][0]["oauth2"]
+    oauth["tokenEndpoint"] = {
+        "template": "https://example.test/{client_id}",
+        "templateValueRules": {"client_id": {
+            "patterns": ["a|ab"], "maxBytes": 253, "lowercase": False,
+        }},
+    }
+    rule = oauth["tokenEndpoint"]["templateValueRules"]["client_id"]
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"access_token": "next", "expires_in": 3600, "token_type": "Bearer"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        def driver() -> ManifestCredentialRefreshDriver[Credentials]:
+            return ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+
+        async def refresh(value: str) -> None:
+            state = CredentialRefreshState(
+                Credentials(SecretString("old"), SecretString("prior"), client_id=value),
+                None, datetime.now(UTC),
+            )
+            await driver().refresh(state)
+
+        await refresh("ab")
+        assert str(requests[-1].url) == "https://example.test/ab"
+        rule["patterns"] = ["[A-Za-z]+"]
+        await refresh("A" * 253)
+        with pytest.raises(ReauthorizationRequiredError):
+            await refresh("A" * 254)
+        rule["maxBytes"] = 0
+        with pytest.raises(ReauthorizationRequiredError):
+            await refresh("A")
+        rule["maxBytes"] = 253
+        await refresh("AbC")
+        assert str(requests[-1].url) == "https://example.test/AbC"
+        rule["trimSpace"] = True
+        await refresh("  AbC  ")
+        assert base64.b64decode(requests[-1].headers["authorization"].split()[1]).startswith(
+            b"  AbC  :"
+        )
+        for value in ("K", "ſ"):
+            with pytest.raises(ReauthorizationRequiredError):
+                await refresh(value)
+        rule["patterns"] = [r"\d+"]
+        with pytest.raises(ReauthorizationRequiredError):
+            await refresh("١")
+        for invalid_pattern in (r"(?=a)a", r"(a)\1", r"a)|(b", r"\p{L}", r"\Qa\E", r"[[:alpha:]]", r"(?i)a"):
+            rule["patterns"] = [invalid_pattern]
+            with pytest.raises(ValueError, match="pattern is invalid"):
+                driver()
+        rule["patterns"] = [r"\(?x"]
+        driver()
+        rule["patterns"] = [r"[A-Za-z]+"]
+        for invalid_rule in ({"patterns": ["(?i)abc"]}, {"reject": [42]}, {"unknown": True}):
+            rule.update(invalid_rule)
+            with pytest.raises(ValueError):
+                driver()
+            for key in invalid_rule:
+                del rule[key]
 
 
 @pytest.mark.asyncio
@@ -1205,7 +1324,44 @@ async def test_go_scope_array_graph_prefix_url_origin_and_expiry_cap() -> None:
             Credentials(SecretString("old"), SecretString("prior"), instance_url="https://example.test/"),
             None, datetime.now(UTC),
         )
-        assert (await driver.refresh(prior_state)).credentials.instance_url == "https://example.test"
+        with pytest.raises(RetryError):
+            await driver.refresh(prior_state)
+        del body["instance_url"]
+        with pytest.raises(RetryError):
+            await driver.refresh(prior_state)
+
+
+@pytest.mark.asyncio
+async def test_zoho_response_url_host_comparison_is_case_sensitive() -> None:
+    """A case-changed Zoho host is refused as Go ValidateAPIDomain requires."""
+    auth: dict[str, Any] = deepcopy(AUTH)
+    refresh = auth["methods"][0]["oauth2"]["refresh"]
+    refresh["responseURLValidation"] = {
+        "credential": "instance_url",
+        "allowedHosts": [
+            "www.zohoapis.com", "sandbox.zohoapis.com", "developer.zohoapis.com",
+        ],
+        "forbidPort": True,
+    }
+    body = {
+        "access_token": "next", "token_type": "Bearer", "expires_in": 3600,
+        "instance_url": "https://WWW.zohoapis.com",
+    }
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda _: httpx.Response(200, json=body)
+    )) as client:
+        driver = ManifestCredentialRefreshDriver[Credentials]("Zoho", auth, FIELDS, client)
+        state = CredentialRefreshState(
+            Credentials(SecretString("old"), SecretString("prior"), instance_url="https://www.zohoapis.com"),
+            None, datetime.now(UTC),
+        )
+        with pytest.raises(RetryError):
+            await driver.refresh(state)
+        body["instance_url"] = "https://www.zohoapis.com"
+        assert (await driver.refresh(state)).credentials.instance_url == "https://www.zohoapis.com"
+        del body["instance_url"]
+        assert (await driver.refresh(state)).credentials.instance_url == "https://www.zohoapis.com"
 
 
 @pytest.mark.asyncio
@@ -1374,6 +1530,16 @@ async def test_manifest_token_endpoint_policy_refuses_forbidden_http_without_con
                 driver = ManifestCredentialRefreshDriver[Credentials](
                     "Example", auth, FIELDS, client, settings={"tokenEndpoint": token_endpoint},
                 )
-                with pytest.raises(RetryError):
+                with pytest.raises(AddressRefusal):
+                    await driver.refresh(state)
+                assert connect.call_count == 0, token_endpoint
+            for token_endpoint in (
+                "https://identity.example/token#fragment", "https://identity.example/a b",
+                "https://identity.example/é", "https://identity.example/\tpath",
+            ):
+                driver = ManifestCredentialRefreshDriver[Credentials](
+                    "Example", auth, FIELDS, client, settings={"tokenEndpoint": token_endpoint},
+                )
+                with pytest.raises(ReauthorizationRequiredError):
                     await driver.refresh(state)
                 assert connect.call_count == 0, token_endpoint

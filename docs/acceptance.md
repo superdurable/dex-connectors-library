@@ -152,9 +152,12 @@ catalog on the daily schedule.
 With the latest stable Dex CLI development server running, execute:
 
 ```bash
-dexcli dev
+dexcli dev -durability process-crash-safe
 make test-integration
 ```
+
+Test servers skip the per-write fsync that `dexcli dev` performs by default;
+they need to survive only a process kill.
 
 Shared integration tests cover behavior that crosses real Worker, Client,
 persistence, retry, Trigger, RPC, Attribute, Stream, or transition boundaries.
