@@ -1,5 +1,11 @@
 # Help Scout Connector
 
+The TypeScript package `@superdurable/connector-helpscout` implements the five
+conversation and customer operations. Its package version is `0.1.0`; the
+`conversationEvent` webhook Trigger remains Go only. See the
+[TypeScript README](typescript/README.md) and its
+[runnable search example](typescript/examples/search-conversations/README.md).
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/helpscout/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/helpscout`.

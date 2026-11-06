@@ -3,7 +3,7 @@
 The `dex-connector-google-forms` package implements `getForm`,
 `listResponses`, and `getResponse` as Dex Query Steps. It uses the Google Forms
 connection and authorization guidance in the [connector README](../README.md).
-The package requires `dex-connectors-sdk==0.5.0`.
+The package requires `dex-connectors-sdk==0.7.0`.
 
 The runnable [response recorder](examples/response_recorder/flow.py) reads a
 form, one page of responses, and one response by ID. Its

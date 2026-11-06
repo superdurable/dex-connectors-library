@@ -2,6 +2,17 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.24.0`.
 
+The TypeScript package is `@superdurable/connector-atlassian-confluence@0.1.0`.
+It implements all five operations with the same branch identities and OAuth
+refresh declaration as Go. The generated TypeScript models, Step factories,
+project credential decoders, and mocks come from `connector.yaml`.
+The [TypeScript read-page example](typescript/examples/read-page/README.md)
+binds the static `confluence-policy` connection and verifies a page read
+through a real Dex Worker and local Confluence stand-in. The
+[recorded scenarios](../../../conformance/connectors/atlassian/confluence/scenarios.json)
+replay all five operations against Go and TypeScript. Live Atlassian OAuth,
+site selection, page writes, and comment delivery have not been verified.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Confluence; no live Atlassian site was used. See

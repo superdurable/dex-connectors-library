@@ -14,6 +14,11 @@ spec:
       package: dex-connector-google-spreadsheet
       operations: [getValues, findRow, upsertRow]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-google-sheets'
+      operations: [getValues, findRow, upsertRow]
+      triggers: []
   codegen:
     go:
       package: spreadsheet
