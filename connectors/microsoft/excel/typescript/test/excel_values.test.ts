@@ -30,6 +30,10 @@ it.each(['aß1', 'ﬀ1'])('rejects non-ASCII A1 case folding %s', address => {
   expect(() => parseA1Range(address)).toThrow();
 });
 
+it.each([['ı1', 'I1'], ['ſ1', 'S1']])('accepts Go simple uppercase A1 mapping %s', (address, expected) => {
+  expect(parseA1Range(address)).toEqual({ address: expected, rowCount: 1, columnCount: 1 });
+});
+
 it('matches Go TrimSpace around A1 addresses', () => {
   expect(parseA1Range('A1\u0085').address).toBe('A1');
   expect(() => parseA1Range('\uFEFFA1')).toThrow();

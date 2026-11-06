@@ -51,7 +51,7 @@ function trimGoSpace(value: string): string {
 }
 /** Parse a bounded A1 cell or rectangle. */
 export function parseA1Range(value: string): A1Range {
-  const address = trimGoSpace(value).replace(/[a-z]/g, character => character.toUpperCase());
+  const address = trimGoSpace(value).replace(/[a-z\u0131\u017f]/g, character => character.toUpperCase());
   const parts = address.split(':');
   if (parts.length > 2) throw new TypeError('address must be one cell or range in A1 form, such as A1 or A2:C10, without a worksheet name, $, or whole columns or rows');
   const first = parseCell(parts[0] ?? ''); const last = parseCell(parts[1] ?? parts[0] ?? '');

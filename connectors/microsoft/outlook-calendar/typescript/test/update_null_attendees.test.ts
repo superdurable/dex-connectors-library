@@ -23,6 +23,26 @@ it('treats attendees:null with no other patch field as a defect before provider 
   expect(requests).toBe(0);
 });
 
+it('omits attendees from PATCH when null accompanies a changed subject', async () => {
+  const connection = { provider: 'microsoft', name: 'outlook-calendar-scheduler' };
+  const credentials: Credentials = { authMethodId: 'microsoft-oauth', clientId: 'client', clientSecret: new SecretString('secret'),
+    accessToken: new SecretString('token'), refreshToken: new SecretString('refresh') };
+  const requests: Array<{ method: string; body?: unknown }> = [];
+  const client = new Client({}, new StaticCredentialProvider([[connection, credentials]]), {
+    baseURL: 'http://127.0.0.1:12345/v1.0', transport: async request => {
+      requests.push({ method: request.method, ...(request.body ? { body: JSON.parse(Buffer.from(request.body).toString()) as unknown } : {}) });
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ id: 'event1', subject: request.method === 'GET' ? 'Old subject' : 'New subject',
+        start: { dateTime: '2026-02-24T17:00:00', timeZone: 'UTC' },
+        end: { dateTime: '2026-02-24T18:00:00', timeZone: 'UTC' } })) };
+    },
+  });
+  const call = scenarioCall({ callId: 'calendar-null-attendees-subject', operation: 'updateEvent' } as Scenario,
+    connection, 'outlook-calendar', new HeartbeatContext(undefined)) as Call;
+  const attempt = await client.updateEvent().invoke(call, { eventId: 'event1', subject: 'New subject', attendees: null });
+  expect(attempt).toMatchObject({ kind: 'branch', branch: 'updated', value: { wasAlreadyApplied: false } });
+  expect(requests).toEqual([{ method: 'GET' }, { method: 'PATCH', body: { subject: 'New subject' } }]);
+});
+
 it('does not PATCH when an empty location is already absent', async () => {
   const connection = { provider: 'microsoft', name: 'outlook-calendar-scheduler' };
   const credentials: Credentials = { authMethodId: 'microsoft-oauth', clientId: 'client', clientSecret: new SecretString('secret'),

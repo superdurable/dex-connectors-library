@@ -33,4 +33,4 @@ and requires `DEX_FLOW_SERVICE_ADDRESS` set to a running Dex development
 server. Live provider authorization for the TypeScript port has not been
 verified.
 
-One operation has a 25-second budget shared by token resolution and every provider request. Request paths preserve Go URL dot segments and percent encoding when sent.
+One operation has a 25-second budget shared by token resolution and every provider request. The default transport parses request URLs before sending them, so dot segments such as `/a/./b` and percent-encoded dot segments such as `/a/%2e/b` reach the server as `/a/b`.
