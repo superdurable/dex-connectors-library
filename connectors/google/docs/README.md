@@ -23,6 +23,19 @@ Flow read. It exposes operation-specific Dex Step factories:
 The connector never deletes, shares, or moves documents, and this release has
 no Triggers.
 
+## TypeScript
+
+The first TypeScript package is
+[`@superdurable/connector-google-docs`](typescript/README.md) at `v0.1.0`.
+It implements the same four operations and uses generated manifest OAuth and
+Workspace delegation refresh wiring from Connector SDK `0.6.0`. Its
+[`policy-documents` example](typescript/examples/policy-documents/README.md)
+runs each operation through a real Dex Worker with the static `policy-docs`
+connection. Go-recorded conformance scenarios replay provider requests and
+outcomes across the TypeScript package. The TypeScript example was verified
+against a local Google HTTP stand-in; live Google provider authorization and
+calls remain unverified.
+
 ## Python package
 
 The Python package implements the same four operations through operation-specific

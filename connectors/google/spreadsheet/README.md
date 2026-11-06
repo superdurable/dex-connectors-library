@@ -107,3 +107,13 @@ npm ci --prefix ui
 npm test --prefix ui
 npm run build --prefix ui
 ```
+
+## TypeScript package
+
+`typescript/` publishes `@superdurable/connector-google-sheets` v0.1.0 with
+`getValues`, `findRow`, and `upsertRow`. Its runnable
+[`upsert-contact` example](typescript/examples/upsert-contact/README.md) uses the
+static `google-sheets-contacts` connection and generated OAuth refresh wiring.
+The TypeScript package replays Go conformance scenarios and runs its Flow against
+a real local Dex Worker and Client; live Google authorization and API writes
+remain unverified.

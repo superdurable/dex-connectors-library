@@ -15,6 +15,11 @@ spec:
       package: dex-connector-google-forms
       operations: [getForm, listResponses, getResponse]
       triggers: []
+    typescript:
+      package: "@superdurable/connector-google-forms"
+      version: v0.1.0
+      operations: [getForm, listResponses, getResponse]
+      triggers: []
   codegen:
     go:
       package: forms

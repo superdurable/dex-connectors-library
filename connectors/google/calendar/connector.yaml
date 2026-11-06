@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: google
   languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-google-calendar'
+      operations: [listEvents, getEvent, createEvent, updateEvent, queryFreeBusy]
+      triggers: []
     python:
       version: v0.1.0
       package: dex-connector-google-calendar

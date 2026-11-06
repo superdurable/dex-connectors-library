@@ -270,3 +270,7 @@ replay provider responses through Go and Python. The Python integration test
 has run against a real local Dex stack and a local Directory stand-in. Google
 OAuth consent, domain-wide delegation, token minting, authorization forms, and
 Directory calls against a live Workspace tenant remain unverified.
+
+## TypeScript package
+
+The [TypeScript package](typescript/README.md) implements all seven Directory API operations with generated Step factories and generated refresh handling for Workspace domain-wide delegation and Google OAuth. Its [get-user Flow](typescript/examples/get-user/README.md) uses the static connection name `workspace-admin-directory` and runs through a real Dex Worker. Go-recorded provider scenarios cover success, rejection, retry, transport failure, read-back convergence, and invalid responses. Live Google authorization and provider behavior still require a user-controlled Dex Web connection.
