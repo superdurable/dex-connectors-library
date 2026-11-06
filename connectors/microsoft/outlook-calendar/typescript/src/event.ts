@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import { isIP } from "node:net";
 import type {
   Event,
   EventAttendeeInput,
@@ -11,7 +12,21 @@ import { object, string } from "./http.js";
 const instantPattern =
   /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)([.,]\d+)?(Z|[+-]\d\d:\d\d)$/;
 const wallPattern = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)([.,]\d+)?$/;
-const addressPattern = /^[^\s<>@,;()]+@[^\s<>@,;()]+$/;
+function isGoDotAtom(value: string): boolean {
+  if (!value || value.startsWith(".") || value.endsWith(".") || value.includes("..")) return false;
+  for (const character of value) {
+    const codePoint = character.codePointAt(0)!;
+    if (codePoint < 33 || codePoint === 127 || codePoint >= 0xd800 && codePoint <= 0xdfff || "()<>[]:;@\\,\"".includes(character)) return false;
+  }
+  return true;
+}
+function isBareAddress(value: string): boolean {
+  const separator = value.indexOf("@");
+  if (separator < 1 || separator !== value.lastIndexOf("@") || !isGoDotAtom(value.slice(0, separator))) return false;
+  const domain = value.slice(separator + 1);
+  if (domain.startsWith("[") && domain.endsWith("]")) return isIP(domain.slice(1, -1)) !== 0;
+  return isGoDotAtom(domain);
+}
 export function emptyEvent(): Event {
   return {
     id: "",
@@ -346,7 +361,7 @@ export function event(
 export function validateAttendees(attendees: EventAttendeeInput[]): void {
   const seen = new Set<string>();
   for (const item of attendees) {
-    if (!addressPattern.test(item.email) || item.email.includes(".."))
+    if (!isBareAddress(item.email))
       throw new TypeError(
         "attendee email must be one bare address such as person@example.com",
       );
@@ -372,7 +387,7 @@ export function validateEventId(value: string): void {
     throw new TypeError("eventId is required");
 }
 export function validateAddress(value: string): void {
-  if (!addressPattern.test(value) || value.includes(".."))
+  if (!isBareAddress(value))
     throw new TypeError(
       "schedule must be one bare address such as person@example.com",
     );

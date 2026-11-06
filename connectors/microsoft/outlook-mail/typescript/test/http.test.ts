@@ -28,6 +28,12 @@ it('decodes Graph HTML with Go tokenizer text and drops comments',async()=>{
   expect(decoded.text).toBe('Tom\'s "plan"\u00a0é &lt;b&gt;x');
 });
 
+it('ignores a self-closing HTML break as the Go tokenizer does',async()=>{
+  const {decodeFullMessage}=await import('../src/message.js');
+  const decoded=decodeFullMessage({id:'message1',body:{contentType:'html',content:'<p>first<br/>second'}});
+  expect(decoded.text).toBe('firstsecond');
+});
+
 it('rejects addresses Go mail.ParseAddress rejects',async()=>{
   const {validateAddress}=await import('../src/message.js');
   expect(()=>validateAddress('a(c)@x.com','to')).toThrow();

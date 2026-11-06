@@ -93,6 +93,7 @@ function extractHTMLText(document: string): string {
   let skippedDepth = 0;
   const parser = new Parser({
     onopentag(name) {
+      if (document[parser.endIndex - 1] === '/') return;
       if (['script', 'style', 'head'].includes(name)) skippedDepth++;
       else if (['br', 'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'blockquote'].includes(name)) text.push('\n');
     },

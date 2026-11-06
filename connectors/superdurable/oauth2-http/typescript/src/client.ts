@@ -137,7 +137,7 @@ export function planRequest(client: OAuth2HTTPClient, input: SendRequestInput): 
   }
   if (url.origin !== new URL(client.apiBaseUrl).origin) throw new TypeError("sendRequest url must have the scheme, host, and port of the connection's apiBaseUrl");
   if (input.query && Object.keys(input.query).length) {
-    const query = new URLSearchParams(url.search);
+    const query = parseGoQuery(url.search);
     for (const key of Object.keys(input.query).sort()) {
       if (!key) throw new TypeError('sendRequest query parameter names cannot be empty');
       for (const value of input.query[key] ?? []) query.append(key, value);
@@ -174,6 +174,20 @@ function validateHeaderName(name: string): void {
   if (['authorization', 'proxy-authorization', 'host', 'content-length', 'transfer-encoding', 'connection', 'keep-alive', 'te', 'trailer', 'upgrade', 'cookie'].includes(name.toLowerCase()) || name.toLowerCase().startsWith('proxy-')) {
     throw new TypeError('sendRequest headers cannot name Authorization or a header the transport owns');
   }
+}
+
+function parseGoQuery(rawQuery: string): URLSearchParams {
+  const query = new URLSearchParams();
+  for (const pair of rawQuery.replace(/^\?/, '').split('&')) {
+    if (!pair || pair.includes(';')) continue;
+    const separator = pair.indexOf('=');
+    const rawName = separator < 0 ? pair : pair.slice(0, separator);
+    const rawValue = separator < 0 ? '' : pair.slice(separator + 1);
+    try {
+      query.append(decodeURIComponent(rawName.replace(/\+/g, '%20')), decodeURIComponent(rawValue.replace(/\+/g, '%20')));
+    } catch { /* Go ParseQuery discards a pair with malformed percent-encoding. */ }
+  }
+  return query;
 }
 
 function encodeGoQuery(query: URLSearchParams): string {

@@ -63,9 +63,12 @@ it('rejects zone aliases Intl accepts but Go time.LoadLocation does not', async 
 });
 
 it('rejects bare addresses Go mail.ParseAddress rejects', async () => {
-  const { validateAddress } = await import('../src/event.js');
-  expect(() => validateAddress('a(c)@x.com')).toThrow();
-  expect(() => validateAddress('a..b@x.com')).toThrow();
+  const { validateAddress, validateAttendees } = await import('../src/event.js');
+  for (const value of ['a(c)@x.com', 'a..b@x.com', 'a.@x.com', 'jane@x.com.', '"q"@x.com']) {
+    expect(() => validateAddress(value)).toThrow();
+    expect(() => validateAttendees([{ email: value, isOptional: false }])).toThrow();
+  }
+  expect(() => validateAddress('jane+calendar@example.com')).not.toThrow();
 });
 
 it('treats a Graph free-busy error:null as no schedule error', async () => {

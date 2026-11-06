@@ -106,6 +106,11 @@ describe('Go URL and operation budget regressions', () => {
     expect(planRequest(client, { url: 'http://127.0.0.1:45880/v1/items?existing=one', query: { added: ['two'] } }).url)
       .toBe('http://127.0.0.1:45880/v1/items?added=two&existing=one');
   });
+  it('discards malformed existing query pairs as Go ParseQuery does', () => {
+    const client = new OAuth2HTTPClient(config, new StaticCredentialProvider([[connection, firstCredentials]]));
+    expect(planRequest(client, { url: 'http://127.0.0.1:45880/v1/profile?bad=1;evil=2&ok=a+b&broken=%GG', query: { added: ['x'] } }).url)
+      .toBe('http://127.0.0.1:45880/v1/profile?added=x&ok=a+b');
+  });
   it('does not treat an arbitrary refresh-word error as a retryable token failure', async () => {
     const client = new OAuth2HTTPClient(config, { resolve: async () => { throw new Error('refresh policy is invalid'); }, resolveWithRefresh: async () => { throw new Error('refresh policy is invalid'); } });
     const result = await client.sendRequest().invoke(call, { path: '/userinfo' });
