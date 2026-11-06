@@ -83,7 +83,10 @@ FIELDS = {
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("grant_kind", ["refresh", "client_credentials"])
-async def test_manifest_refresh_token_exchange_timeout_is_retryable(grant_kind: str) -> None:
+@pytest.mark.parametrize("from_setting", [False, True])
+async def test_manifest_refresh_token_exchange_timeout_is_retryable(
+    grant_kind: str, from_setting: bool
+) -> None:
     """The declared exchange deadline aborts the request and remains retryable."""
     auth: dict[str, Any] = deepcopy(AUTH)
     method = auth["methods"][0]
@@ -99,7 +102,8 @@ async def test_manifest_refresh_token_exchange_timeout_is_retryable(grant_kind: 
         grant = method["clientCredentials"]
     else:
         grant = method["oauth2"]["refresh"]
-    grant["tokenExchangeTimeout"] = "10ms"
+    grant["tokenExchangeTimeout"] = {"fromSetting": "requestTimeout"} if from_setting else "10ms"
+    settings = {"requestTimeout": 10_000_000} if from_setting else {}
 
     class SlowStream(httpx.AsyncByteStream):
         async def __aiter__(self) -> AsyncIterator[bytes]:
@@ -112,13 +116,15 @@ async def test_manifest_refresh_token_exchange_timeout_is_retryable(grant_kind: 
     async with httpx.AsyncClient(transport=httpx.MockTransport(
         lambda _request: httpx.Response(200, stream=SlowStream())
     )) as client:
-        driver = ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
+        driver = ManifestCredentialRefreshDriver[Credentials](
+            "Example", auth, FIELDS, client, settings=settings
+        )
         state = CredentialRefreshState(
             Credentials(SecretString("old"), SecretString("prior")), None, datetime.now(UTC)
         )
         with pytest.raises(RetryError):
             await driver.refresh(state)
-    grant["tokenExchangeTimeout"] = "-1s"
+    grant["tokenExchangeTimeout"] = {"fromSetting": "requestTimeout"} if from_setting else "-1s"
     async with httpx.AsyncClient() as client:
         with pytest.raises(ValueError, match="tokenExchangeTimeout"):
             ManifestCredentialRefreshDriver[Credentials]("Example", auth, FIELDS, client)
