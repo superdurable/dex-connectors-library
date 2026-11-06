@@ -304,3 +304,16 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 
 The re-dispatch test interrupts the Worker while the fake provider is handling
 a listing request.
+
+## Python package
+
+The [Python package](python/README.md) implements all three read operations and
+preserves RFC 3339 timestamps through nine fractional digits. Its
+[response recorder Flow](python/examples/response_recorder/flow.py) uses the
+static `google-forms-intake` connection and has a real Dex integration test
+against a local Forms stand-in. Live Google authorization and Forms API calls
+remain unverified.
+
+## TypeScript package
+
+[`@superdurable/connector-google-forms`](typescript/README.md) provides the three read operations for TypeScript Dex Flows. Its [response recorder example](typescript/examples/response-recorder/README.md) uses all three operations through a real Dex Worker in integration tests. Google OAuth and Workspace delegation use generated refresh wiring. Live Google authorization, Forms requests, and the Drive picker remain unverified for the TypeScript port.

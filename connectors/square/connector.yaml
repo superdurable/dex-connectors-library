@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: square
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-square"
+      operations: [listPayments, getPayment]
+      triggers: []
     python:
       version: v0.1.0
       operations: [listPayments, getPayment]

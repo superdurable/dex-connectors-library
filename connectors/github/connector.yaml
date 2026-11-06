@@ -8,6 +8,17 @@ metadata:
   version: v0.24.0
 spec:
   provider: github
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-github'
+      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits]
+      triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-github
+      operations: [getAuthenticatedProfile, listPublicRepositories, listMergedPullRequests, listPullRequestFiles, listReleases, listCommits]
+      triggers: []
   codegen:
     go:
       package: github
@@ -112,6 +123,7 @@ spec:
       pkce: true
       refresh:
         tokenExchangeTimeout: 15s
+        requiredScopes: [read:user, user:email]
         missingExpiry: reject
         scopeSeparators: whitespaceAndComma
         exactScopes: true

@@ -8,6 +8,12 @@ metadata:
   version: v0.24.0
 spec:
   provider: microsoft
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-excel
+      operations: [getTableRows, getValues, updateValues, appendTableRows]
+      triggers: []
   codegen:
     go:
       package: excel

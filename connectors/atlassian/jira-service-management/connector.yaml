@@ -8,6 +8,17 @@ metadata:
   version: v0.24.0
 spec:
   provider: atlassian
+  languages:
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-atlassian-jira-service-management'
+      operations: [findCustomerByEmail, searchTickets, getTicket, createTicket, updateTicket, transitionTicket, addComment]
+      triggers: []
+    python:
+      version: v0.1.0
+      package: dex-connector-atlassian-jira-service-management
+      operations: [findCustomerByEmail, searchTickets, getTicket, createTicket, updateTicket, transitionTicket, addComment]
+      triggers: []
   codegen:
     go:
       package: jiraservicemanagement

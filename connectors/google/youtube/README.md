@@ -89,9 +89,24 @@ inputs.
 **Start Flow** example that adds a channel's newest matching video to a
 playlist and reads the playlist back to confirm.
 
+## Python package
+
+[`python/`](python/) releases `dex-connector-google-youtube` v0.1.0 independently
+of Go. It implements all five operations with the generated OAuth connection,
+refresh driver, and operation-specific Step factories. The
+[`video_search` example](python/examples/video_search/) starts a Flow through
+the static `youtube-playlist-curator` connection. The Python conformance suite
+replays Go-recorded provider requests and outcomes, including retry and
+check-before-insert paths. Live Google OAuth and YouTube API behavior remain
+unverified.
+
 ## Verification
 
 ```bash
 GOWORK=off go test -race ./...
 GOWORK=off go vet ./...
 ```
+
+## TypeScript package
+
+The `typescript/` package declares `@superdurable/connector-google-youtube` v0.1.0 with all five operations and no Triggers. It uses generated Dex Step factories and OAuth refresh wiring. The runnable [video lookup Flow](typescript/examples/video-lookup/README.md) shows a read-only Google OAuth connection named `youtube-video-reader`; adding a playlist item requires the manage authorization method. The package's Go-recorded conformance fixtures and real Dex Worker integration test run locally with a provider stand-in. Live Google OAuth and YouTube API behavior remain unverified.

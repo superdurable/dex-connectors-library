@@ -124,7 +124,8 @@ def _member_address(list_id: str, email_address: str) -> None:
 
 
 def _subscriber_hash(email_address: str) -> str:
-    return hashlib.md5(email_address.lower().encode()).hexdigest()  # noqa: S324 -- Mailchimp's address key.
+    lowered = "".join("i" if character == "İ" else character.lower() for character in email_address)
+    return hashlib.md5(lowered.encode()).hexdigest()  # noqa: S324 -- Mailchimp's address key.
 
 
 def _parse_time(value: object) -> datetime | None:
@@ -133,7 +134,7 @@ def _parse_time(value: object) -> datetime | None:
     if not isinstance(value, str):
         raise ValueError("a timestamp is not ISO 8601")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(re.sub(r"T(\d):", r"T0\1:", value).replace("Z", "+00:00"))
         if parsed.utcoffset() is None:
             raise ValueError
         return parsed.astimezone(UTC)
@@ -363,6 +364,8 @@ class ListMembersOperation:
                 (input.opted_in_since, "since_timestamp_opt"),
             ):
                 if source is not None:
+                    if source == datetime.min.replace(tzinfo=UTC):
+                        raise ValueError("a timestamp must not be zero")
                     query[target] = source.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S+00:00")
         except (ValueError, AttributeError) as error:
             return QueryAttempt.branch_result(

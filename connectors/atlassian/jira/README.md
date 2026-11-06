@@ -12,6 +12,12 @@ This module searches, reads, creates, transitions, and comments on Jira Cloud
 issues through Atlassian's OAuth 2.0 (3LO) gateway,
 `https://api.atlassian.com/ex/jira/{cloudId}/rest/api/3`:
 
+The [Python package](python/README.md) implements the same five operations at
+`v0.1.0`, with generated OAuth refresh, Go-recorded conformance, and a
+[runnable Dex Flow](python/examples/issue_lookup/README.md). Its local
+integration test uses a Jira stand-in; live Atlassian authorization and API
+behavior remain unverified.
+
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
 | `searchIssues` | Query | async | `searched` | `providerRejected`, `invalidResponse`, `defect` |
@@ -33,6 +39,20 @@ summary)`, and the same IDs appear in the Value's `RejectedFieldIDs`.
 
 No Trigger ships in this release. Jira webhooks need the shared webhook source
 design; until it lands, poll with `searchIssues`.
+
+## TypeScript package
+
+The `@superdurable/connector-atlassian-jira` package at `typescript/` is version
+`0.1.0` and implements all five operations in this manifest. Its generated
+OAuth driver and project credential source refresh rotating Atlassian tokens;
+`createIssue` and `addComment` retain Dex single-dispatch and Jira property
+read-back behavior. See the [package README](typescript/README.md) and
+[runnable issue read example](typescript/examples/get-issue/README.md).
+
+Go-recorded conformance scenarios replay provider requests and branches in
+TypeScript. A real Dex integration test uses a local Jira stand-in. Live
+Atlassian authorization, site selection, and provider API behavior remain
+unverified.
 
 ## Atlassian setup
 

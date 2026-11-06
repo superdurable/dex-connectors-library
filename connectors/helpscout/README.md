@@ -1,5 +1,11 @@
 # Help Scout Connector
 
+The TypeScript package `@superdurable/connector-helpscout` implements the five
+conversation and customer operations. Its package version is `0.1.0`; the
+`conversationEvent` webhook Trigger remains Go only. See the
+[TypeScript README](typescript/README.md) and its
+[runnable search example](typescript/examples/search-conversations/README.md).
+
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/helpscout/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/helpscout`.
@@ -365,3 +371,13 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 
 The integration run needs `dexcli dev` and exercises duplicate dispatch after
 Worker loss or a retry following an accepted provider write.
+
+## Python package
+
+The [`python/`](python/) package `dex-connector-helpscout` v0.1.0 implements
+`searchConversations`, `getConversation`, `replyToConversation`,
+`updateConversation`, and `findCustomerByEmail` with generated client-credentials
+refresh wiring. Its checked-in [conversation search Flow](python/examples/conversation_search/flow.py)
+provides Dex Worker and Client verification. The signed `conversationEvent`
+Trigger remains Go-only. See the [Python README](python/README.md) for
+installation, connection setup, and behavior.

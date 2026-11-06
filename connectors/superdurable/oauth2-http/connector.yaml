@@ -8,6 +8,12 @@ metadata:
   version: v0.2.0
 spec:
   provider: oauth2-http
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-superdurable-oauth2-http
+      operations: [sendRequest]
+      triggers: []
   codegen:
     go:
       package: oauth2http

@@ -681,7 +681,7 @@ func TestConformanceMatcher(t *testing.T) {
 			for _, field := range test.ExpectedMismatches {
 				require.Contains(t, strings.Join(recorder.mismatches, "\n"), field)
 			}
-			if conformanceIsMultipart(request.Header.Get("Content-Type")) && len(test.ExpectedMismatches) == 0 {
+			if conformanceIsMultipart(conformanceHeaderValue(request.Header, "Content-Type")) && len(test.ExpectedMismatches) == 0 {
 				observed, err := recorder.observeRequest(request)
 				require.NoError(t, err)
 				var expectedBody any
@@ -723,7 +723,7 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: unasserted query %s=%q", index, name, values))
 		}
 	}
-	if strings.HasPrefix(request.Header.Get("Content-Type"), "application/x-www-form-urlencoded") || len(exchange.Form) != 0 {
+	if strings.HasPrefix(conformanceHeaderValue(request.Header, "Content-Type"), "application/x-www-form-urlencoded") || len(exchange.Form) != 0 {
 		body, readErr := io.ReadAll(request.Body)
 		if readErr != nil {
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: read body: %v", index, readErr))
@@ -791,7 +791,7 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 				}
 			}
 		} else if descriptor, isObject := expected.(map[string]any); isObject && descriptor["$multipart"] != nil {
-			observed, err := conformanceMultipartBody(request.Header.Get("Content-Type"), body)
+			observed, err := conformanceMultipartBody(conformanceHeaderValue(request.Header, "Content-Type"), body)
 			if err != nil {
 				recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: invalid multipart body: %v", index, err))
 			} else if !reflect.DeepEqual(observed, expected) {
@@ -828,7 +828,7 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 		}
 	}
 	for name, value := range exchange.RequestHeaders {
-		actual, expected := request.Header.Values(name), conformanceExpectedValues(value)
+		actual, expected := conformanceHeaderValues(request.Header, name), conformanceExpectedValues(value)
 		if strings.EqualFold(name, "Content-Type") && len(actual) == 1 && len(expected) == 1 && conformanceIsMultipart(expected[0]) {
 			actual = []string{conformanceMultipartContentType(actual[0])}
 		}
@@ -849,7 +849,7 @@ func (recorder *conformanceRecorder) RoundTrip(request *http.Request) (*http.Res
 			recorder.mismatches = append(recorder.mismatches, fmt.Sprintf("request %d: unasserted header %s=%q", index, name, values))
 		}
 	}
-	keyValues := request.Header.Values("Idempotency-Key")
+	keyValues := conformanceHeaderValues(request.Header, "Idempotency-Key")
 	key := ""
 	if len(keyValues) == 1 {
 		key = keyValues[0]
@@ -905,7 +905,7 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 	if len(headers) > 0 {
 		observed["requestHeaders"] = headers
 	}
-	if keys := request.Header.Values("Idempotency-Key"); len(keys) > 0 {
+	if keys := conformanceHeaderValues(request.Header, "Idempotency-Key"); len(keys) > 0 {
 		observed["keyMode"] = "derived"
 		if len(keys) != 1 {
 			return observed, errors.New("multiple Idempotency-Key values")
@@ -920,7 +920,7 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 		return observed, err
 	}
 	request.Body = io.NopCloser(bytes.NewReader(body))
-	if strings.HasPrefix(request.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+	if strings.HasPrefix(conformanceHeaderValue(request.Header, "Content-Type"), "application/x-www-form-urlencoded") {
 		values, err := url.ParseQuery(string(body))
 		if err != nil {
 			return observed, err
@@ -928,8 +928,8 @@ func (recorder *conformanceRecorder) observeRequest(request *http.Request) (map[
 		if len(values) > 0 {
 			observed["form"] = values
 		}
-	} else if conformanceIsMultipart(request.Header.Get("Content-Type")) {
-		value, err := conformanceMultipartBody(request.Header.Get("Content-Type"), body)
+	} else if conformanceIsMultipart(conformanceHeaderValue(request.Header, "Content-Type")) {
+		value, err := conformanceMultipartBody(conformanceHeaderValue(request.Header, "Content-Type"), body)
 		if err != nil {
 			return observed, err
 		}
@@ -1067,6 +1067,24 @@ func decodeConformanceMIME(raw string) ([]byte, error) {
 		return base64.URLEncoding.DecodeString(raw)
 	}
 	return base64.RawURLEncoding.DecodeString(raw)
+}
+
+func conformanceHeaderValues(headers http.Header, name string) []string {
+	var values []string
+	for headerName, headerValues := range headers {
+		if strings.EqualFold(headerName, name) {
+			values = append(values, headerValues...)
+		}
+	}
+	return values
+}
+
+func conformanceHeaderValue(headers http.Header, name string) string {
+	values := conformanceHeaderValues(headers, name)
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
 }
 
 func conformanceExpectedValues(raw json.RawMessage) []string {

@@ -9,6 +9,11 @@ metadata:
 spec:
   provider: unsplash
   languages:
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-unsplash"
+      operations: [searchPhotos, getPhoto]
+      triggers: []
     python:
       version: v0.1.0
       operations: [searchPhotos, getPhoto]

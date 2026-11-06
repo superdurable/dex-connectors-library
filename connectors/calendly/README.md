@@ -2,6 +2,8 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/calendly/go@v0.24.0`.
 
+The TypeScript package `@superdurable/connector-calendly` v0.1.0 implements all six operations. Its [runnable scheduled-event Flow](typescript/examples/scheduled-event/README.md) reads one event through a Dex Worker and Client. The `inviteeEventReceived` Trigger remains Go-only. See the [TypeScript package README](typescript/README.md) for setup and verification.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/calendly`.
 
 > **Verification status: partial live.** Only picker commands with a placeholder token reached Calendly; everything else ran on a real Dex stack against a local stand-in. No live Calendly account was used. See
@@ -245,3 +247,7 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./.
 
 The integration run needs `dexcli dev`; the probe tests repeat Execute after
 an accepted provider call.
+
+## Python
+
+The Python `dex-connector-calendly` package implements the six Calendly operations with generated OAuth wiring and a [runnable scheduled event lookup](python/examples/scheduled_event/README.md). The signed invitee webhook Trigger remains Go-only. The Python example uses the static `calendly-scheduling` connection name.

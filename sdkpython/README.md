@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.7.0` supplies the models, provider operation contracts, credential
+Version `0.8.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
 checkpoint values below, plus opt-in provider address policies. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
@@ -253,11 +253,14 @@ Failures after header dispatch stay possibly sent, matching the Go connectors'
 DNS, connect, TLS, and obtained-connection trace.
 `BodyTooLargeError` retains the response status and headers for classification
 without putting header values in its message.
+`ProviderTransportError` retains `status_code` and `headers` when a response body read fails after headers arrive. `encode_query_values` encodes a string multimap byte for byte like Go `url.Values.Encode`, including UTF-8 byte key ordering and Go's query escaping; it rejects a plain string value at runtime.
 The caller closes the streaming response returned by `send_traced`; the bounded
 reader closes it on success and failure.
 The core example sends through an in-process HTTP transport.
 
 ## Version history
+
+- `0.8.0`: Manifest OAuth refresh and client-credentials minting honor `tokenExchangeTimeout` independently of the caller's deadline; timeout is retryable. The declaration accepts a fixed Go duration of at most one hour or `{fromSetting: "requestTimeout"}`; pass the pinned setting as a Go duration string or integer nanoseconds within the same bound. The private network token client uses the same configured timeout. Interrupted body reads preserve response status and headers, and `encode_query_values` provides Go-compatible query serialization for connector ports. These additions are not breaking; existing ports keep their current encoding until migrated.
 
 - `0.7.0`: Manifest token endpoint templates apply declared
   `templateValueRules` before path escaping. Rules trim Go Unicode whitespace,
@@ -383,7 +386,7 @@ Dex Flow tests, install the latest stable CLI with
 `python3 ../script/dex_compatibility.py install-dexcli --output ../.bin/dexcli`,
 then from `sdkpython/` run `mkdir -p .dexcli-data/logs` and start
 `../.bin/dexcli dev -dex-port 19881 -web-port 19882 -open=false
--zd-data-dir .dexcli-data/zd -server-log-folder .dexcli-data/logs`. Run
+-durability process-crash-safe -zd-data-dir .dexcli-data/zd -server-log-folder .dexcli-data/logs`. Run
 `make test-sdkpython-integration` from the repository root. CI runs this suite
 for Python SDK changes against the Dex CLI selected once for the workflow run.
 The integration suite checks

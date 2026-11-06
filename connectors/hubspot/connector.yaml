@@ -8,6 +8,17 @@ metadata:
   version: v0.24.0
 spec:
   provider: hubspot
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-hubspot
+      operations: [searchObjects, getObject, upsertObject, updateObject]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-hubspot"
+      operations: [searchObjects, getObject, upsertObject, updateObject]
+      triggers: []
   codegen:
     go:
       package: hubspot

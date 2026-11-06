@@ -36,3 +36,13 @@ func NewCredentialRefreshDriverThroughTransportForTest(config Config, transport 
 	driver.httpClient.Transport = transport
 	return driver, nil
 }
+
+// NewWithConformanceTransportForTest injects replay only after construction checks the guarded transport.
+func NewWithConformanceTransportForTest(config Config, credentials CredentialSource, transport http.RoundTripper, now func() time.Time) (*Client, error) {
+	client, err := New(config, credentials, WithClock(now))
+	if err != nil {
+		return nil, err
+	}
+	client.httpClient = &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	return client, nil
+}

@@ -2,6 +2,12 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/spotify/go@v0.24.0`.
 
+The Python port is `dex-connector-spotify==0.1.0`. Its generated
+`new_project_connection` binds the same `listPlaylistTracks` Query and Spotify
+OAuth refresh contract. See the [Python package](python/README.md) and
+[runnable Flow](python/examples/playlist_tracks/README.md). The Python package
+release version is independent of the Go module version.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/spotify`.
 
 The Spotify connector lists one bounded page of tracks from a playlist through
@@ -122,3 +128,7 @@ GOWORK=off \
   SPOTIFY_CONNECTOR_TEST_PLAYLIST_ID=... \
   go test -tags=live ./... -count=1 -v
 ```
+
+## TypeScript
+
+The [`@superdurable/connector-spotify`](typescript/README.md) package implements `listPlaylistTracks` as a Dex Query Step. Its checked-in [playlist tracks example](typescript/examples/playlist-tracks/README.md) uses the static `spotify-playlist-reader` connection and stores only bounded track metadata. The TypeScript port replays the Go connector's provider scenarios and uses manifest-driven OAuth renewal.

@@ -1,0 +1,59 @@
+{
+  "name": "@superdurable/connector-google-docs",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Dex Google Docs connector for TypeScript",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/superdurable/dex-connectors-library.git",
+    "directory": "connectors/google/docs/typescript"
+  },
+  "type": "module",
+  "engines": {
+    "node": "^22.0.0 || ^24.0.0"
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./mock": {
+      "types": "./dist/mock.d.ts",
+      "import": "./dist/mock.js"
+    }
+  },
+  "files": [
+    "dist",
+    "dex-connector.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/mock.ts --format esm --dts --clean",
+    "typecheck": "npm run build && tsc --noEmit",
+    "lint": "eslint src test examples",
+    "test": "npm run build && vitest run test/*.test.ts",
+    "test:integration": "npm run build && vitest run test/integration/*.integration.test.ts",
+    "example:worker": "npm run build && tsx examples/policy-documents/main.ts",
+    "example:start": "npm run build && tsx examples/policy-documents/start.ts",
+    "check": "npm run typecheck && npm run lint && npm test"
+  },
+  "dependencies": {
+    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/dex": ">=1.28.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0",
+    "yaml": "^2.9.1"
+  }
+}

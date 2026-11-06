@@ -8,6 +8,17 @@ metadata:
   version: v0.24.0
 spec:
   provider: google
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-google-docs
+      operations: [getDocumentText, createDocument, replaceDocumentText, appendText]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-google-docs'
+      operations: [getDocumentText, createDocument, replaceDocumentText, appendText]
+      triggers: []
   codegen:
     go:
       package: docs

@@ -8,6 +8,17 @@ metadata:
   version: v0.24.0
 spec:
   provider: spotify
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-spotify
+      operations: [listPlaylistTracks]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-spotify'
+      operations: [listPlaylistTracks]
+      triggers: []
   codegen:
     go:
       package: spotify

@@ -2,6 +2,17 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence/go@v0.24.0`.
 
+The TypeScript package is `@superdurable/connector-atlassian-confluence@0.1.0`.
+It implements all five operations with the same branch identities and OAuth
+refresh declaration as Go. The generated TypeScript models, Step factories,
+project credential decoders, and mocks come from `connector.yaml`.
+The [TypeScript read-page example](typescript/examples/read-page/README.md)
+binds the static `confluence-policy` connection and verifies a page read
+through a real Dex Worker and local Confluence stand-in. The
+[recorded scenarios](../../../conformance/connectors/atlassian/confluence/scenarios.json)
+replay all five operations against Go and TypeScript. Live Atlassian OAuth,
+site selection, page writes, and comment delivery have not been verified.
+
 Moved from `github.com/superdurable/dex-connectors-library/connectors/atlassian/confluence`.
 
 > **Verification status: Dex-integrated, not live.** Ran on a real Dex stack against a local stand-in for Confluence; no live Atlassian site was used. See
@@ -14,6 +25,18 @@ Cloud pages through Atlassian's OAuth 2.0 (3LO) gateway,
 footer comments use REST API v2 (`/wiki/api/v2`); CQL search uses the REST API
 v1 content search (`/wiki/rest/api/content/search`), because v2 has no CQL
 endpoint.
+
+## Python package
+
+The [`dex-connector-atlassian-confluence`](python/README.md) package implements
+all five operations at version `0.1.0`. It requires
+`dex-connectors-sdk==0.6.0` and a Python Dex SDK at least `1.28.0`. Its
+[read-page example](python/examples/read_page/README.md) uses the static
+`confluence-pages` connection and has a real Dex Worker and Client integration
+test against a local Confluence stand-in. The Python port's provider scenarios
+replay the Go connector's requests, branches, retries, output values, and
+checkpoint behavior. Live Atlassian authorization, scope consent, site
+selection, token refresh, and API behavior have not been verified.
 
 | Operation | Kind | Durability | Happy branch | Other branches |
 | --- | --- | --- | --- | --- |
