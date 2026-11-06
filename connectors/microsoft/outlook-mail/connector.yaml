@@ -82,6 +82,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 8s
             scopeResourcePrefix: https://graph.microsoft.com/
             scopeResourcePrefixCaseInsensitive: true
             caseInsensitiveScopes: true
@@ -131,6 +132,7 @@ spec:
             - "Do not also add Microsoft Graph application permissions Mail.ReadWrite or Mail.Send under API permissions: Entra grants them for every mailbox in the tenant, and Exchange adds them to the scoped roles. If your tenant cannot use RBAC for Applications, those two application permissions with Grant admin consent also work, but they reach every mailbox; Microsoft replaced the older application access policies with RBAC for Applications."
             - "Enter mailbox and leave access_token blank: on its first Outlook call the application requests a token from https://login.microsoftonline.com/<tenant_id>/oauth2/v2.0/token with the scope https://graph.microsoft.com/.default and renews it before it expires. To revoke access, delete the client secret or remove the role assignments with Remove-ManagementRoleAssignment."
         clientCredentials:
+          tokenExchangeTimeout: 8s
           responseScopes: ignore
           missingExpiry: reject
           storedMissingExpiry: refresh

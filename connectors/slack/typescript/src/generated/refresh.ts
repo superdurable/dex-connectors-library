@@ -110,7 +110,8 @@ export const Authorization = {
         "token_revoked",
         "account_inactive",
         "access_denied"
-      ]
+      ],
+      "tokenExchangeTimeout": "25s"
     },
     "scopes": [
       "channels:history",

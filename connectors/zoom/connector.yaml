@@ -83,6 +83,7 @@ spec:
       pkce: true
       tokenEndpointAuthMethod: client_secret_basic
       refresh:
+        tokenExchangeTimeout: 8s
         missingExpiry: reject
         storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma

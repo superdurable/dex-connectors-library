@@ -58,7 +58,8 @@ export const Authorization = {
         "invalid_grant",
         "invalid_client",
         "unauthorized_client"
-      ]
+      ],
+      "tokenExchangeTimeout": "15s"
     },
     "scopes": [
       "search:confluence",

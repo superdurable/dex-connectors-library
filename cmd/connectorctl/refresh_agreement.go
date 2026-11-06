@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
 	"github.com/superdurable/dex-connectors-library/schema"
@@ -35,6 +37,11 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 		return nil, fmt.Errorf("%s: %w", manifestPath, err)
 	}
 	files := map[string][]byte{filepath.Join(directory, codegen.RefreshAgreementTestOutputFile): test}
+	transportHook, err := codegen.GenerateRefreshAgreementTransportHookTest(manifest.Spec.Codegen.Go.Package)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", manifestPath, err)
+	}
+	files[filepath.Join(directory, codegen.RefreshAgreementTransportHookOutputFile)] = transportHook
 	cases, err := codegen.GenerateRefreshAgreementCases(manifest, samples)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", manifestPath, err)
@@ -42,7 +49,11 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	connectorDirectory := filepath.Dir(manifestPath)
 	if manifest.Spec.Languages != nil && manifest.Spec.Languages.Python != nil {
 		pythonTests := filepath.Join(connectorDirectory, "python", "tests")
-		files[filepath.Join(pythonTests, "refresh_agreement_cases.json")] = cases
+		pythonCases, err := languageRefreshAgreementCases(cases, filepath.Join(connectorDirectory, "python", "pyproject.toml"), "python")
+		if err != nil {
+			return nil, err
+		}
+		files[filepath.Join(pythonTests, "refresh_agreement_cases.json")] = pythonCases
 		relativeDirectory, err := connectorDirectoryInCatalog(manifestPath)
 		if err != nil {
 			return nil, err
@@ -51,19 +62,80 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	}
 	if manifest.Spec.Languages != nil && manifest.Spec.Languages.TypeScript != nil {
 		typeScriptTests := filepath.Join(connectorDirectory, "typescript", "test")
-		files[filepath.Join(typeScriptTests, "fixtures", "refresh-agreement-cases.json")] = cases
+		typeScriptCases, err := languageRefreshAgreementCases(cases, filepath.Join(connectorDirectory, "typescript", "package.json"), "typescript")
+		if err != nil {
+			return nil, err
+		}
+		files[filepath.Join(typeScriptTests, "fixtures", "refresh-agreement-cases.json")] = typeScriptCases
 		files[filepath.Join(typeScriptTests, "refresh_agreement.test.ts")] = codegen.GenerateTypeScriptRefreshAgreementTest()
 	}
 	return files, nil
 }
 
+var pythonConnectorSDKPin = regexp.MustCompile(`dex-connectors-sdk==([0-9]+)\.([0-9]+)\.([0-9]+)`)
+
+// languageRefreshAgreementCases checks the exact package pin before emitting timeout enforcement cases.
+func languageRefreshAgreementCases(cases []byte, packagePath, language string) ([]byte, error) {
+	contents, err := os.ReadFile(packagePath)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", packagePath, err)
+	}
+	var version string
+	switch language {
+	case "python":
+		parts := pythonConnectorSDKPin.FindSubmatch(contents)
+		if parts == nil {
+			return nil, fmt.Errorf("%s must pin dex-connectors-sdk exactly", packagePath)
+		}
+		version = string(parts[1]) + "." + string(parts[2]) + "." + string(parts[3])
+	case "typescript":
+		var declaration struct {
+			Dependencies map[string]string `json:"dependencies"`
+		}
+		if err := json.Unmarshal(contents, &declaration); err != nil {
+			return nil, fmt.Errorf("decode %s: %w", packagePath, err)
+		}
+		version = declaration.Dependencies["@superdurable/connectors-sdk"]
+	default:
+		return nil, fmt.Errorf("unsupported language %s", language)
+	}
+	versionParts := regexp.MustCompile(`^([0-9]+)\.([0-9]+)\.([0-9]+)$`).FindStringSubmatch(version)
+	if versionParts == nil {
+		return nil, fmt.Errorf("%s must pin Connector SDK to an exact version: %q", packagePath, version)
+	}
+	major, _ := strconv.Atoi(versionParts[1])
+	minor, _ := strconv.Atoi(versionParts[2])
+	if major > 0 || minor >= 8 {
+		return cases, nil
+	}
+	var agreements []codegen.RefreshAgreementCase
+	if err := json.Unmarshal(cases, &agreements); err != nil {
+		return nil, fmt.Errorf("decode refresh agreement cases: %w", err)
+	}
+	for index := range agreements {
+		agreements[index].TokenExchangeTimeout = ""
+		agreements[index].TokenExchangeTimeoutNanoseconds = nil
+	}
+	encoded, err := json.MarshalIndent(agreements, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("encode refresh agreement cases: %w", err)
+	}
+	return append(encoded, '\n'), nil
+}
+
 // staleRefreshAgreementFiles lists the agreement test that a manifest without token grants must not keep.
 func staleRefreshAgreementFiles(manifestPath string, manifest schema.Manifest) []string {
-	path := filepath.Join(filepath.Dir(manifestPath), "go", codegen.RefreshAgreementTestOutputFile)
-	if _, err := os.Lstat(path); err != nil || codegen.HasDeclaredTokenGrants(manifest) {
+	if codegen.HasDeclaredTokenGrants(manifest) {
 		return nil
 	}
-	return []string{path}
+	var stale []string
+	for _, file := range []string{codegen.RefreshAgreementTestOutputFile, codegen.RefreshAgreementTransportHookOutputFile} {
+		path := filepath.Join(filepath.Dir(manifestPath), "go", file)
+		if _, err := os.Lstat(path); err == nil {
+			stale = append(stale, path)
+		}
+	}
+	return stale
 }
 
 // readRefreshAgreementSamples reads the optional sample overrides strictly; a missing file means none.

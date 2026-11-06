@@ -89,6 +89,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -119,6 +120,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -149,6 +151,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -179,6 +182,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -209,6 +213,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -239,6 +244,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -269,6 +275,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -299,6 +306,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject
@@ -329,6 +337,7 @@ spec:
           credentialMappings: *zohoCredentialMappings
           pkce: false
           refresh:
+            tokenExchangeTimeout: 8s
             expiryCap: 1h
             responseScopes: ignore
             missingExpiry: reject

@@ -52,7 +52,8 @@ export const Authorization = {
         "incorrect_client_credentials",
         "invalid_client",
         "invalid_grant"
-      ]
+      ],
+      "tokenExchangeTimeout": "15s"
     },
     "scopes": [
       "read:user",

@@ -105,6 +105,7 @@ spec:
             - {credential: refresh_token, source: refresh_token}
           pkce: true
           refresh:
+            tokenExchangeTimeout: 25s
             requiredScopes: [Files.ReadWrite.All]
             scopeResourcePrefix: https://graph.microsoft.com/
             caseInsensitiveScopes: true
@@ -147,6 +148,7 @@ spec:
             - Open Certificates & secrets > Client secrets > New client secret and copy the Value shown once; copy the Directory (tenant) ID and Application (client) ID from Overview.
             - Enter the three values below and leave access_token blank; the application requests a token from https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token on its first Graph call. App-only connections have no signed-in user, so every Step must name a drive ID, which the drive picker or Graph Explorer provides.
         clientCredentials:
+          tokenExchangeTimeout: 25s
           trimClientID: true
           responseScopes: ignore
           missingExpiry: reject

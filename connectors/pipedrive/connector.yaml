@@ -113,6 +113,7 @@ spec:
           pkce: false
           tokenEndpointAuthMethod: client_secret_basic
           refresh:
+            tokenExchangeTimeout: 20s
             scopeSeparators: whitespaceAndComma
             requiredScopes: ["deals:full", "contacts:full"]
             responseURLValidation: {credential: api_domain, allowedHostSuffix: pipedrive.com, allowLoopback: true, requireResponse: true, refreshWhenInvalid: true}

@@ -57,7 +57,8 @@ export const Authorization = {
             "invalid_client",
             "invalid_grant",
             "unauthorized_client"
-          ]
+          ],
+          "tokenExchangeTimeout": "25s"
         },
         "scopes": [
           "signature",
@@ -119,7 +120,8 @@ export const Authorization = {
             "invalid_client",
             "invalid_grant",
             "unauthorized_client"
-          ]
+          ],
+          "tokenExchangeTimeout": "25s"
         },
         "scopes": [
           "signature",

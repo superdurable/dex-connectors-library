@@ -48,7 +48,8 @@ export const Authorization = {
         "invalid_client",
         "invalid_grant",
         "unauthorized_client"
-      ]
+      ],
+      "tokenExchangeTimeout": "8s"
     },
     "scopes": [
       "meeting:read:list_meetings",

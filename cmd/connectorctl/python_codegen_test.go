@@ -58,7 +58,9 @@ func TestPythonPrivateTokenEndpointProjectConnectionUsesPolicyClient(t *testing.
 	connection := generated["connection.py"]
 	for _, required := range []string{
 		"from dex_connectors.sdk.providerhttp import new_provider_http_client",
-		`http_client = new_provider_http_client(30, address_policy="privateNetworkHTTP")`,
+		`http_client = new_provider_http_client(config.request_timeout_seconds, address_policy="privateNetworkHTTP")`,
+		`refresh_settings['requestTimeout'] = matching[0].configuration.get('requestTimeout') or 12000000000`,
+		`(request_timeout / 1_000_000_000 if request_timeout != 0 else 12000000000 / 1_000_000_000)`,
 		"if http_client is not None:",
 		"private token endpoint does not accept a custom HTTP client",
 	} {
@@ -68,6 +70,43 @@ func TestPythonPrivateTokenEndpointProjectConnectionUsesPolicyClient(t *testing.
 	}
 	if strings.Contains(connection, "http_client = http_client or httpx.AsyncClient()") {
 		t.Error("generated private endpoint connection constructs an unrestricted HTTP client")
+	}
+}
+
+func TestPythonRequiredSourcedTimeoutAndGoDurationForms(t *testing.T) {
+	manifest, err := load(filepath.Join("..", "..", "connectors", "superdurable", "oauth2-http", "connector.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{}, Triggers: []string{}}}
+	for index := range manifest.Spec.Configuration.Fields {
+		field := &manifest.Spec.Configuration.Fields[index]
+		if field.Name == "requestTimeout" {
+			field.Default = "+.5s"
+			break
+		}
+	}
+	generated, err := renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "superdurable_oauth2_http", MockPackageName: "oauth2httpmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["connection.py"], "or 500000000") {
+		t.Fatal("leading plus and fractional Go duration must compile to nanoseconds")
+	}
+	for index := range manifest.Spec.Configuration.Fields {
+		field := &manifest.Spec.Configuration.Fields[index]
+		if field.Name == "requestTimeout" {
+			field.Default = nil
+			field.Required = true
+			break
+		}
+	}
+	generated, err = renderPythonCodegen(pythonCodegenInput{Manifest: manifest, PackageName: "superdurable_oauth2_http", MockPackageName: "oauth2httpmock"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(generated["connection.py"], "matching[0].configuration['requestTimeout']") {
+		t.Fatal("required sourced timeout must use the supplied duration")
 	}
 }
 
