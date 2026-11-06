@@ -205,7 +205,11 @@ export function loadScenarios(url: URL): Scenario[] {
     }
     if ('fixedClock' in scenario && (typeof scenario.fixedClock !== 'string' ||
         !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(scenario.fixedClock) ||
-        !Number.isFinite(Date.parse(scenario.fixedClock)))) throw new Error('invalid fixed clock');
+        !Number.isFinite(Date.parse(scenario.fixedClock)) ||
+        scenario.fixedClock.startsWith('0000-') ||
+        (() => { const precision = scenario.fixedClock.includes('.') ? scenario.fixedClock.length - scenario.fixedClock.indexOf('.') - 2 : 0;
+          const canonical = new Date(scenario.fixedClock).toISOString();
+          return canonical.slice(0, 19) + (precision ? canonical.slice(19, 20 + precision) : '') + 'Z' !== scenario.fixedClock; })())) throw new Error('invalid fixed clock');
   }
   return document.scenarios as Scenario[];
 }

@@ -1163,7 +1163,7 @@ func decodeConformanceScenarios(data []byte) ([]conformanceScenario, error) {
 			}
 		}
 		if _, hasFixedClock := fields["fixedClock"]; hasFixedClock {
-			if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) {
+			if strings.HasPrefix(scenario.FixedClock, "0000-") || !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$`).MatchString(scenario.FixedClock) {
 				return nil, errors.New("invalid fixed clock")
 			}
 			if _, err := time.Parse(time.RFC3339Nano, scenario.FixedClock); err != nil {

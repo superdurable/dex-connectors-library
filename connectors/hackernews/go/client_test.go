@@ -45,6 +45,37 @@ func TestFeedSnapshotPreservesOrderAndBounds(t *testing.T) {
 	require.WithinDuration(t, time.Now(), result.Value.ObservedAt, time.Second)
 }
 
+func TestFeedSnapshotUsesInjectedClock(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := fmt.Fprint(w, `[9,3,7]`)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	fixed := time.Date(2026, time.October, 26, 12, 0, 0, 0, time.FixedZone("offset", 3600))
+	client, err := New(Config{BaseURL: server.URL}, nil, withClock(func() time.Time { return fixed }))
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(queryContext{}, client.ListStoryIDs(), testConnection, ListStoryIDsInput{Limit: 2})
+	require.NoError(t, err)
+	require.Equal(t, fixed.UTC(), result.Value.ObservedAt)
+	_, err = New(Config{BaseURL: server.URL}, nil, withClock(nil))
+	require.ErrorContains(t, err, "clock is required")
+}
+
+func TestHTTPDateRetryAfterUsesInjectedClock(t *testing.T) {
+	fixed := time.Date(2026, time.October, 26, 12, 0, 0, 0, time.UTC)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", fixed.Add(3*time.Second).Format(http.TimeFormat))
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL}, nil, withClock(func() time.Time { return fixed }))
+	require.NoError(t, err)
+	_, err = sdkgo.RunQuery(queryContext{}, client.ListStoryIDs(), testConnection, ListStoryIDsInput{})
+	var retry *dex.RetryAfterError
+	require.ErrorAs(t, err, &retry)
+	require.Equal(t, 3*time.Second, retry.After)
+}
+
 func TestItemResponseBoundaries(t *testing.T) {
 	for _, test := range []struct {
 		name, body string
