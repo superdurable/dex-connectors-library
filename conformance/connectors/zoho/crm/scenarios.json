@@ -1,0 +1,3086 @@
+{
+  "connector": "zoho-crm",
+  "scenarios": [
+    {
+      "callId": "3df7f731-b6fd-57ca-8731-cae4aa076a56",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123\",\"Email\":\"ada@example.com\"}],\"info\":{\"more_records\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'ada@example.com' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "module": "Contacts",
+          "nextOffset": 2,
+          "records": [
+            {
+              "fields": {
+                "Email": "ada@example.com"
+              },
+              "id": "123",
+              "module": "Contacts"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-success",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "6206f65e-6de0-5eb2-be95-191b170c535a",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"OAUTH_SCOPE_MISMATCH\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'ada@example.com' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-provider-rejected",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "a10ccd8c-9f7c-5f0b-9b7d-e7a2f5435342",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'ada@example.com' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-invalid-response",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "05230ed2-3c11-5ca7-8db6-af11a198d822",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-defect",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "9b3b5d9a-c873-551d-9593-4062c943cb9c",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'ada@example.com' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-rate-limit",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "ba94167c-e909-5993-8561-d8398c3cd50f",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'ada@example.com' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-server-error",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "93fa866e-ac6f-5119-90e4-d63f990b4595",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'ada@example.com' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-transport-failure",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "4685e456-9245-58d6-b0b2-198c3ac05ce1",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123\",\"Stage\":\"Qualification\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Stage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "Stage": "Qualification"
+          },
+          "id": "123",
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-success",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "2e36d5a7-f1dc-5efd-86da-0f6911cfe709",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"OAUTH_SCOPE_MISMATCH\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Stage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-provider-rejected",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "b6c4c337-9812-5f16-b4e1-26871baefefe",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Stage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-invalid-response",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "aeb92e79-89d7-5f9d-9752-8011cd280195",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "",
+        "recordId": "123"
+      },
+      "name": "getRecord-defect",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "e54c9498-76e3-5945-8a6d-6f8ee695b8c5",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Stage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-rate-limit",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "09e6fb6f-48c3-53bb-b433-71f4d5ffc456",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Stage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-server-error",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "c7059fe7-c3b3-5fb5-a919-0120225cc670",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Stage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-transport-failure",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "9d090dbd-bf05-5f54-8387-fa539129f5ab",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123\",\"Stage\":\"Qualification\",\"Modified_Time\":\"2026-10-25T01:00:00Z\"}],\"info\":{\"more_records\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "2026-10-25T01:00:00Z/123",
+          "hasMore": true,
+          "module": "Deals",
+          "records": [
+            {
+              "fields": {
+                "Modified_Time": "2026-10-25T01:00:00Z",
+                "Stage": "Qualification"
+              },
+              "id": "123",
+              "module": "Deals"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-success",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "2cb09ac8-8773-51e0-b133-53f64333fb39",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"OAUTH_SCOPE_MISMATCH\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "cursor": "",
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-provider-rejected",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "0dc9819b-8289-5610-85bf-88d196c969b5",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-invalid-response",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "673efe34-04a8-5ec7-a358-ae64287a7f2b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "cursor": "",
+          "module": "",
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": ""
+      },
+      "name": "listModifiedRecords-defect",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "578a78f3-2dc5-5168-8ea2-2d8065df2fbf",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-rate-limit",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "a30ac17d-4d65-56c7-86a3-aa0d8ef8da25",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-server-error",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "1bcda496-ad65-56bd-b79d-6709f46a12ac",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-transport-failure",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"action\":\"insert\",\"details\":{\"id\":\"123\",\"Created_Time\":\"2026-10-25T01:00:00+00:00\",\"Modified_Time\":\"2026-10-25T01:00:00+00:00\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-10-25T01:00:00Z",
+          "id": "123",
+          "isCreated": true,
+          "modifiedAt": "2026-10-25T01:00:00Z",
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-success",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"OAUTH_SCOPE_MISMATCH\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "module": "Contacts",
+          "providerErrors": [
+            {
+              "code": "OAUTH_SCOPE_MISMATCH"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-provider-rejected",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-invalid-response",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-defect",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-rate-limit",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-server-error",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-transport-failure",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"details\":{\"id\":\"123\",\"Modified_Time\":\"2026-10-25T01:00:00+00:00\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "modifiedAt": "2026-10-25T01:00:00Z",
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-success",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"OAUTH_SCOPE_MISMATCH\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "OAUTH_SCOPE_MISMATCH"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-provider-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-invalid-response",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-defect",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-rate-limit",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-server-error",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-transport-failure",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "09733344-7398-525b-92ba-22af985ba80a",
+      "exchanges": [
+        {
+          "body": "{\"fields\":[{\"api_name\":\"Stage\",\"data_type\":\"picklist\",\"display_label\":\"Stage\",\"pick_list_values\":[{\"actual_value\":\"Qualification\",\"display_value\":\"Qualification\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "fields": [
+            {
+              "apiName": "Stage",
+              "dataType": "picklist",
+              "displayLabel": "Stage",
+              "picklistValues": [
+                {
+                  "actualValue": "Qualification",
+                  "displayValue": "Qualification"
+                }
+              ]
+            }
+          ],
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-success",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "976b5289-2831-5bc1-b605-de056c8edd9e",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"OAUTH_SCOPE_MISMATCH\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "fields": [],
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-provider-rejected",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "8ea8fea3-87c8-5248-905b-7e349b2159e3",
+      "exchanges": [
+        {
+          "body": "{\"broken\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": [],
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-invalid-response",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "0845fb3e-4703-5093-b664-ae13e64ce4ae",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "fields": [],
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": ""
+      },
+      "name": "listModuleFields-defect",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "1b57bf11-819b-5f72-ad20-427f79517961",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"TOO_MANY_REQUESTS\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-rate-limit",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "882583ed-f2a6-5c85-a62c-2713aba94376",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INTERNAL_ERROR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-server-error",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "e1977eb8-d750-5431-9048-4350ae33b604",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/settings/fields",
+          "query": {
+            "module": [
+              "Deals"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "transportFailure": "after-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "module": "Deals"
+      },
+      "name": "listModuleFields-transport-failure",
+      "operation": "listModuleFields"
+    },
+    {
+      "callId": "37f0d079-dc29-5a1b-af07-b024fa6df26c",
+      "exchanges": [
+        {
+          "body": "{\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'ada@example.com' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "",
+        "output": {
+          "module": "Contacts",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "ada@example.com"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-not-found",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "8ad4462c-b83f-5e70-ade7-6642ae205097",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Stage"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 204
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "fields": {},
+          "id": "",
+          "module": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-not-found",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "bbd1c7af-eb57-593e-b7e3-b1db78b2cf54",
+      "exchanges": [
+        {
+          "body": "{\"data\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where (Modified_Time \u003e '2026-10-25T00:00:00+00:00' or (Modified_Time = '2026-10-25T00:00:00+00:00' and id \u003e 123)) order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "2026-10-25T00:00:00Z/123",
+          "module": "Deals",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "2026-10-25T00:00:00Z/123",
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-cursor-page",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"action\":\"insert\",\"details\":{\"id\":\"123\",\"Created_Time\":\"2026-10-25T01:00:00+00:00\",\"Modified_Time\":\"2026-10-25T01:00:00+00:00\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": []
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-10-25T01:00:00Z",
+          "id": "123",
+          "isCreated": true,
+          "modifiedAt": "2026-10-25T01:00:00Z",
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "shouldSkipAutomation": true,
+        "triggers": []
+      },
+      "name": "upsertRecord-skip-automation",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"status\":\"error\",\"code\":\"INVALID_DATA\",\"details\":{\"api_name\":\"Stage\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "Contacts",
+          "providerErrors": [
+            {
+              "code": "INVALID_DATA",
+              "field": "Stage"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-record-rejected",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"status\":\"error\",\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Email\",\"duplicate_record\":{\"id\":\"456\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        },
+        {
+          "body": "{\"data\":[{\"status\":\"error\",\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Email\",\"duplicate_record\":{\"id\":\"456\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "module": "Contacts",
+          "providerErrors": [
+            {
+              "code": "DUPLICATE_DATA",
+              "duplicateRecordId": "456",
+              "field": "Email"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-conflict",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"details\":{\"id\":\"123\",\"Modified_Time\":\"2026-10-25T01:00:00+00:00\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": []
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "updated",
+        "failureKind": "",
+        "output": {
+          "id": "123",
+          "modifiedAt": "2026-10-25T01:00:00Z",
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "shouldSkipAutomation": true,
+        "triggers": []
+      },
+      "name": "updateRecord-skip-automation",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"status\":\"error\",\"code\":\"INVALID_DATA\",\"details\":{\"api_name\":\"Stage\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "INVALID_DATA",
+              "field": "Stage"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-record-rejected",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"status\":\"error\",\"code\":\"DUPLICATE_DATA\",\"details\":{\"api_name\":\"Email\",\"duplicate_record\":{\"id\":\"456\"}}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "conflict",
+        "failureKind": "CONFLICT",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "DUPLICATE_DATA",
+              "duplicateRecordId": "456",
+              "field": "Email"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-conflict",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"INVALID_DATA\",\"details\":{\"api_name\":\"id\",\"id\":\"123\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "INVALID_DATA",
+              "field": "id"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-not-found",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"status\":\"error\",\"code\":\"INVALID_DATA\",\"details\":{\"api_name\":\"Stage\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "Contacts",
+          "providerErrors": [
+            {
+              "code": "INVALID_DATA",
+              "field": "Stage"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-accepted-record-error",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"status\":\"error\",\"code\":\"INVALID_DATA\",\"details\":{\"api_name\":\"Stage\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/Deals/123",
+          "requestBody": {
+            "data": [
+              {
+                "Stage": "Qualification"
+              }
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "recordRejected",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "Deals",
+          "providerErrors": [
+            {
+              "code": "INVALID_DATA",
+              "field": "Stage"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "2b280edc-2b85-5983-9137-05e6df9651c2",
+      "input": {
+        "fields": {
+          "Stage": "Qualification"
+        },
+        "module": "Deals",
+        "recordId": "123",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "updateRecord-accepted-record-error",
+      "operation": "updateRecord"
+    },
+    {
+      "callId": "e3050f2d-1ed2-53ea-96a2-d4cb95de9979",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123\",\"Email\":\"tilde~star*\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Email from Contacts where Email = 'tilde~star*' order by Email desc, id asc limit 1, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "module": "Contacts",
+          "records": [
+            {
+              "fields": {
+                "Email": "tilde~star*"
+              },
+              "id": "123",
+              "module": "Contacts"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "tilde~star*"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-coql-special-characters",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "0ca834b1-9675-5c69-a14c-5a07b5ae06af",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123\",\"Stage\":\"Qualification\",\"Modified_Time\":\"not-a-time\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Stage, Modified_Time from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "module": "",
+          "records": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Stage"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-invalid-modified-time",
+      "operation": "listModifiedRecords"
+    },
+    {
+      "callId": "7d02c53e-f9d6-5899-9ecc-a60f944b475c",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123\",\"Amount\":9007199254740991,\"Stage\":null,\"Account_Name\":{\"id\":\"456\",\"name\":\"Acme\"},\"Is_Active\":true}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/Deals/123",
+          "query": {
+            "fields": [
+              "Amount,Stage,Account_Name,Is_Active"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "fields": {
+            "Account_Name": {
+              "id": "456",
+              "name": "Acme"
+            },
+            "Amount": 9007199254740991,
+            "Is_Active": true,
+            "Stage": null
+          },
+          "id": "123",
+          "module": "Deals"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Amount",
+          "Stage",
+          "Account_Name",
+          "Is_Active"
+        ],
+        "module": "Deals",
+        "recordId": "123"
+      },
+      "name": "getRecord-mixed-exact-fields",
+      "operation": "getRecord"
+    }
+  ],
+  "schemaVersion": 1
+}

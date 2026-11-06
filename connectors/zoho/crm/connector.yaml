@@ -277,6 +277,13 @@ spec:
             missingExpiry: reject
             storedMissingExpiry: refresh
             terminalErrorCodes: [invalid_code, invalid_client, invalid_client_secret]
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-zoho-crm
+      timestampFormat: rfc3339Nano
+      operations: [findRecords, getRecord, listModifiedRecords, upsertRecord, updateRecord, listModuleFields]
+      triggers: []
   operations:
     - name: findRecords
       goName: FindRecords
