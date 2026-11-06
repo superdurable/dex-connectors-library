@@ -270,6 +270,17 @@ flow := NewFlow(mock.Connection(), &AttendancePolicy{CheckDelay: time.Hour})
 See [`workflow_mock_integration_test.go`](go/examples/booked-meeting/flow/workflow_mock_integration_test.go)
 for literal call-input, call-count, reschedule, and attendance assertions.
 
+## Python package
+
+The first Python package is [`python/`](python/README.md), version `v0.1.0` with
+`dex-connectors-sdk==0.6.0`. It implements all five meeting operations using
+the manifest-generated models, Step factories, connection, and OAuth refresh
+wiring. The checked-in [meeting-list example](python/examples/meeting_list/README.md)
+binds `zoom-meetings` and has a real Dex Worker/Client integration test with a
+fake provider. `createMeeting` uses the SDK single-dispatch fence and reports
+an unconfirmed dispatch as uncertain. No live Zoom authorization or provider
+request was performed for this port.
+
 ## Not in this release
 
 - **Triggers.** Zoom event subscriptions require a URL validation handshake

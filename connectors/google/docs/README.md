@@ -36,6 +36,17 @@ outcomes across the TypeScript package. The TypeScript example was verified
 against a local Google HTTP stand-in; live Google provider authorization and
 calls remain unverified.
 
+## Python package
+
+The Python package implements the same four operations through operation-specific
+Step factories and the generated Google OAuth and Workspace domain delegation
+credential wiring. Install `dex-connector-google-docs==0.1.0` with Connector
+SDK `0.6.0`. The checked-in [policy read example](python/examples/policy_read/README.md)
+runs a Google Docs Query through a real Dex Worker and Client. Its local
+integration test uses an inert credential and a fake Google HTTP boundary;
+live Google OAuth consent, refresh, domain delegation, and provider calls are
+unverified for this Python package.
+
 ## Scopes
 
 Both authorization methods request exactly these canonical scopes:
