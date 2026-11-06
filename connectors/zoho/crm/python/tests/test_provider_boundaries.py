@@ -20,12 +20,22 @@ from dex_connectors.sdk import (
 from dex_connectors.zoho_crm import (
     Client,
     Config,
+    COQLValue,
     Credentials,
     FindRecordsInput,
     GetRecordInput,
+    ListModifiedRecordsInput,
+    UpsertRecordInput,
     new_project_connection,
 )
-from dex_connectors.zoho_crm.operations import GetRecordOperation
+from dex_connectors.zoho_crm.client import Exchange
+from dex_connectors.zoho_crm.operations import (
+    GetRecordOperation,
+    UpsertRecordOperation,
+    _condition_value,
+    _write_result,
+    build_list_modified_records_query,
+)
 
 REFERENCE = ConnectionRef("zoho", "zoho-crm")
 CREDENTIALS = Credentials(
@@ -153,3 +163,46 @@ async def test_expired_operation_deadline_retries_without_a_request() -> None:
         )
     assert result.outcome == "retry"
     assert result.failure is not None and result.failure.kind.value == "TRANSPORT"
+
+
+@pytest.mark.parametrize(
+    "value", (COQLValue("dateTime", "2024-01-05T10:00:00Z"), COQLValue("date", "2024-1-5"))
+)
+def test_coql_rejects_non_go_date_spellings(value: COQLValue) -> None:
+    with pytest.raises(ValueError):
+        _condition_value(value)
+
+
+def test_coql_rejects_c1_control_characters() -> None:
+    with pytest.raises(ValueError):
+        _condition_value(COQLValue("text", "bad\u0085value"))
+
+
+def test_write_result_preserves_offset_and_fraction() -> None:
+    response = (
+        b'{"data":[{"code":"SUCCESS","details":{"id":"123",'
+        b'"Created_Time":"2026-01-28T13:00:05.123456789+05:30",'
+        b'"Modified_Time":"2026-01-28T13:00:05+05:30"}}]}'
+    )
+    result = _write_result(Exchange("succeeded", body=response))
+    assert result[3:] == ("2026-01-28T13:00:05.123456789+05:30", "2026-01-28T13:00:05+05:30")
+
+
+@pytest.mark.asyncio
+async def test_whitespace_duplicate_check_sends_nothing() -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: pytest.fail("unexpected request"))
+    ) as http_client:
+        result = await UpsertRecordOperation(_client(http_client)).invoke(
+            _call("upsertRecord"),
+            UpsertRecordInput("Contacts", ("Email",), {"Email": "   "}),
+        )
+    assert result.branch == "defect"
+
+
+def test_modified_time_counts_within_fifty_selected_fields() -> None:
+    fields = ("Modified_Time", *(f"Field_{number}" for number in range(49)))
+    query, _ = build_list_modified_records_query(
+        ListModifiedRecordsInput("Deals", fields, "2026-01-28T13:00:00Z")
+    )
+    assert "Field_48" in query

@@ -4,7 +4,6 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime
-from email.utils import parseaddr
 from typing import Any, TypeVar
 
 from dex_connectors.sdk import (
@@ -31,6 +30,7 @@ from .client import (
     Client,
     Exchange,
     failure,
+    is_bare_address,
     path_escape,
     validate_graph_id,
     validate_next_page_link,
@@ -102,8 +102,7 @@ def resolve_folder(field: str, value: str, fallback: str = "") -> str:
 
 def validate_address(field: str, address: str) -> None:
     """Require a bare address without a display name or line break."""
-    parsed_name, parsed_address = parseaddr(address)
-    if not address or parsed_name or parsed_address != address or "\n" in address or "\r" in address:
+    if not is_bare_address(address):
         raise ValueError(f"{field} must contain bare addresses such as jane@acme.example.com")
 
 

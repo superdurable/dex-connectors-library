@@ -3080,6 +3080,335 @@
       },
       "name": "getRecord-mixed-exact-fields",
       "operation": "getRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "   ",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-blank-duplicate-check-614",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"code\":\"SUCCESS\",\"action\":\"insert\",\"details\":{\"id\":\"123\",\"Created_Time\":\"2026-01-28T13:00:05.123456789+05:30\",\"Modified_Time\":\"2026-01-28T13:00:05+05:30\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/Contacts/upsert",
+          "requestBody": {
+            "data": [
+              {
+                "Email": "ada@example.com",
+                "Last_Name": "Lovelace"
+              }
+            ],
+            "duplicate_check_fields": [
+              "Email"
+            ],
+            "trigger": [
+              "workflow"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "upserted",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-01-28T13:00:05.123456789+05:30",
+          "id": "123",
+          "isCreated": true,
+          "modifiedAt": "2026-01-28T13:00:05+05:30",
+          "module": "Contacts"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "ba191ed8-b5be-5551-a884-bfafd0af1e06",
+      "input": {
+        "duplicateCheckFields": [
+          "Email"
+        ],
+        "fields": {
+          "Email": "ada@example.com",
+          "Last_Name": "Lovelace"
+        },
+        "module": "Contacts",
+        "triggers": [
+          "workflow"
+        ]
+      },
+      "name": "upsertRecord-offset-precision-614",
+      "operation": "upsertRecord"
+    },
+    {
+      "callId": "3df7f731-b6fd-57ca-8731-cae4aa076a56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "date",
+              "text": "2024-1-5"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-nonpadded-date-614",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "3df7f731-b6fd-57ca-8731-cae4aa076a56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "dateTime",
+              "text": "2024-01-05T10:00:00Z"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-z-datetime-614",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "3df7f731-b6fd-57ca-8731-cae4aa076a56",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "module": "",
+          "records": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "conditions": [
+          {
+            "field": "Email",
+            "operator": "=",
+            "value": {
+              "kind": "text",
+              "text": "badvalue"
+            }
+          }
+        ],
+        "fields": [
+          "Email"
+        ],
+        "limit": 2,
+        "module": "Contacts",
+        "offset": 1,
+        "sort": {
+          "field": "Email",
+          "isDescending": true
+        }
+      },
+      "name": "findRecords-c1-text-614",
+      "operation": "findRecords"
+    },
+    {
+      "callId": "9d090dbd-bf05-5f54-8387-fa539129f5ab",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123\",\"Stage\":\"Qualification\",\"Modified_Time\":\"2026-10-25T01:00:00Z\"}],\"info\":{\"more_records\":true}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/coql",
+          "requestBody": {
+            "select_query": "select Modified_Time, Field_0, Field_1, Field_2, Field_3, Field_4, Field_5, Field_6, Field_7, Field_8, Field_9, Field_10, Field_11, Field_12, Field_13, Field_14, Field_15, Field_16, Field_17, Field_18, Field_19, Field_20, Field_21, Field_22, Field_23, Field_24, Field_25, Field_26, Field_27, Field_28, Field_29, Field_30, Field_31, Field_32, Field_33, Field_34, Field_35, Field_36, Field_37, Field_38, Field_39, Field_40, Field_41, Field_42, Field_43, Field_44, Field_45, Field_46, Field_47, Field_48 from Deals where Modified_Time \u003e= '2026-10-25T00:00:00+00:00' order by Modified_Time asc, id asc limit 0, 2"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Zoho-oauthtoken synthetic-access"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "2026-10-25T01:00:00Z/123",
+          "hasMore": true,
+          "module": "Deals",
+          "records": [
+            {
+              "fields": {
+                "Modified_Time": "2026-10-25T01:00:00Z",
+                "Stage": "Qualification"
+              },
+              "id": "123",
+              "module": "Deals"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Modified_Time",
+          "Field_0",
+          "Field_1",
+          "Field_2",
+          "Field_3",
+          "Field_4",
+          "Field_5",
+          "Field_6",
+          "Field_7",
+          "Field_8",
+          "Field_9",
+          "Field_10",
+          "Field_11",
+          "Field_12",
+          "Field_13",
+          "Field_14",
+          "Field_15",
+          "Field_16",
+          "Field_17",
+          "Field_18",
+          "Field_19",
+          "Field_20",
+          "Field_21",
+          "Field_22",
+          "Field_23",
+          "Field_24",
+          "Field_25",
+          "Field_26",
+          "Field_27",
+          "Field_28",
+          "Field_29",
+          "Field_30",
+          "Field_31",
+          "Field_32",
+          "Field_33",
+          "Field_34",
+          "Field_35",
+          "Field_36",
+          "Field_37",
+          "Field_38",
+          "Field_39",
+          "Field_40",
+          "Field_41",
+          "Field_42",
+          "Field_43",
+          "Field_44",
+          "Field_45",
+          "Field_46",
+          "Field_47",
+          "Field_48"
+        ],
+        "limit": 2,
+        "modifiedSince": "2026-10-25T00:00:00Z",
+        "module": "Deals"
+      },
+      "name": "listModifiedRecords-fifty-fields-with-modified-614",
+      "operation": "listModifiedRecords"
     }
   ],
   "schemaVersion": 1

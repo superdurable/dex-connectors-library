@@ -51,6 +51,8 @@ def json_object(body: bytes | dict[str, Any]) -> dict[str, Any]:
     """Decode JSON without accepting imprecise floating point values."""
     if isinstance(body, dict):
         return body
+    if not isinstance(body, bytes):
+        raise ValueError("response is not a message object")
     try:
         decoded = json.loads(body, parse_float=Decimal, parse_constant=_reject_nonfinite_number)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -237,6 +239,10 @@ class _HTMLText(HTMLParser):
         elif tag in ("br", "p", "div", "li", "tr", "h1", "h2", "h3", "h4", "blockquote"):
             self.parts.append("\n")
 
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        # Go's tokenizer ignores self-closing tags in this extractor.
+        pass
+
     def handle_endtag(self, tag: str) -> None:
         if tag in ("script", "style", "head"):
             self.skipped_depth = max(0, self.skipped_depth - 1)
@@ -258,6 +264,7 @@ def decode_full_message(body: bytes) -> Message:
         if string_value(body_value, "contentType").lower() == "html":
             parser = _HTMLText()
             parser.feed(text)
+            parser.close()
             text = "".join(parser.parts).strip()
             source = "html"
     encoded = text.encode()

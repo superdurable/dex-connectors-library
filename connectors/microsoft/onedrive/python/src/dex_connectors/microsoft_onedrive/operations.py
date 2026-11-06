@@ -6,7 +6,6 @@ import base64
 import binascii
 import json
 import re
-from pathlib import PurePosixPath
 from typing import Any, TypeVar
 from urllib.parse import urlsplit
 
@@ -100,6 +99,16 @@ TEXT_EXTENSIONS = frozenset(
         ".sh",
     )
 )
+
+
+def _go_equal_fold(left: str, right: str) -> bool:
+    return len(left) == len(right) and left.casefold() == right.casefold()
+
+
+def _go_path_extension(path: str) -> str:
+    name = path.rsplit("/", 1)[-1]
+    dot = name.rfind(".")
+    return name[dot:] if dot >= 0 else ""
 
 
 def _query_failure(
@@ -248,7 +257,7 @@ class SearchFilesOperation:
             received = receipt(call, exchange.request_id, now=self.client.now())
             try:
                 item = _response_item(exchange)
-                if item.name.casefold() != input.name.casefold():
+                if not _go_equal_fold(item.name, input.name):
                     raise ValueError("name mismatch")
             except (ValueError, TypeError, UnicodeError):
                 return QueryAttempt.branch_result(
@@ -327,14 +336,16 @@ class SearchFilesOperation:
 
 
 def _matches_mime(item: DriveItem, mime_type: str) -> bool:
-    return not mime_type or (not item.is_folder and item.mime_type.casefold() == mime_type.casefold())
+    return not mime_type or (not item.is_folder and _go_equal_fold(item.mime_type, mime_type))
 
 
 def _matches_item(item: DriveItem, input: SearchFilesInput) -> bool:
     if input.name:
-        name = item.name.casefold()
-        wanted = input.name.casefold()
-        if wanted not in name if input.name_match == "contains" else name != wanted:
+        if input.name_match == "contains":
+            is_match = input.name.lower() in item.name.lower()
+        else:
+            is_match = _go_equal_fold(item.name, input.name)
+        if not is_match:
             return False
     return _matches_mime(item, input.mime_type)
 
@@ -582,7 +593,7 @@ def _unsupported_reason(item: DriveItem) -> str:
         return ""
     if (
         item.mime_type in ("", "application/octet-stream")
-        and PurePosixPath(item.name).suffix.lower() in TEXT_EXTENSIONS
+        and _go_path_extension(item.name).lower() in TEXT_EXTENSIONS
     ):
         return ""
     return "file type is not text"
@@ -731,7 +742,7 @@ class UploadFileOperation:
         identical = (
             not item.is_folder
             and not item.is_package
-            and item.name.casefold() == input.name.casefold()
+            and _go_equal_fold(item.name, input.name)
             and item.size_bytes == len(content)
             and item.quick_xor_hash == compute_quick_xor_hash(content)
         )

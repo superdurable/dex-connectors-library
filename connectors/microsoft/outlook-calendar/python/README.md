@@ -20,3 +20,5 @@ DEX_SERVER_ADDRESS=localhost:40720 uv run pytest examples/read_event/integration
 ```
 
 The local conformance suite replays Go-recorded provider outcomes. Live Microsoft authorization and Graph calls require a user-controlled Dex Web connection and have not been verified by this package's tests.
+
+For local provider tests, `Client(local_provider_url=...)` accepts a loopback origin without a path; it keeps Graph's `/v1.0` request path.

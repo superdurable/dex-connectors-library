@@ -99,7 +99,7 @@ def safe_token(value: object) -> str:
     return (
         value
         if isinstance(value, str)
-        and 0 < len(value.encode()) <= 128
+        and 0 < len(value.encode()) <= 64
         and all(32 < ord(c) <= 126 for c in value)
         else ""
     )
@@ -123,12 +123,21 @@ def safe_token_url(value: str) -> bool:
     return all(32 < ord(c) <= 126 for c in value)
 
 
-def _parse_go_time(value: object, field_name: str) -> datetime:
-    from ._generated.timestamps import parse_go_datetime
+def strip_control_characters(value: str) -> str:
+    """Remove only Unicode control characters and replacement runes, as Go does."""
+    return "".join(character for character in value if character != "\ufffd" and not (
+        ord(character) < 32 or 127 <= ord(character) <= 159
+    ))
 
+
+def _parse_go_time(value: object, field_name: str) -> datetime:
     if not isinstance(value, str):
         raise ValueError(f"{field_name} is invalid")
-    return parse_go_datetime(value, field_name).astimezone(UTC)
+    canonical = canonical_go_timestamp(value, field_name)
+    fractional = re.search(r"\.(\d{7,9})(?=Z|[+-]\d{2}:\d{2}$)", canonical)
+    if fractional is not None:
+        canonical = canonical.replace(fractional.group(0), "." + fractional.group(1)[:6], 1)
+    return datetime.fromisoformat(canonical.replace("Z", "+00:00")).astimezone(UTC)
 
 
 class _TeamsHTML(HTMLParser):
@@ -207,6 +216,7 @@ def extract_message_text(content_type: str, content: str) -> str:
         return content.replace("\r\n", "\n").strip()
     parser = _TeamsHTML()
     parser.feed(content)
+    parser.close()
     lines = []
     previous_blank = True
     for line in "".join(parser.parts).split("\n"):
@@ -244,8 +254,8 @@ def decode_message(resource: object, max_text_characters: int = 0) -> Message:
                 sender = MessageSender(
                     **{
                         field: identity["id"],
-                        "display_name": "".join(
-                            c for c in str(identity.get("displayName") or "") if c.isprintable()
+                        "display_name": strip_control_characters(
+                            str(identity.get("displayName") or "")
                         )[:256],
                     }
                 )
@@ -277,9 +287,9 @@ def decode_message(resource: object, max_text_characters: int = 0) -> Message:
         last_edited_at=edited_at,
         is_deleted=deleted,
         sender=sender,
-        subject="".join(c for c in subject if c.isprintable())[:1024] if isinstance(subject, str) else "",
+        subject=strip_control_characters(subject)[:1024] if isinstance(subject, str) else "",
         importance=safe_token(resource.get("importance")) or None,
-        content_type=content_type or None,
+        content_type=content_type if content_type and not deleted else None,
         text=text[:max_text_characters] if truncated else text,
         is_text_truncated=truncated,
         web_url=safe_web_url(resource.get("webUrl")),
@@ -298,6 +308,7 @@ class Exchange:
     reflects_secret: bool = False
     error: Exception | None = None
     dispatched: bool = False
+    request_build_failed: bool = False
 
 
 class Client:
@@ -450,7 +461,7 @@ class Client:
             except (TimeoutError, httpx.HTTPError) as error:
                 return Exchange(error=error, dispatched=True), credentials
             except (ValueError, TypeError) as error:
-                return Exchange(error=error, dispatched=False), credentials
+                return Exchange(error=error, dispatched=False, request_build_failed=True), credentials
         raise RuntimeError("Microsoft Teams credential retry exhausted")
 
     def receipt(self, call: Call, exchange: Exchange, object_id: str = "") -> Receipt:

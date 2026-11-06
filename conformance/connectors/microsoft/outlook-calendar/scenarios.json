@@ -4031,6 +4031,147 @@
       },
       "name": "updateEvent-etag-conflict",
       "operation": "updateEvent"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "a.@x.com"
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2026-02-24T10:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "isAllDay": false,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2026-02-24T09:00:00-08:00",
+          "timeZone": "America/Los_Angeles"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-invalid-bare-attendee-614",
+      "operation": "createEvent"
+    },
+    {
+      "callId": "63698ba6-7418-5fc7-90fc-481876f6aae8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "availabilityViewInterval": 0,
+          "schedules": [],
+          "timeMax": "",
+          "timeMin": "",
+          "timeZone": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "availabilityViewInterval": 30,
+        "schedules": [
+          "jane@x.com."
+        ],
+        "timeMax": "2026-02-24T10:00:00-08:00",
+        "timeMin": "2026-02-24T09:00:00-08:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "name": "queryFreeBusy-invalid-bare-schedule-614",
+      "operation": "queryFreeBusy"
+    },
+    {
+      "callId": "6bec5aaa-50c4-5dcf-a8c3-c2a888365ff0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "event": {
+            "end": {
+              "dateTime": "",
+              "timeZone": ""
+            },
+            "id": "",
+            "isAllDay": false,
+            "isCancelled": false,
+            "isOrganizer": false,
+            "showAs": "",
+            "start": {
+              "dateTime": "",
+              "timeZone": ""
+            }
+          },
+          "wasAlreadyCreated": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "calendar-create-1",
+      "input": {
+        "attendees": [
+          {
+            "email": "priya@example.com",
+            "isOptional": true
+          }
+        ],
+        "body": "Agenda",
+        "calendarId": "team-calendar",
+        "end": {
+          "dateTime": "2024-11-04T00:00:00-05:00",
+          "timeZone": "America/Havana"
+        },
+        "isAllDay": true,
+        "location": "Room A",
+        "requestOnlineMeeting": true,
+        "start": {
+          "dateTime": "2024-11-03T00:00:00-04:00",
+          "timeZone": "America/Havana"
+        },
+        "subject": "Meeting",
+        "transactionId": "calendar-create-1"
+      },
+      "name": "createEvent-havana-ambiguous-midnight-614",
+      "operation": "createEvent"
     }
   ],
   "schemaVersion": 1

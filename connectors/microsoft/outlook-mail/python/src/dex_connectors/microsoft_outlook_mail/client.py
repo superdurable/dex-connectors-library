@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: MIT
 """Authenticated Microsoft Graph session and safe response classification."""
 
+import ipaddress
 import json
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from email.utils import parseaddr
 from typing import TYPE_CHECKING, Any
-from urllib.parse import quote, quote_plus, urlsplit
+from urllib.parse import quote, quote_plus, unquote, urlsplit
 
 import httpx
 from dex_connectors.sdk import (
@@ -50,6 +50,30 @@ GRAPH_HOST = "graph.microsoft.com"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 GRAPH_ID_PATTERN = re.compile(r"^[A-Za-z0-9=+_-]{1,1024}$")
 GUID_PATTERN = re.compile(r"^[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$")
+def is_bare_address(value: str) -> bool:
+    """Accept only addr-specs that Go mail.ParseAddress preserves unchanged."""
+    local, separator, domain = value.partition("@")
+    if not separator or not _is_go_dot_atom(local):
+        return False
+    if domain.startswith("[") and domain.endswith("]"):
+        try:
+            ipaddress.ip_address(domain[1:-1])
+            return True
+        except ValueError:
+            return False
+    return _is_go_dot_atom(domain)
+
+
+def _is_go_dot_atom(value: str) -> bool:
+    if not value or value.startswith(".") or value.endswith(".") or ".." in value:
+        return False
+    return all(
+        character == "." or (
+            (33 <= ord(character) <= 126 or ord(character) >= 128 and not 0xD800 <= ord(character) <= 0xDFFF)
+            and character not in '()<>[]:;@\\,"'
+        )
+        for character in value
+    )
 
 
 def path_escape(value: str) -> str:
@@ -76,13 +100,14 @@ def validate_next_page_link(link: str) -> None:
         raise ValueError("next-page link is empty or too long")
     try:
         parsed = urlsplit(link)
+        decoded_path = unquote(parsed.path)
         if (
             parsed.scheme != "https"
             or parsed.netloc != GRAPH_HOST
             or parsed.fragment
-            or not parsed.path.startswith("/v1.0/")
-            or not parsed.path.lower().endswith("/messages")
-            or ".." in parsed.path
+            or not decoded_path.startswith("/v1.0/")
+            or not decoded_path.lower().endswith("/messages")
+            or ".." in decoded_path
         ):
             raise ValueError("next-page link is not a Microsoft Graph v1.0 messages collection")
     except ValueError as error:
@@ -122,12 +147,10 @@ class Client:
         if type(config.max_response_bytes) is not int or config.max_response_bytes < 1:
             raise ValueError("Microsoft Graph response limit must be positive")
         self.mailbox = config.mailbox.strip()
-        mailbox_name, mailbox_address = parseaddr(self.mailbox)
         if self.mailbox and not (
             GUID_PATTERN.fullmatch(self.mailbox)
             or (
-                not mailbox_name
-                and mailbox_address == self.mailbox
+                is_bare_address(self.mailbox)
                 and not any(character in self.mailbox for character in "/?#%'\\")
             )
         ):

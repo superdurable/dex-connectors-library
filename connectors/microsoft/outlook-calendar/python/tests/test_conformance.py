@@ -38,7 +38,7 @@ ADAPTER = conformance.PythonOperationAdapter(
             ),
         ),
         http_client,
-        local_provider_url="http://127.0.0.1:12345/v1.0",
+        local_provider_url="http://127.0.0.1:12345",
     ),
     {
         "listEvents": ListEventsOperation,

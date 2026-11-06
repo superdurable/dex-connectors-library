@@ -1662,6 +1662,79 @@
       },
       "name": "updateRecord-transport",
       "operation": "updateRecord"
+    },
+    {
+      "callId": "0a4c5c21-b75a-561a-a236-2d989be33030",
+      "exchanges": [
+        {
+          "body": "{\"attributes\":{\"type\":\"Contact\"},\"Id\":0,\"Email\":\"priya@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/services/data/v62.0/sobjects/Contact/003RM000001AbcdYAC",
+          "query": {
+            "fields": [
+              "Id,Email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer salesforce-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "fields": {},
+          "type": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fields": [
+          "Id",
+          "Email"
+        ],
+        "recordId": "003RM000001AbcdYAC",
+        "sObjectType": "Contact"
+      },
+      "name": "getRecord-falsy-id-614",
+      "operation": "getRecord"
+    },
+    {
+      "callId": "50f11407-620a-5654-858e-c6829206018a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {},
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "50f11407-620a-5654-858e-c6829206018a",
+      "input": {
+        "externalIdField": "ERP_Id__c",
+        "externalIdValue": "badvalue",
+        "fields": {
+          "LastName": "Raman",
+          "Title": "CTO"
+        },
+        "sObjectType": "Contact"
+      },
+      "name": "upsertRecordByExternalId-c1-control-614",
+      "operation": "upsertRecordByExternalId"
     }
   ],
   "schemaVersion": 1

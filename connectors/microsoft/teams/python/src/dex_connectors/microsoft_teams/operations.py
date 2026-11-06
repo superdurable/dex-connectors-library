@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from dex_connectors.sdk import (
     Call,
@@ -108,6 +108,14 @@ def _rejection(client: Client, operation: str, subject: str, exchange: Exchange)
 def _read_classification(
     client: Client, operation: str, subject: str, exchange: Exchange
 ) -> tuple[str, Failure | None, float]:
+    if exchange.request_build_failed:
+        return (
+            "defect",
+            _failure(
+                client, operation, FailureKind.LOCAL_DEFECT, "Microsoft Graph request could not be built"
+            ),
+            0,
+        )
     if exchange.error is not None:
         return (
             "retry",
@@ -192,6 +200,14 @@ def _read_classification(
 def _write_classification(
     client: Client, operation: str, subject: str, exchange: Exchange
 ) -> tuple[str, Failure | None, float]:
+    if exchange.request_build_failed:
+        return (
+            "defect",
+            _failure(
+                client, operation, FailureKind.LOCAL_DEFECT, "Microsoft Graph request could not be built"
+            ),
+            0,
+        )
     if exchange.error is not None:
         if not exchange.dispatched:
             return (
@@ -295,7 +311,7 @@ def _thread_link(client: Client, link: str, path: str) -> bool:
         and parsed.netloc.lower() == endpoint.netloc.lower()
         and not parsed.username
         and not parsed.fragment
-        and parsed.path.lower() == (endpoint.path + path).lower()
+        and unquote(parsed.path).casefold() == (endpoint.path + path).casefold()
     )
 
 

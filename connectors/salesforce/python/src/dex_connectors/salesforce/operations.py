@@ -91,7 +91,7 @@ def _decode_record(value: Any) -> Record:
     record_id = fields.get("Id", "")
     if record_id is None:
         record_id = ""
-    if record_id and (not isinstance(record_id, str) or not is_record_id(record_id)):
+    if record_id != "" and (not isinstance(record_id, str) or not is_record_id(record_id)):
         raise ValueError("record Id is invalid")
     return Record(record_type, record_id, fields)
 
@@ -187,7 +187,14 @@ def _render_binding(value: SOQLValue | dict[str, Any]) -> str:
             parsed = datetime.fromisoformat(value.text)
         except ValueError as error:
             raise ValueError("dateTime must be an RFC 3339 timestamp") from error
-        return parsed.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        try:
+            converted = parsed.astimezone(UTC)
+            year = converted.year
+        except OverflowError:
+            cycle = 400 if parsed.year <= 400 else -400
+            converted = parsed.replace(year=parsed.year + cycle).astimezone(UTC)
+            year = converted.year - cycle
+        return f"{year:04d}-{converted:%m-%dT%H:%M:%SZ}"
     raise ValueError("kind is not a supported SOQL value kind")
 
 
@@ -453,7 +460,7 @@ class UpsertRecordByExternalIDOperation:
             or value.strip() != value
             or len(value) > 255
             or value in (".", "..")
-            or any(ord(character) < 32 or ord(character) == 127 for character in value)
+            or any(ord(character) < 32 or 127 <= ord(character) <= 159 for character in value)
         ):
             return MutationAttempt.branch_result(
                 "defect",

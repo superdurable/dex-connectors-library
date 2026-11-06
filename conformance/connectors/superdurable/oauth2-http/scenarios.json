@@ -624,6 +624,69 @@
       },
       "name": "sendRequest-token-redaction",
       "operation": "sendRequest"
+    },
+    {
+      "callId": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "exchanges": [
+        {
+          "body": "{\"name\":\"Ada\"}",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Request-Id": "api-001"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/profile",
+          "query": {
+            "added": [
+              "x"
+            ],
+            "ok": [
+              "a b"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer conformance-access-token"
+            ],
+            "User-Agent": [
+              "superdurable-dex-oauth2-http-connector/0.1"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "completed",
+        "failureKind": "",
+        "output": {
+          "body": "{\"name\":\"Ada\"}",
+          "contentType": "application/json",
+          "statusCode": 200
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b3c30387-4be9-5a02-9193-ce34ca4c38c8",
+      "input": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "query": {
+          "added": [
+            "x"
+          ]
+        },
+        "url": "http://127.0.0.1:12345/v1/profile?bad=1;evil=2\u0026ok=a+b\u0026broken=%GG"
+      },
+      "name": "sendRequest-malformed-existing-query-614",
+      "operation": "sendRequest"
     }
   ],
   "schemaVersion": 1

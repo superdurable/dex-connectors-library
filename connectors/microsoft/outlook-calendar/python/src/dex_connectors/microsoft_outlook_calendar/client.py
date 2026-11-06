@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Microsoft Graph transport, event decoding, and provider-backed operations."""
 
+import ipaddress
 import json
 import re
 from dataclasses import dataclass, field, replace
@@ -23,7 +24,12 @@ from dex_connectors.sdk import (
     Receipt,
     RejectedCredentialRefreshingProvider,
 )
-from dex_connectors.sdk.providerhttp import is_header_safe_credential, parse_retry_after, read_error_tokens
+from dex_connectors.sdk.providerhttp import (
+    is_header_safe_credential,
+    parse_retry_after,
+    read_error_tokens,
+    validate_base_url,
+)
 
 from ._generated.config import Config, Credentials
 from ._generated.definitions import (
@@ -64,7 +70,6 @@ LIST_SELECT = EVENT_SELECT.replace("body,", "")
 RFC3339 = re.compile(r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)([.,]\d+)?(Z|[+-]\d\d:\d\d)$")
 GUID = re.compile(r"^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 DOMAIN = re.compile(r"^(?:(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)\.)+[A-Za-z]{2,63}$")
-ADDRESS = re.compile(r"^[^\s<>@,;]+@[^\s<>@,;]+$")
 TRANSACTION = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 REQUEST_ID = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 ERROR_CODE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,63}$")
@@ -72,6 +77,31 @@ ERROR_CODE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,63}$")
 
 def _failure(operation: str, kind: FailureKind, message: str) -> Failure:
     return Failure(kind, PROVIDER, operation, message)
+
+
+def _is_bare_address(value: str) -> bool:
+    local, separator, domain = value.partition("@")
+    if not separator or not _is_go_dot_atom(local):
+        return False
+    if domain.startswith("[") and domain.endswith("]"):
+        try:
+            ipaddress.ip_address(domain[1:-1])
+            return True
+        except ValueError:
+            return False
+    return _is_go_dot_atom(domain)
+
+
+def _is_go_dot_atom(value: str) -> bool:
+    if not value or value.startswith(".") or value.endswith(".") or ".." in value:
+        return False
+    return all(
+        character == "." or (
+            (33 <= ord(character) <= 126 or ord(character) >= 128 and not 0xD800 <= ord(character) <= 0xDFFF)
+            and character not in '()<>[]:;@\\,"'
+        )
+        for character in value
+    )
 
 
 def _instant(name: str, value: str) -> datetime:
@@ -155,6 +185,8 @@ def _event_times(start: EventDateTime, end: EventDateTime, is_all_day: bool) -> 
                 raise ValueError(
                     f"an all-day {label} must be midnight in {start.time_zone}, not {local.isoformat()}"
                 )
+            if local.replace(fold=1 - local.fold).utcoffset() != local.utcoffset():
+                raise ValueError(f"an all-day {label} falls on an ambiguous midnight in {start.time_zone}")
 
 
 def _graph_boundary(value: EventDateTime) -> dict[str, str]:
@@ -325,7 +357,29 @@ class Client:
         self.credentials = credentials
         self.http_client = http_client or httpx.AsyncClient(timeout=20, follow_redirects=False)
         self.owns_http_client = http_client is None
-        self.base_url = local_provider_url.rstrip("/") or GRAPH_BASE
+        validated_local_url = ""
+        if local_provider_url:
+            validated_local_url = validate_base_url(local_provider_url)
+            parsed_local = urlsplit(validated_local_url)
+            try:
+                is_loopback = parsed_local.hostname == "localhost" or ipaddress.ip_address(
+                    parsed_local.hostname or ""
+                ).is_loopback
+            except ValueError:
+                is_loopback = parsed_local.hostname == "localhost"
+            if (
+                not is_loopback
+                or parsed_local.scheme not in ("http", "https")
+                or not parsed_local.netloc
+                or parsed_local.username is not None
+                or parsed_local.path not in ("", "/")
+                or parsed_local.query
+                or parsed_local.fragment
+            ):
+                raise ValueError(
+                    "Outlook Calendar local provider URL must be a loopback base URL without a path"
+                )
+        self.base_url = validated_local_url + "/v1.0" if local_provider_url else GRAPH_BASE
         self.now = now or (lambda: datetime.now(UTC))
         tenant = config.tenant_id.strip()
         if tenant and not (GUID.fullmatch(tenant) or (len(tenant) <= 253 and DOMAIN.fullmatch(tenant))):
@@ -334,7 +388,7 @@ class Client:
                 "such as contoso.onmicrosoft.com"
             )
         mailbox = config.mailbox.strip()
-        if mailbox and not (GUID.fullmatch(mailbox) or ADDRESS.fullmatch(mailbox)):
+        if mailbox and not (GUID.fullmatch(mailbox) or _is_bare_address(mailbox)):
             raise ValueError(
                 "mailbox must be a bare address such as scheduling@contoso.com or a user object ID GUID"
             )
@@ -811,7 +865,7 @@ def _validate_schedules(input: QueryFreeBusyInput) -> tuple[datetime, datetime, 
         raise ValueError("schedules must list 1 to 20 addresses")
     seen: set[str] = set()
     for schedule in input.schedules:
-        if not ADDRESS.fullmatch(schedule):
+        if not _is_bare_address(schedule):
             raise ValueError(f"schedule {schedule!r} must be one bare address such as person@example.com")
         if schedule.lower() in seen:
             raise ValueError(f"schedule {schedule!r} is duplicated")
@@ -954,7 +1008,7 @@ def _attendees(attendees: tuple[EventAttendeeInput, ...]) -> list[dict[str, Any]
 def _validate_attendees(attendees: tuple[EventAttendeeInput, ...]) -> None:
     seen: set[str] = set()
     for item in attendees:
-        if not ADDRESS.fullmatch(item.email):
+        if not _is_bare_address(item.email):
             raise ValueError(
                 f"attendee email {item.email!r} must be one bare address such as person@example.com"
             )

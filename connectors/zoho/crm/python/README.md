@@ -18,6 +18,9 @@ upsert uses a duplicate-check field and update sets absolute field values, so
 both writes are safe to repeat. HTTP 408, 429, 5xx, and transport failures
 retry. A 401 may refresh and resend once using the generated OAuth declaration.
 No operation has an `uncertain` branch. Unwired optional branches fail the Flow.
+`listModifiedRecords` accepts 50 selected fields when `Modified_Time` is already
+among them; otherwise 49 fields leave room for the added `Modified_Time`.
+Write results preserve Zoho's timestamp offset and fractional precision.
 
 ## Authorization
 

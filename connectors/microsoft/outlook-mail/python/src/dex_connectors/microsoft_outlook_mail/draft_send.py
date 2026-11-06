@@ -4,6 +4,7 @@
 
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from dex_connectors.sdk import Call, FailureKind, MutationAttempt, Receipt
@@ -25,6 +26,16 @@ MARKER_PREFIX = "dex-"
 MARKER_KEY_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 SEND_CONFIRMATION_DELAY = 3.0
 MAXIMUM_SEND_CONFIRMATIONS = 3
+
+
+def _draft_created_key(item: dict[str, Any]) -> tuple[datetime, int]:
+    timestamp = timestamp_value(item, "createdDateTime")
+    if timestamp is None:
+        return datetime.max.replace(tzinfo=UTC), 0
+    fraction = re.search(r"\.(\d+)(?=Z|[+-]\d{2}:\d{2}$)", timestamp)
+    nanoseconds = int((fraction.group(1) if fraction else "").ljust(9, "0"))
+    instant = datetime.fromisoformat(timestamp.replace("Z", "+00:00")).astimezone(UTC)
+    return instant, nanoseconds % 1000
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,7 +186,7 @@ async def _find_marked_draft(session: Session, marker: str) -> tuple[dict[str, A
     matches.sort(
         key=lambda item: (
             bool(item.get("isDraft", False)),
-            timestamp_value(item, "createdDateTime") or "9999-12-31T23:59:59Z",
+            _draft_created_key(item),
             string_value(item, "id"),
         )
     )

@@ -32,7 +32,7 @@ async def _run_one_flow(tmp_path: Path, response: httpx.Response) -> dex.FlowRes
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: response)) as http_client:
         connector_client = Client(
-            Config(), credentials, http_client, local_provider_url="http://127.0.0.1:12345/v1.0"
+            Config(), credentials, http_client, local_provider_url="http://127.0.0.1:12345"
         )
         flow = ReadOutlookEventFlow(new_connection(connector_client, reference))
         blob_cache = dex.open_blob_cache(dex.BlobCacheConfig(str(tmp_path / "blobs"), 64 * 1024 * 1024))

@@ -56,3 +56,13 @@ from .steps import new_reply_to_message_step as new_reply_to_message_step
 from .steps import new_search_messages_step as new_search_messages_step
 from .steps import new_send_message_step as new_send_message_step
 from .steps import new_set_message_flags_step as new_set_message_flags_step
+
+__all__ = [
+    "Attachment", "Client", "Config", "Connection", "Credentials", "EmailAddress",
+    "GetMessageInput", "Message", "MessageFlags", "MessageSummary", "MovedMessage",
+    "MoveMessageInput", "ReplyToMessageInput", "SearchMessagesInput", "SearchMessagesOutput",
+    "SendMessageInput", "SentMessage", "SetMessageFlagsInput", "new_connection",
+    "new_get_message_step", "new_move_message_step", "new_project_connection",
+    "new_reply_to_message_step", "new_search_messages_step", "new_send_message_step",
+    "new_set_message_flags_step",
+]

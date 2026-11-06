@@ -217,8 +217,15 @@ def _condition_value(value: COQLValue) -> str:
         return "true" if value.boolean else "false"
     if value.kind in ("date", "dateTime"):
         if value.kind == "date":
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value.text):
+                raise ValueError("a date value must be YYYY-MM-DD")
             datetime.strptime(value.text, "%Y-%m-%d")
         else:
+            if not re.fullmatch(
+                r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?[+-]\d{2}:\d{2}",
+                value.text,
+            ):
+                raise ValueError("a datetime value must be built with COQLDateTime")
             _zoho_time(value.text)
         return "'" + value.text + "'"
     if value.kind in ("text", "recordId"):
@@ -238,7 +245,7 @@ def _condition_value(value: COQLValue) -> str:
             or len(text) > 1000
             or "'" in text
             or "\\" in text
-            or any(ord(c) < 32 or ord(c) == 127 for c in text)
+            or any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in text)
         ):
             raise ValueError("a text value cannot contain an apostrophe, a backslash, or a control character")
         rendered.append("'" + text + "'")
@@ -437,8 +444,9 @@ class GetRecordOperation:
 def build_list_modified_records_query(input: ListModifiedRecordsInput) -> tuple[str, str]:
     """Build watermark COQL and the cursor used if the page is empty."""
     _module(input.module)
-    if not input.fields or len(input.fields) > 49:
-        raise ValueError("fields must name 1 to 49 field API names")
+    maximum_fields = 50 if "Modified_Time" in input.fields else 49
+    if not input.fields or len(input.fields) > maximum_fields:
+        raise ValueError(f"fields must name 1 to {maximum_fields} field API names")
     fields = tuple(input.fields) if "Modified_Time" in input.fields else (*input.fields, "Modified_Time")
     _fields(fields, 1)
     if type(input.limit) is not int:
@@ -586,7 +594,15 @@ def _write_result(exchange: Exchange) -> tuple[str, str, str, str, str]:
         if not isinstance(value, str):
             return "0001-01-01T00:00:00Z"
         try:
-            return _zoho_time(value).isoformat(timespec="seconds").replace("+00:00", "Z")
+            _zoho_time(value)
+            timestamp = re.fullmatch(
+                r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})",
+                value,
+            )
+            assert timestamp is not None
+            fraction = (timestamp.group(2) or "")[:9].rstrip("0")
+            suffix = "Z" if timestamp.group(3) == "+00:00" else timestamp.group(3)
+            return timestamp.group(1) + ("." + fraction if fraction else "") + suffix
         except ValueError:
             return "0001-01-01T00:00:00Z"
 
@@ -628,6 +644,7 @@ class UpsertRecordOperation:
                     not _FIELD.fullmatch(name)
                     or name not in input.fields
                     or input.fields[name] in (None, "", [], {})
+                    or isinstance(input.fields[name], str) and not input.fields[name].strip()
                 ):
                     raise ValueError("fields must set each duplicate-check field to a non-empty value")
             trigger = _trigger(input.triggers, input.should_skip_automation)

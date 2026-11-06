@@ -2350,6 +2350,114 @@
       },
       "name": "createFolder-retry-transport",
       "operation": "createFolder"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\".txt\",\"size\":6,\"file\":{\"mimeType\":\"application/octet-stream\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/teamDriveKey-2/items/file-1",
+          "query": {
+            "$select": [
+              "id,name,size,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "hello!",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/teamDriveKey-2/items/file-1/content",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "read",
+        "failureKind": "",
+        "output": {
+          "byteCount": 6,
+          "itemId": "file-1",
+          "mimeType": "application/octet-stream",
+          "name": ".txt",
+          "sizeBytes": 6,
+          "text": "hello!"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "teamDriveKey-2",
+        "itemId": "file-1"
+      },
+      "name": "readFileText-leading-dot-extension-614",
+      "operation": "readFileText"
+    },
+    {
+      "callId": "01234567-89ab-cdef-0123-456789abcdef",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"file-1\",\"name\":\"STRASSE\",\"size\":6,\"file\":{\"mimeType\":\"text/plain\",\"hashes\":{\"quickXorHash\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\"}},\"parentReference\":{\"driveId\":\"teamDriveKey-2\",\"id\":\"folder-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/drives/teamDriveKey-2/items/folder-1:/Straße",
+          "query": {
+            "$select": [
+              "id,name,size,webUrl,lastModifiedDateTime,parentReference,file,folder,package"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer graph-token-SENTINEL"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "files": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "driveId": "teamDriveKey-2",
+        "mimeType": "text/plain",
+        "name": "Straße",
+        "nameMatch": "exact",
+        "pageSize": 7,
+        "parentFolderId": "folder-1"
+      },
+      "name": "searchFiles-sharp-s-not-equal-fold-614",
+      "operation": "searchFiles"
     }
   ],
   "schemaVersion": 1

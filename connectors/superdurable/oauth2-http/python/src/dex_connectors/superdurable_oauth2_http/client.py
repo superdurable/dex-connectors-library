@@ -8,7 +8,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
+from urllib.parse import unquote, unquote_plus, urlencode, urlsplit, urlunsplit
 
 import httpx
 from dex_connectors.sdk import (
@@ -28,9 +28,8 @@ from dex_connectors.sdk import (
 from dex_connectors.sdk.oauthtoken import ManifestCredentialRefreshDriver
 from dex_connectors.sdk.providerhttp import (
     AddressRefusal,
-    ProviderTransportError,
+    RequestTrace,
     parse_retry_after,
-    send_traced,
 )
 
 from ._generated.config import Config as Config
@@ -124,6 +123,18 @@ def _encode_go_query(values: list[tuple[str, str]]) -> str:
     return urlencode(ordered_values)
 
 
+def _parse_go_query(query: str) -> list[tuple[str, str]]:
+    values: list[tuple[str, str]] = []
+    for pair in query.split("&"):
+        if not pair:
+            continue
+        if ";" in pair or re.search(r"%(?![0-9A-Fa-f]{2})", pair):
+            continue
+        name, _, value = pair.partition("=")
+        values.append((unquote_plus(name), unquote_plus(value)))
+    return values
+
+
 def _plan_request(api_base_url: str, max_body_bytes: int, input: SendRequestInput) -> _RequestPlan:
     method = input.method.strip().upper() or "GET"
     if method not in _METHODS:
@@ -155,7 +166,7 @@ def _plan_request(api_base_url: str, max_body_bytes: int, input: SendRequestInpu
         )
     if input.query:
         parts = urlsplit(target)
-        values = parse_qsl(parts.query, keep_blank_values=True)
+        values = _parse_go_query(parts.query)
         for name, entries in input.query.items():
             if not name:
                 raise ValueError("sendRequest query parameter names cannot be empty")
@@ -254,13 +265,18 @@ class Client:
         """Close the owned provider HTTP client."""
         await self._http_client.aclose()
 
-    async def _exchange(self, call: Call, request: _RequestPlan, token: str) -> _Exchange:
+    async def _exchange(self, call: Call, request: _RequestPlan, token: str, deadline: float) -> _Exchange:
         headers = dict(request.headers)
         headers["Authorization"] = "Bearer " + token
         if not any(name.lower() == "user-agent" for name in headers):
             headers["User-Agent"] = _USER_AGENT
         if request.idempotency_key_header:
             headers[request.idempotency_key_header] = str(call.idempotency_key)
+        trace = RequestTrace()
+        response: httpx.Response | None = None
+        chunks: list[bytes] = []
+        length = 0
+        is_truncated = False
         try:
             http_request = self._http_client.build_request(
                 request.method,
@@ -269,34 +285,45 @@ class Client:
                 content=request.body.encode("utf-8") if request.body else None,
                 timeout=self._request_timeout_seconds,
             )
-            response, _ = await send_traced(self._http_client, http_request)
+            http_request.extensions["trace"] = trace.observe
+            async with asyncio.timeout_at(deadline):
+                response = await self._http_client.send(http_request, follow_redirects=False, stream=True)
+                if response.is_stream_consumed:
+                    chunks.append(response.content)
+                    length = len(response.content)
+                    is_truncated = length > self._max_body_bytes
+                else:
+                    async for chunk in response.aiter_bytes():
+                        chunks.append(chunk)
+                        length += len(chunk)
+                        if length > self._max_body_bytes:
+                            is_truncated = True
+                            break
         except AddressRefusal as error:
             return _Exchange(error=True, refusal=error)
-        except ProviderTransportError as error:
-            return _Exchange(error=True, is_dispatched=not error.provably_not_sent)
-        except (httpx.HTTPError, ValueError):
-            return _Exchange(error=True)
-        chunks: list[bytes] = []
-        length = 0
-        is_truncated = False
-        try:
-            if response.is_stream_consumed:
-                chunks.append(response.content)
-                length = len(response.content)
-                is_truncated = length > self._max_body_bytes
-            else:
-                async for chunk in response.aiter_raw():
-                    chunks.append(chunk)
-                    length += len(chunk)
-                    if length > self._max_body_bytes:
-                        is_truncated = True
-                        break
-        except httpx.HTTPError:
+        except httpx.TransportError:
             return _Exchange(
-                response.status_code, response.headers, b"".join(chunks), error=True, is_dispatched=True
+                response.status_code if response else 0,
+                response.headers if response else httpx.Headers(),
+                b"".join(chunks),
+                error=True,
+                is_dispatched=response is not None or not trace.provably_not_sent,
             )
+        except (TimeoutError, httpx.HTTPError):
+            return _Exchange(
+                response.status_code if response else 0,
+                response.headers if response else httpx.Headers(),
+                b"".join(chunks),
+                error=True,
+                is_dispatched=response is not None or (
+                    not trace.provably_not_sent and trace.request_headers_started
+                ),
+            )
+        except ValueError:
+            return _Exchange(error=True)
         finally:
-            await response.aclose()
+            if response is not None:
+                await response.aclose()
         body = b"".join(chunks)
         if is_truncated:
             body = body[: self._max_body_bytes]
@@ -332,7 +359,8 @@ class SendRequestOperation:
         except ValueError as error:
             return _branch("defect", SendRequestOutput(), FailureKind.VALIDATION, str(error))
         try:
-            async with asyncio.timeout(25):
+            deadline = asyncio.get_running_loop().time() + 25
+            async with asyncio.timeout_at(deadline):
                 credentials = await resolve_credential(
                     self._client._credentials, call, self._client._refresh_driver
                 )
@@ -342,19 +370,20 @@ class SendRequestOperation:
                     or not credentials.access_token.reveal()
                 ):
                     raise ValueError("unusable credentials")
-                answer = await self._client._exchange(call, request, credentials.access_token.reveal())
-                used_tokens = [credentials.access_token.reveal()]
-                if answer.status == 401 and not answer.error:
-                    try:
+            answer = await self._client._exchange(call, request, credentials.access_token.reveal(), deadline)
+            used_tokens = [credentials.access_token.reveal()]
+            if answer.status == 401 and not answer.error:
+                try:
+                    async with asyncio.timeout_at(deadline):
                         replacement = await resolve_credential_after_rejection(
                             self._client._credentials, call, self._client._refresh_driver
                         )
-                        next_token = replacement.access_token.reveal()
-                        if next_token and next_token != used_tokens[0]:
-                            answer = await self._client._exchange(call, request, next_token)
-                            used_tokens.append(next_token)
-                    except Exception:
-                        pass
+                    next_token = replacement.access_token.reveal()
+                    if next_token and next_token != used_tokens[0]:
+                        answer = await self._client._exchange(call, request, next_token, deadline)
+                        used_tokens.append(next_token)
+                except Exception:
+                    pass
         except AddressRefusal as error:
             return _branch(
                 "defect",
@@ -370,7 +399,7 @@ class SendRequestOperation:
                 FailureKind.AUTHENTICATION,
                 "the OAuth authorization must be renewed in Dex Web Connections",
             )
-        except (TimeoutError, asyncio.CancelledError):
+        except TimeoutError:
             return MutationAttempt.retry(
                 _failure(FailureKind.AVAILABILITY, "the OAuth access token could not be refreshed now")
             )
