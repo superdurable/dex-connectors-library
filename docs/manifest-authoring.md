@@ -521,6 +521,7 @@ operations:
     agent:
       exposed: true
       approval: recommended
+      retry: safe
       description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
 ```
 
@@ -528,12 +529,31 @@ operations:
 | --- | --- | --- |
 | `exposed` | Yes | `true` offers the operation to agents. `false` records a review that declined it, which has the same effect as no block. |
 | `approval` | No | `recommended` asks the agent host to stop for a person before the call runs. Leave it out to keep the host's default. Requires `exposed: true`. |
+| `retry` | No | `safe` claims that repeating the call with the same Call ID, inside the operation's own Execute retry policy, cannot make a second effect. Absence means a repeat may not be safe. Mutations only. Requires `exposed: true`. |
 | `description` | No | Text for a model choosing a tool. Requires `exposed: true`. Without it, the operation's `description` is used. |
 
 Set `approval: recommended` when a person should confirm the call even though it
 is safe to retry: money leaves, a legal document goes out, or one wrong call
 changes many rows. Idempotency does not answer this question. The field is
 metadata for the host, which may override it per tool.
+
+Set `retry: safe` only when you can show the claim for this operation, such as a
+provider idempotency key that outlives the retry window. A missing value fails
+closed: a host treats the call as unsafe to repeat. `idempotency: required` does
+not imply it, because every Mutation declares that. Do not set it because an
+operation has `dispatchFence`, unless the fence holds on the host that runs it.
+Retry and approval are independent: Stripe `createRefund` is safe to repeat and
+still recommends approval.
+
+The claim covers one Call ID within the operation's own policy, and no more:
+
+- The window is the manifest's `execution.retry`, or the one-hour default. A
+  provider key expires, so keep that window inside its retention. An application
+  or host that widens the policy with an Execute retry override takes on that
+  check. Stripe keeps keys for 24 hours, so a widened window must stay at or under
+  23 hours.
+- A new Step execution gets a new Call ID, and so a new key. Nothing dedupes it
+  against the earlier call.
 
 Write `agent.description` for a model, not a Connector author. State what the
 operation does and what the model must supply. Leave out durability, retry, and
@@ -556,7 +576,7 @@ language package that should offer it.
   "operationId": "createRefund",
   "inputType": "CreateRefundInput",
   "description": "Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.",
-  "agent": { "exposed": true, "approval": "recommended" },
+  "agent": { "exposed": true, "approval": "recommended", "retry": "safe" },
   "fields": { "...": "..." },
   "branches": [],
   "inputSchema": {
@@ -568,16 +588,15 @@ language package that should offer it.
       "amount": { "type": "integer", "description": "Amount is the positive refund amount in the currency's minor unit." },
       "metadata": { "type": "object", "additionalProperties": { "type": "string" }, "description": "..." },
       "paymentIntentId": { "type": "string", "description": "..." },
-      "reason": { "type": "string", "description": "..." }
+      "reason": { "type": "string", "enum": ["duplicate", "fraudulent", "requested_by_customer"], "description": "..." }
     }
   }
 }
 ```
 
 `inputType` is the public model name in that language: a class in the package's
-`models` module for Python, and an exported TypeScript type. Most TypeScript
-packages also export a matching `<inputType>Schema` validator from their root, but
-a package with hand-written models may not. The `agent` block leaves out
+`models` module for Python, and a type with a matching strict `<inputType>Schema`
+validator exported from the package root for TypeScript. The `agent` block leaves out
 `description`, because the factory's `description` already carries it.
 
 `inputSchema` is a JSON Schema draft 2020-12 object. `internal/codegen/gomodel`
@@ -596,6 +615,7 @@ write them for a reader who has not seen the code.
 | `time.Time` | String with `format: date-time` |
 | `[]byte` | String with `contentEncoding: base64` |
 | Named string or integer with constants | `enum` of those constants. The language models accept other values, but a model should choose a known one |
+| `string` with a `connectorEnum:"a,b"` tag | `enum` of those values. Use it when a provider accepts a fixed set but the public Go type must stay `string`. It changes only the schema: the language models keep a plain string, so the operation must still validate the value |
 | `any` or `json.RawMessage` | The empty schema |
 
 A required string may be blank in Go, so `required` says which keys must appear,

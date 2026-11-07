@@ -67,7 +67,11 @@ from the code. Each language package carries that in `dex-connector.json`, which
 [Agent tool metadata](manifest-authoring.md#agent-tool-metadata) describes:
 
 - `inputType` and `inputSchema` tell the host how to describe and decode the
-  arguments. The schema uses the JSON field names of the operation input.
+  arguments. The schema uses the JSON field names of the operation input. A host
+  must validate the model's arguments against `inputSchema` before decoding them.
+  The Python codec drops a field it does not know, so a misspelled optional field
+  would otherwise run the operation without it, and the model would never learn.
+  A rejected call is a failed tool call the model can correct.
 - `agent.exposed` is `true` only for an operation reviewed for agent use. A host
   must not offer an operation without it. An application still names the
   operations each agent may use.
@@ -75,15 +79,23 @@ from the code. Each language package carries that in `dex-connector.json`, which
   It is metadata: the host decides, and an application may override it either
   way. Approval and retry are separate questions, so it says nothing about
   whether the call can repeat.
+- `agent.retry: safe` claims that repeating a Mutation with the same Call ID,
+  inside the operation's own Execute retry policy, cannot make a second effect.
+  Without it, a host must treat the call as unsafe to repeat. The claim ends with
+  that policy: a host or application that widens the retry window must keep it
+  inside the provider's key retention, and a new Step execution has a new Call ID
+  that nothing dedupes. See
+  [Agent tool metadata](manifest-authoring.md#agent-tool-metadata).
 
 A host calls `run_query`/`run_mutation` or `runQuery`/`runMutation` directly,
-which keeps Call ID, idempotency, credential, and fence behavior. These entry
-points raise `RetryError` for a safe retry, and the Step factories translate it
-into Dex retry behavior. A host that runs an operation outside a factory uses the
-same translation: `raise_dex_retry` in Python and `throwDexRetry` in TypeScript,
-both exported from the SDK root. A delay of at least one second, truncated to
-whole seconds, becomes a Dex retry-after. Anything shorter uses the Step's retry
-policy.
+which keeps Call ID, idempotency, credential, and fence behavior. For a safe retry
+these entry points raise `RetryError`, which Dex does not treat as a provider
+delay on its own. A Step factory translates it; a host that calls them from its
+own Step must do the same. It catches `RetryError` and passes it to
+`raise_dex_retry` in Python or `throwDexRetry` in TypeScript, both exported from
+the SDK root. With a provider delay of at least one second, the function raises a
+Dex retry-after for that delay, truncated to whole seconds. Otherwise it raises the
+same `RetryError`, and the Step's retry policy chooses the delay.
 
 ## Trigger source boundary
 
