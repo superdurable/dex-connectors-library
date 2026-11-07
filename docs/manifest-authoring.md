@@ -575,8 +575,9 @@ language package that should offer it.
 ```
 
 `inputType` is the public model name in that language: a class in the package's
-`models` module for Python, and an exported interface with a matching
-`<inputType>Schema` validator for TypeScript. The `agent` block leaves out
+`models` module for Python, and an exported TypeScript type. Most TypeScript
+packages also export a matching `<inputType>Schema` validator from their root, but
+a package with hand-written models may not. The `agent` block leaves out
 `description`, because the factory's `description` already carries it.
 
 `inputSchema` is a JSON Schema draft 2020-12 object. `internal/codegen/gomodel`
