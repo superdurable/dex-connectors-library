@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
-from typing import Generic, TypeVar, cast
+from typing import Generic, NoReturn, TypeVar, cast
 
 import dex
 
@@ -157,7 +157,7 @@ class QueryStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Output])
                 self._config.operation, call, self._config.map_to_operation_input(input)
             )
         except RetryError as error:
-            _raise_dex_retry(error)
+            raise_dex_retry(error)
         if self._config.result_attribute is not None:
             self._config.result_attribute.set(context, result)
         return _route_branch(
@@ -220,7 +220,7 @@ class MutationStep(dex.Step[StepInput], Generic[StepInput, OperationInput, Outpu
                 self._config.operation, call, self._config.map_to_operation_input(input)
             )
         except RetryError as error:
-            _raise_dex_retry(error)
+            raise_dex_retry(error)
         if self._config.result_attribute is not None:
             self._config.result_attribute.set(context, result)
         return _route_branch(
@@ -336,7 +336,14 @@ def _call(
     )
 
 
-def _raise_dex_retry(error: RetryError) -> None:
+def raise_dex_retry(error: RetryError) -> NoReturn:
+    """Raise the Dex retry signal for a connector ``RetryError``.
+
+    A Step that calls ``run_query`` or ``run_mutation`` directly uses this in place of a Step
+    factory. A positive ``RetryAfter`` delay, truncated to whole seconds, becomes
+    ``dex.retry_after``. Otherwise the same error is raised for the Step's retry policy, so a
+    delay under one second uses that policy's backoff.
+    """
     if error.retry_after_whole_seconds > 0:
         raise dex.retry_after(error.retry_after_whole_seconds, error) from error
     raise error
