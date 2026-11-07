@@ -325,12 +325,18 @@ type Operation struct {
 // OperationAgentApprovalRecommended asks an agent host to stop for a person before the call runs.
 const OperationAgentApprovalRecommended = "recommended"
 
+// OperationAgentRetrySafe says a repeat with the same Call ID cannot make a second effect.
+const OperationAgentRetrySafe = "safe"
+
 // OperationAgent is an author's review of one operation for use as an agent tool.
 type OperationAgent struct {
 	// Exposed offers the operation to agents when true. False records a review that declined it.
 	Exposed *bool `yaml:"exposed" json:"exposed"`
 	// Approval is recommended for a high-risk operation. Empty leaves the decision to the agent host.
 	Approval string `yaml:"approval,omitempty" json:"approval,omitempty"`
+	// Retry is safe when repeating a Mutation with the same Call ID, inside the operation's own Execute
+	// retry policy, cannot make a second effect. Empty means a repeat may not be safe.
+	Retry string `yaml:"retry,omitempty" json:"retry,omitempty"`
 	// Description replaces the operation description for a model choosing a tool.
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
 }
@@ -346,11 +352,17 @@ func validateOperationAgent(operation Operation) []string {
 	if operation.Agent.Approval != "" && operation.Agent.Approval != OperationAgentApprovalRecommended {
 		problems = append(problems, operation.Name+": agent.approval must be recommended")
 	}
+	if operation.Agent.Retry != "" && operation.Agent.Retry != OperationAgentRetrySafe {
+		problems = append(problems, operation.Name+": agent.retry must be safe")
+	}
+	if operation.Agent.Retry != "" && operation.Kind != "mutation" {
+		problems = append(problems, operation.Name+": agent.retry is only for mutations")
+	}
 	if operation.Agent.Description != "" && strings.TrimSpace(operation.Agent.Description) == "" {
 		problems = append(problems, operation.Name+": agent.description must not be blank")
 	}
-	if !*operation.Agent.Exposed && (operation.Agent.Approval != "" || operation.Agent.Description != "") {
-		problems = append(problems, operation.Name+": agent.approval and agent.description require agent.exposed to be true")
+	if !*operation.Agent.Exposed && (operation.Agent.Approval != "" || operation.Agent.Retry != "" || operation.Agent.Description != "") {
+		problems = append(problems, operation.Name+": agent.approval, agent.retry, and agent.description require agent.exposed to be true")
 	}
 	return problems
 }

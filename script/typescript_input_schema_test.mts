@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
-// Check published input schemas against the real TypeScript validators.
+// Check published input schemas against the validators that each package exports from its root.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -37,7 +37,7 @@ function sampleValue(schema: JSONSchema, root: JSONSchema, depth: number): unkno
 function checkOperation(models: Record<string, unknown>, factory: JSONSchema): void {
   const label = factory.operationId as string;
   const validator = models[`${factory.inputType}Schema`] as RuntimeValidator | undefined;
-  if (!validator) throw new Error(`${label}: ${factory.inputType}Schema is not exported`);
+  if (!validator) throw new Error(`${label}: ${factory.inputType}Schema is not exported from the package root`);
   const schema = factory.inputSchema as JSONSchema;
   const sample = sampleValue(schema, schema, 0) as Record<string, unknown>;
   if (!validator.safeParse(sample).success) throw new Error(`${label}: the validator rejected a complete sample`);
@@ -53,6 +53,6 @@ function checkOperation(models: Record<string, unknown>, factory: JSONSchema): v
 }
 
 const packageDirectory = resolve(process.argv[2] ?? '.');
-const models = await import(pathToFileURL(join(packageDirectory, 'src', 'generated', 'models.ts')).href) as Record<string, unknown>;
+const packageRoot = await import(pathToFileURL(join(packageDirectory, 'src', 'index.ts')).href) as Record<string, unknown>;
 const manifest = JSON.parse(readFileSync(join(packageDirectory, 'dex-connector.json'), 'utf8')) as { factories: JSONSchema[] };
-for (const factory of manifest.factories) checkOperation(models, factory);
+for (const factory of manifest.factories) checkOperation(packageRoot, factory);

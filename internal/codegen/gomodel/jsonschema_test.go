@@ -125,6 +125,43 @@ func TestJSONSchemaKinds(t *testing.T) {
 	}
 }
 
+func TestSchemaEnumTagNarrowsOnlyTheJSONSchema(t *testing.T) {
+	graph, err := Load(filepath.Join("testdata", "models"), []string{"TaggedEnum"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kind := graph.Models[0].Fields[0].Type.Kind; kind != String {
+		t.Errorf("a tagged field stays a plain string for the language models, got %s", kind)
+	}
+	document, err := graph.JSONSchema("TaggedEnum")
+	if err != nil {
+		t.Fatal(err)
+	}
+	properties := document["properties"].(map[string]any)
+	if want := []any{"first", "second"}; !reflect.DeepEqual(properties["choice"].(map[string]any)["enum"], want) {
+		t.Errorf("choice = %v", properties["choice"])
+	}
+	if want := []any{"first", nil}; !reflect.DeepEqual(properties["nullableChoice"].(map[string]any)["enum"], want) {
+		t.Errorf("nullableChoice = %v", properties["nullableChoice"])
+	}
+}
+
+func TestSchemaEnumTagRequiresStringValues(t *testing.T) {
+	for _, testCase := range []struct {
+		tag     string
+		value   Type
+		problem string
+	}{
+		{"a,b", Type{Kind: Int}, "requires a string field"},
+		{"a,,b", Type{Kind: String}, "blank value"},
+	} {
+		err := applySchemaEnumTag(&testCase.value, testCase.tag)
+		if err == nil || !strings.Contains(err.Error(), testCase.problem) {
+			t.Errorf("%q: %v", testCase.tag, err)
+		}
+	}
+}
+
 func TestJSONSchemaOfEmptyModelHasNoRequiredList(t *testing.T) {
 	document, err := Graph{Models: []Model{{Name: "Empty"}}}.JSONSchema("Empty")
 	if err != nil {

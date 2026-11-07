@@ -12,6 +12,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/require"
+	"github.com/superdurable/dex-connectors-library/schema"
 )
 
 func TestOperationAndBranchNamesBecomePythonKeywords(t *testing.T) {
@@ -134,6 +135,7 @@ func TestGeneratedLanguageManifestCarriesInputSchemaAndAgentReview(t *testing.T)
 	require.NoError(t, err)
 	reviewed := strings.Replace(string(source), "      inputType: GetItemInput\n", "      inputType: GetItemInput\n      agent: {exposed: true, approval: recommended, description: Read one <item>.}\n", 1)
 	require.NotEqual(t, string(source), reviewed)
+	require.ErrorContains(t, generateWithManifest(t, manifestPath, strings.Replace(reviewed, "exposed: true,", "exposed: true, retry: safe,", 1)), "agent.retry is only for mutations")
 	require.NoError(t, os.WriteFile(manifestPath, []byte(reviewed), 0o600))
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated file is stale", "drift in the agent block fails the check")
 	require.NoError(t, generate([]string{manifestPath}))
@@ -161,6 +163,18 @@ func TestGeneratedLanguageManifestRejectsInputModelThatGoLacks(t *testing.T) {
 	require.NotEqual(t, string(source), renamed)
 	require.NoError(t, os.WriteFile(manifestPath, []byte(renamed), 0o600))
 	require.ErrorContains(t, generate([]string{manifestPath}), "MissingInput")
+}
+
+func TestDexConnectorOperationAgentCarriesRetry(t *testing.T) {
+	exposed := true
+	operation := schema.Operation{Agent: &schema.OperationAgent{Exposed: &exposed, Retry: schema.OperationAgentRetrySafe}}
+	require.Equal(t, &dexConnectorAgent{Exposed: true, Retry: "safe"}, dexConnectorOperationAgent(operation))
+}
+
+func generateWithManifest(t *testing.T, manifestPath, source string) error {
+	t.Helper()
+	require.NoError(t, os.WriteFile(manifestPath, []byte(source), 0o600))
+	return generate([]string{manifestPath})
 }
 
 func copyTypeScriptGoldenConnector(t *testing.T) (string, string) {

@@ -857,15 +857,18 @@
       "properties": {
         "exposed": { "type": "boolean" },
         "approval": { "enum": ["recommended"] },
+        "retry": { "enum": ["safe"] },
         "description": { "type": "string", "pattern": "\\S" }
       },
       "if": { "properties": { "exposed": { "const": false } } },
-      "then": { "properties": { "approval": false, "description": false } }
+      "then": { "properties": { "approval": false, "retry": false, "description": false } }
     },
     "operation": {
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "goName", "inputType", "outputType", "kind", "description", "idempotency", "branches", "execution"],
+      "if": { "properties": { "kind": { "const": "query" } } },
+      "then": { "properties": { "agent": { "properties": { "retry": false } } } },
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },

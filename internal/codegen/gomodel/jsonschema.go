@@ -86,6 +86,13 @@ func (builder *jsonSchemaBuilder) typeSchema(value Type) (map[string]any, error)
 	switch value.Kind {
 	case String:
 		document = map[string]any{"type": "string"}
+		if len(value.SchemaEnum) > 0 {
+			values := make([]any, 0, len(value.SchemaEnum))
+			for _, enumValue := range value.SchemaEnum {
+				values = append(values, enumValue)
+			}
+			document["enum"] = values
+		}
 	case Bool:
 		document = map[string]any{"type": "boolean"}
 	case Int, Int64:

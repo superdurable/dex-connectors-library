@@ -310,6 +310,9 @@ func TestOperationAgentReviewValidation(t *testing.T) {
 		"exposed":            {&schema.OperationAgent{Exposed: &exposed}, ""},
 		"approval":           {&schema.OperationAgent{Exposed: &exposed, Approval: "recommended", Description: "Refund a charge."}, ""},
 		"blank description":  {&schema.OperationAgent{Exposed: &exposed, Description: "  "}, "agent.description must not be blank"},
+		"retry on mutation":  {&schema.OperationAgent{Exposed: &exposed, Retry: "safe"}, ""},
+		"unknown retry":      {&schema.OperationAgent{Exposed: &exposed, Retry: "always"}, "agent.retry must be safe"},
+		"declined retry":     {&schema.OperationAgent{Exposed: &declined, Retry: "safe"}, "require agent.exposed to be true"},
 		"declined":           {&schema.OperationAgent{Exposed: &declined}, ""},
 		"no exposed":         {&schema.OperationAgent{Approval: "recommended"}, "agent.exposed is required"},
 		"unknown approval":   {&schema.OperationAgent{Exposed: &exposed, Approval: "always"}, "agent.approval must be recommended"},
@@ -322,6 +325,7 @@ func TestOperationAgentReviewValidation(t *testing.T) {
 			t.Cleanup(func() { require.NoError(t, file.Close()) })
 			manifest, err := schema.Decode(file)
 			require.NoError(t, err)
+			manifest.Spec.Operations[0].Kind, manifest.Spec.Operations[0].Idempotency = "mutation", "required"
 			manifest.Spec.Operations[0].Agent = testCase.agent
 			if testCase.problem == "" {
 				require.NoError(t, manifest.Validate())
@@ -330,6 +334,18 @@ func TestOperationAgentReviewValidation(t *testing.T) {
 			require.ErrorContains(t, manifest.Validate(), testCase.problem)
 		})
 	}
+}
+
+func TestOperationAgentRetryIsOnlyForMutations(t *testing.T) {
+	file, err := os.Open("testdata/api-key-methods.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	exposed := true
+	manifest.Spec.Operations[0].Kind, manifest.Spec.Operations[0].Idempotency = "query", "none"
+	manifest.Spec.Operations[0].Agent = &schema.OperationAgent{Exposed: &exposed, Retry: "safe"}
+	require.ErrorContains(t, manifest.Validate(), "agent.retry is only for mutations")
 }
 
 func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {

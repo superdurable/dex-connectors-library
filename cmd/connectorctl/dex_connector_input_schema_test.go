@@ -77,6 +77,48 @@ func TestPublishedInputSchemasAcceptConformanceInputs(t *testing.T) {
 	require.Greater(t, validatedInputs, 1000)
 }
 
+func TestFirstReviewedOperationsCarryTheirRetryClaims(t *testing.T) {
+	for _, testCase := range []struct {
+		directory, operation string
+		agent                map[string]any
+	}{
+		{"connectors/stripe", "createRefund", map[string]any{"exposed": true, "approval": "recommended", "retry": "safe"}},
+		{"connectors/slack", "postThreadReply", map[string]any{"exposed": true}},
+	} {
+		for path, contents := range publishedLanguageManifests(t, testCase.directory) {
+			var manifest struct {
+				Factories []map[string]any `json:"factories"`
+			}
+			require.NoError(t, json.Unmarshal(contents, &manifest), path)
+			for _, factory := range manifest.Factories {
+				if factory["operationId"] == testCase.operation {
+					require.Equal(t, testCase.agent, factory["agent"], path)
+				}
+			}
+		}
+	}
+}
+
+// Dex analyzers ignore an unknown agent field, so this closed schema is what catches an author's typo.
+func TestPackageManifestSchemaRejectsWhatTheAnalyzerRejectsAndAgentTypos(t *testing.T) {
+	schemaDocument := compileJSONSchemaFile(t, filepath.Join("..", "..", "schema", "dex-connector.schema.json"))
+	operationFactory := func(kind, agent string) any {
+		return decodeJSONDocument(t, []byte(`{"connectorId":"sample","releaseTag":"connectors/sample/go/v1.0.0","package":{"ecosystem":"npm","name":"sample","version":"1.0.0"},
+			"factories":[{"name":"newStep","kind":"`+kind+`","operationId":"run","inputType":"Input","inputSchema":{"type":"object"},"agent":`+agent+`,
+			"fields":{"stepType":"stepType","annotations":"annotations","connectionName":"connectionName"},"branches":[{"id":"done","field":"done"}]}]}`))
+	}
+	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"retry":"safe"}`)))
+	for name, document := range map[string]any{
+		"unknown agent field": operationFactory("mutation", `{"exposed":true,"retyr":"safe"}`),
+		"retry on a query":    operationFactory("query", `{"exposed":true,"retry":"safe"}`),
+		"retry when declined": operationFactory("mutation", `{"exposed":false,"retry":"safe"}`),
+		"unknown retry value": operationFactory("mutation", `{"exposed":true,"retry":"always"}`),
+		"null agent":          operationFactory("mutation", `null`),
+	} {
+		require.Error(t, schemaDocument.Validate(document), name)
+	}
+}
+
 func publishedLanguageManifests(t *testing.T, directory string) map[string][]byte {
 	t.Helper()
 	root := filepath.Join("..", "..", filepath.FromSlash(directory))
