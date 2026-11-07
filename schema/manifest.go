@@ -346,6 +346,9 @@ func validateOperationAgent(operation Operation) []string {
 	if operation.Agent.Approval != "" && operation.Agent.Approval != OperationAgentApprovalRecommended {
 		problems = append(problems, operation.Name+": agent.approval must be recommended")
 	}
+	if operation.Agent.Description != "" && strings.TrimSpace(operation.Agent.Description) == "" {
+		problems = append(problems, operation.Name+": agent.description must not be blank")
+	}
 	if !*operation.Agent.Exposed && (operation.Agent.Approval != "" || operation.Agent.Description != "") {
 		problems = append(problems, operation.Name+": agent.approval and agent.description require agent.exposed to be true")
 	}

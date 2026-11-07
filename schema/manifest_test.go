@@ -309,6 +309,7 @@ func TestOperationAgentReviewValidation(t *testing.T) {
 		"absent":             {nil, ""},
 		"exposed":            {&schema.OperationAgent{Exposed: &exposed}, ""},
 		"approval":           {&schema.OperationAgent{Exposed: &exposed, Approval: "recommended", Description: "Refund a charge."}, ""},
+		"blank description":  {&schema.OperationAgent{Exposed: &exposed, Description: "  "}, "agent.description must not be blank"},
 		"declined":           {&schema.OperationAgent{Exposed: &declined}, ""},
 		"no exposed":         {&schema.OperationAgent{Approval: "recommended"}, "agent.exposed is required"},
 		"unknown approval":   {&schema.OperationAgent{Exposed: &exposed, Approval: "always"}, "agent.approval must be recommended"},
