@@ -315,7 +315,8 @@
       "description": "Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.",
       "agent": {
         "exposed": true,
-        "approval": "recommended"
+        "approval": "recommended",
+        "retry": "safe"
       },
       "fields": {
         "stepType": "step_type",
@@ -371,6 +372,11 @@
           },
           "reason": {
             "description": "Reason optionally classifies the refund as duplicate, fraudulent, or requested_by_customer.",
+            "enum": [
+              "duplicate",
+              "fraudulent",
+              "requested_by_customer"
+            ],
             "type": "string"
           }
         },

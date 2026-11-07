@@ -256,6 +256,7 @@ spec:
       agent:
         exposed: true
         approval: recommended
+        retry: safe
         description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}

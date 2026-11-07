@@ -13,6 +13,7 @@ export { Connection, newConnection, newConnectionWithOperations } from './genera
 export { newGetItemStep, newListStoryIDsStep } from './generated/steps.js';
 export * from './generated/definitions.js';
 export type { Config, Credentials, GetItemInput, Item, ListStoryIDsInput, StoryIDs } from './generated/models.js';
+export { GetItemInputSchema, ListStoryIDsInputSchema } from './generated/models.js';
 
 /** Bind the named public connection and honor all project configuration fields. */
 export function newProjectConnection(project: LoadedProject, connectionName: string) {

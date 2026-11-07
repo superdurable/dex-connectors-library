@@ -27,6 +27,8 @@ export const Languages = ['ar', 'de', 'en', 'es', 'fr', 'he', 'it', 'nl', 'no', 
 /** Supported result ordering. */
 export const SortOrders = ['publishedAt', 'relevancy', 'popularity'] as const;
 
+export { SearchArticlesInputSchema } from './generated/models.js';
+
 /** One page request to NewsAPI's everything endpoint. */
 export interface SearchArticlesInput {
   /** Keyword expression, at most 500 Unicode characters. */ query?: string;
