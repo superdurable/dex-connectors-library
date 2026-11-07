@@ -11,6 +11,8 @@
       "name": "new_list_objects_step",
       "kind": "query",
       "operationId": "listObjects",
+      "inputType": "ListObjectsInput",
+      "description": "List one bounded page of a bucket's object keys and common prefixes under an optional prefix and delimiter, in key order, continuing with an opaque continuation token.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListObjectsInput selects one page of a bucket listing. Keys are listed in UTF-8 binary order.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket is the bucket name; blank uses the connection's defaultBucket.",
+            "type": "string"
+          },
+          "continuationToken": {
+            "description": "ContinuationToken is the NextContinuationToken of the previous page; blank reads the first page.",
+            "type": "string"
+          },
+          "delimiter": {
+            "description": "Delimiter groups keys that contain it after Prefix into CommonPrefixes, usually \"/\" to list one folder level; blank lists every key under Prefix.",
+            "type": "string"
+          },
+          "maxKeys": {
+            "description": "MaxKeys bounds the objects plus common prefixes on the page, from 1 to 1000; zero uses the connection's listPageSize.",
+            "type": "integer"
+          },
+          "prefix": {
+            "description": "Prefix limits the page to keys that begin with it, such as reports/2026/; blank lists every key.",
+            "type": "string"
+          },
+          "startAfter": {
+            "description": "StartAfter lists only keys after this key; blank starts at the first key.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_head_object_step",
       "kind": "query",
       "operationId": "headObject",
+      "inputType": "HeadObjectInput",
+      "description": "Read one object's size, ETag, content type, modification time, version, storage class, and user-defined metadata without reading its content.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +116,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "HeadObjectInput identifies the object whose metadata is read.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket is the bucket name; blank uses the connection's defaultBucket.",
+            "type": "string"
+          },
+          "key": {
+            "description": "Key is the object key, such as reports/2026-09.md.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_object_text_step",
       "kind": "query",
       "operationId": "getObjectText",
+      "inputType": "GetObjectTextInput",
+      "description": "Read one small text object as bounded UTF-8 text, refusing binary, compressed, and oversized objects without returning their content.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -129,12 +184,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetObjectTextInput identifies the object whose text is read.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket is the bucket name; blank uses the connection's defaultBucket.",
+            "type": "string"
+          },
+          "key": {
+            "description": "Key is the object key, such as reports/2026-09.md.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_put_object_step",
       "kind": "mutation",
       "operationId": "putObject",
+      "inputType": "PutObjectInput",
+      "description": "Store one object from bounded text or bytes with its content type and user-defined metadata, either replacing any object at the key or, in create-only mode, only when the key is free; a repeated attempt of the same Step converges on the same object.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -162,7 +237,50 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "PutObjectInput describes one object to store. Set at most one of TextContent and ByteContent; leaving both empty stores an empty object.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket is the bucket name; blank uses the connection's defaultBucket.",
+            "type": "string"
+          },
+          "byteContent": {
+            "contentEncoding": "base64",
+            "description": "ByteContent is binary content, encoded as base64 in JSON.",
+            "type": "string"
+          },
+          "contentType": {
+            "description": "ContentType is the media type S3 stores and returns, such as text/markdown; charset=utf-8.",
+            "type": "string"
+          },
+          "isCreateOnly": {
+            "description": "IsCreateOnly stores the object only when no current object exists at the key, by sending If-None-Match: *; an object that this Step execution did not write selects alreadyExists.",
+            "type": "boolean"
+          },
+          "key": {
+            "description": "Key is the object key, such as reports/2026-09.md.",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Metadata is user-defined metadata, keyed by lowercase name without the x-amz-meta- prefix, such as report-id. Values are printable ASCII. The dex-idempotency-key name is reserved.",
+            "type": "object"
+          },
+          "textContent": {
+            "description": "TextContent is UTF-8 text content.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentType",
+          "key"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

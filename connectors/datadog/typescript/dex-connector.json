@@ -11,6 +11,8 @@
       "name": "newQueryMetricsStep",
       "kind": "query",
       "operationId": "queryMetrics",
+      "inputType": "QueryMetricsInput",
+      "description": "Query Datadog timeseries points over an explicit Unix-second interval.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,38 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryMetricsInput supplies the metric expression and Unix-second window.",
+        "properties": {
+          "from": {
+            "description": "From is the inclusive start in Unix seconds.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is a Datadog metric query expression.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To is the exclusive end in Unix seconds and must follow From.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "query",
+          "to"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListMonitorsStep",
       "kind": "query",
       "operationId": "listMonitors",
+      "inputType": "ListMonitorsInput",
+      "description": "List one page of Datadog monitors.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -71,7 +99,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListMonitorsInput selects a zero-based monitor page.",
+        "properties": {
+          "page": {
+            "description": "Page is zero-based; zero selects the first page.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of monitors requested; zero selects 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

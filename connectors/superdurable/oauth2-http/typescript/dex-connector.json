@@ -11,6 +11,8 @@
       "name": "newSendRequestStep",
       "kind": "mutation",
       "operationId": "sendRequest",
+      "inputType": "SendRequestInput",
+      "description": "Send one HTTP request to the connection's API with the OAuth access token as a Bearer credential, and return the status code and body. Refreshes the token first when it is about to expire and once more after a 401. GET, HEAD, and OPTIONS are retried on a transient failure; any other method whose request may have reached the API selects uncertain instead of repeating it.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,7 +40,54 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendRequestInput describes one HTTP request to the connection's API.",
+        "properties": {
+          "body": {
+            "description": "Body is the request body, sent as text. It is not allowed with GET or HEAD and is limited to the connection's maxBodyBytes. Content-Type defaults to application/json when Headers sets none.",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Headers holds extra request headers, such as Accept. Authorization, Cookie, Host, and the headers the transport owns select defect; the connector always sends Authorization: Bearer with the access token.",
+            "type": "object"
+          },
+          "idempotencyKeyHeader": {
+            "description": "IdempotencyKeyHeader names a header, such as Idempotency-Key, that carries the Step's idempotency key, which is the same for every retry of one Step execution. Blank sends none.",
+            "type": "string"
+          },
+          "method": {
+            "description": "Method is GET, HEAD, OPTIONS, POST, PUT, PATCH, or DELETE, compared without case. Blank means GET.",
+            "type": "string"
+          },
+          "path": {
+            "description": "Path is the request path under the connection's apiBaseUrl. It starts with a single slash, may be percent-encoded, and carries no query, fragment, backslash, or .. segment. Set exactly one of Path and URL.",
+            "type": "string"
+          },
+          "query": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": "Query holds query parameters that are added to those already in URL. A name may repeat through several values.",
+            "type": "object"
+          },
+          "url": {
+            "description": "URL is an absolute http or https URL with the scheme, host, and port of the connection's apiBaseUrl, such as a next-page link the API returned. Set exactly one of Path and URL.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     }
   ]
 }

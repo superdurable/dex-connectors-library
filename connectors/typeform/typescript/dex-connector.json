@@ -11,6 +11,8 @@
       "name": "newListFormsStep",
       "kind": "query",
       "operationId": "listForms",
+      "inputType": "ListFormsInput",
+      "description": "List one page, 1 to 200 forms, of the account's forms, optionally filtered by a search string or workspace.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListFormsInput selects one page of the account's forms.",
+        "properties": {
+          "page": {
+            "description": "Page is the 1-based page number; zero reads the first page.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 200 forms per page; zero uses Typeform's default of 10.",
+            "type": "integer"
+          },
+          "search": {
+            "description": "Search returns only forms whose title contains this text; blank lists every form.",
+            "type": "string"
+          },
+          "workspaceId": {
+            "description": "WorkspaceID lists only the forms of one workspace, such as the ID in https://admin.typeform.com/accounts/<account>/workspaces/<workspaceId>; blank lists every workspace.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetFormStep",
       "kind": "query",
       "operationId": "getForm",
+      "inputType": "GetFormInput",
+      "description": "Read one form's fields, with each field's ref, type, title, and choices, and its hidden field names.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +103,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFormInput names the form to read.",
+        "properties": {
+          "formId": {
+            "description": "FormID is the form ID, such as the formPicker unit's formId or u6nXL7 from https://form.typeform.com/to/u6nXL7.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListResponsesStep",
       "kind": "query",
       "operationId": "listResponses",
+      "inputType": "ListResponsesInput",
+      "description": "List one bounded page, 1 to 1000, of a form's completed responses, newest first, filtered by since and until and paged with the before or after response token.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +157,50 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListResponsesInput selects one page of a form's completed responses, newest submission first.",
+        "properties": {
+          "after": {
+            "description": "After keeps responses submitted after the response with this token, such as the newest token a Flow already processed; blank has no lower cursor. Set Before or After, not both.",
+            "type": "string"
+          },
+          "before": {
+            "description": "Before keeps responses submitted before the response with this token, such as an earlier page's NextBeforeToken; blank starts at the newest response.",
+            "type": "string"
+          },
+          "formId": {
+            "description": "FormID is the form ID, such as the formPicker unit's formId.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 1000 responses; zero uses Typeform's default of 25.",
+            "type": "integer"
+          },
+          "since": {
+            "description": "Since keeps responses submitted at or after this time, to the second; zero has no lower bound.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "until": {
+            "description": "Until keeps responses submitted at or before this time, to the second; zero has no upper bound.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpsertWebhookStep",
       "kind": "mutation",
       "operationId": "upsertWebhook",
+      "inputType": "UpsertWebhookInput",
+      "description": "Create or replace a form's webhook with the given tag, URL, and enabled state, signed with the connection's webhook_secret. The PUT is idempotent by tag, so a repeated call leaves one webhook.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,7 +233,35 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpsertWebhookInput creates or replaces the webhook a form has under Tag.",
+        "properties": {
+          "disabled": {
+            "description": "IsDisabled stores the webhook without delivering to it; false enables delivery.",
+            "type": "boolean"
+          },
+          "formId": {
+            "description": "FormID is the form ID, such as the formPicker unit's formId.",
+            "type": "string"
+          },
+          "tag": {
+            "description": "Tag names the webhook within the form, such as dex-response-recorder; the same tag always updates the same webhook.",
+            "type": "string"
+          },
+          "url": {
+            "description": "URL is the public HTTPS URL where the application mounts the responseSubmitted endpoint, such as https://example.com/webhooks/typeform. Typeform rejects new http URLs.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId",
+          "tag",
+          "url"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

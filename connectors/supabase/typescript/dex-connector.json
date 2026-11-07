@@ -11,6 +11,8 @@
       "name": "newSelectRowsStep",
       "kind": "query",
       "operationId": "selectRows",
+      "inputType": "SelectRowsInput",
+      "description": "Select a bounded page of table rows through PostgREST.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,40 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SelectRowsInput reads a bounded PostgREST table page.",
+        "properties": {
+          "columns": {
+            "description": "Columns is a comma-separated PostgREST select expression; blank selects all columns.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit caps rows, from 1 through 1000; zero selects 100.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset skips this many rows.",
+            "type": "integer"
+          },
+          "table": {
+            "description": "Table is an exposed table name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpsertRowsStep",
       "kind": "mutation",
       "operationId": "upsertRows",
+      "inputType": "UpsertRowsInput",
+      "description": "Upsert rows with a declared unique conflict key and merge duplicates.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -71,7 +101,41 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpsertRowsInput replaces rows on a database-enforced unique conflict key.",
+        "properties": {
+          "onConflict": {
+            "description": "OnConflict is a comma-separated list of unique columns; the database must enforce uniqueness.",
+            "type": "string"
+          },
+          "rows": {
+            "description": "Rows contain complete replacement values for all fields the caller owns.",
+            "items": {
+              "additionalProperties": {},
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "table": {
+            "description": "Table is an exposed table name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "onConflict",
+          "rows",
+          "table"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

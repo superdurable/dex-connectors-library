@@ -11,6 +11,8 @@
       "name": "newListEventsStep",
       "kind": "query",
       "operationId": "listEvents",
+      "inputType": "ListEventsInput",
+      "description": "List one page of a calendar view, the events and expanded recurring occurrences that overlap a bounded window, with every time returned at an explicit offset.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,49 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEventsInput selects one page of a calendar view: the occurrences, exceptions, and single instances of events that overlap a bounded window, with recurring series expanded.",
+        "properties": {
+          "calendarId": {
+            "description": "CalendarID is a calendar ID from the calendar picker; blank lists the mailbox's default calendar.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the maximum events in the page, from 1 to 250; zero requests 50. Graph may return fewer events, even none, before the last page.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page. Keep every other field unchanged when paging.",
+            "type": "string"
+          },
+          "timeMax": {
+            "description": "TimeMax is the required window end as RFC 3339 with an explicit offset. The window is at most 366 days.",
+            "type": "string"
+          },
+          "timeMin": {
+            "description": "TimeMin is the required window start as RFC 3339 with an explicit offset.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is an optional IANA zone for the offsets of returned times; blank uses UTC.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timeMax",
+          "timeMin"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetEventStep",
       "kind": "query",
       "operationId": "getEvent",
+      "inputType": "GetEventInput",
+      "description": "Read one event by its Graph event ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +120,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEventInput identifies one event to read. Graph event IDs are unique within a mailbox, so no calendar ID is needed.",
+        "properties": {
+          "eventId": {
+            "description": "EventID is the Graph event ID, including an expanded occurrence ID.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is an optional IANA zone for the offsets of returned times; blank uses UTC.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateEventStep",
       "kind": "mutation",
       "operationId": "createEvent",
+      "inputType": "CreateEventInput",
+      "description": "Create one timed or all-day event under the Step's idempotency key, sent as Graph's transactionId and stamped as an extended property for retry lookup.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +173,108 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "EventAttendeeInput": {
+            "additionalProperties": false,
+            "description": "EventAttendeeInput is one attendee supplied to createEvent or updateEvent.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare SMTP address such as person@example.com, without a display name.",
+                "type": "string"
+              },
+              "isOptional": {
+                "description": "IsOptional makes the attendee optional instead of required.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "type": "object"
+          },
+          "EventDateTime": {
+            "additionalProperties": false,
+            "description": "EventDateTime is one event boundary: an absolute instant plus the IANA time zone it is shown in. DateTime is RFC 3339 with an explicit Z or ±hh:mm offset, such as 2026-02-24T09:00:00-08:00, and TimeZone is an IANA name such as America/Los_Angeles. The offset fixes the instant; TimeZone is the zone the event is written in, so Outlook keeps the organizer's zone. A value without an offset, such as 2026-02-24T09:00:00, or without TimeZone, is rejected rather than guessed. Microsoft Graph itself stores a wall time without an offset plus a zone name. The connector writes the wall time of the instant in TimeZone, or the UTC wall time when a daylight-saving change makes that wall time ambiguous, so the instant never moves. It reads every time back in UTC and returns it with an offset in the requested zone.",
+            "properties": {
+              "dateTime": {
+                "description": "DateTime is the RFC 3339 instant with an explicit offset.",
+                "type": "string"
+              },
+              "timeZone": {
+                "description": "TimeZone is the IANA time zone of the boundary, such as America/Los_Angeles.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "dateTime",
+              "timeZone"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateEventInput describes one event to create. Every attempt of one Step execution uses the same idempotency key: TransactionID when set, otherwise the Step's Call ID. The key is sent as Graph's transactionId and stamped on the event as a connector-owned extended property, so a retried Step finds and returns its own event.",
+        "properties": {
+          "attendees": {
+            "description": "Attendees lists unique bare attendee addresses. Graph sends every attendee an invitation when the event is created, and that cannot be turned off; empty creates an event without attendees.",
+            "items": {
+              "$ref": "#/$defs/EventAttendeeInput"
+            },
+            "type": "array"
+          },
+          "body": {
+            "description": "Body is the optional plain-text event body.",
+            "type": "string"
+          },
+          "calendarId": {
+            "description": "CalendarID is a writable calendar ID from the calendar picker; blank uses the mailbox's default calendar.",
+            "type": "string"
+          },
+          "end": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "End is the exclusive end; see EventDateTime and ValidateEventTimes."
+          },
+          "isAllDay": {
+            "description": "IsAllDay creates an all-day event; Start and End must then be midnights in one zone.",
+            "type": "boolean"
+          },
+          "location": {
+            "description": "Location is the optional location display name.",
+            "type": "string"
+          },
+          "requestOnlineMeeting": {
+            "description": "RequestOnlineMeeting asks Graph to attach a Microsoft Teams meeting to the event.",
+            "type": "boolean"
+          },
+          "start": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "Start is the inclusive start; see EventDateTime and ValidateEventTimes."
+          },
+          "subject": {
+            "description": "Subject is the required event title.",
+            "type": "string"
+          },
+          "transactionId": {
+            "description": "TransactionID optionally fixes the idempotency key for business-level deduplication across Step executions: 1 to 64 letters, digits, dots, hyphens, or underscores. Blank uses the Call ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "end",
+          "start",
+          "subject"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateEventStep",
       "kind": "mutation",
       "operationId": "updateEvent",
+      "inputType": "UpdateEventInput",
+      "description": "Patch the subject, body, location, start and end, or attendees of one existing event after reading it, skipping a change it already holds and sending If-Match with its ETag.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,12 +307,105 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "EventAttendeeInput": {
+            "additionalProperties": false,
+            "description": "EventAttendeeInput is one attendee supplied to createEvent or updateEvent.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare SMTP address such as person@example.com, without a display name.",
+                "type": "string"
+              },
+              "isOptional": {
+                "description": "IsOptional makes the attendee optional instead of required.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "type": "object"
+          },
+          "EventDateTime": {
+            "additionalProperties": false,
+            "description": "EventDateTime is one event boundary: an absolute instant plus the IANA time zone it is shown in. DateTime is RFC 3339 with an explicit Z or ±hh:mm offset, such as 2026-02-24T09:00:00-08:00, and TimeZone is an IANA name such as America/Los_Angeles. The offset fixes the instant; TimeZone is the zone the event is written in, so Outlook keeps the organizer's zone. A value without an offset, such as 2026-02-24T09:00:00, or without TimeZone, is rejected rather than guessed. Microsoft Graph itself stores a wall time without an offset plus a zone name. The connector writes the wall time of the instant in TimeZone, or the UTC wall time when a daylight-saving change makes that wall time ambiguous, so the instant never moves. It reads every time back in UTC and returns it with an offset in the requested zone.",
+            "properties": {
+              "dateTime": {
+                "description": "DateTime is the RFC 3339 instant with an explicit offset.",
+                "type": "string"
+              },
+              "timeZone": {
+                "description": "TimeZone is the IANA time zone of the boundary, such as America/Los_Angeles.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "dateTime",
+              "timeZone"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdateEventInput patches named fields of one existing event. A nil field is left unchanged. Start and End are set together and follow the same rules as createEvent.",
+        "properties": {
+          "attendees": {
+            "description": "Attendees replaces the complete attendee list when set; an empty list removes every attendee. Graph sends a meeting update only to the attendees that changed.",
+            "items": {
+              "$ref": "#/$defs/EventAttendeeInput"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "body": {
+            "description": "Body replaces the plain-text body when set; an empty string clears it.",
+            "type": "string"
+          },
+          "end": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "End replaces the exclusive end when set, together with Start."
+          },
+          "eventId": {
+            "description": "EventID is the Graph event ID, including an occurrence ID.",
+            "type": "string"
+          },
+          "isAllDay": {
+            "description": "IsAllDay applies only with Start and End: true makes the event all-day, and false, the default, makes it timed. It is sent whenever Start and End are, so no stale form remains.",
+            "type": "boolean"
+          },
+          "location": {
+            "description": "Location replaces the location display name when set; an empty string clears it.",
+            "type": "string"
+          },
+          "start": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "Start replaces the inclusive start when set, together with End."
+          },
+          "subject": {
+            "description": "Subject replaces the title when set; it cannot be blank.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is an optional IANA zone for the offsets of returned times; blank uses Start's zone or UTC.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newQueryFreeBusyStep",
       "kind": "query",
       "operationId": "queryFreeBusy",
+      "inputType": "QueryFreeBusyInput",
+      "description": "Return the free/busy schedule items and availability view of 1 to 20 users, groups, or rooms in a bounded window through Microsoft Graph getSchedule.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -190,7 +438,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryFreeBusyInput asks Microsoft Graph getSchedule for the availability of users, distribution lists, or resources in a bounded window.",
+        "properties": {
+          "availabilityViewInterval": {
+            "description": "AvailabilityViewInterval is the length in minutes of each AvailabilityView slot, from 5 to 1440; zero requests 30.",
+            "type": "integer"
+          },
+          "schedules": {
+            "description": "Schedules lists 1 to 20 unique bare SMTP addresses, such as colleague@contoso.com or a room mailbox.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "timeMax": {
+            "description": "TimeMax is the required window end as RFC 3339 with an explicit offset. The window must be shorter than 62 days.",
+            "type": "string"
+          },
+          "timeMin": {
+            "description": "TimeMin is the required window start as RFC 3339 with an explicit offset.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is an optional IANA zone for the offsets of returned intervals; blank uses UTC.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedules",
+          "timeMax",
+          "timeMin"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

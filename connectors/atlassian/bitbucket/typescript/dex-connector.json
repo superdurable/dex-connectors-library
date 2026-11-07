@@ -11,6 +11,8 @@
       "name": "newListRepositoriesStep",
       "kind": "query",
       "operationId": "listRepositories",
+      "inputType": "ListRepositoriesInput",
+      "description": "List repositories owned by a Bitbucket workspace.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListRepositoriesInput identifies the workspace whose repositories are read.",
+        "properties": {
+          "workspace": {
+            "description": "Workspace is the Bitbucket workspace slug.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListPullRequestsStep",
       "kind": "query",
       "operationId": "listPullRequests",
+      "inputType": "ListPullRequestsInput",
+      "description": "List pull requests for a Bitbucket repository.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,7 +99,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPullRequestsInput identifies a repository within a workspace.",
+        "properties": {
+          "repository": {
+            "description": "Repository is the repository slug within the workspace.",
+            "type": "string"
+          },
+          "workspace": {
+            "description": "Workspace is the Bitbucket workspace slug.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "workspace"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

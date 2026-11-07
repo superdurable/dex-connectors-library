@@ -11,6 +11,8 @@
       "name": "new_search_objects_step",
       "kind": "query",
       "operationId": "searchObjects",
+      "inputType": "SearchObjectsInput",
+      "description": "Search one bounded page of Pipedrive persons, organizations, or deals by a term in chosen fields, optionally as an exact match, returning partial records with IDs and a next cursor.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,87 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchObjectsInput selects one bounded page of partial search results.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the NextCursor of the previous page; empty starts at the first result.",
+            "type": "string"
+          },
+          "exactMatch": {
+            "description": "ExactMatch returns only records whose field equals Term, ignoring case.",
+            "type": "boolean"
+          },
+          "fields": {
+            "description": "Fields limits where Term is searched; empty searches every field the object type supports.",
+            "items": {
+              "enum": [
+                "address",
+                "custom_fields",
+                "email",
+                "name",
+                "notes",
+                "phone",
+                "title"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "description": "Limit is the page size from 1 through 500; zero uses 25.",
+            "type": "integer"
+          },
+          "objectType": {
+            "description": "ObjectType is the object type to search.",
+            "enum": [
+              "deals",
+              "organizations",
+              "persons"
+            ],
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "OrganizationID limits a persons or deals search to one organization.",
+            "type": "string"
+          },
+          "personId": {
+            "description": "PersonID limits a deals search to one person.",
+            "type": "string"
+          },
+          "statuses": {
+            "description": "Statuses limits a deals search to open, won, or lost deals.",
+            "items": {
+              "enum": [
+                "deleted",
+                "lost",
+                "open",
+                "won"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "term": {
+            "description": "Term is the search text, at least 2 characters, or 1 with ExactMatch.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "objectType",
+          "term"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_object_step",
       "kind": "query",
       "operationId": "getObject",
+      "inputType": "GetObjectInput",
+      "description": "Read one Pipedrive person, organization, or deal by ID with every standard and custom field.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +153,38 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetObjectInput identifies one record.",
+        "properties": {
+          "objectId": {
+            "description": "ObjectID is Pipedrive's positive decimal record ID.",
+            "type": "string"
+          },
+          "objectType": {
+            "description": "ObjectType is the record's object type.",
+            "enum": [
+              "deals",
+              "organizations",
+              "persons"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "objectId",
+          "objectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_objects_step",
       "kind": "query",
       "operationId": "listObjects",
+      "inputType": "ListObjectsInput",
+      "description": "List one bounded page of Pipedrive persons, organizations, or deals changed since a time or filtered by owner, person, organization, pipeline, stage, or deal status, with a next cursor.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -109,12 +212,108 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListObjectsInput selects one bounded page of full records. Every filter is optional; filters combine with AND.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the NextCursor of the previous page; empty starts at the first record.",
+            "type": "string"
+          },
+          "customFieldKeys": {
+            "description": "CustomFieldKeys limits returned custom fields to at most 15 keys; empty returns all of them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "description": "Limit is the page size from 1 through 500; zero uses 25.",
+            "type": "integer"
+          },
+          "objectType": {
+            "description": "ObjectType is the object type to list.",
+            "enum": [
+              "deals",
+              "organizations",
+              "persons"
+            ],
+            "type": "string"
+          },
+          "organizationId": {
+            "description": "OrganizationID keeps persons or deals linked to one organization.",
+            "type": "string"
+          },
+          "ownerId": {
+            "description": "OwnerID keeps records owned by one Pipedrive user.",
+            "type": "string"
+          },
+          "personId": {
+            "description": "PersonID keeps deals linked to one person.",
+            "type": "string"
+          },
+          "pipelineId": {
+            "description": "PipelineID keeps deals in one pipeline.",
+            "type": "string"
+          },
+          "sortBy": {
+            "description": "SortBy orders the page; empty uses id, or update_time when UpdatedSince is set.",
+            "enum": [
+              "add_time",
+              "id",
+              "update_time"
+            ],
+            "type": "string"
+          },
+          "sortDirection": {
+            "description": "SortDirection orders ascending or descending; empty is ascending.",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          },
+          "stageId": {
+            "description": "StageID keeps deals in one stage.",
+            "type": "string"
+          },
+          "statuses": {
+            "description": "Statuses keeps deals with one of these statuses; empty lists every deal that is not deleted.",
+            "items": {
+              "enum": [
+                "deleted",
+                "lost",
+                "open",
+                "won"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedSince": {
+            "description": "UpdatedSince keeps records whose update_time is at or after this time; zero sets no lower bound.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedUntil": {
+            "description": "UpdatedUntil keeps records whose update_time is before this time; zero sets no upper bound.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "objectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_upsert_object_step",
       "kind": "mutation",
       "operationId": "upsertObject",
+      "inputType": "UpsertObjectInput",
+      "description": "Create or update one Pipedrive person identified by email, or one organization identified by name. Pipedrive has no idempotency key, so sync durability lets the shared single-dispatch fence persist a claim before a create; a later attempt searches the identity again and updates the record it finds or reports uncertain, and a missing or stale claim fails closed while identity read-back checks for a previously created record.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,12 +351,53 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpsertObjectInput creates or updates one person identified by email, or one organization identified by name. Pipedrive does not enforce either value as unique, so more than one match selects multipleMatches and writes nothing.",
+        "properties": {
+          "customFields": {
+            "additionalProperties": {},
+            "description": "CustomFields maps 40-character custom field keys to JSON values written on create and on update.",
+            "type": "object"
+          },
+          "fields": {
+            "additionalProperties": {},
+            "description": "Fields maps standard field names to JSON values written on create and on update. A person requires name; neither may set the identity field itself, which the connector writes on create.",
+            "type": "object"
+          },
+          "idProperty": {
+            "description": "IDProperty is email for persons or name for organizations.",
+            "type": "string"
+          },
+          "idValue": {
+            "description": "IDValue is the email address or the organization name. Pipedrive's exact search ignores case, and so does the connector's match.",
+            "type": "string"
+          },
+          "objectType": {
+            "description": "ObjectType is persons or organizations; deals have no identity value, so use createObject.",
+            "enum": [
+              "deals",
+              "organizations",
+              "persons"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "idProperty",
+          "idValue",
+          "objectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_object_step",
       "kind": "mutation",
       "operationId": "createObject",
+      "inputType": "CreateObjectInput",
+      "description": "Create one Pipedrive person, organization, or deal. Pipedrive has no idempotency key, so sync durability persists the shared single-dispatch fence claim across retries; a later attempt may resend after a definite refusal or proven unsent request, read back a known ID, or report uncertain.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -185,12 +425,47 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateObjectInput is one new record. Fields use Pipedrive API v2 field names, such as title, person_id, org_id, stage_id, owner_id, and value for a deal, or name, org_id, and emails for a person; each value is exact JSON.",
+        "properties": {
+          "customFields": {
+            "additionalProperties": {},
+            "description": "CustomFields maps custom field keys, the 40-character keys shown in Company settings > Data fields, to JSON values.",
+            "type": "object"
+          },
+          "fields": {
+            "additionalProperties": {},
+            "description": "Fields maps standard field names to JSON values. A deal requires title; a person or organization requires name.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "objectType": {
+            "description": "ObjectType is the type of record to create.",
+            "enum": [
+              "deals",
+              "organizations",
+              "persons"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields",
+          "objectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_object_step",
       "kind": "mutation",
       "operationId": "updateObject",
+      "inputType": "UpdateObjectInput",
+      "description": "Set named standard or custom fields on one Pipedrive person, organization, or deal by ID, such as a deal's stage or owner; a repeated update writes the same values again.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -223,7 +498,41 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateObjectInput sets named fields on one record. Fields that are not named keep their values.",
+        "properties": {
+          "customFields": {
+            "additionalProperties": {},
+            "description": "CustomFields maps 40-character custom field keys to JSON values; JSON null clears a value.",
+            "type": "object"
+          },
+          "fields": {
+            "additionalProperties": {},
+            "description": "Fields maps standard field names, such as stage_id or owner_id, to JSON values; JSON null clears a field that Pipedrive allows to be empty.",
+            "type": "object"
+          },
+          "objectId": {
+            "description": "ObjectID is Pipedrive's positive decimal record ID.",
+            "type": "string"
+          },
+          "objectType": {
+            "description": "ObjectType is the record's object type.",
+            "enum": [
+              "deals",
+              "organizations",
+              "persons"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "objectId",
+          "objectType"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

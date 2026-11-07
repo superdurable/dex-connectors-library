@@ -11,6 +11,8 @@
       "name": "new_get_stats_step",
       "kind": "query",
       "operationId": "getStats",
+      "inputType": "GetStatsInput",
+      "description": "Read daily email request and delivery counts across the account.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetStatsInput selects a global email statistics date range.",
+        "properties": {
+          "endDate": {
+            "description": "EndDate is the final day in YYYY-MM-DD format; blank means today.",
+            "type": "string"
+          },
+          "startDate": {
+            "description": "StartDate is the first day in YYYY-MM-DD format.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startDate"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_templates_step",
       "kind": "query",
       "operationId": "listTemplates",
+      "inputType": "ListTemplatesInput",
+      "description": "List a bounded page of dynamic or legacy transactional email templates.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -71,7 +93,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTemplatesInput chooses a page of transactional templates.",
+        "properties": {
+          "generation": {
+            "description": "Generation is dynamic or legacy; blank selects dynamic.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 200 templates; zero selects 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the token from the preceding page; blank starts at page one.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     }
   ]
 }

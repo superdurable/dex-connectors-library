@@ -11,6 +11,8 @@
       "name": "newGetOrderStep",
       "kind": "query",
       "operationId": "getOrder",
+      "inputType": "GetOrderInput",
+      "description": "Read one Shopify order.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetOrderInput identifies one Shopify order.",
+        "properties": {
+          "orderId": {
+            "description": "OrderID is the numeric Shopify order ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "orderId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListOrdersStep",
       "kind": "query",
       "operationId": "listOrders",
+      "inputType": "ListOrdersInput",
+      "description": "List one page of Shopify orders across all order statuses, subject to Shopify's order history access.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,7 +99,18 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListOrdersInput selects one bounded page of Shopify orders.",
+        "properties": {
+          "limit": {
+            "description": "Limit bounds one page from 1 through 250; zero uses Shopify default.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     }
   ]
 }

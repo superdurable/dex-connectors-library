@@ -11,6 +11,8 @@
       "name": "newSearchIssuesStep",
       "kind": "query",
       "operationId": "searchIssues",
+      "inputType": "SearchIssuesInput",
+      "description": "Search one bounded page of issues with a typed, connector-escaped filter or a caller-built bounded JQL query, continuing with the enhanced search nextPageToken.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,117 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "IssueSearchFilter": {
+            "additionalProperties": false,
+            "description": "IssueSearchFilter is a typed search that the connector turns into escaped JQL, so no caller text can change the query's structure. Every set field adds one clause, and clauses are joined with AND. At least one clause is required because Jira accepts only bounded queries.",
+            "properties": {
+              "assigneeAccountIds": {
+                "description": "AssigneeAccountIDs limits the search to issues assigned to these Atlassian account IDs.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "includesUnassigned": {
+                "description": "IncludesUnassigned also matches unassigned issues; alone it matches only unassigned issues.",
+                "type": "boolean"
+              },
+              "issueTypeNames": {
+                "description": "IssueTypeNames limits the search to these issue type names, such as Task or Bug.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "labels": {
+                "description": "Labels matches issues that carry at least one of these labels.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "order": {
+                "description": "Order selects the result order; blank uses IssueSearchOrderCreatedDescending.",
+                "enum": [
+                  "createdAscending",
+                  "createdDescending",
+                  "updatedDescending"
+                ],
+                "type": "string"
+              },
+              "projectKeys": {
+                "description": "ProjectKeys limits the search to these project keys, such as OPS.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "statusCategories": {
+                "description": "StatusCategories limits the search to these status categories: new, indeterminate, or done.",
+                "items": {
+                  "enum": [
+                    "done",
+                    "indeterminate",
+                    "new"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "statusNames": {
+                "description": "StatusNames limits the search to these workflow status names, such as In Review.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "summaryPhrase": {
+                "description": "SummaryPhrase matches issues whose summary contains this phrase as Jira's text search tokenizes it. Text search ignores case and punctuation, so compare the returned summaries for an exact match.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "SearchIssuesInput selects one page of issues. Set exactly one of Filter and JQL.",
+        "properties": {
+          "additionalFields": {
+            "description": "AdditionalFields lists up to 20 more field IDs to return raw, such as customfield_10020 or duedate.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "filter": {
+            "$ref": "#/$defs/IssueSearchFilter",
+            "description": "Filter is a typed search the connector escapes into bounded JQL. Prefer it to JQL."
+          },
+          "jql": {
+            "description": "JQL is a caller-built bounded query, such as project = \"OPS\" ORDER BY created DESC. Quote every value that came from outside the application with QuoteJQLString.",
+            "type": "string"
+          },
+          "nextPageToken": {
+            "description": "NextPageToken continues a previous search with the same query; blank reads the first page. Jira expires a token after seven days.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of issues to request, 1 to 100; zero requests 50. Jira may return fewer.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetIssueStep",
       "kind": "query",
       "operationId": "getIssue",
+      "inputType": "GetIssueInput",
+      "description": "Read one issue by key or ID with its standard fields, plain-text description, and any requested additional fields.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +183,35 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetIssueInput identifies one issue.",
+        "properties": {
+          "additionalFields": {
+            "description": "AdditionalFields lists up to 20 more field IDs to return raw, such as customfield_10020 or duedate.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "issueIdOrKey": {
+            "description": "IssueIDOrKey is an issue key such as OPS-441 or a numeric issue ID. Jira also finds a moved issue by its old key and returns its current key.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateIssueStep",
       "kind": "mutation",
       "operationId": "createIssue",
+      "inputType": "CreateIssueInput",
+      "description": "Create one issue in a project with a summary, a plain-text description converted to Atlassian Document Format, labels, and an optional assignee. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted issue.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +239,59 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateIssueInput describes one issue. Set exactly one of ProjectKey and ProjectID, and exactly one of IssueTypeName and IssueTypeID.",
+        "properties": {
+          "assigneeAccountId": {
+            "description": "AssigneeAccountID assigns the issue to this Atlassian account ID; blank leaves the project default.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description is plain text of at most 32767 characters. Blank lines separate paragraphs and other line breaks are kept; the text is never read as markup. Blank sends no description.",
+            "type": "string"
+          },
+          "issueTypeId": {
+            "description": "IssueTypeID is the numeric issue type ID.",
+            "type": "string"
+          },
+          "issueTypeName": {
+            "description": "IssueTypeName is an issue type available in the project, such as Task or Bug.",
+            "type": "string"
+          },
+          "labels": {
+            "description": "Labels lists labels without whitespace, such as incident or customer-reported.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "projectId": {
+            "description": "ProjectID is the numeric project ID, as the project picker stores it.",
+            "type": "string"
+          },
+          "projectKey": {
+            "description": "ProjectKey is the project key, such as OPS.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Summary is the one-line title, at most 255 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newTransitionIssueStep",
       "kind": "mutation",
       "operationId": "transitionIssue",
+      "inputType": "TransitionIssueInput",
+      "description": "Move one issue through its workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the issue has already made.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,12 +329,44 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "TransitionIssueInput selects one workflow transition. Set at least one of TransitionID, TransitionName, and DestinationStatusName; every one that is set must match the same available transition.",
+        "properties": {
+          "destinationStatusName": {
+            "description": "DestinationStatusName is the status the transition leads to, such as In Progress, compared without case. When the issue is already in it, no transition is performed. Set it whenever the destination is known: a retried Step then recognizes a transition Jira already made.",
+            "type": "string"
+          },
+          "issueIdOrKey": {
+            "description": "IssueIDOrKey is an issue key such as OPS-441 or a numeric issue ID.",
+            "type": "string"
+          },
+          "resolutionName": {
+            "description": "ResolutionName sets the resolution, such as Done, for a transition whose screen requires one; blank sends no fields. Jira rejects it for a transition without a resolution field.",
+            "type": "string"
+          },
+          "transitionId": {
+            "description": "TransitionID is the workflow transition ID, such as 31.",
+            "type": "string"
+          },
+          "transitionName": {
+            "description": "TransitionName is the transition's name as Jira shows it on the issue, such as Start Progress, compared without case.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddCommentStep",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one plain-text comment, converted to Atlassian Document Format, to an issue. A synchronous single-dispatch fence prevents a lost Step result from resending a possibly accepted comment.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -190,7 +399,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput describes one comment on one issue.",
+        "properties": {
+          "body": {
+            "description": "Body is plain text of at most 32767 characters. Blank lines separate paragraphs and other line breaks are kept; the text is never read as markup.",
+            "type": "string"
+          },
+          "issueIdOrKey": {
+            "description": "IssueIDOrKey is an issue key such as OPS-441 or a numeric issue ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "issueIdOrKey"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -253,6 +253,10 @@ spec:
       kind: mutation
       description: Refund part or all of one PaymentIntent in minor currency units; keep any overridden retry window at most 23 hours, below the 24 hours that Stripe keeps idempotency keys.
       idempotency: required
+      agent:
+        exposed: true
+        approval: recommended
+        description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}
         - {id: providerRejected, goName: ProviderRejected, description: Stripe conclusively rejected the refund with a 4xx error such as charge_already_refunded or an amount that is too large., optional: true}

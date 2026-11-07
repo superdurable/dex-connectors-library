@@ -11,6 +11,8 @@
       "name": "newGetGlobalQuoteStep",
       "kind": "query",
       "operationId": "getGlobalQuote",
+      "inputType": "StockInput",
+      "description": "Read the latest available price and trading day for one stock symbol.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "StockInput selects one equity symbol such as IBM.",
+        "properties": {
+          "symbol": {
+            "description": "Symbol is the provider equity ticker; dots and hyphens support global symbols.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetTimeSeriesDailyStep",
       "kind": "query",
       "operationId": "getTimeSeriesDaily",
+      "inputType": "StockInput",
+      "description": "Read daily open, high, low, close, and volume values for one stock symbol.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,7 +99,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "StockInput selects one equity symbol such as IBM.",
+        "properties": {
+          "symbol": {
+            "description": "Symbol is the provider equity ticker; dots and hyphens support global symbols.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

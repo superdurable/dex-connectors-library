@@ -11,6 +11,8 @@
       "name": "new_get_user_step",
       "kind": "query",
       "operationId": "getUser",
+      "inputType": "GetUserInput",
+      "description": "Read one user account by object ID or user principal name.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserInput identifies one account to read.",
+        "properties": {
+          "userKey": {
+            "description": "UserKey is the account's object ID or its user principal name, such as ada.lovelace@contoso.com.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_users_step",
       "kind": "query",
       "operationId": "listUsers",
+      "inputType": "ListUsersInput",
+      "description": "List one bounded page of accounts in the tenant, optionally filtered with an OData filter or a search expression.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +94,41 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListUsersInput selects one page of accounts in the tenant. Leave every field blank to list all accounts in Microsoft Graph's default order.",
+        "properties": {
+          "filter": {
+            "description": "Filter is an OData $filter expression, such as accountEnabled eq false or startsWith(userPrincipalName,'ada'). Operators Microsoft documents as advanced, such as endsWith and ne, also need UsesAdvancedQuery.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 999 accounts; zero uses the connection's listUsersPageSize.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page. It carries the original query, so Filter, Search, and PageSize must be blank when it is set; keep UsesAdvancedQuery as it was.",
+            "type": "string"
+          },
+          "search": {
+            "description": "Search is a $search expression including its double quotes, such as \"displayName:Ada\"; it always uses Microsoft's eventually consistent index, so a just-created account may be missing.",
+            "type": "string"
+          },
+          "usesAdvancedQuery": {
+            "description": "UsesAdvancedQuery sends ConsistencyLevel: eventual with $count=true, which Microsoft requires for advanced filters; results then come from an index that can lag recent changes.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_create_user_step",
       "kind": "mutation",
       "operationId": "createUser",
+      "inputType": "CreateUserInput",
+      "description": "Create one enabled account with a generated password nobody receives that must be changed at the next sign-in, tagged with a stable key, so a repeated Step returns the account it created instead of a duplicate.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -114,12 +161,60 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateUserInput describes one enabled account to create. The connector generates the initial password itself: no password is accepted, returned, stored, or logged.",
+        "properties": {
+          "department": {
+            "description": "Department is the optional department, at most 64 characters.",
+            "type": "string"
+          },
+          "displayName": {
+            "description": "DisplayName is the address-book name, at most 256 characters; blank joins GivenName and Surname.",
+            "type": "string"
+          },
+          "givenName": {
+            "description": "GivenName is the optional first name, at most 64 characters.",
+            "type": "string"
+          },
+          "jobTitle": {
+            "description": "JobTitle is the optional job title, at most 128 characters.",
+            "type": "string"
+          },
+          "mailNickname": {
+            "description": "MailNickname is the mail alias, at most 64 characters; blank uses the part of UserPrincipalName before the @.",
+            "type": "string"
+          },
+          "provisioningKey": {
+            "description": "ProvisioningKey optionally identifies one logical account across Step executions, such as an HR hire ID. It is 1 to 128 letters, digits, and . _ : - characters; blank uses the Step's Call ID.",
+            "type": "string"
+          },
+          "surname": {
+            "description": "Surname is the optional family name, at most 64 characters.",
+            "type": "string"
+          },
+          "usageLocation": {
+            "description": "UsageLocation is an optional two-letter ISO 3166 country code, such as US, which Microsoft requires before a license can be assigned.",
+            "type": "string"
+          },
+          "userPrincipalName": {
+            "description": "UserPrincipalName is the new sign-in name in one of the tenant's verified managed domains, such as ada.lovelace@contoso.com: at most 64 letters, digits, and ' . - _ ! # ^ ~ before the @, at most 113 characters in all.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userPrincipalName"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_disable_user_step",
       "kind": "mutation",
       "operationId": "disableUser",
+      "inputType": "DisableUserInput",
+      "description": "Block sign-in for one account by setting accountEnabled to false, keeping its data; disabling a disabled account changes nothing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,12 +247,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DisableUserInput identifies one account whose sign-in to block.",
+        "properties": {
+          "userKey": {
+            "description": "UserKey is the account's object ID or its user principal name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_enable_user_step",
       "kind": "mutation",
       "operationId": "enableUser",
+      "inputType": "EnableUserInput",
+      "description": "Restore sign-in for one account by setting accountEnabled to true; enabling an enabled account changes nothing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -190,12 +301,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "EnableUserInput identifies one account whose sign-in to restore.",
+        "properties": {
+          "userKey": {
+            "description": "UserKey is the account's object ID or its user principal name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_revoke_sign_in_sessions_step",
       "kind": "mutation",
       "operationId": "revokeSignInSessions",
+      "inputType": "RevokeSignInSessionsInput",
+      "description": "Invalidate every refresh token and browser session cookie issued to one account so it must sign in again everywhere; repeating it only moves the cutoff time forward.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -228,12 +355,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RevokeSignInSessionsInput identifies one account whose sign-in sessions to revoke.",
+        "properties": {
+          "userKey": {
+            "description": "UserKey is the account's object ID or its user principal name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_user_to_group_step",
       "kind": "mutation",
       "operationId": "addUserToGroup",
+      "inputType": "AddUserToGroupInput",
+      "description": "Add one account as a direct member of a security or Microsoft 365 group; an existing membership is confirmed and reported instead of failing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -266,12 +409,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddUserToGroupInput adds one account to one group.",
+        "properties": {
+          "groupId": {
+            "description": "GroupID is the group's object ID, a GUID shown at https://entra.microsoft.com > Entra ID > Groups > the group > Overview.",
+            "type": "string"
+          },
+          "userId": {
+            "description": "UserID is the account's object ID, such as the ID createUser or getUser returned.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupId",
+          "userId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_remove_user_from_group_step",
       "kind": "mutation",
       "operationId": "removeUserFromGroup",
+      "inputType": "RemoveUserFromGroupInput",
+      "description": "Remove one account's direct membership from a group; a membership that is already gone is reported as removed.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -304,7 +468,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RemoveUserFromGroupInput removes one account's direct membership from one group.",
+        "properties": {
+          "groupId": {
+            "description": "GroupID is the group's object ID, a GUID.",
+            "type": "string"
+          },
+          "userId": {
+            "description": "UserID is the account's object ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupId",
+          "userId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

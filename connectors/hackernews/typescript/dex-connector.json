@@ -11,6 +11,8 @@
       "name": "newListStoryIDsStep",
       "kind": "query",
       "operationId": "listStoryIDs",
+      "inputType": "ListStoryIDsInput",
+      "description": "Read a bounded snapshot of the top, best, new, Ask HN, or Show HN feed in provider order.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListStoryIDsInput selects one feed snapshot. It does not select a historical time window.",
+        "properties": {
+          "feed": {
+            "description": "Feed is top, best, new, ask, or show. Empty selects top.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit bounds returned IDs from 1 through 500. Zero selects 50.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "feed",
+          "limit"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetItemStep",
       "kind": "query",
       "operationId": "getItem",
+      "inputType": "GetItemInput",
+      "description": "Read one public story or comment, its child IDs, and its direct Hacker News link.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +99,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetItemInput identifies one story, comment, job, poll, or poll option.",
+        "properties": {
+          "id": {
+            "description": "ID is a positive Hacker News item ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

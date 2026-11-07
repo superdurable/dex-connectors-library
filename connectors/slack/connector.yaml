@@ -304,6 +304,9 @@ spec:
       description: Post one reply to an existing Slack channel thread. Synchronous durability preserves the shared single-dispatch fence after retry or Worker loss.
       idempotency: required
       branches: *postBranches
+      agent:
+        exposed: true
+        description: Post one reply to an existing Slack channel thread.
       execution:
         executeMethodTimeout: 30s
         durability: sync

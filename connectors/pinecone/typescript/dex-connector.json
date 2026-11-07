@@ -11,6 +11,8 @@
       "name": "newUpsertVectorsStep",
       "kind": "mutation",
       "operationId": "upsertVectors",
+      "inputType": "UpsertVectorsInput",
+      "description": "Upsert vector IDs by absolute replacement in one namespace.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,72 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "Vector": {
+            "additionalProperties": false,
+            "description": "Vector is one dense Pinecone vector, replaced by ID during upsert.",
+            "properties": {
+              "id": {
+                "description": "ID is the stable vector identity.",
+                "type": "string"
+              },
+              "metadata": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Metadata contains optional string-valued filterable attributes.",
+                "type": "object"
+              },
+              "values": {
+                "description": "Values contains the dense vector coordinates.",
+                "items": {
+                  "type": "number"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "values"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpsertVectorsInput writes one bounded vector batch.",
+        "properties": {
+          "namespace": {
+            "description": "Namespace selects the index namespace; blank uses Pinecone's default.",
+            "type": "string"
+          },
+          "vectors": {
+            "description": "Vectors are replaced by ID; each ID must be stable across retries.",
+            "items": {
+              "$ref": "#/$defs/Vector"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "vectors"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newQueryVectorsStep",
       "kind": "query",
       "operationId": "queryVectors",
+      "inputType": "QueryVectorsInput",
+      "description": "Find nearest vectors in one namespace.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -71,7 +133,40 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryVectorsInput searches by one dense vector.",
+        "properties": {
+          "includeMetadata": {
+            "description": "IncludeMetadata requests stored metadata in matches.",
+            "type": "boolean"
+          },
+          "namespace": {
+            "description": "Namespace selects the index namespace.",
+            "type": "string"
+          },
+          "topK": {
+            "description": "TopK is the result limit from 1 through 10000.",
+            "type": "integer"
+          },
+          "vector": {
+            "description": "Vector is the dense query vector.",
+            "items": {
+              "type": "number"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "topK",
+          "vector"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

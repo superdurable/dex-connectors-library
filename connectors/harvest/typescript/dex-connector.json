@@ -11,6 +11,8 @@
       "name": "newListProjectsStep",
       "kind": "query",
       "operationId": "listProjects",
+      "inputType": "ListProjectsInput",
+      "description": "Read Harvest data from the documented listProjects endpoint.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProjectsInput selects a Harvest project page; Cursor comes from the prior result.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque token from the prior page; blank selects the first.",
+            "type": "string"
+          },
+          "perPage": {
+            "description": "PerPage caps records in one page; zero uses 100.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newListTimeEntriesStep",
       "kind": "query",
       "operationId": "listTimeEntries",
+      "inputType": "ListTimeEntriesInput",
+      "description": "Read Harvest data from the documented listTimeEntries endpoint.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -71,7 +90,22 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTimeEntriesInput selects a Harvest time-entry page; Cursor comes from the prior result.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque token from the prior page; blank selects the first.",
+            "type": "string"
+          },
+          "perPage": {
+            "description": "PerPage caps records in one page; zero uses 100.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     }
   ]
 }

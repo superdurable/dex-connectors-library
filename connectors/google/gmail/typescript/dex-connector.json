@@ -11,6 +11,8 @@
       "name": "newGetMessageStep",
       "kind": "query",
       "operationId": "getMessage",
+      "inputType": "GetMessageInput",
+      "description": "Read one Gmail message with decoded text and HTML bodies.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetMessageInput identifies one Gmail message.",
+        "properties": {
+          "messageId": {
+            "description": "MessageID is the provider message identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSendMessageStep",
       "kind": "mutation",
       "operationId": "sendMessage",
+      "inputType": "SendMessageInput",
+      "description": "Send one MIME message from the authorized primary account.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -71,12 +89,48 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendMessageInput contains the provider request fields for send message.",
+        "properties": {
+          "htmlBody": {
+            "description": "HTMLBody is the optional HTML message body.",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Subject is the message subject.",
+            "type": "string"
+          },
+          "textBody": {
+            "description": "TextBody is the plain-text message body.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To lists recipient addresses.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "subject",
+          "textBody",
+          "to"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newReplyToMessageStep",
       "kind": "mutation",
       "operationId": "replyToMessage",
+      "inputType": "ReplyToMessageInput",
+      "description": "Reply to one Gmail message in its existing thread.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -104,7 +158,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReplyToMessageInput identifies a message and supplies the reply body.",
+        "properties": {
+          "htmlBody": {
+            "description": "HTMLBody is the optional HTML message body.",
+            "type": "string"
+          },
+          "messageId": {
+            "description": "MessageID is the provider message identifier.",
+            "type": "string"
+          },
+          "textBody": {
+            "description": "TextBody is the plain-text message body.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageId",
+          "textBody"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

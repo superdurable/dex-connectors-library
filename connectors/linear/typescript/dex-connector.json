@@ -11,6 +11,8 @@
       "name": "newSearchIssuesStep",
       "kind": "query",
       "operationId": "searchIssues",
+      "inputType": "SearchIssuesInput",
+      "description": "List one bounded page of issue summaries that match a typed filter, such as a team, workflow state types, an assignee email, labels, a title, or changes after a time, continuing with Linear's pagination cursor.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,142 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "IssueSearchFilter": {
+            "additionalProperties": false,
+            "description": "IssueSearchFilter selects issues; every set field must match, and an empty filter matches every issue the connection can see. Lists match any of their values.",
+            "properties": {
+              "assigneeEmail": {
+                "description": "AssigneeEmail keeps issues assigned to the user with this email, compared without case.",
+                "type": "string"
+              },
+              "assigneeId": {
+                "description": "AssigneeID keeps issues assigned to this user UUID.",
+                "type": "string"
+              },
+              "createdAfter": {
+                "description": "CreatedAfter keeps issues created strictly after this time.",
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "labelIds": {
+                "description": "LabelIDs keeps issues that carry at least one of these labels.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "labelNames": {
+                "description": "LabelNames keeps issues that carry a label with one of these exact names, such as Bug.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "projectId": {
+                "description": "ProjectID keeps issues of this project UUID.",
+                "type": "string"
+              },
+              "stateIds": {
+                "description": "StateIDs keeps issues in one of these workflow states.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "stateTypes": {
+                "description": "StateTypes keeps issues whose workflow state has one of these types, such as started.",
+                "items": {
+                  "enum": [
+                    "backlog",
+                    "canceled",
+                    "completed",
+                    "duplicate",
+                    "started",
+                    "triage",
+                    "unstarted"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "teamId": {
+                "description": "TeamID limits the search to one team's UUID, such as the teamPicker unit's teamId.",
+                "type": "string"
+              },
+              "teamKey": {
+                "description": "TeamKey limits the search to the team with this key, such as ENG; set at most one of TeamID and TeamKey.",
+                "type": "string"
+              },
+              "title": {
+                "description": "Title keeps issues whose title is exactly this text.",
+                "type": "string"
+              },
+              "titleContains": {
+                "description": "TitleContains keeps issues whose title contains this text, compared without case.",
+                "type": "string"
+              },
+              "unassigned": {
+                "description": "IsUnassigned keeps only unassigned issues; it excludes AssigneeID and AssigneeEmail.",
+                "type": "boolean"
+              },
+              "updatedAfter": {
+                "description": "UpdatedAfter keeps issues changed strictly after this time; it is the changed-since watermark.",
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "SearchIssuesInput requests one page. A later page repeats the same Filter, Order, and IncludesArchived with the previous page's NextCursor.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor continues after a previous page's NextCursor; blank reads the first page.",
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/$defs/IssueSearchFilter",
+            "description": "Filter selects the issues."
+          },
+          "includesArchived": {
+            "description": "IncludesArchived also returns archived issues.",
+            "type": "boolean"
+          },
+          "order": {
+            "description": "Order is createdAt or updatedAt; blank uses createdAt.",
+            "enum": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to MaxSearchPageSize; zero requests DefaultSearchPageSize.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filter"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetIssueStep",
       "kind": "query",
       "operationId": "getIssue",
+      "inputType": "GetIssueInput",
+      "description": "Read one issue by UUID or identifier, such as ENG-123, with its description, workflow state, team, assignee, labels, project, cycle, and timestamps.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +208,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetIssueInput names the issue to read.",
+        "properties": {
+          "issueId": {
+            "description": "IssueID is the issue's UUID or its identifier, such as ENG-123. An identifier finds the issue only under its current team key; after a move to another team, use the UUID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateIssueStep",
       "kind": "mutation",
       "operationId": "createIssue",
+      "inputType": "CreateIssueInput",
+      "description": "Create one issue in a team with a title, Markdown description, workflow state, assignee, labels, priority, and due date; every attempt of the Step sends the same client-supplied issue UUID, so a repeated dispatch finds the first issue instead of creating another.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -104,12 +252,68 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateIssueInput describes one new issue.",
+        "properties": {
+          "assigneeId": {
+            "description": "AssigneeID is the assignee's user UUID from findUserByEmail; blank leaves the issue unassigned.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description is optional Markdown of at most MaxMarkdownCharacters characters.",
+            "type": "string"
+          },
+          "dueDate": {
+            "description": "DueDate is an optional YYYY-MM-DD date.",
+            "type": "string"
+          },
+          "labelIds": {
+            "description": "LabelIDs are up to MaxLabelIDs label UUIDs of the team or workspace.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "parentId": {
+            "description": "ParentID makes the issue a sub-issue of this issue UUID or identifier, such as ENG-123.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority is 0 (none), 1 (urgent), 2 (high), 3 (medium), or 4 (low); nil leaves Linear's default.",
+            "type": "integer"
+          },
+          "projectId": {
+            "description": "ProjectID is an optional project UUID.",
+            "type": "string"
+          },
+          "stateId": {
+            "description": "StateID is a workflow state of the team from listWorkflowStates; blank uses the team's default state.",
+            "type": "string"
+          },
+          "teamId": {
+            "description": "TeamID is the UUID of the team that owns the issue, such as the teamPicker unit's teamId.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title is the issue title, 1 to MaxIssueTitleCharacters characters on one line.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId",
+          "title"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateIssueStep",
       "kind": "mutation",
       "operationId": "updateIssue",
+      "inputType": "UpdateIssueInput",
+      "description": "Move one issue to a workflow state, assign or unassign it, add or remove labels, and set its priority, due date, or title with absolute values, so a repeated update leaves the issue unchanged.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -142,12 +346,70 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateIssueInput changes one issue. Every field is optional, but at least one change is required. Values are absolute and labels are added or removed as sets, so repeating the update changes nothing.",
+        "properties": {
+          "addedLabelIds": {
+            "description": "AddedLabelIDs adds these label UUIDs and keeps the issue's other labels.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "assigneeId": {
+            "description": "AssigneeID assigns the issue to this user UUID, from findUserByEmail.",
+            "type": "string"
+          },
+          "clearsDueDate": {
+            "description": "ClearsDueDate removes the due date; it excludes DueDate.",
+            "type": "boolean"
+          },
+          "dueDate": {
+            "description": "DueDate sets a YYYY-MM-DD due date; blank keeps it.",
+            "type": "string"
+          },
+          "issueId": {
+            "description": "IssueID is the issue's UUID or its identifier, such as ENG-123.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority sets 0 (none), 1 (urgent), 2 (high), 3 (medium), or 4 (low); nil keeps it.",
+            "type": "integer"
+          },
+          "removedLabelIds": {
+            "description": "RemovedLabelIDs removes these label UUIDs; it cannot repeat an added label.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "stateId": {
+            "description": "StateID moves the issue to this workflow state of its team, from listWorkflowStates.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title replaces the title with 1 to MaxIssueTitleCharacters characters on one line; blank keeps it.",
+            "type": "string"
+          },
+          "unassigns": {
+            "description": "Unassigns removes the assignee; it excludes AssigneeID.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "issueId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddCommentStep",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one Markdown comment to an issue; every attempt of the Step sends the same client-supplied comment UUID, so a repeated dispatch finds the first comment instead of posting another.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -175,12 +437,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput describes one comment.",
+        "properties": {
+          "body": {
+            "description": "Body is the comment's Markdown, 1 to MaxMarkdownCharacters characters.",
+            "type": "string"
+          },
+          "issueId": {
+            "description": "IssueID is the issue's UUID or its identifier, such as ENG-123.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "issueId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newFindUserByEmailStep",
       "kind": "query",
       "operationId": "findUserByEmail",
+      "inputType": "FindUserByEmailInput",
+      "description": "Find the workspace user with an email address, compared without case, to resolve an assignee.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -213,12 +496,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindUserByEmailInput names the email address to resolve.",
+        "properties": {
+          "email": {
+            "description": "Email is the user's address, such as alice@example.com, compared without case.",
+            "type": "string"
+          },
+          "includesDisabled": {
+            "description": "IncludesDisabled also finds a suspended or deactivated user; false finds only active users.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListWorkflowStatesStep",
       "kind": "query",
       "operationId": "listWorkflowStates",
+      "inputType": "ListWorkflowStatesInput",
+      "description": "List a team's workflow states, Linear's issue statuses, with their names and types such as backlog, unstarted, started, completed, and canceled, so a Flow can choose the state to move an issue to.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -251,7 +554,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListWorkflowStatesInput names the team whose workflow states to list.",
+        "properties": {
+          "teamId": {
+            "description": "TeamID is the team's UUID, such as the teamPicker unit's teamId.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

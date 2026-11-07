@@ -11,6 +11,8 @@
       "name": "new_get_employee_step",
       "kind": "query",
       "operationId": "getEmployee",
+      "inputType": "GetEmployeeInput",
+      "description": "Read one employee by internal ID with an explicit list of up to 400 fields, reporting the requested fields BambooHR omitted because they are unknown or not visible to the connection.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,43 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEmployeeInput names one employee and the fields to read.",
+        "properties": {
+          "employeeId": {
+            "description": "EmployeeID is BambooHR's internal employee ID, such as 123. The editable Employee # and the caller sentinel 0 are not accepted.",
+            "type": "string"
+          },
+          "fields": {
+            "description": "Fields lists 1 to 400 fields to read: standard names such as workEmail, custom-field aliases such as customStartDate, or numeric field IDs from BambooHR's List Fields endpoint. BambooHR returns nothing but the ID when no field is requested, so at least one is required.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "includeFutureValues": {
+            "description": "IncludeFutureValues also returns future-dated values from history tables such as job information, BambooHR's onlyCurrent=false. False reads only currently effective values.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "employeeId",
+          "fields"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_find_employee_by_email_step",
       "kind": "query",
       "operationId": "findEmployeeByEmail",
+      "inputType": "FindEmployeeByEmailInput",
+      "description": "Find the one employee whose work or home email equals an address, reading at most 100 candidates from BambooHR's List Employees filter.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -86,12 +119,51 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindEmployeeByEmailInput is one email lookup.",
+        "properties": {
+          "email": {
+            "description": "Email is one bare address such as ava.nguyen@example.com. Letter case is ignored.",
+            "type": "string"
+          },
+          "emailField": {
+            "description": "EmailField is the field to match, workEmail or homeEmail; blank matches workEmail.",
+            "enum": [
+              "homeEmail",
+              "workEmail"
+            ],
+            "type": "string"
+          },
+          "fields": {
+            "description": "Fields lists up to 20 additional List Employees field names to return per employee, such as hireDate or departmentName. BambooHR ignores an unknown name.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status keeps only active or inactive employees; blank keeps both.",
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_employee_changes_step",
       "kind": "query",
       "operationId": "listEmployeeChanges",
+      "inputType": "ListEmployeeChangesInput",
+      "description": "List employees inserted, updated, or deleted since a cursor, oldest first and at most 1000 per call, with the cursor for the next poll.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,12 +191,46 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEmployeeChangesInput is one poll of BambooHR's employee change history.",
+        "properties": {
+          "afterEmployeeId": {
+            "description": "AfterEmployeeID skips changes at exactly Since for this employee ID and every lower ID, as NextCursor sets it. Empty includes every change at Since.",
+            "type": "string"
+          },
+          "changeType": {
+            "description": "ChangeType keeps one change type; blank lists inserted, updated, and deleted employees.",
+            "enum": [
+              "deleted",
+              "inserted",
+              "updated"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the most changes to return, 1 to 1000; zero uses DefaultEmployeeChangeLimit.",
+            "type": "integer"
+          },
+          "since": {
+            "description": "Since lists changes at or after this instant. It is required; store the previous call's NextCursor and pass it back to continue.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_time_off_requests_step",
       "kind": "query",
       "operationId": "listTimeOffRequests",
+      "inputType": "ListTimeOffRequestsInput",
+      "description": "List one page of time off requests overlapping a date window, optionally for one employee and BambooHR statuses, at most 200 per page.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,12 +258,58 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTimeOffRequestsInput selects one page of time off requests that overlap a date window.",
+        "properties": {
+          "employeeId": {
+            "description": "EmployeeID keeps one employee's requests; empty lists every employee the connection can view.",
+            "type": "string"
+          },
+          "endDate": {
+            "description": "EndDate is the last day of the window, written YYYY-MM-DD, on or after StartDate. It is required.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is the 1-based page to read; zero reads page 1.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 200 requests per page; zero uses DefaultTimeOffPageSize.",
+            "type": "integer"
+          },
+          "startDate": {
+            "description": "StartDate is the first day of the window, written YYYY-MM-DD. It is required.",
+            "type": "string"
+          },
+          "statuses": {
+            "description": "Statuses keeps requests in any of these statuses; empty keeps every status.",
+            "items": {
+              "enum": [
+                "APPROVED",
+                "CANCELED",
+                "DENIED",
+                "REQUESTED"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "endDate",
+          "startDate"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_employee_step",
       "kind": "mutation",
       "operationId": "updateEmployee",
+      "inputType": "UpdateEmployeeInput",
+      "description": "Set selected fields of one employee that BambooHR stores as plain values; a repeated attempt finds the values applied and writes nothing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -190,12 +342,39 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateEmployeeInput sets selected fields of one employee.",
+        "properties": {
+          "employeeId": {
+            "description": "EmployeeID is BambooHR's internal employee ID, such as 123.",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Fields maps 1 to 50 field names or custom-field aliases, such as workEmail or customITProvisioning, to the text to store; an empty value clears the field. Values use BambooHR's field formats, such as YYYY-MM-DD for a date. Fields BambooHR keeps in its job information, compensation, or employment status history tables, such as jobTitle, department, location, payRate, employmentHistoryStatus, and terminationDate, are refused, because writing them can append a history row and a repeated attempt could append another. Numeric field IDs are refused for the same reason.",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "employeeId",
+          "fields"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_employee_step",
       "kind": "mutation",
       "operationId": "addEmployee",
+      "inputType": "AddEmployeeInput",
+      "description": "Add one employee. BambooHR has no idempotency key, so the shared single-dispatch fence requires sync durability to persist heartbeat checkpoints across retries; 429, 503, and proven unsent requests may be retried.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -223,7 +402,49 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddEmployeeInput is one new employee. BambooHR requires only the first and last name.",
+        "properties": {
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Fields maps up to 50 other writable field names or custom-field aliases to their text, such as department or employmentHistoryStatus, which sets the first employment status record. It cannot repeat a field above, name a numeric field ID, or set id or a photo.",
+            "type": "object"
+          },
+          "firstName": {
+            "description": "FirstName is the legal first name. It is required.",
+            "type": "string"
+          },
+          "hireDate": {
+            "description": "HireDate is the hire date written YYYY-MM-DD, or empty.",
+            "type": "string"
+          },
+          "homeEmail": {
+            "description": "HomeEmail is a bare personal email address, or empty.",
+            "type": "string"
+          },
+          "lastName": {
+            "description": "LastName is the legal last name. It is required.",
+            "type": "string"
+          },
+          "preferredName": {
+            "description": "PreferredName is the preferred name, or empty for none.",
+            "type": "string"
+          },
+          "workEmail": {
+            "description": "WorkEmail is a bare work email address, or empty when IT has not issued one yet. BambooHR rejects an email another employee already holds.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

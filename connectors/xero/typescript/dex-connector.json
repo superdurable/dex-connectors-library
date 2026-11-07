@@ -11,6 +11,8 @@
       "name": "newListContactsStep",
       "kind": "query",
       "operationId": "listContacts",
+      "inputType": "ListContactsInput",
+      "description": "List one bounded page of contacts, at most 100, filtered by a case-insensitive search term, contact IDs, and modification time, with Xero's page count.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,52 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContactsInput filters one page of contacts. Every filter is optional, and filters combine.",
+        "properties": {
+          "contactIds": {
+            "description": "ContactIDs limits the page to at most 40 contacts by their Xero UUIDs.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "includesArchived": {
+            "description": "IncludesArchived also returns ARCHIVED contacts, which Xero leaves out by default.",
+            "type": "boolean"
+          },
+          "modifiedSince": {
+            "description": "ModifiedSince sends If-Modified-Since, so only contacts created or changed at or after this instant, to the second, are returned. Xero does not count balance or IsCustomer changes.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "description": "Page is the 1-based page to read; zero reads the first page.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 100 contacts; zero uses DefaultPageSize.",
+            "type": "integer"
+          },
+          "searchTerm": {
+            "description": "SearchTerm is a case-insensitive text search across Name, FirstName, LastName, ContactNumber, CompanyNumber, and EmailAddress; blank lists every contact.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newFindContactByEmailStep",
       "kind": "query",
       "operationId": "findContactByEmail",
+      "inputType": "FindContactByEmailInput",
+      "description": "Resolve one contact by its exact email address with Xero's optimised EmailAddress filter, distinguishing one match, none, and several.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -91,12 +133,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindContactByEmailInput identifies a contact by its email address.",
+        "properties": {
+          "emailAddress": {
+            "description": "EmailAddress is one bare address such as jane@example.com. Xero's filter ignores case and accents; the connector then keeps only contacts whose address equals it, ignoring case.",
+            "type": "string"
+          },
+          "includesArchived": {
+            "description": "IncludesArchived also matches ARCHIVED contacts, which cannot be invoiced; false matches only the contacts Xero lists by default.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "emailAddress"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetInvoiceStep",
       "kind": "query",
       "operationId": "getInvoice",
+      "inputType": "GetInvoiceInput",
+      "description": "Read one sales invoice or bill by InvoiceID or invoice number, with its line items, exact decimal totals, amounts due and paid, and applied payments.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -134,12 +196,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetInvoiceInput identifies one invoice by exactly one of its identifiers.",
+        "properties": {
+          "invoiceId": {
+            "description": "InvoiceID is Xero's invoice UUID.",
+            "type": "string"
+          },
+          "invoiceNumber": {
+            "description": "InvoiceNumber is the document number, such as INV-0042, used when InvoiceID is blank.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newListInvoicesStep",
       "kind": "query",
       "operationId": "listInvoices",
+      "inputType": "ListInvoicesInput",
+      "description": "List one bounded page of invoices, at most 100 with line items, filtered by Xero status, contact, type, exact reference, and If-Modified-Since time, with Xero's page count.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -172,12 +251,78 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInvoicesInput filters one page of invoices. Every filter is optional, and filters combine.",
+        "properties": {
+          "contactIds": {
+            "description": "ContactIDs keeps invoices for any of at most 40 contacts, by Xero UUID.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "invoiceNumbers": {
+            "description": "InvoiceNumbers keeps invoices with any of at most 40 document numbers.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "modifiedSince": {
+            "description": "ModifiedSince sends If-Modified-Since, so only invoices created or changed at or after this instant, to the second, are returned. Xero does not count every change, such as a due date changed on a partly paid invoice.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "page": {
+            "description": "Page is the 1-based page to read; zero reads the first page.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 100 invoices; zero uses DefaultPageSize.",
+            "type": "integer"
+          },
+          "reference": {
+            "description": "Reference keeps invoices whose Reference equals this value, through Xero's optimised filter.",
+            "type": "string"
+          },
+          "statuses": {
+            "description": "Statuses keeps invoices in any of these Xero statuses; empty keeps every status.",
+            "items": {
+              "enum": [
+                "AUTHORISED",
+                "DELETED",
+                "DRAFT",
+                "PAID",
+                "SUBMITTED",
+                "VOIDED"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Type keeps only ACCREC sales invoices or ACCPAY bills; blank keeps both.",
+            "enum": [
+              "ACCPAY",
+              "ACCREC"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newCreateInvoiceStep",
       "kind": "mutation",
       "operationId": "createInvoice",
+      "inputType": "CreateInvoiceInput",
+      "description": "Create one sales invoice or bill for a contact with exact decimal line amounts, a currency, a reference, and an optional invoice number; every attempt of the Step sends the same Xero Idempotency-Key, so a repeated dispatch returns the first invoice instead of creating another.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -210,12 +355,133 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "InvoiceLineItemInput": {
+            "additionalProperties": false,
+            "description": "InvoiceLineItemInput is one line of a new invoice.",
+            "properties": {
+              "accountCode": {
+                "description": "AccountCode is the chart-of-accounts code, such as 200; Xero requires one to approve.",
+                "type": "string"
+              },
+              "description": {
+                "description": "Description is 1 to 4000 characters.",
+                "type": "string"
+              },
+              "discountRate": {
+                "description": "DiscountRate is a percentage from 0 to 100 on an ACCREC line; ACCPAY lines take none.",
+                "type": "string"
+              },
+              "itemCode": {
+                "description": "ItemCode is an inventory item code, which can supply the description and price.",
+                "type": "string"
+              },
+              "quantity": {
+                "description": "Quantity is the line quantity, up to four decimal places; blank leaves it to Xero or the item.",
+                "type": "string"
+              },
+              "taxType": {
+                "description": "TaxType overrides the account's default Xero tax type, such as OUTPUT or NONE.",
+                "type": "string"
+              },
+              "unitAmount": {
+                "description": "UnitAmount is the unit price, up to four decimal places, which Xero keeps because the connector sends unitdp=4; blank leaves it to Xero or the item.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "description"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateInvoiceInput describes one new sales invoice or bill. Amounts are exact Decimals in the invoice's currency and are sent to Xero as the same number literals.",
+        "properties": {
+          "brandingThemeId": {
+            "description": "BrandingThemeID is the Xero UUID of a branding theme; blank uses the organisation's default.",
+            "type": "string"
+          },
+          "contactId": {
+            "description": "ContactID is the Xero UUID of the customer or supplier, such as from findContactByEmail. Xero is sent only this ID, so the contact record is never changed.",
+            "type": "string"
+          },
+          "currencyCode": {
+            "description": "CurrencyCode is an ISO 4217 code enabled in the organisation, such as USD; blank uses the organisation's base currency.",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date is the issue date, YYYY-MM-DD; blank uses today in the organisation's time zone.",
+            "type": "string"
+          },
+          "dueDate": {
+            "description": "DueDate is the due date, YYYY-MM-DD; Xero requires one to approve a sales invoice.",
+            "type": "string"
+          },
+          "invoiceNumber": {
+            "description": "InvoiceNumber is the document number. Blank lets Xero number an ACCREC invoice from the organisation's invoice settings; an ACCREC number must be unique.",
+            "type": "string"
+          },
+          "lineAmountTypes": {
+            "description": "LineAmountTypes is Exclusive, Inclusive, or NoTax; blank means Exclusive.",
+            "enum": [
+              "Exclusive",
+              "Inclusive",
+              "NoTax"
+            ],
+            "type": "string"
+          },
+          "lineItems": {
+            "description": "LineItems are 1 to 100 lines, each with a description.",
+            "items": {
+              "$ref": "#/$defs/InvoiceLineItemInput"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "reference": {
+            "description": "Reference is an additional reference, such as the application's order ID; listInvoices can find the invoice by it.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status is DRAFT, SUBMITTED, or AUTHORISED; blank means DRAFT. Only an AUTHORISED invoice can take a payment.",
+            "enum": [
+              "AUTHORISED",
+              "DELETED",
+              "DRAFT",
+              "PAID",
+              "SUBMITTED",
+              "VOIDED"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "description": "Type is ACCREC for a sales invoice or ACCPAY for a bill.",
+            "enum": [
+              "ACCPAY",
+              "ACCREC"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId",
+          "lineItems",
+          "type"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newRecordPaymentStep",
       "kind": "mutation",
       "operationId": "recordPayment",
+      "inputType": "RecordPaymentInput",
+      "description": "Record one payment of an exact decimal amount against an approved invoice from a bank or payment-enabled account; every attempt of the Step sends the same Xero Idempotency-Key, so a repeated dispatch returns the first payment instead of paying twice.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -248,7 +514,51 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RecordPaymentInput is one payment against an approved invoice.",
+        "properties": {
+          "accountCode": {
+            "description": "AccountCode is that account's code, such as 090, for accounts that have one.",
+            "type": "string"
+          },
+          "accountId": {
+            "description": "AccountID is the Xero UUID of a BANK account, or of an account with payments enabled. Set exactly one of AccountID and AccountCode.",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Amount is the payment in the invoice's currency, with at most two decimal places; it must not exceed the invoice's amount due.",
+            "type": "string"
+          },
+          "bankAmount": {
+            "description": "BankAmount is the amount in the account's currency for a multicurrency payment, which Xero prefers to a rate; blank lets Xero apply its rate.",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date is the payment date, YYYY-MM-DD.",
+            "type": "string"
+          },
+          "invoiceId": {
+            "description": "InvoiceID is the Xero UUID of an AUTHORISED invoice or bill.",
+            "type": "string"
+          },
+          "isReconciled": {
+            "description": "IsReconciled marks the payment reconciled without a bank statement line, for conversions.",
+            "type": "boolean"
+          },
+          "reference": {
+            "description": "Reference is an optional description, such as the card processor's charge ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "date",
+          "invoiceId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

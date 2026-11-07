@@ -11,6 +11,8 @@
       "name": "newListVoicesStep",
       "kind": "query",
       "operationId": "listVoices",
+      "inputType": "ListVoicesInput",
+      "description": "List available voices and their identifiers for speech generation.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListVoicesInput selects one page of account voices.",
+        "properties": {
+          "nextPageToken": {
+            "description": "NextPageToken is a token returned by the preceding page; blank starts at page one.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the requested page size; zero uses the provider default.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newCreateSpeechStep",
       "kind": "query",
       "operationId": "createSpeech",
+      "inputType": "CreateSpeechInput",
+      "description": "Generate bounded MP3 speech audio from text with a selected voice.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -71,7 +90,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateSpeechInput selects a voice and the text to synthesize.",
+        "properties": {
+          "modelId": {
+            "description": "ModelID selects a text-to-speech model; blank uses eleven_multilingual_v2.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the text to speak.",
+            "type": "string"
+          },
+          "voiceId": {
+            "description": "VoiceID is returned by listVoices or shown in the ElevenLabs voice library.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "voiceId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }
