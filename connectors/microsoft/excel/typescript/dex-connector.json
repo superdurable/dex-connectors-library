@@ -11,6 +11,8 @@
       "name": "newGetTableRowsStep",
       "kind": "query",
       "operationId": "getTableRows",
+      "inputType": "GetTableRowsInput",
+      "description": "Read every data row of one Excel table, without its header and total rows, as rows keyed by the table's column names, with the column names in table order.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -48,12 +50,38 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTableRowsInput identifies one Excel table.",
+        "properties": {
+          "driveId": {
+            "description": "DriveID is the Microsoft Graph drive ID of the OneDrive or SharePoint document library that holds the workbook, as the workbookPicker unit stores it.",
+            "type": "string"
+          },
+          "table": {
+            "description": "Table is the table's ID, as the tablePicker unit stores it, or its name, such as ApprovalPolicy. An ID keeps working after the table is renamed.",
+            "type": "string"
+          },
+          "workbookId": {
+            "description": "WorkbookID is the workbook's drive item ID, as the workbookPicker unit stores it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "driveId",
+          "table",
+          "workbookId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetValuesStep",
       "kind": "query",
       "operationId": "getValues",
+      "inputType": "GetValuesInput",
+      "description": "Read one bounded A1 range of one worksheet, such as A1:C10, as raw cell values and their displayed text.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -91,12 +119,43 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetValuesInput identifies one bounded range of one worksheet.",
+        "properties": {
+          "address": {
+            "description": "Address is one cell or rectangular range in A1 form, such as A2:E2, without a worksheet name, $ markers, or whole columns or rows. It may cover at most the configured maxCells.",
+            "type": "string"
+          },
+          "driveId": {
+            "description": "DriveID is the Microsoft Graph drive ID of the OneDrive or SharePoint document library that holds the workbook, as the workbookPicker unit stores it.",
+            "type": "string"
+          },
+          "workbookId": {
+            "description": "WorkbookID is the workbook's drive item ID, as the workbookPicker unit stores it.",
+            "type": "string"
+          },
+          "worksheet": {
+            "description": "Worksheet is the worksheet's ID in braces, as the worksheetPicker unit stores it, or its name, such as Summary. An ID keeps working after a rename.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "driveId",
+          "workbookId",
+          "worksheet"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateValuesStep",
       "kind": "mutation",
       "operationId": "updateValues",
+      "inputType": "UpdateValuesInput",
+      "description": "Write literal values to one bounded A1 range of one worksheet whose size matches the values exactly. Text is stored as text, never as a formula or a parsed number or date, and the values are absolute, so a repeated dispatch writes the same values again and leaves the same range.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -124,12 +183,58 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateValuesInput is the literal content of one bounded range.",
+        "properties": {
+          "address": {
+            "description": "Address is one cell or rectangular range in A1 form, such as A2:E2, without a worksheet name, $ markers, or whole columns or rows. It may cover at most the configured maxCells.",
+            "type": "string"
+          },
+          "driveId": {
+            "description": "DriveID is the Microsoft Graph drive ID of the OneDrive or SharePoint document library that holds the workbook, as the workbookPicker unit stores it.",
+            "type": "string"
+          },
+          "values": {
+            "description": "Values holds every cell of the range, row by row, with exactly the address's number of rows and columns. Every value must be present; use EmptyCellValue to clear a cell.",
+            "items": {
+              "items": {},
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "workbookId": {
+            "description": "WorkbookID is the workbook's drive item ID, as the workbookPicker unit stores it.",
+            "type": "string"
+          },
+          "worksheet": {
+            "description": "Worksheet is the worksheet's ID in braces, as the worksheetPicker unit stores it, or its name, such as Summary. An ID keeps working after a rename.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "driveId",
+          "values",
+          "workbookId",
+          "worksheet"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAppendTableRowsStep",
       "kind": "mutation",
       "operationId": "appendTableRows",
+      "inputType": "AppendTableRowsInput",
+      "description": "Append rows to the end of one Excel table in one request, skipping every row whose key column value the table already holds. Microsoft Graph offers no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before it sends the append, and sends it at most once per Step execution.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -172,7 +277,51 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AppendTableRowsInput is a batch of rows for one Excel table.",
+        "properties": {
+          "driveId": {
+            "description": "DriveID is the Microsoft Graph drive ID of the OneDrive or SharePoint document library that holds the workbook, as the workbookPicker unit stores it.",
+            "type": "string"
+          },
+          "keyColumn": {
+            "description": "KeyColumn is the exact name of the table column whose value identifies a row, such as RequestId. A row whose key the column already holds is not appended again, whichever Flow or person added it.",
+            "type": "string"
+          },
+          "rows": {
+            "description": "Rows lists the rows to append, in order, each mapping column names to values. Every row sets KeyColumn to non-empty text, a number, or a Boolean that no other row uses; a column a row leaves out is written empty. The rows times the table's columns may cover at most the configured maxCells.",
+            "items": {
+              "additionalProperties": {},
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "table": {
+            "description": "Table is the table's ID, as the tablePicker unit stores it, or its name, such as Decisions. An ID keeps working after the table is renamed.",
+            "type": "string"
+          },
+          "workbookId": {
+            "description": "WorkbookID is the workbook's drive item ID, as the workbookPicker unit stores it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "driveId",
+          "keyColumn",
+          "rows",
+          "table",
+          "workbookId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

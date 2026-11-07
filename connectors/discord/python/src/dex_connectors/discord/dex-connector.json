@@ -11,6 +11,8 @@
       "name": "new_get_channel_step",
       "kind": "query",
       "operationId": "getChannel",
+      "inputType": "GetChannelInput",
+      "description": "Read one channel the bot can view by channel ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetChannelInput identifies one channel.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the channel's snowflake ID, 17 to 20 digits, from Copy Channel ID in Discord's Developer Mode.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channelId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_channel_messages_step",
       "kind": "query",
       "operationId": "listChannelMessages",
+      "inputType": "ListChannelMessagesInput",
+      "description": "List one bounded page of up to 100 channel messages, newest first, before or after a message ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +99,40 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListChannelMessagesInput selects one page of a channel's messages. Discord returns messages newest first. Set at most one of BeforeMessageID and AfterMessageID: blank both reads the newest page, BeforeMessageID pages toward older messages, and AfterMessageID reads messages newer than it.",
+        "properties": {
+          "afterMessageId": {
+            "description": "AfterMessageID lists messages newer than this message ID.",
+            "type": "string"
+          },
+          "beforeMessageId": {
+            "description": "BeforeMessageID lists messages older than this message ID, such as the previous page's OldestMessageID.",
+            "type": "string"
+          },
+          "channelId": {
+            "description": "ChannelID is the channel's snowflake ID, 17 to 20 digits.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the most messages returned, 1 to 100; zero returns up to 50.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "channelId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_message_step",
       "kind": "mutation",
       "operationId": "createMessage",
+      "inputType": "CreateMessageInput",
+      "description": "Send one bot text message to a channel, deduplicated by a Discord nonce derived from the idempotency key, with every mention disabled.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,12 +165,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateMessageInput sends one text message to a channel as the bot. Every mention is disabled, so text such as @everyone or <@id> renders but notifies nobody.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the channel's snowflake ID, 17 to 20 digits.",
+            "type": "string"
+          },
+          "content": {
+            "description": "Content is the message text, 1 to 2000 characters and not only whitespace.",
+            "type": "string"
+          },
+          "replyToMessageId": {
+            "description": "ReplyToMessageID makes the message a reply to this message in the same channel; blank sends a plain message.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channelId",
+          "content"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_reaction_step",
       "kind": "mutation",
       "operationId": "addReaction",
+      "inputType": "AddReactionInput",
+      "description": "Add the bot's reaction with one emoji to a channel message; repeating it leaves one reaction.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,7 +223,31 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddReactionInput adds the bot's reaction to one message.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the channel's snowflake ID, 17 to 20 digits.",
+            "type": "string"
+          },
+          "emoji": {
+            "description": "Emoji is a Unicode emoji such as 👍, or a custom emoji as name:id, such as party_blob:123456789012345678.",
+            "type": "string"
+          },
+          "messageId": {
+            "description": "MessageID is the message's snowflake ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channelId",
+          "emoji",
+          "messageId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

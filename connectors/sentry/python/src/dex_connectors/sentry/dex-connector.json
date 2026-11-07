@@ -11,6 +11,8 @@
       "name": "new_list_issues_step",
       "kind": "query",
       "operationId": "listIssues",
+      "inputType": "ListIssuesInput",
+      "description": "ListIssues through the Sentry public JSON API.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListIssuesInput selects one organization's current issues.",
+        "properties": {
+          "organization": {
+            "description": "Organization is the Sentry organization slug.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Query is the provider search expression.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization",
+          "query"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_issue_step",
       "kind": "query",
       "operationId": "getIssue",
+      "inputType": "GetIssueInput",
+      "description": "GetIssue through the Sentry public JSON API.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +99,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetIssueInput identifies one issue within an organization.",
+        "properties": {
+          "id": {
+            "description": "ID is the provider's stable resource identifier.",
+            "type": "string"
+          },
+          "organization": {
+            "description": "Organization is the Sentry organization slug.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organization"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_issue_status_step",
       "kind": "mutation",
       "operationId": "updateIssueStatus",
+      "inputType": "UpdateIssueStatusInput",
+      "description": "UpdateIssueStatus through the Sentry public JSON API.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -114,7 +158,31 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateIssueStatusInput sets one issue's absolute status.",
+        "properties": {
+          "id": {
+            "description": "ID is the provider's stable resource identifier.",
+            "type": "string"
+          },
+          "organization": {
+            "description": "Organization is the Sentry organization slug.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status is the provider's current status.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organization",
+          "status"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

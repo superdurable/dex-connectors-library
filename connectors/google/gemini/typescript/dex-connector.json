@@ -11,6 +11,8 @@
       "name": "newGenerateContentStep",
       "kind": "query",
       "operationId": "generateContent",
+      "inputType": "GenerateContentRequest",
+      "description": "Generate text or JSON Schema structured output with a Gemini model through the stateless models.generateContent method.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -48,7 +50,96 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "Content": {
+            "additionalProperties": false,
+            "description": "Content is one conversation turn. Role is \"user\", \"model\", or empty for a single-turn request.",
+            "properties": {
+              "parts": {
+                "description": "Parts holds the turn's text parts in order. At least one part is required.",
+                "items": {
+                  "$ref": "#/$defs/Part"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              },
+              "role": {
+                "description": "Role is \"user\", \"model\", or empty for a single-turn request.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "parts"
+            ],
+            "type": "object"
+          },
+          "Part": {
+            "additionalProperties": false,
+            "description": "Part is one text part of a Content.",
+            "properties": {
+              "text": {
+                "description": "Text is the part text. It must not be empty.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "GenerateContentRequest is the provider input for GenerateContent. Model accepts a model ID such as \"gemini-3.5-flash-lite\" or \"models/gemini-3.5-flash-lite\"; empty uses the connection's configured model. ResponseJSONSchema maps to generationConfig.responseJsonSchema and defaults ResponseMIMEType to application/json. ThinkingBudget maps to generationConfig.thinkingConfig.thinkingBudget: nil leaves the model default, -1 selects dynamic thinking, 0 disables thinking where the model allows it, and a positive value sets a token budget. Gemini 3 models treat thinkingBudget as a legacy setting that may not turn thinking off, and Google recommends their default temperature of 1.0, so leave ThinkingBudget and Temperature nil for them.",
+        "properties": {
+          "contents": {
+            "description": "Contents holds the conversation turns in order. At least one Content is required.",
+            "items": {
+              "$ref": "#/$defs/Content"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "maxOutputTokens": {
+            "description": "MaxOutputTokens maps to generationConfig.maxOutputTokens and includes thought tokens. Zero leaves the model default; a negative value is invalid.",
+            "type": "integer"
+          },
+          "model": {
+            "description": "Model is the Gemini model ID, with or without the \"models/\" prefix. It overrides the connection's configured model for this request; empty uses the connection model.",
+            "type": "string"
+          },
+          "responseJsonSchema": {
+            "additionalProperties": {},
+            "description": "ResponseJSONSchema maps to generationConfig.responseJsonSchema and requires the application/json response MIME type. Nil omits it.",
+            "type": "object"
+          },
+          "responseMimeType": {
+            "description": "ResponseMIMEType maps to generationConfig.responseMimeType. Empty omits it unless ResponseJSONSchema is set.",
+            "type": "string"
+          },
+          "systemInstruction": {
+            "description": "SystemInstruction is optional system text sent as systemInstruction.parts[0].text.",
+            "type": "string"
+          },
+          "temperature": {
+            "description": "Temperature maps to generationConfig.temperature and must be between 0 and 2. Nil leaves the model default.",
+            "type": "number"
+          },
+          "thinkingBudget": {
+            "description": "ThinkingBudget maps to generationConfig.thinkingConfig.thinkingBudget. Nil leaves the model default, -1 is dynamic, 0 disables thinking where the model allows it, and a positive value is a token budget.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contents"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

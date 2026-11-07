@@ -16,6 +16,7 @@ export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export type { Operations } from './generated/connection.js';
 export type { Config, Credentials, SearchMessagesInput, SearchMessagesOutput, GetMessageInput, Message, MessageReference, MessageSummary, EmailAddress, SendMessageInput, SentMessage, ReplyToMessageInput, MoveMessageInput, MovedMessage, SetFlagsInput, MessageFlags } from './generated/models.js';
+export { SearchMessagesInputSchema, GetMessageInputSchema, SendMessageInputSchema, ReplyToMessageInputSchema, MoveMessageInputSchema, SetFlagsInputSchema } from './generated/models.js';
 
 /** Open a Dex Web connection with secret values resolved per invocation. */
 export function newProjectConnection(project: LoadedProject, connectionName: string) {

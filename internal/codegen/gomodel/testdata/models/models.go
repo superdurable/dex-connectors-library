@@ -71,6 +71,11 @@ type Parent struct {
 	Raw   json.RawMessage `json:"raw"`
 }
 
+type TaggedEnum struct {
+	Choice         string  `json:"choice,omitempty" connectorEnum:"first,second"`
+	NullableChoice *string `json:"nullableChoice" connectorEnum:"first"`
+}
+
 type Recursive struct {
 	Next *Recursive  `json:"next"`
 	And  []Recursive `json:"and"`

@@ -11,6 +11,8 @@
       "name": "newSearchStep",
       "kind": "query",
       "operationId": "search",
+      "inputType": "SearchInput",
+      "description": "Search one bounded page of the pages and data sources shared with the connection by title, continuing with Notion's cursor.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,49 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchInput selects one page of title matches among the pages and data sources shared with the connection.",
+        "properties": {
+          "objectType": {
+            "description": "ObjectType limits the results to pages or data sources; blank returns both.",
+            "enum": [
+              "data_source",
+              "page"
+            ],
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of results to request, 1 to 100; zero requests 20.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is matched against titles; blank lists every shared page and data source.",
+            "type": "string"
+          },
+          "sortDirection": {
+            "description": "SortDirection orders by last edit time; blank keeps Notion's relevance order.",
+            "enum": [
+              "ascending",
+              "descending"
+            ],
+            "type": "string"
+          },
+          "startCursor": {
+            "description": "StartCursor continues a previous search with the same input; blank reads the first page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newQueryDatabaseStep",
       "kind": "query",
       "operationId": "queryDatabase",
+      "inputType": "QueryDatabaseInput",
+      "description": "Query one bounded page of a database's rows through its data source with a typed filter and sorts, continuing with Notion's cursor.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +120,194 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "QueryFilter": {
+            "additionalProperties": false,
+            "description": "QueryFilter is a typed Notion data source filter. Set exactly one of Property, Timestamp, And, and Or. A property condition names the property, its Type, a Condition the type supports, and the one value field the condition takes: Text for title, rich_text, url, email, phone_number, select, status, and multi_select; Number for number and unique_id; Checkbox for checkbox; Date for date; and ID for people and relation. FilterIsEmpty, FilterIsNotEmpty, and the relative date conditions such as FilterPastWeek take no value. A timestamp condition sets Timestamp, a date Condition, and Date. And and Or combine up to two levels of nested filters. An unsupported combination selects defect before any request is sent.",
+            "properties": {
+              "and": {
+                "description": "And matches pages that match every filter.",
+                "items": {
+                  "$ref": "#/$defs/QueryFilter"
+                },
+                "type": "array"
+              },
+              "checkbox": {
+                "description": "Checkbox is a checkbox value.",
+                "type": "boolean"
+              },
+              "condition": {
+                "description": "Condition is the comparison.",
+                "enum": [
+                  "after",
+                  "before",
+                  "contains",
+                  "does_not_contain",
+                  "does_not_equal",
+                  "ends_with",
+                  "equals",
+                  "greater_than",
+                  "greater_than_or_equal_to",
+                  "is_empty",
+                  "is_not_empty",
+                  "less_than",
+                  "less_than_or_equal_to",
+                  "next_month",
+                  "next_week",
+                  "next_year",
+                  "on_or_after",
+                  "on_or_before",
+                  "past_month",
+                  "past_week",
+                  "past_year",
+                  "starts_with",
+                  "this_week"
+                ],
+                "type": "string"
+              },
+              "date": {
+                "description": "Date is a YYYY-MM-DD date or RFC 3339 date-time value.",
+                "type": "string"
+              },
+              "id": {
+                "description": "ID is a Notion user ID for people or a page ID for relation.",
+                "type": "string"
+              },
+              "number": {
+                "description": "Number is a number value.",
+                "type": "number"
+              },
+              "or": {
+                "description": "Or matches pages that match any filter.",
+                "items": {
+                  "$ref": "#/$defs/QueryFilter"
+                },
+                "type": "array"
+              },
+              "property": {
+                "description": "Property is the property name or ID that the condition reads.",
+                "type": "string"
+              },
+              "text": {
+                "description": "Text is a text or option-name value.",
+                "type": "string"
+              },
+              "timestamp": {
+                "description": "Timestamp filters on the page's creation or last edit time instead of a property.",
+                "enum": [
+                  "created_time",
+                  "last_edited_time"
+                ],
+                "type": "string"
+              },
+              "type": {
+                "description": "Type is the property's Notion type, which selects the filter's shape.",
+                "enum": [
+                  "checkbox",
+                  "created_by",
+                  "created_time",
+                  "date",
+                  "email",
+                  "files",
+                  "formula",
+                  "last_edited_by",
+                  "last_edited_time",
+                  "multi_select",
+                  "number",
+                  "people",
+                  "phone_number",
+                  "relation",
+                  "rich_text",
+                  "rollup",
+                  "select",
+                  "status",
+                  "title",
+                  "unique_id",
+                  "url",
+                  "verification"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "QuerySort": {
+            "additionalProperties": false,
+            "description": "QuerySort orders query results by a property or a timestamp. Set exactly one of Property and Timestamp.",
+            "properties": {
+              "direction": {
+                "description": "Direction is ascending or descending; blank is ascending.",
+                "enum": [
+                  "ascending",
+                  "descending"
+                ],
+                "type": "string"
+              },
+              "property": {
+                "description": "Property is the property name or ID to sort by.",
+                "type": "string"
+              },
+              "timestamp": {
+                "description": "Timestamp sorts by the page's creation or last edit time.",
+                "enum": [
+                  "created_time",
+                  "last_edited_time"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "QueryDatabaseInput selects one page of a database's rows. Set exactly one of DataSourceID and DatabaseID.",
+        "properties": {
+          "dataSourceId": {
+            "description": "DataSourceID is the data source to query. In Notion, open the database's settings menu > Manage data sources and choose Copy data source ID.",
+            "type": "string"
+          },
+          "databaseId": {
+            "description": "DatabaseID is the database ID from its URL, or the URL itself; the database must hold exactly one data source.",
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/$defs/QueryFilter",
+            "description": "Filter optionally limits the rows; nil returns every row."
+          },
+          "pageSize": {
+            "description": "PageSize is the number of rows to request, 1 to 100; zero requests 50.",
+            "type": "integer"
+          },
+          "properties": {
+            "description": "Properties optionally lists the property names or IDs to return, at most 100; blank returns every property.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sorts": {
+            "description": "Sorts optionally orders the rows; Notion guarantees no order without one.",
+            "items": {
+              "$ref": "#/$defs/QuerySort"
+            },
+            "type": "array"
+          },
+          "startCursor": {
+            "description": "StartCursor continues a previous query with the same input; blank reads the first page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetPageStep",
       "kind": "query",
       "operationId": "getPage",
+      "inputType": "GetPageInput",
+      "description": "Read one page's properties and a bounded plain-text rendering of its top-level blocks.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -119,12 +340,40 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPageInput selects one page.",
+        "properties": {
+          "maxBlocks": {
+            "description": "MaxBlocks bounds the top-level blocks read, 1 to 500; zero reads up to 100.",
+            "type": "integer"
+          },
+          "maxTextCharacters": {
+            "description": "MaxTextCharacters bounds Content.Text, 1 to 100,000 characters; zero keeps up to 20,000.",
+            "type": "integer"
+          },
+          "pageId": {
+            "description": "PageID is the page ID, with or without dashes, or the page's Notion URL.",
+            "type": "string"
+          },
+          "skipContent": {
+            "description": "ShouldSkipContent reads only the page's properties, without its blocks.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreatePageStep",
       "kind": "mutation",
       "operationId": "createPage",
+      "inputType": "CreatePageInput",
+      "description": "Create one database row with typed property values and optional plain-text body paragraphs. Sync durability persists the single-dispatch fence before sending so retries cannot duplicate an unconfirmed page.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -162,12 +411,155 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "DateRange": {
+            "additionalProperties": false,
+            "description": "DateRange is a Notion date value: one date or date-time, or a range.",
+            "properties": {
+              "end": {
+                "description": "End optionally ends a range, in the same format as Start; blank means a single date.",
+                "type": "string"
+              },
+              "start": {
+                "description": "Start is a YYYY-MM-DD date or an RFC 3339 date-time such as 2026-09-30T14:00:00Z.",
+                "type": "string"
+              },
+              "timeZone": {
+                "description": "TimeZone optionally names an IANA time zone, such as America/Los_Angeles, for a date-time without an offset; blank uses the offset in Start.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "PropertyValue": {
+            "additionalProperties": false,
+            "description": "PropertyValue is one typed property value written to a Notion page. Type selects exactly one value field: Text for title and rich_text, Number, Checkbox, Option for select and status, Options for multi_select, Date, URL, Email, PhoneNumber, UserIDs for people, and PageIDs for relation. Setting a field that does not belong to Type selects defect. The zero value of the type's field clears the property, except that a checkbox needs an explicit value and a status needs an option name. Prefer the constructors such as TitleValue and SelectValue, and ClearedValue to clear a property on purpose. Writes replace the property's whole value: a multi_select, people, or relation value lists every entry the property keeps, so repeating the same write leaves the page unchanged.",
+            "properties": {
+              "checkbox": {
+                "description": "Checkbox is a checkbox value.",
+                "type": "boolean"
+              },
+              "date": {
+                "$ref": "#/$defs/DateRange",
+                "description": "Date is a date value."
+              },
+              "email": {
+                "description": "Email is a plain email address.",
+                "type": "string"
+              },
+              "number": {
+                "description": "Number is a finite number value.",
+                "type": "number"
+              },
+              "option": {
+                "description": "Option is a select or status option name. Notion adds a missing select option to the data source; a status option must already exist.",
+                "type": "string"
+              },
+              "options": {
+                "description": "Options lists multi_select option names, at most 100, without commas.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "pageIds": {
+                "description": "PageIDs lists related page IDs for a relation value, at most 100.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "phoneNumber": {
+                "description": "PhoneNumber is free-form phone text, such as +1 206 555 0100.",
+                "type": "string"
+              },
+              "text": {
+                "description": "Text is the plain text of a title or rich_text value, at most 20,000 characters.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type is the property's Notion type.",
+                "enum": [
+                  "checkbox",
+                  "created_by",
+                  "created_time",
+                  "date",
+                  "email",
+                  "files",
+                  "formula",
+                  "last_edited_by",
+                  "last_edited_time",
+                  "multi_select",
+                  "number",
+                  "people",
+                  "phone_number",
+                  "relation",
+                  "rich_text",
+                  "rollup",
+                  "select",
+                  "status",
+                  "title",
+                  "unique_id",
+                  "url",
+                  "verification"
+                ],
+                "type": "string"
+              },
+              "url": {
+                "description": "URL is an absolute URL value.",
+                "type": "string"
+              },
+              "userIds": {
+                "description": "UserIDs lists Notion user IDs for a people value, at most 100.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreatePageInput describes one database row. Set exactly one of DataSourceID and DatabaseID.",
+        "properties": {
+          "bodyText": {
+            "description": "BodyText is optional plain text for the page body, at most 50,000 characters in at most 100 paragraphs. Blank lines separate paragraphs, other line breaks stay inside a paragraph, and the text is never read as markup.",
+            "type": "string"
+          },
+          "dataSourceId": {
+            "description": "DataSourceID is the data source that receives the row. In Notion, open the database's settings menu > Manage data sources and choose Copy data source ID.",
+            "type": "string"
+          },
+          "databaseId": {
+            "description": "DatabaseID is the database ID from its URL, or the URL itself; the database must hold exactly one data source.",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/PropertyValue"
+            },
+            "description": "Properties maps property names or IDs to typed values, at most 100. A property left out keeps the data source's default, such as an empty title.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newUpdatePagePropertiesStep",
       "kind": "mutation",
       "operationId": "updatePageProperties",
+      "inputType": "UpdatePagePropertiesInput",
+      "description": "Set typed property values on one page with absolute values, so a repeated or duplicated update leaves the page unchanged.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -200,7 +592,147 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "DateRange": {
+            "additionalProperties": false,
+            "description": "DateRange is a Notion date value: one date or date-time, or a range.",
+            "properties": {
+              "end": {
+                "description": "End optionally ends a range, in the same format as Start; blank means a single date.",
+                "type": "string"
+              },
+              "start": {
+                "description": "Start is a YYYY-MM-DD date or an RFC 3339 date-time such as 2026-09-30T14:00:00Z.",
+                "type": "string"
+              },
+              "timeZone": {
+                "description": "TimeZone optionally names an IANA time zone, such as America/Los_Angeles, for a date-time without an offset; blank uses the offset in Start.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "type": "object"
+          },
+          "PropertyValue": {
+            "additionalProperties": false,
+            "description": "PropertyValue is one typed property value written to a Notion page. Type selects exactly one value field: Text for title and rich_text, Number, Checkbox, Option for select and status, Options for multi_select, Date, URL, Email, PhoneNumber, UserIDs for people, and PageIDs for relation. Setting a field that does not belong to Type selects defect. The zero value of the type's field clears the property, except that a checkbox needs an explicit value and a status needs an option name. Prefer the constructors such as TitleValue and SelectValue, and ClearedValue to clear a property on purpose. Writes replace the property's whole value: a multi_select, people, or relation value lists every entry the property keeps, so repeating the same write leaves the page unchanged.",
+            "properties": {
+              "checkbox": {
+                "description": "Checkbox is a checkbox value.",
+                "type": "boolean"
+              },
+              "date": {
+                "$ref": "#/$defs/DateRange",
+                "description": "Date is a date value."
+              },
+              "email": {
+                "description": "Email is a plain email address.",
+                "type": "string"
+              },
+              "number": {
+                "description": "Number is a finite number value.",
+                "type": "number"
+              },
+              "option": {
+                "description": "Option is a select or status option name. Notion adds a missing select option to the data source; a status option must already exist.",
+                "type": "string"
+              },
+              "options": {
+                "description": "Options lists multi_select option names, at most 100, without commas.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "pageIds": {
+                "description": "PageIDs lists related page IDs for a relation value, at most 100.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "phoneNumber": {
+                "description": "PhoneNumber is free-form phone text, such as +1 206 555 0100.",
+                "type": "string"
+              },
+              "text": {
+                "description": "Text is the plain text of a title or rich_text value, at most 20,000 characters.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type is the property's Notion type.",
+                "enum": [
+                  "checkbox",
+                  "created_by",
+                  "created_time",
+                  "date",
+                  "email",
+                  "files",
+                  "formula",
+                  "last_edited_by",
+                  "last_edited_time",
+                  "multi_select",
+                  "number",
+                  "people",
+                  "phone_number",
+                  "relation",
+                  "rich_text",
+                  "rollup",
+                  "select",
+                  "status",
+                  "title",
+                  "unique_id",
+                  "url",
+                  "verification"
+                ],
+                "type": "string"
+              },
+              "url": {
+                "description": "URL is an absolute URL value.",
+                "type": "string"
+              },
+              "userIds": {
+                "description": "UserIDs lists Notion user IDs for a people value, at most 100.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdatePagePropertiesInput sets property values on one page. Properties left out keep their values; every listed value replaces the property's whole value, so repeating the same input leaves the page unchanged.",
+        "properties": {
+          "pageId": {
+            "description": "PageID is the page ID, with or without dashes, or the page's Notion URL.",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/PropertyValue"
+            },
+            "description": "Properties maps property names or IDs to typed values, 1 to 100. Use ClearedValue to empty a property.",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "pageId",
+          "properties"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "new_search_photos_step",
       "kind": "query",
       "operationId": "searchPhotos",
+      "inputType": "SearchPhotosInput",
+      "description": "Search one page of public photos.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchPhotosInput selects one page of public photos.",
+        "properties": {
+          "page": {
+            "description": "Page is the 1-based page; zero uses Unsplash's first page.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage is the page size; zero uses Unsplash's default of ten.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is the nonblank search phrase.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_photo_step",
       "kind": "query",
       "operationId": "getPhoto",
+      "inputType": "GetPhotoInput",
+      "description": "Retrieve one public photo by ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +102,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPhotoInput identifies a public photo.",
+        "properties": {
+          "id": {
+            "description": "ID is the Unsplash photo ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

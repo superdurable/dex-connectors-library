@@ -11,6 +11,8 @@
       "name": "newGetAuthenticatedProfileStep",
       "kind": "query",
       "operationId": "getAuthenticatedProfile",
+      "inputType": "GetAuthenticatedProfileInput",
+      "description": "Read the authenticated account and its primary verified email.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -58,12 +60,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.",
+        "properties": {},
+        "type": "object"
+      }
     },
     {
       "name": "newListPublicRepositoriesStep",
       "kind": "query",
       "operationId": "listPublicRepositories",
+      "inputType": "ListPublicRepositoriesInput",
+      "description": "List a bounded, recent-first set of public repositories owned by one login.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -106,12 +116,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPublicRepositoriesInput contains the provider request fields for list public repositories.",
+        "properties": {
+          "limit": {
+            "description": "Limit specifies limit for list public repositories input.",
+            "type": "integer"
+          },
+          "login": {
+            "description": "Login specifies login for list public repositories input.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "login"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListMergedPullRequestsStep",
       "kind": "query",
       "operationId": "listMergedPullRequests",
+      "inputType": "ListMergedPullRequestsInput",
+      "description": "List one bounded page of pull requests merged into a public repository within a time window.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -154,12 +184,53 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListMergedPullRequestsInput selects one page of pull requests merged within an inclusive time window.",
+        "properties": {
+          "mergedAfter": {
+            "description": "MergedAfter is the inclusive window start. GitHub search receives it in UTC with second precision.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "mergedBefore": {
+            "description": "MergedBefore is the inclusive window end and must be after MergedAfter. GitHub search receives it in UTC with second precision.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is one-based. Zero selects 1.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 100. Zero selects 30.",
+            "type": "integer"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mergedAfter",
+          "mergedBefore",
+          "owner",
+          "repository"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListPullRequestFilesStep",
       "kind": "query",
       "operationId": "listPullRequestFiles",
+      "inputType": "ListPullRequestFilesInput",
+      "description": "List one bounded page of files changed by a public repository pull request.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -202,12 +273,46 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPullRequestFilesInput selects one page of files changed by one pull request.",
+        "properties": {
+          "number": {
+            "description": "Number is the positive pull request number.",
+            "type": "integer"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is one-based. Zero selects 1.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 100. Zero selects 50.",
+            "type": "integer"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "owner",
+          "repository"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListReleasesStep",
       "kind": "query",
       "operationId": "listReleases",
+      "inputType": "ListReleasesInput",
+      "description": "List one bounded page of repository releases with publication dates, notes, draft and prerelease flags, and a next-page cursor. GitHub does not support a publication-date filter; callers filter PublishedAt and follow pagination without assuming publication order.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -250,12 +355,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListReleasesInput selects a single bounded page; date filtering is performed by the caller.",
+        "properties": {
+          "maxBodyCharacters": {
+            "description": "MaxBodyCharacters bounds each release's notes to 1 through 16384 Unicode characters. Zero selects 4000.",
+            "type": "integer"
+          },
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is one-based. Zero selects 1.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 100. Zero selects 30.",
+            "type": "integer"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner",
+          "repository"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListCommitsStep",
       "kind": "query",
       "operationId": "listCommits",
+      "inputType": "ListCommitsInput",
+      "description": "List one bounded page of public repository commits within a time window.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -298,7 +436,54 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCommitsInput selects one page of commits within a time window, optionally from one ref and path.",
+        "properties": {
+          "owner": {
+            "description": "Owner is the GitHub login that owns the repository. Surrounding whitespace is ignored.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is one-based. Zero selects 1.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 100. Zero selects 30.",
+            "type": "integer"
+          },
+          "path": {
+            "description": "Path limits commits to those that changed one file or directory path.",
+            "type": "string"
+          },
+          "ref": {
+            "description": "Ref is a branch, tag, or commit SHA. Empty selects the repository default branch.",
+            "type": "string"
+          },
+          "repository": {
+            "description": "Repository is the repository name without its owner, such as hello-world.",
+            "type": "string"
+          },
+          "since": {
+            "description": "Since is the window start. GitHub receives it as since, in UTC with second precision.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "until": {
+            "description": "Until is the window end and must be after Since. GitHub receives it as until, in UTC with second precision.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner",
+          "repository",
+          "since",
+          "until"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

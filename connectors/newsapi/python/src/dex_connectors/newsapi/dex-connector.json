@@ -11,6 +11,8 @@
       "name": "new_search_articles_step",
       "kind": "query",
       "operationId": "searchArticles",
+      "inputType": "SearchArticlesInput",
+      "description": "Search one page of articles through NewsAPI's everything endpoint by keyword, title or body fields, sources, domains, language, and publication window, newest or most relevant first.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,7 +40,70 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchArticlesInput selects one page of NewsAPI's everything search. Query, Sources, or Domains must be set. Empty fields are not sent, so NewsAPI applies its own defaults.",
+        "properties": {
+          "domains": {
+            "description": "Domains restricts results to these domains, such as techcrunch.com.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "excludeDomains": {
+            "description": "ExcludeDomains removes results from these domains.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "from": {
+            "description": "From is the oldest publication time, as a date such as 2026-01-05, a UTC time such as 2026-01-05T07:00:00, or an RFC 3339 time. Empty uses the oldest article the plan allows.",
+            "type": "string"
+          },
+          "language": {
+            "description": "Language is one of Languages. Empty returns articles in every language.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is the 1-based page number. Zero selects page 1.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of articles per page, from 1 through 100. Zero uses NewsAPI's default of 100.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is NewsAPI's keyword expression, up to 500 characters. It supports quoted phrases, + and - prefixes, AND, OR, NOT, and parentheses. The connector form-encodes it.",
+            "type": "string"
+          },
+          "searchIn": {
+            "description": "SearchIn limits Query matching to title, description, or content. Empty searches all three.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sortBy": {
+            "description": "SortBy is publishedAt (newest first), relevancy, or popularity. Empty uses NewsAPI's default, publishedAt.",
+            "type": "string"
+          },
+          "sources": {
+            "description": "Sources lists up to 20 NewsAPI source IDs, such as bbc-news.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "to": {
+            "description": "To is the newest publication time in the same forms. Empty means now.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     }
   ]
 }

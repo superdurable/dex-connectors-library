@@ -11,6 +11,8 @@
       "name": "newSendEmailStep",
       "kind": "mutation",
       "operationId": "sendEmail",
+      "inputType": "SendEmailInput",
+      "description": "SendEmail through the Resend public JSON API.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,49 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendEmailInput is the exact payload sent once per keyed email operation.",
+        "properties": {
+          "from": {
+            "description": "From is the verified sender email address.",
+            "type": "string"
+          },
+          "html": {
+            "description": "HTML is the HTML email body.",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Subject is the email subject.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To contains recipient email addresses.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "html",
+          "subject",
+          "to"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetEmailStep",
       "kind": "query",
       "operationId": "getEmail",
+      "inputType": "GetEmailInput",
+      "description": "GetEmail through the Resend public JSON API.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +115,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEmailInput identifies one sent email.",
+        "properties": {
+          "id": {
+            "description": "ID is the provider's stable resource identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

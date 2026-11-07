@@ -11,6 +11,8 @@
       "name": "newSearchMessagesStep",
       "kind": "query",
       "operationId": "searchMessages",
+      "inputType": "SearchMessagesInput",
+      "description": "Search one mailbox with IMAP SEARCH by sender, recipient, subject, date, and unseen state, returning a bounded newest-first list of message summaries with UIDs and Message-IDs.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,61 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchMessagesInput selects messages in one mailbox. Every set filter must match. Text filters use IMAP SEARCH, which matches a case-insensitive substring of the header; servers with full-text indexes, such as Dovecot with FTS, may match whole words instead. Confirm exact values, such as the sender address, in the Flow.",
+        "properties": {
+          "beforeDate": {
+            "description": "BeforeDate keeps messages that arrived before this date, written YYYY-MM-DD.",
+            "type": "string"
+          },
+          "from": {
+            "description": "From matches the From header, such as jane@example.com or a domain such as @example.com.",
+            "type": "string"
+          },
+          "isUnseen": {
+            "description": "IsUnseen keeps only messages without the \\Seen flag; false matches seen and unseen messages.",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Limit is the number of summaries to return, from 1 through MaxSearchLimit; zero uses DefaultSearchLimit.",
+            "type": "integer"
+          },
+          "mailbox": {
+            "description": "Mailbox is the mailbox to search; blank uses DefaultMailbox.",
+            "type": "string"
+          },
+          "olderThanUid": {
+            "description": "OlderThanUID continues a search: only messages with a smaller UID match. Set it from the previous Result's NextOlderThanUID together with UIDValidity.",
+            "type": "integer"
+          },
+          "sinceDate": {
+            "description": "SinceDate keeps messages that arrived on or after this date, written YYYY-MM-DD. IMAP compares the server's internal arrival date in the server's time zone and ignores the time of day.",
+            "type": "string"
+          },
+          "subjectContains": {
+            "description": "SubjectContains matches the Subject header.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To matches the To header.",
+            "type": "string"
+          },
+          "uidValidity": {
+            "description": "UIDValidity is required with OlderThanUID; a changed UIDVALIDITY selects providerRejected.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetMessageStep",
       "kind": "query",
       "operationId": "getMessage",
+      "inputType": "GetMessageInput",
+      "description": "Read one message by mailbox, UIDVALIDITY, and UID without marking it seen, returning its headers, a bounded plain-text body, and attachment names and sizes without their content.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +127,54 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MessageReference": {
+            "additionalProperties": false,
+            "description": "MessageReference identifies one message in one IMAP mailbox. A UID names the same message only while the mailbox keeps the same UIDVALIDITY, so every operation that takes a reference checks UIDVALIDITY first and selects notFound when it changed.",
+            "properties": {
+              "mailbox": {
+                "description": "Mailbox is the IMAP mailbox name, such as INBOX or Archive.",
+                "type": "string"
+              },
+              "uid": {
+                "description": "UID is the message's IMAP unique identifier in Mailbox; it is required.",
+                "type": "integer"
+              },
+              "uidValidity": {
+                "description": "UIDValidity is the mailbox UIDVALIDITY value that UID belongs to; it is required.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "mailbox",
+              "uid",
+              "uidValidity"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "GetMessageInput identifies the message to read.",
+        "properties": {
+          "message": {
+            "$ref": "#/$defs/MessageReference",
+            "description": "Message is a reference from searchMessages; its UIDValidity must still match the mailbox."
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSendMessageStep",
       "kind": "mutation",
       "operationId": "sendMessage",
+      "inputType": "SendMessageInput",
+      "description": "Send one plain-text message over SMTP with a Message-ID derived from the Step's idempotency key. SMTP has no idempotency, so the Step runs with sync durability and submits at most once per Step execution.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +202,62 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendMessageInput is one new plain-text message.",
+        "properties": {
+          "bcc": {
+            "description": "Bcc lists blind-copy recipients; they receive the message but appear in no header.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cc": {
+            "description": "Cc lists bare ASCII copy recipients.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "replyTo": {
+            "description": "ReplyTo is an optional bare address that replies should go to instead of the sender.",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Subject is one line of at most MaxSubjectBytes; non-ASCII text is encoded for mail headers.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the UTF-8 plain-text body of at most MaxSendTextBytes. It is sent as quoted-printable.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To lists bare ASCII recipient addresses; at least one is required.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "subject",
+          "text",
+          "to"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newReplyToMessageStep",
       "kind": "mutation",
       "operationId": "replyToMessage",
+      "inputType": "ReplyToMessageInput",
+      "description": "Reply to one IMAP message over SMTP with In-Reply-To, References, and a Re subject so mail clients thread it, submitting at most once per Step execution like sendMessage.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,12 +295,70 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MessageReference": {
+            "additionalProperties": false,
+            "description": "MessageReference identifies one message in one IMAP mailbox. A UID names the same message only while the mailbox keeps the same UIDVALIDITY, so every operation that takes a reference checks UIDVALIDITY first and selects notFound when it changed.",
+            "properties": {
+              "mailbox": {
+                "description": "Mailbox is the IMAP mailbox name, such as INBOX or Archive.",
+                "type": "string"
+              },
+              "uid": {
+                "description": "UID is the message's IMAP unique identifier in Mailbox; it is required.",
+                "type": "integer"
+              },
+              "uidValidity": {
+                "description": "UIDValidity is the mailbox UIDVALIDITY value that UID belongs to; it is required.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "mailbox",
+              "uid",
+              "uidValidity"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "ReplyToMessageInput is one plain-text reply to a message in an IMAP mailbox.",
+        "properties": {
+          "cc": {
+            "description": "Cc lists additional bare ASCII copy recipients.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "isReplyAll": {
+            "description": "IsReplyAll also addresses the original To and Cc recipients, except the connection's own sender address.",
+            "type": "boolean"
+          },
+          "message": {
+            "$ref": "#/$defs/MessageReference",
+            "description": "Message is a reference from searchMessages; its UIDValidity must still match the mailbox."
+          },
+          "text": {
+            "description": "Text is the UTF-8 plain-text reply of at most MaxSendTextBytes. The connector does not quote the original message; include any quotation in Text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "text"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newMoveMessageStep",
       "kind": "mutation",
       "operationId": "moveMessage",
+      "inputType": "MoveMessageInput",
+      "description": "Move one message to another mailbox with IMAP MOVE; a repeated attempt that finds the message already moved reports it moved instead of failing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -185,12 +386,63 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MessageReference": {
+            "additionalProperties": false,
+            "description": "MessageReference identifies one message in one IMAP mailbox. A UID names the same message only while the mailbox keeps the same UIDVALIDITY, so every operation that takes a reference checks UIDVALIDITY first and selects notFound when it changed.",
+            "properties": {
+              "mailbox": {
+                "description": "Mailbox is the IMAP mailbox name, such as INBOX or Archive.",
+                "type": "string"
+              },
+              "uid": {
+                "description": "UID is the message's IMAP unique identifier in Mailbox; it is required.",
+                "type": "integer"
+              },
+              "uidValidity": {
+                "description": "UIDValidity is the mailbox UIDVALIDITY value that UID belongs to; it is required.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "mailbox",
+              "uid",
+              "uidValidity"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "MoveMessageInput moves one message to another mailbox.",
+        "properties": {
+          "destinationMailbox": {
+            "description": "DestinationMailbox is an existing mailbox, such as Archive; the connector never creates one.",
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/$defs/MessageReference",
+            "description": "Message is a reference from searchMessages; its UIDValidity must still match the source mailbox."
+          },
+          "messageId": {
+            "description": "MessageID is the message's Message-ID without angle brackets, from searchMessages. When set, it must match the message at the UID, and an attempt that finds the UID gone looks for this Message-ID in the destination and selects moved instead of notFound. Blank skips both checks.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "destinationMailbox",
+          "message"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSetFlagsStep",
       "kind": "mutation",
       "operationId": "setFlags",
+      "inputType": "SetFlagsInput",
+      "description": "Set or clear the seen, flagged, and answered flags of one message to absolute values, so a repeated attempt changes nothing twice.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -218,7 +470,59 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MessageReference": {
+            "additionalProperties": false,
+            "description": "MessageReference identifies one message in one IMAP mailbox. A UID names the same message only while the mailbox keeps the same UIDVALIDITY, so every operation that takes a reference checks UIDVALIDITY first and selects notFound when it changed.",
+            "properties": {
+              "mailbox": {
+                "description": "Mailbox is the IMAP mailbox name, such as INBOX or Archive.",
+                "type": "string"
+              },
+              "uid": {
+                "description": "UID is the message's IMAP unique identifier in Mailbox; it is required.",
+                "type": "integer"
+              },
+              "uidValidity": {
+                "description": "UIDValidity is the mailbox UIDVALIDITY value that UID belongs to; it is required.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "mailbox",
+              "uid",
+              "uidValidity"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "SetFlagsInput sets message flags to absolute values. A nil field leaves that flag unchanged; at least one field is required.",
+        "properties": {
+          "isAnswered": {
+            "description": "IsAnswered sets or clears \\Answered, which mail clients show as replied.",
+            "type": "boolean"
+          },
+          "isFlagged": {
+            "description": "IsFlagged sets or clears \\Flagged, which mail clients show as starred or flagged.",
+            "type": "boolean"
+          },
+          "isSeen": {
+            "description": "IsSeen sets (true) or clears (false) \\Seen, which mail clients show as read.",
+            "type": "boolean"
+          },
+          "message": {
+            "$ref": "#/$defs/MessageReference",
+            "description": "Message is a reference from searchMessages; its UIDValidity must still match the mailbox."
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

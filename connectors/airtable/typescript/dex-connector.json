@@ -11,6 +11,8 @@
       "name": "newListRecordsStep",
       "kind": "query",
       "operationId": "listRecords",
+      "inputType": "ListRecordsInput",
+      "description": "List one bounded page of a table's records, filtered by typed field equality and an optional formula, with a field subset, sort, view, and offset cursor.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,120 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "FieldEqualityFilter": {
+            "additionalProperties": false,
+            "description": "FieldEqualityFilter matches records whose field equals one typed value. Exactly one of Text, Number, and Checkbox is set; prefer the constructors TextFieldEquals, NumberFieldEquals, and CheckboxFieldEquals. The connector writes the filter as an Airtable formula such as {Policy Key} = \"refund-standard\", so it follows Airtable's formula comparison rules. A linked record, lookup, or multiple select field compares its displayed text, such as the linked records' primary field values joined by commas.",
+            "properties": {
+              "checkbox": {
+                "description": "Checkbox matches a checked box when true and an unchecked box when false.",
+                "type": "boolean"
+              },
+              "field": {
+                "description": "Field is the field name, or its field ID such as fldXXXXXXXXXXXXXX. A name cannot contain a brace or a backslash, because Airtable documents no escape for them inside a field reference; use the field ID instead.",
+                "type": "string"
+              },
+              "number": {
+                "description": "Number matches a number, currency, percent, rating, duration, count, or autonumber field. It must be finite.",
+                "type": "number"
+              },
+              "text": {
+                "description": "Text matches a text, email, URL, phone, single select, or date field. It cannot contain a backslash or a control character such as a line break; use ListRecordsInput.Formula for such values.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "field"
+            ],
+            "type": "object"
+          },
+          "RecordSort": {
+            "additionalProperties": false,
+            "description": "RecordSort orders listed records by one field.",
+            "properties": {
+              "direction": {
+                "description": "Direction is asc or desc; blank sorts ascending.",
+                "enum": [
+                  "asc",
+                  "desc"
+                ],
+                "type": "string"
+              },
+              "field": {
+                "description": "Field is the field name or field ID.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "field"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "ListRecordsInput selects one page of a table's records. Filters and Formula combine with AND into Airtable's filterByFormula: typed equality filters are escaped by the connector, and Formula is passed through as written, so it should come from application code rather than end users. Leaving both blank lists every record. Without Sort or View, Airtable returns records in no particular order.",
+        "properties": {
+          "baseId": {
+            "description": "BaseID is the base ID, such as appXXXXXXXXXXXXXX, from the base picker.",
+            "type": "string"
+          },
+          "fields": {
+            "description": "Fields limits each returned record to these field names or IDs; blank returns every non-empty field.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "filters": {
+            "description": "Filters match records whose fields equal typed values, at most 25.",
+            "items": {
+              "$ref": "#/$defs/FieldEqualityFilter"
+            },
+            "type": "array"
+          },
+          "formula": {
+            "description": "Formula is an optional raw Airtable formula, such as {Amount} > 100, ANDed with Filters.",
+            "type": "string"
+          },
+          "offset": {
+            "description": "Offset continues a listing from the previous page's Offset; blank starts at the first page.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the most records returned, 1 to 100; zero returns up to 100.",
+            "type": "integer"
+          },
+          "sort": {
+            "description": "Sort orders the records and overrides View's order, at most 10 entries.",
+            "items": {
+              "$ref": "#/$defs/RecordSort"
+            },
+            "type": "array"
+          },
+          "tableIdOrName": {
+            "description": "TableIDOrName is the table ID, such as tblXXXXXXXXXXXXXX from the table picker, which survives renames, or the table name.",
+            "type": "string"
+          },
+          "viewIdOrName": {
+            "description": "ViewIDOrName limits the records to one view, in its order unless Sort is set.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseId",
+          "tableIdOrName"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetRecordStep",
       "kind": "query",
       "operationId": "getRecord",
+      "inputType": "GetRecordInput",
+      "description": "Read one record by record ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +191,38 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetRecordInput identifies one record.",
+        "properties": {
+          "baseId": {
+            "description": "BaseID is the base ID, such as appXXXXXXXXXXXXXX.",
+            "type": "string"
+          },
+          "recordId": {
+            "description": "RecordID is the record ID, such as recXXXXXXXXXXXXXX.",
+            "type": "string"
+          },
+          "tableIdOrName": {
+            "description": "TableIDOrName is the table ID, such as tblXXXXXXXXXXXXXX, or the table name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseId",
+          "recordId",
+          "tableIdOrName"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpsertRecordsStep",
       "kind": "mutation",
       "operationId": "upsertRecords",
+      "inputType": "UpsertRecordsInput",
+      "description": "Create or update up to 10 records matched by one to three merge fields, such as a case ID, so a repeated write updates the record it created.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +250,79 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "RecordUpsert": {
+            "additionalProperties": false,
+            "description": "RecordUpsert is one record written by UpsertRecords.",
+            "properties": {
+              "fields": {
+                "additionalProperties": {},
+                "description": "Fields maps field names or IDs to cell values. It must hold a non-null value for every merge field, under the same name or ID the merge list uses.",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "fields"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpsertRecordsInput creates or updates up to 10 records in one table. Airtable matches each record to an existing record whose merge fields equal the record's values for them: no match creates a record, one match updates it, leaving fields the write does not name unchanged, and several matches reject the whole request. A repeated write of the same input therefore updates the records the first write created instead of adding duplicates.",
+        "properties": {
+          "baseId": {
+            "description": "BaseID is the base ID, such as appXXXXXXXXXXXXXX.",
+            "type": "string"
+          },
+          "fieldsToMergeOn": {
+            "description": "FieldsToMergeOn names one to three fields whose values identify a record, such as a case ID. Airtable lists number, text, long text, single select, multiple select, and date fields as merge fields, never a computed field such as a formula, lookup, or rollup.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "records": {
+            "description": "Records are the one to ten records to write; no two may share merge values.",
+            "items": {
+              "$ref": "#/$defs/RecordUpsert"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "tableIdOrName": {
+            "description": "TableIDOrName is the table ID, such as tblXXXXXXXXXXXXXX, or the table name.",
+            "type": "string"
+          },
+          "typecast": {
+            "description": "Typecast lets Airtable convert text to the field's type, such as adding a new select option; false rejects a value of the wrong type.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "baseId",
+          "fieldsToMergeOn",
+          "records",
+          "tableIdOrName"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateRecordsStep",
       "kind": "mutation",
       "operationId": "updateRecords",
+      "inputType": "UpdateRecordsInput",
+      "description": "Set the named fields of up to 10 records by record ID, leaving every other field unchanged.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,7 +355,66 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "RecordUpdate": {
+            "additionalProperties": false,
+            "description": "RecordUpdate sets fields on one existing record.",
+            "properties": {
+              "fields": {
+                "additionalProperties": {},
+                "description": "Fields maps field names or IDs to their new cell values. Fields the update does not name keep their values.",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "id": {
+                "description": "ID is the record ID, such as recXXXXXXXXXXXXXX.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "fields",
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdateRecordsInput updates up to 10 records in one table by record ID. Each value replaces the field's whole value, including every link of a linked record field, so repeating the same update leaves the records unchanged.",
+        "properties": {
+          "baseId": {
+            "description": "BaseID is the base ID, such as appXXXXXXXXXXXXXX.",
+            "type": "string"
+          },
+          "records": {
+            "description": "Records are the one to ten records to update, each named once.",
+            "items": {
+              "$ref": "#/$defs/RecordUpdate"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "tableIdOrName": {
+            "description": "TableIDOrName is the table ID, such as tblXXXXXXXXXXXXXX, or the table name.",
+            "type": "string"
+          },
+          "typecast": {
+            "description": "Typecast lets Airtable convert text to the field's type, such as adding a new select option; false rejects a value of the wrong type.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "baseId",
+          "records",
+          "tableIdOrName"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

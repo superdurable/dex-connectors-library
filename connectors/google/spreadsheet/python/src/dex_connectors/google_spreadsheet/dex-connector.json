@@ -11,6 +11,8 @@
       "name": "new_get_values_step",
       "kind": "query",
       "operationId": "getValues",
+      "inputType": "GetValuesInput",
+      "description": "Read one bounded A1 range.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetValuesInput contains the provider request fields for get values.",
+        "properties": {
+          "range": {
+            "description": "Range is an A1 notation range.",
+            "type": "string"
+          },
+          "spreadsheetId": {
+            "description": "SpreadsheetID is the Google Sheets spreadsheet identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "range",
+          "spreadsheetId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_find_row_step",
       "kind": "query",
       "operationId": "findRow",
+      "inputType": "FindRowInput",
+      "description": "Find exactly one row by a named key column and value.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -86,12 +109,43 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindRowInput contains the provider request fields for find row.",
+        "properties": {
+          "keyColumn": {
+            "description": "KeyColumn specifies key column for find row input.",
+            "type": "string"
+          },
+          "keyValue": {
+            "description": "KeyValue specifies key value for find row input.",
+            "type": "string"
+          },
+          "sheetName": {
+            "description": "SheetName is the worksheet title.",
+            "type": "string"
+          },
+          "spreadsheetId": {
+            "description": "SpreadsheetID is the Google Sheets spreadsheet identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keyColumn",
+          "keyValue",
+          "sheetName",
+          "spreadsheetId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_upsert_row_step",
       "kind": "mutation",
       "operationId": "upsertRow",
+      "inputType": "UpsertRowInput",
+      "description": "Query by a stable key and replace or append one row; synchronous durability persists the append dispatch fence before Google receives a non-repeatable write.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -129,7 +183,47 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpsertRowInput contains the provider request fields for upsert row.",
+        "properties": {
+          "keyColumn": {
+            "description": "KeyColumn specifies key column for upsert row input.",
+            "type": "string"
+          },
+          "keyValue": {
+            "description": "KeyValue specifies key value for upsert row input.",
+            "type": "string"
+          },
+          "sheetName": {
+            "description": "SheetName is the worksheet title.",
+            "type": "string"
+          },
+          "spreadsheetId": {
+            "description": "SpreadsheetID is the Google Sheets spreadsheet identifier.",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Values specifies values for upsert row input.",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "keyColumn",
+          "keyValue",
+          "sheetName",
+          "spreadsheetId",
+          "values"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

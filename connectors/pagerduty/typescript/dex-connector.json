@@ -11,6 +11,8 @@
       "name": "newListIncidentsStep",
       "kind": "query",
       "operationId": "listIncidents",
+      "inputType": "ListIncidentsInput",
+      "description": "ListIncidents through the PagerDuty public JSON API.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListIncidentsInput chooses one incident page.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the maximum number of incidents requested.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based page offset.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "offset"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetIncidentStep",
       "kind": "query",
       "operationId": "getIncident",
+      "inputType": "GetIncidentInput",
+      "description": "GetIncident through the PagerDuty public JSON API.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +99,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetIncidentInput identifies an incident.",
+        "properties": {
+          "id": {
+            "description": "ID is the provider's stable resource identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

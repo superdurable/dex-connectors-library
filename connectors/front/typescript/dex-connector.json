@@ -11,6 +11,8 @@
       "name": "newSearchConversationsStep",
       "kind": "query",
       "operationId": "searchConversations",
+      "inputType": "SearchConversationsInput",
+      "description": "Search conversations by text, inbox, tag, Front status filters, recipient email, assignee, and recent activity, returning one bounded page newest activity first and a page token for the next.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,75 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchConversationsInput selects one page of Front's conversation search. Every set field is one filter, and Front combines them with AND. At least one field other than the page fields is required.",
+        "properties": {
+          "activityAfter": {
+            "description": "ActivityAfter keeps conversations with a message or comment created after this time, in whole seconds.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigneeId": {
+            "description": "AssigneeID keeps conversations assigned to one teammate, such as tea_2thf.",
+            "type": "string"
+          },
+          "inboxId": {
+            "description": "InboxID keeps conversations in one inbox, such as inb_41w25.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to MaxSearchPageSize; zero requests DefaultSearchPageSize.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is a previous Result's NextPageToken; send it with the same filters.",
+            "type": "string"
+          },
+          "recipientEmail": {
+            "description": "RecipientEmail keeps conversations where the address is a from, to, cc, or bcc handle of any message.",
+            "type": "string"
+          },
+          "statuses": {
+            "description": "Statuses are is: filters such as open and unassigned. Blank omits trashed conversations, Front's default.",
+            "items": {
+              "enum": [
+                "archived",
+                "assigned",
+                "open",
+                "resolved",
+                "snoozed",
+                "trashed",
+                "unassigned",
+                "unreplied",
+                "waiting"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tagId": {
+            "description": "TagID keeps conversations with one tag, such as tag_13o8r1.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is Front search text matched in subjects and bodies: words, which all must match, and quoted phrases. It is sent unchanged, so Front also applies any filter it contains; quote user-supplied text.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetConversationStep",
       "kind": "query",
       "operationId": "getConversation",
+      "inputType": "GetConversationInput",
+      "description": "Read one conversation by ID with a bounded list of its newest messages and newest internal comments.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +146,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetConversationInput identifies one conversation and how much of its history to return.",
+        "properties": {
+          "commentLimit": {
+            "description": "CommentLimit is 1 to MaxCommentLimit newest internal comments; zero returns DefaultCommentLimit.",
+            "type": "integer"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Front conversation ID, such as cnv_55c8c149.",
+            "type": "string"
+          },
+          "messageLimit": {
+            "description": "MessageLimit is 1 to MaxMessageLimit newest messages; zero reads DefaultMessageLimit.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newReplyToConversationStep",
       "kind": "mutation",
       "operationId": "replyToConversation",
+      "inputType": "ReplyToConversationInput",
+      "description": "Send one reply that Front delivers to the conversation's recipients, or add one internal comment that only teammates see. Front has no idempotency key or client-supplied lookup value, so the shared single-dispatch fence needs sync durability for visible heartbeat checkpoints across attempts.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -119,12 +208,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReplyToConversationInput is one reply to the customer or one internal comment.",
+        "properties": {
+          "authorId": {
+            "description": "AuthorID is the teammate the reply is sent on behalf of, or who writes the comment, such as tea_2thf. Blank lets Front choose: a comment is then written as the API token.",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Front conversation ID, such as cnv_55c8c149.",
+            "type": "string"
+          },
+          "isInternalNote": {
+            "description": "IsInternalNote adds a comment that only teammates see, through POST /conversations/{id}/comments. False sends a reply that Front delivers to the conversation's recipients, through POST /conversations/{id}/messages.",
+            "type": "boolean"
+          },
+          "shouldArchive": {
+            "description": "ShouldArchive archives the conversation when the reply is sent. False keeps it open, unlike Front's own default; a comment must leave it false.",
+            "type": "boolean"
+          },
+          "text": {
+            "description": "Text is the plain text to send, required and at most MaxReplyTextBytes. A reply sends it as text and as an HTML body with one paragraph per blank-line-separated block; a comment sends it unchanged, and Front renders Markdown in comments.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId",
+          "text"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateConversationStep",
       "kind": "mutation",
       "operationId": "updateConversation",
+      "inputType": "UpdateConversationInput",
+      "description": "Set the Front status or ticket status, assignee, and tags of one conversation, then read it back; a repeated attempt finds the values already applied and writes nothing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -157,12 +279,63 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateConversationInput sets a conversation's status, assignee, and tags. Every field is optional, but at least one change is required. Unset fields are left as they are.",
+        "properties": {
+          "addTagIds": {
+            "description": "AddTagIDs are tag IDs to add, such as tag_13o8r1; a tag already on the conversation is kept once.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "assigneeId": {
+            "description": "AssigneeID assigns the conversation to one teammate, such as tea_2thf.",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Front conversation ID, such as cnv_55c8c149.",
+            "type": "string"
+          },
+          "isUnassigned": {
+            "description": "IsUnassigned removes the assignee; it cannot be combined with AssigneeID.",
+            "type": "boolean"
+          },
+          "removeTagIds": {
+            "description": "RemoveTagIDs are tag IDs to remove; a tag not on the conversation is ignored.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status is open, archived, or deleted, in Front's write vocabulary. It cannot be combined with StatusID.",
+            "enum": [
+              "archived",
+              "deleted",
+              "open"
+            ],
+            "type": "string"
+          },
+          "statusId": {
+            "description": "StatusID is a ticket status ID, such as sts_5x, for a company that uses ticketing.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newFindContactByEmailStep",
       "kind": "query",
       "operationId": "findContactByEmail",
+      "inputType": "FindContactByEmailInput",
+      "description": "Find the Front contact whose email handle equals one address; Front keeps each handle on at most one contact.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -195,7 +368,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindContactByEmailInput is the email handle to look up.",
+        "properties": {
+          "email": {
+            "description": "Email is one bare address, such as jane@acme.example.com, sent as Front's alt:email: contact alias.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

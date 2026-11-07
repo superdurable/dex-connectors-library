@@ -11,6 +11,8 @@
       "name": "newCreateEnvelopeFromTemplateStep",
       "kind": "mutation",
       "operationId": "createEnvelopeFromTemplate",
+      "inputType": "CreateEnvelopeFromTemplateInput",
+      "description": "Create one envelope from a server template, filling its roles in their routing order, and send it or keep it as a draft. DocuSign has no idempotency key, so the call runs with sync durability, tags the envelope with a hidden custom field derived from the Step's idempotency key, and on every later attempt looks for that envelope by the field before sending again; an outcome it cannot confirm selects uncertain.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,107 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "EnvelopeCustomField": {
+            "additionalProperties": false,
+            "description": "EnvelopeCustomField is one envelope text custom field, hidden from recipients, such as a correlation ID that a Connect event carries back.",
+            "properties": {
+              "name": {
+                "description": "Name is the field name, 1 to 50 characters.",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value is the field value, at most 100 characters.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "TemplateRole": {
+            "additionalProperties": false,
+            "description": "TemplateRole assigns one person to a template role.",
+            "properties": {
+              "email": {
+                "description": "Email is the recipient's email address, at most 100 characters.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name is the recipient's full name, 1 to 100 characters.",
+                "type": "string"
+              },
+              "roleName": {
+                "description": "RoleName is the template's role name, such as Customer, matched as DocuSign matches it.",
+                "type": "string"
+              },
+              "routingOrder": {
+                "description": "RoutingOrder overrides the role's routing order, 1 to 999; zero keeps the template's order, which decides who is asked to sign first.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "email",
+              "name",
+              "roleName"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateEnvelopeFromTemplateInput describes one envelope created from a DocuSign server template.",
+        "properties": {
+          "customFields": {
+            "description": "CustomFields adds hidden text custom fields, at most 10, such as a correlation ID that Connect events return. Names are 1 to 50 characters and unique; dexIdempotencyKey is reserved.",
+            "items": {
+              "$ref": "#/$defs/EnvelopeCustomField"
+            },
+            "type": "array"
+          },
+          "emailBlurb": {
+            "description": "EmailBlurb overrides the template's email message, at most 10,000 characters; blank keeps it.",
+            "type": "string"
+          },
+          "emailSubject": {
+            "description": "EmailSubject overrides the template's email subject, at most 100 characters; blank keeps it.",
+            "type": "string"
+          },
+          "isDraft": {
+            "description": "IsDraft creates the envelope with status created and sends nothing; false sends it at once.",
+            "type": "boolean"
+          },
+          "templateId": {
+            "description": "TemplateID is the server template's GUID, shown in DocuSign under Templates > the template > Template ID.",
+            "type": "string"
+          },
+          "templateRoles": {
+            "description": "TemplateRoles fills the template's roles by name, 1 to 100 of them. Every role the template requires must be filled.",
+            "items": {
+              "$ref": "#/$defs/TemplateRole"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "templateId",
+          "templateRoles"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetEnvelopeStep",
       "kind": "query",
       "operationId": "getEnvelope",
+      "inputType": "GetEnvelopeInput",
+      "description": "Read one envelope's status, status timestamps, void reason, and text custom fields. DocuSign allows an app one status read per envelope every 15 minutes, so prefer the envelopeEventReceived Trigger and poll only as a fallback.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +173,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEnvelopeInput names the envelope to read.",
+        "properties": {
+          "envelopeId": {
+            "description": "EnvelopeID is the envelope's GUID, such as a createEnvelopeFromTemplate Result's envelopeId.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "envelopeId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListEnvelopeRecipientsStep",
       "kind": "query",
       "operationId": "listEnvelopeRecipients",
+      "inputType": "ListEnvelopeRecipientsInput",
+      "description": "List an envelope's recipients in routing order with each one's type, role, status, and sent, delivered, signed, and declined times, and the routing order DocuSign is currently waiting on.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +227,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEnvelopeRecipientsInput names the envelope whose recipients to list.",
+        "properties": {
+          "envelopeId": {
+            "description": "EnvelopeID is the envelope's GUID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "envelopeId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newVoidEnvelopeStep",
       "kind": "mutation",
       "operationId": "voidEnvelope",
+      "inputType": "VoidEnvelopeInput",
+      "description": "Void one sent or delivered envelope with a reason, the compensation for a send that must not complete. An envelope that is already voided also selects voided, so a repeated call is safe; a completed, declined, or draft envelope selects notVoidable with its status.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -157,12 +286,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "VoidEnvelopeInput names the envelope to void and why.",
+        "properties": {
+          "envelopeId": {
+            "description": "EnvelopeID is the envelope's GUID.",
+            "type": "string"
+          },
+          "voidedReason": {
+            "description": "VoidedReason is shown to the recipients, 1 to 200 characters, such as \"Signing deadline passed\".",
+            "type": "string"
+          }
+        },
+        "required": [
+          "envelopeId",
+          "voidedReason"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newDownloadCombinedDocumentStep",
       "kind": "query",
       "operationId": "downloadCombinedDocument",
+      "inputType": "DownloadCombinedDocumentInput",
+      "description": "Stream an envelope's documents as one combined PDF, optionally with the certificate of completion, through a SHA-256 digest and into the application's CombinedDocumentStore when one is configured. The Result holds the byte count, digest, and the store's location, never the PDF bytes.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -200,7 +350,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DownloadCombinedDocumentInput names the envelope whose documents to download.",
+        "properties": {
+          "envelopeId": {
+            "description": "EnvelopeID is the envelope's GUID, normally of a completed envelope.",
+            "type": "string"
+          },
+          "includeCertificate": {
+            "description": "IncludeCertificate appends DocuSign's certificate of completion to the combined PDF.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "envelopeId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

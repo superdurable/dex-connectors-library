@@ -64,7 +64,8 @@ test-python-connectors:
 		uv sync --locked --project "$$module/python" && uv run --project "$$module/python" ruff check "$$module/python" && \
 		uv run --project "$$module/python" mypy --strict "$$module/python/src" && uv run --project "$$module/python" pytest "$$module/python/tests" && \
 		uv run --project "$$module/python" python script/python_public_exports_test.py "$$module/python" && \
-		uv run --project "$$module/python" python script/python_model_drift_test.py "$$module/python" || exit 1; \
+		uv run --project "$$module/python" python script/python_model_drift_test.py "$$module/python" && \
+		uv run --project "$$module/python" python script/python_input_schema_test.py "$$module/python" || exit 1; \
 	done
 	uv run --project connectors/airtable/python python conformance/runners/python/clock_test.py
 	@python3 script/python_slice_wire_test.py
@@ -76,7 +77,8 @@ test-typescript-connectors:
 		test -f "$$module/typescript/package-lock.json" || { echo "$$module/typescript/package-lock.json is missing" >&2; exit 1; }; \
 		python3 script/release/component_release.py validate-language-package --component-path "$$module/typescript" --language typescript --allow-pending-go-release || exit 1; \
 		npm ci --prefix "$$module/typescript" && npm run typecheck --prefix "$$module/typescript" && \
-		npm run lint --prefix "$$module/typescript" && npm test --prefix "$$module/typescript" || exit 1; \
+		npm run lint --prefix "$$module/typescript" && npm test --prefix "$$module/typescript" && \
+		"$$module/typescript/node_modules/.bin/tsx" script/typescript_input_schema_test.mts "$$module/typescript" || exit 1; \
 	done
 
 catalog-check:

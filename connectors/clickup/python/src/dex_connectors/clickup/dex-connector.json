@@ -11,6 +11,8 @@
       "name": "new_search_tasks_step",
       "kind": "query",
       "operationId": "searchTasks",
+      "inputType": "SearchTasksInput",
+      "description": "Search one Workspace's tasks by List, Folder, Space, status, assignee, tag, and update time, returning one page of up to 100 tasks and the next page number.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,104 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchTasksInput filters one Workspace's tasks. Every non-empty filter narrows the search, and the values of one list filter are alternatives.",
+        "properties": {
+          "areSubtasksIncluded": {
+            "description": "AreSubtasksIncluded also returns subtasks; ClickUp excludes them by default.",
+            "type": "boolean"
+          },
+          "assigneeIds": {
+            "description": "AssigneeIDs keeps tasks assigned to any of these user IDs.",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "folderIds": {
+            "description": "FolderIDs keeps tasks of Lists in these Folders.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "isClosedIncluded": {
+            "description": "IsClosedIncluded also returns tasks in a closed status; ClickUp excludes them by default.",
+            "type": "boolean"
+          },
+          "isReverse": {
+            "description": "IsReverse reverses ClickUp's order.",
+            "type": "boolean"
+          },
+          "listIds": {
+            "description": "ListIDs keeps tasks of these Lists.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "orderBy": {
+            "description": "OrderBy is created, updated, due_date, or id; empty uses ClickUp's default order by creation.",
+            "enum": [
+              "created",
+              "due_date",
+              "id",
+              "updated"
+            ],
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is the zero-based page to read; continue with SearchTasksOutput.NextPage.",
+            "type": "integer"
+          },
+          "spaceIds": {
+            "description": "SpaceIDs keeps tasks of these Spaces.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "statuses": {
+            "description": "Statuses keeps tasks in these status names, such as in progress.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "description": "Tags keeps tasks with any of these tag names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedAfter": {
+            "description": "UpdatedAfter keeps tasks updated after this time, for polling changes since a checkpoint.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workspaceId": {
+            "description": "WorkspaceID is the Workspace (ClickUp API team) ID, the first number in a ClickUp web address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspaceId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_task_step",
       "kind": "query",
       "operationId": "getTask",
+      "inputType": "GetTaskInput",
+      "description": "Read one task by ID or custom task ID with its status, priority, dates, assignees, tags, List, Markdown description, and custom field values.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +175,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskInput names one task.",
+        "properties": {
+          "isCustomTaskId": {
+            "description": "IsCustomTaskID reads TaskID as the Workspace's custom task ID; it requires WorkspaceID.",
+            "type": "boolean"
+          },
+          "taskId": {
+            "description": "TaskID is ClickUp's task ID, the code after /t/ in the task's web address, or a custom task ID such as DEV-123 when IsCustomTaskID is set.",
+            "type": "string"
+          },
+          "workspaceId": {
+            "description": "WorkspaceID is the Workspace of a custom task ID; leave it empty for an ordinary task ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_task_step",
       "kind": "mutation",
       "operationId": "createTask",
+      "inputType": "CreateTaskInput",
+      "description": "Create one task in a List with a name, Markdown description, status, priority, due time, assignees, tags, parent task, and custom field values. ClickUp has no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before sending, and reconciles an unconfirmed attempt by reading the List back instead of resending.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,12 +237,108 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "CustomFieldInput": {
+            "additionalProperties": false,
+            "description": "CustomFieldInput sets one custom field on a new task.",
+            "properties": {
+              "id": {
+                "description": "ID is the custom field's ID, from getTask or ClickUp's Get Accessible Custom Fields.",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value is the JSON value ClickUp expects for the field's type, such as \"text\", 5, or an option ID."
+              }
+            },
+            "required": [
+              "id",
+              "value"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateTaskInput is one task to create in a List.",
+        "properties": {
+          "assigneeIds": {
+            "description": "AssigneeIDs are the users to assign, such as a findMemberByEmail result's ID.",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "customFields": {
+            "description": "CustomFields set custom field values; ClickUp ignores fields that do not apply to the task.",
+            "items": {
+              "$ref": "#/$defs/CustomFieldInput"
+            },
+            "type": "array"
+          },
+          "dueAt": {
+            "description": "DueAt is the due date and time; nil sets none.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isCreatorNotified": {
+            "description": "IsCreatorNotified also notifies the token's user; assignees and watchers are always notified.",
+            "type": "boolean"
+          },
+          "listId": {
+            "description": "ListID is the List to create the task in, the number after /li/ in the List's web address.",
+            "type": "string"
+          },
+          "markdownDescription": {
+            "description": "MarkdownDescription is the description in Markdown, at most MaxDescriptionBytes; empty sets none.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name is the task name. A retried attempt finds its earlier task by this name, so a name that carries the application's own request key, such as [REQ-1042], makes reconciliation unambiguous.",
+            "type": "string"
+          },
+          "parentTaskId": {
+            "description": "ParentTaskID creates a subtask of this task, which must be in the same List; empty creates a task.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority is 1 urgent through 4 low; zero sets no priority.",
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status is a status name of the List's workflow, such as in progress; empty uses the List's first status.",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Tags are tag names of the List's Space to add.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "listId",
+          "name"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_task_step",
       "kind": "mutation",
       "operationId": "updateTask",
+      "inputType": "UpdateTaskInput",
+      "description": "Change one task's name, Markdown description, status, priority, or due time, and add or remove assignees; every change is an absolute value or a set membership, so a repeated update leaves the same task.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -157,12 +371,72 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateTaskInput changes one task. Only set fields change; every change is an absolute value or a set membership, so a repeated update leaves the same task.",
+        "properties": {
+          "addAssigneeIds": {
+            "description": "AddAssigneeIDs assigns these users; an existing assignee stays assigned.",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "dueAt": {
+            "description": "DueAt sets the due date and time; nil keeps it.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "markdownDescription": {
+            "description": "MarkdownDescription replaces the description with Markdown when set; a pointer to \"\" clears it.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name renames the task when set.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority sets 1 urgent through 4 low; zero keeps the current priority.",
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "type": "integer"
+          },
+          "removeAssigneeIds": {
+            "description": "RemoveAssigneeIDs unassigns these users; a user who is not assigned is ignored.",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status moves the task to a status name of its List's workflow, such as in progress; empty keeps it.",
+            "type": "string"
+          },
+          "taskId": {
+            "description": "TaskID is ClickUp's task ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_task_tags_step",
       "kind": "mutation",
       "operationId": "updateTaskTags",
+      "inputType": "UpdateTaskTagsInput",
+      "description": "Add tags to and remove tags from one task, then read the task's tags back; adding a present tag or removing an absent one changes nothing, so a repeated update is safe.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -195,12 +469,42 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateTaskTagsInput adds tags to and removes tags from one task.",
+        "properties": {
+          "addTags": {
+            "description": "AddTags are tag names to add; a tag the task already has stays.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "removeTags": {
+            "description": "RemoveTags are tag names to remove from the task; the tag stays in the Space.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "taskId": {
+            "description": "TaskID is ClickUp's task ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_comment_step",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one plain-text comment, authored by the token's user, to a task. ClickUp has no idempotency key, so the Step runs with sync durability, records a Dex heartbeat checkpoint before sending, and reconciles an unconfirmed attempt by reading the task's comments back instead of resending.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -233,12 +537,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput is one plain-text comment to add to a task.",
+        "properties": {
+          "isCreatorNotified": {
+            "description": "IsCreatorNotified also notifies the token's user; assignees and watchers are always notified.",
+            "type": "boolean"
+          },
+          "taskId": {
+            "description": "TaskID is ClickUp's task ID.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the comment's plain text, at most MaxCommentBytes; ClickUp shows it as written.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId",
+          "text"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_find_member_by_email_step",
       "kind": "query",
       "operationId": "findMemberByEmail",
+      "inputType": "FindMemberByEmailInput",
+      "description": "Find the member of one Workspace whose email address equals the given address, returning the numeric user ID that task assignees use.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -271,7 +600,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindMemberByEmailInput names one Workspace and one email address.",
+        "properties": {
+          "email": {
+            "description": "Email is one bare email address, compared without regard to case.",
+            "type": "string"
+          },
+          "workspaceId": {
+            "description": "WorkspaceID is the Workspace (ClickUp API team) ID, the first number in a ClickUp web address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "workspaceId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

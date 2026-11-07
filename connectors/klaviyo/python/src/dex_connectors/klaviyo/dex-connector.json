@@ -11,6 +11,8 @@
       "name": "new_get_profile_step",
       "kind": "query",
       "operationId": "getProfile",
+      "inputType": "GetProfileInput",
+      "description": "Get one profile by Klaviyo ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetProfileInput identifies a Klaviyo profile.",
+        "properties": {
+          "id": {
+            "description": "ID is Klaviyo's opaque profile ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_event_step",
       "kind": "mutation",
       "operationId": "createEvent",
+      "inputType": "CreateEventInput",
+      "description": "Submit a profile event with a unique_id derived from Dex's stable call identity.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -71,7 +89,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateEventInput associates one event with a profile email and metric.",
+        "properties": {
+          "email": {
+            "description": "Email identifies the profile. Klaviyo silently drops some test-domain events after accepting them.",
+            "type": "string"
+          },
+          "metricName": {
+            "description": "MetricName names the event metric.",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Properties contains optional non-secret string event properties.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "email",
+          "metricName"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

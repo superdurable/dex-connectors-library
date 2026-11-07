@@ -11,6 +11,8 @@
       "name": "newListItemsStep",
       "kind": "query",
       "operationId": "listItems",
+      "inputType": "ListItemsInput",
+      "description": "List one bounded page of a board's active items that match a typed column-value filter, continuing with monday.com's items_page cursor.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,147 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "ItemFilter": {
+            "additionalProperties": false,
+            "description": "ItemFilter is a typed items_page filter: rules on column values joined by Combination. The zero value matches every active item on the board.",
+            "properties": {
+              "combination": {
+                "description": "Combination joins the rules; blank means every rule must match.",
+                "enum": [
+                  "and",
+                  "or"
+                ],
+                "type": "string"
+              },
+              "rules": {
+                "description": "Rules are at most 10 column conditions.",
+                "items": {
+                  "$ref": "#/$defs/ItemFilterRule"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "ItemFilterRule": {
+            "additionalProperties": false,
+            "description": "ItemFilterRule is one condition on a column's value. Values carry string compare values in monday.com's per-column format, such as an exact item name for the name column, [\"EXACT\", \"2026-07-01\"] or [\"TODAY\"] for a date column, or \"person-48202303\" for a people column. Numbers carry numeric compare values, such as status label indexes. Set at most one of the two: ItemFilterIsEmpty and ItemFilterIsNotEmpty take neither; contains_text, not_contains_text, contains_terms, starts_with, and ends_with take exactly one string; between takes exactly two; the other operators take 1 to 50. An unsupported combination selects defect before any request is sent.",
+            "properties": {
+              "columnId": {
+                "description": "ColumnID is the column to compare, such as status or date4; name compares the item name.",
+                "type": "string"
+              },
+              "compareAttribute": {
+                "description": "CompareAttribute optionally names the column attribute monday.com compares, such as a people column's attribute.",
+                "type": "string"
+              },
+              "numbers": {
+                "description": "Numbers are numeric compare values, such as status label indexes.",
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "operator": {
+                "description": "Operator is the comparison; blank means any_of.",
+                "enum": [
+                  "any_of",
+                  "between",
+                  "contains_terms",
+                  "contains_text",
+                  "ends_with",
+                  "greater_than",
+                  "greater_than_or_equals",
+                  "is_empty",
+                  "is_not_empty",
+                  "lower_than",
+                  "lower_than_or_equal",
+                  "not_any_of",
+                  "not_contains_text",
+                  "starts_with",
+                  "within_the_last",
+                  "within_the_next"
+                ],
+                "type": "string"
+              },
+              "values": {
+                "description": "Values are string compare values.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "columnId"
+            ],
+            "type": "object"
+          },
+          "ItemOrder": {
+            "additionalProperties": false,
+            "description": "ItemOrder orders a listing by one column or timestamp.",
+            "properties": {
+              "columnId": {
+                "description": "ColumnID is the column to order by, or ItemOrderCreationTime or ItemOrderLastUpdated.",
+                "type": "string"
+              },
+              "descending": {
+                "description": "IsDescending orders from the largest or latest value.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "columnId"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "ListItemsInput selects one page of a board's active items. The first page sets BoardID with an optional Filter and Order; a later page sets BoardID and the previous page's NextCursor only, because monday.com's cursor carries the filter and rejects a new one.",
+        "properties": {
+          "boardId": {
+            "description": "BoardID is the numeric board ID, the number after /boards/ in the board's URL.",
+            "type": "string"
+          },
+          "columnIds": {
+            "description": "ColumnIDs limits each item's column values to at most 50 columns; empty returns every column.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cursor": {
+            "description": "Cursor continues a listing with the previous page's NextCursor; monday.com expires it 60 minutes after the first page.",
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/$defs/ItemFilter",
+            "description": "Filter limits the page to items whose column values match; the zero value lists every active item."
+          },
+          "limit": {
+            "description": "Limit is the page size from 1 to 100; zero means 25.",
+            "type": "integer"
+          },
+          "order": {
+            "$ref": "#/$defs/ItemOrder",
+            "description": "Order orders the listing by one column or timestamp; nil keeps monday.com's board order."
+          }
+        },
+        "required": [
+          "boardId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetItemStep",
       "kind": "query",
       "operationId": "getItem",
+      "inputType": "GetItemInput",
+      "description": "Read one item by ID with its group, timestamps, and the text and JSON value of every requested column.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +218,39 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetItemInput identifies one item.",
+        "properties": {
+          "columnIds": {
+            "description": "ColumnIDs limits the column values to at most 50 columns; empty returns every column.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "includesInactive": {
+            "description": "IncludesInactive also returns an archived or deleted item, with its State, instead of notFound.",
+            "type": "boolean"
+          },
+          "itemId": {
+            "description": "ItemID is the numeric item ID, such as the ID listItems returns.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateItemStep",
       "kind": "mutation",
       "operationId": "createItem",
+      "inputType": "CreateItemInput",
+      "description": "Create one item on a board with typed column values. A stable Idempotency-Key and sync dispatch checkpoint fence retries; an unconfirmed sent request fails closed.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -119,12 +283,158 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "ColumnValue": {
+            "additionalProperties": false,
+            "description": "ColumnValue is one typed value written to a monday.com column. Type selects which fields apply: Text for text and long_text; Number for numbers; StatusLabel or StatusIndex for status; Date and the optional Time for date; PersonIDs and TeamIDs for people; Checked for checkbox; Email with the optional Text for email; URL with the optional Text for link; Phone and CountryCode for phone; DropdownLabels or DropdownLabelIDs for dropdown; and Date and EndDate for timeline. Setting a field that does not belong to Type selects defect before any request is sent. Prefer the constructors such as TextValue and StatusLabelValue, and ClearedValue to empty a column on purpose. Writes replace the column's whole value: a people or dropdown value lists every entry the column keeps, so repeating the same write leaves the item unchanged.",
+            "properties": {
+              "checked": {
+                "description": "Checked is a checkbox value; false clears the checkbox.",
+                "type": "boolean"
+              },
+              "cleared": {
+                "description": "IsCleared empties the column; no other field may be set.",
+                "type": "boolean"
+              },
+              "countryCode": {
+                "description": "CountryCode is the phone number's ISO 3166-1 alpha-2 country code, such as US.",
+                "type": "string"
+              },
+              "date": {
+                "description": "Date is a YYYY-MM-DD date, or the start of a timeline.",
+                "type": "string"
+              },
+              "dropdownLabelIds": {
+                "description": "DropdownLabelIDs selects dropdown labels by their numeric IDs.",
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "dropdownLabels": {
+                "description": "DropdownLabels selects dropdown labels by their text.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "email": {
+                "description": "Email is a bare email address such as jane@example.com.",
+                "type": "string"
+              },
+              "endDate": {
+                "description": "EndDate is the YYYY-MM-DD end of a timeline, on or after Date.",
+                "type": "string"
+              },
+              "number": {
+                "description": "Number is a finite numbers value.",
+                "type": "number"
+              },
+              "personIds": {
+                "description": "PersonIDs lists monday.com user IDs of a people value.",
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "phone": {
+                "description": "Phone is a phone number of 4 to 20 digits with an optional leading +.",
+                "type": "string"
+              },
+              "statusIndex": {
+                "description": "StatusIndex selects a status label by its index; monday.com recommends it for numeric labels.",
+                "type": "integer"
+              },
+              "statusLabel": {
+                "description": "StatusLabel selects a status label by its text, such as Done.",
+                "type": "string"
+              },
+              "teamIds": {
+                "description": "TeamIDs lists monday.com team IDs of a people value.",
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "text": {
+                "description": "Text is the text of a text or long_text value, or the display text of an email or link.",
+                "type": "string"
+              },
+              "time": {
+                "description": "Time is an optional HH:MM:SS UTC time for a date value.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type is the column's monday.com type.",
+                "enum": [
+                  "checkbox",
+                  "date",
+                  "dropdown",
+                  "email",
+                  "link",
+                  "long_text",
+                  "numbers",
+                  "people",
+                  "phone",
+                  "status",
+                  "text",
+                  "timeline"
+                ],
+                "type": "string"
+              },
+              "url": {
+                "description": "URL is an absolute http or https link.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateItemInput describes one new item.",
+        "properties": {
+          "boardId": {
+            "description": "BoardID is the numeric board ID, the number after /boards/ in the board's URL.",
+            "type": "string"
+          },
+          "columnValues": {
+            "additionalProperties": {
+              "$ref": "#/$defs/ColumnValue"
+            },
+            "description": "ColumnValues maps at most 50 column IDs, such as status or date4, to typed values.",
+            "type": "object"
+          },
+          "createsLabelsIfMissing": {
+            "description": "CreatesLabelsIfMissing lets monday.com add a missing status or dropdown label, which needs permission to change the board structure; false rejects an unknown label.",
+            "type": "boolean"
+          },
+          "groupId": {
+            "description": "GroupID places the item in this group, such as topics; blank uses the board's first active group.",
+            "type": "string"
+          },
+          "itemName": {
+            "description": "ItemName is the item name, 1 to 255 characters on one line.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "boardId",
+          "itemName"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateItemColumnValuesStep",
       "kind": "mutation",
       "operationId": "updateItemColumnValues",
+      "inputType": "UpdateItemColumnValuesInput",
+      "description": "Set typed absolute values on columns of one item, so a repeated or duplicated update leaves the item unchanged; every attempt also sends the Step's Idempotency-Key.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -157,12 +467,158 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "ColumnValue": {
+            "additionalProperties": false,
+            "description": "ColumnValue is one typed value written to a monday.com column. Type selects which fields apply: Text for text and long_text; Number for numbers; StatusLabel or StatusIndex for status; Date and the optional Time for date; PersonIDs and TeamIDs for people; Checked for checkbox; Email with the optional Text for email; URL with the optional Text for link; Phone and CountryCode for phone; DropdownLabels or DropdownLabelIDs for dropdown; and Date and EndDate for timeline. Setting a field that does not belong to Type selects defect before any request is sent. Prefer the constructors such as TextValue and StatusLabelValue, and ClearedValue to empty a column on purpose. Writes replace the column's whole value: a people or dropdown value lists every entry the column keeps, so repeating the same write leaves the item unchanged.",
+            "properties": {
+              "checked": {
+                "description": "Checked is a checkbox value; false clears the checkbox.",
+                "type": "boolean"
+              },
+              "cleared": {
+                "description": "IsCleared empties the column; no other field may be set.",
+                "type": "boolean"
+              },
+              "countryCode": {
+                "description": "CountryCode is the phone number's ISO 3166-1 alpha-2 country code, such as US.",
+                "type": "string"
+              },
+              "date": {
+                "description": "Date is a YYYY-MM-DD date, or the start of a timeline.",
+                "type": "string"
+              },
+              "dropdownLabelIds": {
+                "description": "DropdownLabelIDs selects dropdown labels by their numeric IDs.",
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "dropdownLabels": {
+                "description": "DropdownLabels selects dropdown labels by their text.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "email": {
+                "description": "Email is a bare email address such as jane@example.com.",
+                "type": "string"
+              },
+              "endDate": {
+                "description": "EndDate is the YYYY-MM-DD end of a timeline, on or after Date.",
+                "type": "string"
+              },
+              "number": {
+                "description": "Number is a finite numbers value.",
+                "type": "number"
+              },
+              "personIds": {
+                "description": "PersonIDs lists monday.com user IDs of a people value.",
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "phone": {
+                "description": "Phone is a phone number of 4 to 20 digits with an optional leading +.",
+                "type": "string"
+              },
+              "statusIndex": {
+                "description": "StatusIndex selects a status label by its index; monday.com recommends it for numeric labels.",
+                "type": "integer"
+              },
+              "statusLabel": {
+                "description": "StatusLabel selects a status label by its text, such as Done.",
+                "type": "string"
+              },
+              "teamIds": {
+                "description": "TeamIDs lists monday.com team IDs of a people value.",
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "text": {
+                "description": "Text is the text of a text or long_text value, or the display text of an email or link.",
+                "type": "string"
+              },
+              "time": {
+                "description": "Time is an optional HH:MM:SS UTC time for a date value.",
+                "type": "string"
+              },
+              "type": {
+                "description": "Type is the column's monday.com type.",
+                "enum": [
+                  "checkbox",
+                  "date",
+                  "dropdown",
+                  "email",
+                  "link",
+                  "long_text",
+                  "numbers",
+                  "people",
+                  "phone",
+                  "status",
+                  "text",
+                  "timeline"
+                ],
+                "type": "string"
+              },
+              "url": {
+                "description": "URL is an absolute http or https link.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdateItemColumnValuesInput sets absolute values on columns of one item. Columns left out keep their values.",
+        "properties": {
+          "boardId": {
+            "description": "BoardID is the numeric ID of the board that holds the item.",
+            "type": "string"
+          },
+          "columnValues": {
+            "additionalProperties": {
+              "$ref": "#/$defs/ColumnValue"
+            },
+            "description": "ColumnValues maps 1 to 50 column IDs, such as status or date4, to typed values.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "createsLabelsIfMissing": {
+            "description": "CreatesLabelsIfMissing lets monday.com add a missing status or dropdown label, which needs permission to change the board structure; false rejects an unknown label.",
+            "type": "boolean"
+          },
+          "itemId": {
+            "description": "ItemID is the numeric item ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "boardId",
+          "columnValues",
+          "itemId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddUpdateStep",
       "kind": "mutation",
       "operationId": "addUpdate",
+      "inputType": "AddUpdateInput",
+      "description": "Add one plain-text item update. A stable Idempotency-Key and sync dispatch checkpoint fence retries; an unconfirmed sent request fails closed.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -195,7 +651,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddUpdateInput is one update, monday.com's comment on an item.",
+        "properties": {
+          "body": {
+            "description": "Body is plain text of at most 10,000 characters. The connector escapes it into monday.com's HTML update body, so markup is shown literally and line breaks are kept.",
+            "type": "string"
+          },
+          "itemId": {
+            "description": "ItemID is the numeric ID of the item to comment on.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "itemId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

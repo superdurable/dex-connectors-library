@@ -11,6 +11,8 @@
       "name": "new_get_order_step",
       "kind": "query",
       "operationId": "getOrder",
+      "inputType": "GetOrderInput",
+      "description": "Read one PayPal checkout order.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetOrderInput identifies one PayPal checkout order.",
+        "properties": {
+          "orderId": {
+            "description": "OrderID is the PayPal checkout order ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "orderId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_transactions_step",
       "kind": "query",
       "operationId": "listTransactions",
+      "inputType": "ListTransactionsInput",
+      "description": "List one page of PayPal transactions in a date range.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,7 +99,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTransactionsInput selects a PayPal transaction window and page.",
+        "properties": {
+          "endDate": {
+            "description": "EndDate is the inclusive RFC 3339 window end.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is the one-based page number; zero selects page one.",
+            "type": "integer"
+          },
+          "startDate": {
+            "description": "StartDate is the inclusive RFC 3339 window start.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "endDate",
+          "startDate"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

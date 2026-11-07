@@ -28,6 +28,9 @@ npm places it beside `typescript/package.json`. Check in the generated files and
 run `connectorctl generate --check <connector.yaml>` to detect drift. The JSON file
 maps the manifest's operation factories, branch IDs and optional status, package
 identity, and fields used by Dex CLI's Python and TypeScript source analyzers.
+It also carries each operation's input type, input JSON Schema, and model-facing
+description, plus any reviewed `agent` block; see
+[Agent tool metadata](#agent-tool-metadata).
 Only listed operation factories are generated. Trigger factory mappings await
 language package and `dex-connector.json` contract support; validation rejects
 nonempty language Trigger lists until then.
@@ -83,8 +86,10 @@ map them. The OpenAI Python factory also accepts its existing configuration UI
 and progress and text Stream options; static analyzer mappings for those options
 await matching schema support. Trigger factories are not emitted until the
 language package implements them. The vendored
-[`dex-connector.schema.json`](../schema/dex-connector.schema.json) is from Dex
-`cli-v1.28.0` at `cli/internal/flowviz/dex-connector.schema.json`.
+[`dex-connector.schema.json`](../schema/dex-connector.schema.json) is a copy of
+Dex `cli/internal/flowviz/dex-connector.schema.json`. Dex owns the file, and its
+analyzers reject unknown fields, so a new field lands and releases in Dex CLI
+before this repository generates it.
 
 For every declared TypeScript package, `connectorctl generate` also writes
 `typescript/src/generated/{models,definitions,steps,connection,mock}.ts`.
@@ -196,7 +201,9 @@ An operation declares:
 - progress capabilities used to generate typed Stream fields;
 - `authorization: required` for operations that require an authorized
   connection, or `none` for public operations;
-- Dex Execute timeout, retry, heartbeat, and durability defaults.
+- Dex Execute timeout, retry, heartbeat, and durability defaults;
+- optionally, an `agent` block with the result of reviewing the operation for
+  agent use; see [Agent tool metadata](#agent-tool-metadata).
 
 Omit `execution.retry` for the Connector Step Execute default: one-second
 initial delay, coefficient 2, five-minute maximum delay, unlimited attempts
@@ -500,6 +507,119 @@ module from this repository may be required; see
 [Connector dependencies](versioning-and-releases.md#connector-dependencies).
 The Dex Go SDK requirement is a minimum; see
 [Dex versions](versioning-and-releases.md#dex-versions).
+
+## Agent tool metadata
+
+An agent host can offer a Connector operation to a model as a tool. Only reviewed
+operations are offered. An operation without an `agent` block is not offered, so
+a new operation never reaches a model by default.
+
+```yaml
+operations:
+  - name: createRefund
+    # ...
+    agent:
+      exposed: true
+      approval: recommended
+      retry: safe
+      description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
+```
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `exposed` | Yes | `true` offers the operation to agents. `false` records a review that declined it, which has the same effect as no block. |
+| `approval` | No | `recommended` asks the agent host to stop for a person before the call runs. Leave it out to keep the host's default. Requires `exposed: true`. |
+| `retry` | No | `safe` claims that repeating the call with the same Call ID, inside the operation's own Execute retry policy, cannot make a second effect. Absence means a repeat may not be safe. Mutations only. Requires `exposed: true`. |
+| `description` | No | Text for a model choosing a tool. Requires `exposed: true`. Without it, the operation's `description` is used. |
+
+Set `approval: recommended` when a person should confirm the call even though it
+is safe to retry: money leaves, a legal document goes out, or one wrong call
+changes many rows. Idempotency does not answer this question. The field is
+metadata for the host, which may override it per tool.
+
+Set `retry: safe` only when you can show the claim for this operation, such as a
+provider idempotency key that outlives the retry window. A missing value fails
+closed: a host treats the call as unsafe to repeat. `idempotency: required` does
+not imply it, because every Mutation declares that. Do not set it because an
+operation has `dispatchFence`, unless the fence holds on the host that runs it.
+Retry and approval are independent: Stripe `createRefund` is safe to repeat and
+still recommends approval.
+
+The claim covers one Call ID within the operation's own policy, and no more:
+
+- The window is the manifest's `execution.retry`, or the one-hour default. A
+  provider key expires, so keep that window inside its retention. An application
+  or host that widens the policy with an Execute retry override takes on that
+  check. Stripe keeps keys for 24 hours, so a widened window must stay at or under
+  23 hours.
+- A new Step execution gets a new Call ID, and so a new key. Nothing dedupes it
+  against the earlier call.
+
+Write `agent.description` for a model, not a Connector author. State what the
+operation does and what the model must supply. Leave out durability, retry, and
+fence details. Do not name credentials or secrets.
+
+Reviewing an operation means checking its description, its input fields, and the
+harm a wrong call can do. Change this block in a pull request for that connector.
+Moving `exposed` to `true`, or changing `approval`, is a minor release of each
+language package that should offer it.
+
+### Generated input schema
+
+`connectorctl generate` writes these fields on every operation factory in
+`dex-connector.json`, whether or not it has an `agent` block:
+
+```json
+{
+  "name": "new_create_refund_step",
+  "kind": "mutation",
+  "operationId": "createRefund",
+  "inputType": "CreateRefundInput",
+  "description": "Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.",
+  "agent": { "exposed": true, "approval": "recommended", "retry": "safe" },
+  "fields": { "...": "..." },
+  "branches": [],
+  "inputSchema": {
+    "type": "object",
+    "description": "CreateRefundInput contains one Stripe refund request.",
+    "additionalProperties": false,
+    "required": ["amount", "paymentIntentId"],
+    "properties": {
+      "amount": { "type": "integer", "description": "Amount is the positive refund amount in the currency's minor unit." },
+      "metadata": { "type": "object", "additionalProperties": { "type": "string" }, "description": "..." },
+      "paymentIntentId": { "type": "string", "description": "..." },
+      "reason": { "type": "string", "enum": ["duplicate", "fraudulent", "requested_by_customer"], "description": "..." }
+    }
+  }
+}
+```
+
+`inputType` is the public model name in that language: a class in the package's
+`models` module for Python, and a type with a matching strict `<inputType>Schema`
+validator exported from the package root for TypeScript. The `agent` block leaves out
+`description`, because the factory's `description` already carries it.
+
+`inputSchema` is a JSON Schema draft 2020-12 object. `internal/codegen/gomodel`
+derives it from the same Go models that generate the Python and TypeScript
+models, so both packages publish the same schema for an operation and no
+hand-written schema exists. Go field comments become property descriptions, so
+write them for a reader who has not seen the code.
+
+| Go model | JSON Schema |
+| --- | --- |
+| `json` tag name | Property name. This is the Python `dex_json_name` and the TypeScript property |
+| `omitempty` or `omitzero` | Not in `required`. This is the Python `dex_json_omit_default` |
+| No omission option | In `required`, as the TypeScript validator requires. The value may be `null` when the type allows it |
+| Struct | `additionalProperties: false`. The root is inline; other structs use `$defs` and `$ref`, which also carry recursion |
+| Pointer, slice, or map without an omission option | `null` is allowed |
+| `time.Time` | String with `format: date-time` |
+| `[]byte` | String with `contentEncoding: base64` |
+| Named string or integer with constants | `enum` of those constants. The language models accept other values, but a model should choose a known one |
+| `string` with a `connectorEnum:"a,b"` tag | `enum` of those values. Use it when a provider accepts a fixed set but the public Go type must stay `string`. It changes only the schema: the language models keep a plain string, so the operation must still validate the value |
+| `any` or `json.RawMessage` | The empty schema |
+
+A required string may be blank in Go, so `required` says which keys must appear,
+not which values are valid. The operation still validates its input.
 
 ## Credential refresh and minting
 

@@ -11,6 +11,8 @@
       "name": "newListPlaylistTracksStep",
       "kind": "query",
       "operationId": "listPlaylistTracks",
+      "inputType": "ListPlaylistTracksInput",
+      "description": "List one bounded page of tracks from a playlist owned by or shared with the authenticated Spotify user.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -53,7 +55,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPlaylistTracksInput selects one bounded page of Spotify playlist tracks.",
+        "properties": {
+          "limit": {
+            "description": "Limit is 1 through 50. Zero selects Spotify's default page size of 20.",
+            "type": "integer"
+          },
+          "market": {
+            "description": "Market is an optional ISO 3166-1 alpha-2 country code. Spotify prefers the authorized user's country.",
+            "type": "string"
+          },
+          "offset": {
+            "description": "Offset is the zero-based playlist item offset.",
+            "type": "integer"
+          },
+          "playlistId": {
+            "description": "PlaylistID is the 22-character Spotify playlist identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "playlistId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

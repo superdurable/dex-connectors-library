@@ -11,6 +11,8 @@
       "name": "new_get_current_weather_step",
       "kind": "query",
       "operationId": "getCurrentWeather",
+      "inputType": "WeatherInput",
+      "description": "Read current temperature and weather conditions at geographic coordinates.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "WeatherInput selects coordinates and temperature units.",
+        "properties": {
+          "latitude": {
+            "description": "Latitude is degrees north, from -90 through 90.",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude is degrees east, from -180 through 180.",
+            "type": "number"
+          },
+          "units": {
+            "description": "Units is standard, metric, or imperial; blank uses standard.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_forecast_step",
       "kind": "query",
       "operationId": "getForecast",
+      "inputType": "WeatherInput",
+      "description": "Read forecast temperatures at three-hour intervals for geographic coordinates.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,7 +108,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "WeatherInput selects coordinates and temperature units.",
+        "properties": {
+          "latitude": {
+            "description": "Latitude is degrees north, from -90 through 90.",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude is degrees east, from -180 through 180.",
+            "type": "number"
+          },
+          "units": {
+            "description": "Units is standard, metric, or imperial; blank uses standard.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

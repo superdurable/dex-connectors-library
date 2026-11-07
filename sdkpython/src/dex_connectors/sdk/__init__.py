@@ -24,7 +24,14 @@ from .credentials import (
 from .errors import Failure, FailureKind, RetryError
 from .operations import Mutation, Query, run_mutation, run_query
 from .retry_policy import RetryPolicy, default_connector_step_execute_retry_policy
-from .steps import MutationStep, MutationStepConfig, QueryStep, QueryStepConfig, StepAnnotations
+from .steps import (
+    MutationStep,
+    MutationStepConfig,
+    QueryStep,
+    QueryStepConfig,
+    StepAnnotations,
+    raise_dex_retry,
+)
 from .timestamps import RFC3339NanoTimestamp, format_rfc3339_nano
 from .types import (
     BranchDefinition,
@@ -91,6 +98,7 @@ __all__ = [
     "default_connector_step_execute_retry_policy",
     "derive_call_id",
     "format_rfc3339_nano",
+    "raise_dex_retry",
     "resolve_credential",
     "resolve_credential_after_rejection",
     "run_mutation",

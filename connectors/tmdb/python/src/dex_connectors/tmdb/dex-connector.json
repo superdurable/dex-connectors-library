@@ -11,6 +11,8 @@
       "name": "new_search_movies_step",
       "kind": "query",
       "operationId": "searchMovies",
+      "inputType": "SearchMoviesInput",
+      "description": "SearchMovies through the TMDB public JSON API.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchMoviesInput searches movie titles.",
+        "properties": {
+          "page": {
+            "description": "Page is the one-based movie search page.",
+            "type": "integer"
+          },
+          "query": {
+            "description": "Query is the provider search expression.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page",
+          "query"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_movie_step",
       "kind": "query",
       "operationId": "getMovie",
+      "inputType": "GetMovieInput",
+      "description": "GetMovie through the TMDB public JSON API.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +99,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetMovieInput identifies a movie by TMDB ID.",
+        "properties": {
+          "id": {
+            "description": "ID is the provider's stable resource identifier.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "new_list_cards_step",
       "kind": "query",
       "operationId": "listCards",
+      "inputType": "ListCardsInput",
+      "description": "List one bounded page of a board's or a list's open, closed, or all cards, newest first, optionally only cards due in a time range or with a given due-complete state, continuing with the oldest card ID on the page.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,70 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCardsInput selects one page of cards. Set exactly one of BoardID and ListID. Trello filters by Status; the connector applies the due filters to each page, so a page can hold fewer matching cards than PageSize, even none, while NextBefore is set.",
+        "properties": {
+          "before": {
+            "description": "Before continues a previous list with the same filters from its NextBefore; blank reads the newest cards first.",
+            "type": "string"
+          },
+          "boardId": {
+            "description": "BoardID lists the cards of this board ID.",
+            "type": "string"
+          },
+          "dueAfter": {
+            "description": "DueAfter keeps only cards due at or after this instant.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dueBefore": {
+            "description": "DueBefore keeps only cards due strictly before this instant.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasDueDate": {
+            "description": "HasDueDate keeps only cards with a due date when true and only cards without one when false.",
+            "type": "boolean"
+          },
+          "isDueComplete": {
+            "description": "IsDueComplete keeps only cards whose due date is marked complete when true, or not complete when false.",
+            "type": "boolean"
+          },
+          "listId": {
+            "description": "ListID lists the cards of this list ID.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of cards to read from Trello, 1 to 100; zero requests 50.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status selects open, closed (archived), or all cards; blank lists open cards.",
+            "enum": [
+              "all",
+              "closed",
+              "open"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_get_card_step",
       "kind": "query",
       "operationId": "getCard",
+      "inputType": "GetCardInput",
+      "description": "Read one card by ID with its list, archive state, due and start dates, labels, members, position, and plain-text description.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +141,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCardInput identifies one card.",
+        "properties": {
+          "cardId": {
+            "description": "CardID is the card's Trello ID, 24 hexadecimal characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cardId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_card_step",
       "kind": "mutation",
       "operationId": "createCard",
+      "inputType": "CreateCardInput",
+      "description": "Create one card in a list with a name, a plain-text description, a due date, labels, members, and a position. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -114,12 +190,63 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateCardInput describes one card in one list.",
+        "properties": {
+          "description": {
+            "description": "Description is the plain-text description, at most 16384 characters; blank sends none.",
+            "type": "string"
+          },
+          "due": {
+            "description": "Due is when the card is due; nil sends none.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "labelIds": {
+            "description": "LabelIDs adds up to 50 labels of the list's board by ID.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "listId": {
+            "description": "ListID is the ID of the list that receives the card; the list also decides the card's board.",
+            "type": "string"
+          },
+          "memberIds": {
+            "description": "MemberIDs adds up to 50 board members to the card by ID.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "Name is the one-line card name, at most 16384 characters.",
+            "type": "string"
+          },
+          "position": {
+            "description": "Position is top, bottom, or a positive number; blank keeps Trello's default position.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listId",
+          "name"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_card_step",
       "kind": "mutation",
       "operationId": "updateCard",
+      "inputType": "UpdateCardInput",
+      "description": "Move a card to a list, archive or reopen it, set or clear its due date and due-complete state, and set, add, or remove labels or set members; every change is an absolute value, so a repeated update leaves the same card.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,12 +279,94 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateCardInput changes one card. Every set field is an absolute value, so sending the same update twice leaves the same card. Set at least one change; set at most one of LabelIDs and AddLabelIDs or RemoveLabelIDs, and at most one of Due and ShouldClearDue.",
+        "properties": {
+          "addLabelIds": {
+            "description": "AddLabelIDs adds up to 50 label IDs to the card's current labels, read first.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "boardId": {
+            "description": "BoardID names the board of ListID when that list is on another board; it requires ListID.",
+            "type": "string"
+          },
+          "cardId": {
+            "description": "CardID is the card's Trello ID.",
+            "type": "string"
+          },
+          "due": {
+            "description": "Due sets when the card is due; nil leaves it.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isClosed": {
+            "description": "IsClosed archives the card when true and reopens it when false; nil leaves it.",
+            "type": "boolean"
+          },
+          "isDueComplete": {
+            "description": "IsDueComplete marks the due date complete when true and not complete when false; nil leaves it.",
+            "type": "boolean"
+          },
+          "labelIds": {
+            "description": "LabelIDs replaces the card's labels with up to 50 label IDs of its board; a pointer to an empty list removes every label, and nil leaves them.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "listId": {
+            "description": "ListID moves the card to this list, which is how a Trello card changes status; blank leaves its list.",
+            "type": "string"
+          },
+          "memberIds": {
+            "description": "MemberIDs replaces the card's members with up to 50 member IDs of its board; a pointer to an empty list removes every member, and nil leaves them.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "position": {
+            "description": "Position is top, bottom, or a positive number in the card's list; blank leaves Trello's choice.",
+            "type": "string"
+          },
+          "removeLabelIds": {
+            "description": "RemoveLabelIDs removes up to 50 label IDs from the card's current labels, read first.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "shouldClearDue": {
+            "description": "ShouldClearDue removes the card's due date.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cardId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_comment_step",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one plain-text comment, authored by the token's member, to a card. Sync durability and a checkpoint prevent replay after ambiguous responses; 429 and 503 retry.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -190,7 +399,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput describes one comment on one card.",
+        "properties": {
+          "cardId": {
+            "description": "CardID is the card's Trello ID.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the plain-text comment, at most 16384 characters; line breaks are kept.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cardId",
+          "text"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

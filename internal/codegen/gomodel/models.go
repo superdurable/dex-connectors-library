@@ -58,6 +58,9 @@ type Type struct {
 	Ref        string
 	EnumBase   Kind
 	EnumValues []string
+	// SchemaEnum lists the values a plain string field accepts, from its connectorEnum tag. It narrows only
+	// the JSON Schema, so the field stays a plain string in the language models.
+	SchemaEnum []string
 	Nullable   bool
 }
 
@@ -82,6 +85,9 @@ type Model struct {
 type Graph struct {
 	Models []Model
 }
+
+// schemaEnumTagName is the struct tag listing a plain string field's allowed values, separated by commas.
+const schemaEnumTagName = "connectorEnum"
 
 type loader struct {
 	packageTypes           *types.Package
@@ -255,8 +261,11 @@ func (modelLoader *loader) addModel(name string, modelType types.Type) error {
 		if err != nil {
 			return fmt.Errorf("Go model %s.%s: %w", name, candidate.field.Name(), err)
 		}
-		tag := reflect.StructTag(candidateTag(structure, candidate.index)).Get("json")
-		_, options := parseJSONTag(tag)
+		fieldTag := reflect.StructTag(candidateTag(structure, candidate.index))
+		if err := applySchemaEnumTag(&fieldType, fieldTag.Get(schemaEnumTagName)); err != nil {
+			return fmt.Errorf("Go model %s.%s: %w", name, candidate.field.Name(), err)
+		}
+		_, options := parseJSONTag(fieldTag.Get("json"))
 		hasOmitOption := slices.Contains(options, "omitempty") || slices.Contains(options, "omitzero")
 		optional := candidate.optional || hasOmitOption
 		hasPresence := candidate.optional || hasOmitOption && isPointer(candidate.field.Type())
@@ -453,6 +462,22 @@ func (modelLoader *loader) describeType(modelType types.Type, syntheticName stri
 		return Type{Kind: Ref, Ref: name}, nil
 	}
 	return Type{}, fmt.Errorf("unsupported Go type %s", modelType.String())
+}
+
+// A provider may accept a fixed set for a field whose public Go type must stay string.
+func applySchemaEnumTag(fieldType *Type, tag string) error {
+	if tag == "" {
+		return nil
+	}
+	if fieldType.Kind != String {
+		return fmt.Errorf("%s tag requires a string field", schemaEnumTagName)
+	}
+	values := strings.Split(tag, ",")
+	if slices.Contains(values, "") {
+		return fmt.Errorf("%s tag has a blank value", schemaEnumTagName)
+	}
+	fieldType.SchemaEnum = values
+	return nil
 }
 
 func enumValues(named *types.Named) []string {

@@ -4,7 +4,9 @@
 import { RetryAfterError, StepRef, type AsyncContext, type StepOptions } from '@superdurable/dex';
 import { describe, expect, it } from 'vitest';
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry } from '../src/types.js';
-import { goToBranch, newMutationStep, newQueryStep, type MutationStepConfig, type QueryStepConfig } from '../src/step.js';
+import { RetryError } from '../src/errors.js';
+import * as connectorsSDK from '../src/index.js';
+import { goToBranch, newMutationStep, newQueryStep, throwDexRetry, type MutationStepConfig, type QueryStepConfig } from '../src/step.js';
 
 const failure = { kind: 'AVAILABILITY' as const, provider: 'fixture', operation: 'getItem', message: 'temporarily unavailable' };
 const context = { flowId: 'flow-1', stepExecutionId: 'query:1', attempt: 1, cancellationSignal: new AbortController().signal } as AsyncContext;
@@ -29,6 +31,20 @@ describe('connector Step factories', () => {
       expect(decision.movements[0]?.step).toBeInstanceOf(StepRef);
       expect(decision.movements[0]?.input).toMatchObject({ branch: 'found', value: { id: 'item-1' } });
     }
+  });
+
+  it('exports the retry translation that the Step factories use', () => {
+    expect(connectorsSDK.throwDexRetry).toBe(throwDexRetry);
+    for (const [delay, expected] of [[0, undefined], [500, undefined], [1000, 1], [1900, 1]] as const) {
+      const retry = new RetryError(failure, delay);
+      try { throwDexRetry(retry); throw new Error('retry was not thrown'); }
+      catch (error) {
+        if (expected === undefined) expect(error).toBe(retry);
+        else { expect(error).toBeInstanceOf(RetryAfterError); expect((error as RetryAfterError).afterSeconds).toBe(expected); expect((error as RetryAfterError).cause).toBe(retry); }
+      }
+    }
+    const unrelated = new TypeError('not a retry');
+    expect(() => throwDexRetry(unrelated)).toThrow(unrelated);
   });
 
   it('floors provider retry hints to whole seconds and leaves subsecond hints to policy', async () => {

@@ -11,6 +11,8 @@
       "name": "newSearchMessagesStep",
       "kind": "query",
       "operationId": "searchMessages",
+      "inputType": "SearchMessagesInput",
+      "description": "List one bounded page of message summaries in one mail folder, newest first, filtered by exact sender address, subject text, received time range, and unread state, with an opaque cursor for the next page.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,61 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchMessagesInput filters one page of messages in one folder. Every filter is optional, and filters combine.",
+        "properties": {
+          "folder": {
+            "description": "Folder is a folder ID from the mail folder picker or a well-known name such as inbox, archive, or sentitems; blank searches DefaultFolder. Subfolders are not searched.",
+            "type": "string"
+          },
+          "from": {
+            "description": "From keeps messages whose From address equals this bare address, such as jane@acme.example.com.",
+            "type": "string"
+          },
+          "isUnread": {
+            "description": "IsUnread keeps only messages that are not marked read.",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Limit is 1 to MaxSearchLimit messages per page; zero uses DefaultSearchLimit.",
+            "type": "integer"
+          },
+          "pageCursor": {
+            "description": "PageCursor is nextPageCursor from an earlier Result. It carries that search's filters and page size, so when it is set every field except Folder is ignored.",
+            "type": "string"
+          },
+          "receivedAfter": {
+            "description": "ReceivedAfter keeps messages received at or after this instant, to the second.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "receivedBefore": {
+            "description": "ReceivedBefore keeps messages received strictly before this instant, to the second.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subjectContains": {
+            "description": "SubjectContains keeps messages whose subject contains this text.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetMessageStep",
       "kind": "query",
       "operationId": "getMessage",
+      "inputType": "GetMessageInput",
+      "description": "Read one message by ID without marking it read, returning its header fields, a bounded plain-text body that Microsoft Graph converts from HTML when needed, and attachment names and sizes without their content.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +127,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetMessageInput identifies one message.",
+        "properties": {
+          "messageId": {
+            "description": "MessageID is the id of a searchMessages summary or of an earlier getMessage Result.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSendMessageStep",
       "kind": "mutation",
       "operationId": "sendMessage",
+      "inputType": "SendMessageInput",
+      "description": "Send one plain-text message by creating a draft marked with the Step's idempotency key and sending that draft. Graph has no idempotency key, so the Step runs with sync durability, finds its own draft again on every retry, sends it at most once, and confirms a lost answer from the Sent Items copy.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +176,65 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendMessageInput is one new plain-text message.",
+        "properties": {
+          "bcc": {
+            "description": "Bcc lists bare addresses that receive a blind copy and appear in no header.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cc": {
+            "description": "Cc lists bare addresses that receive a copy.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "replyTo": {
+            "description": "ReplyTo lists bare addresses that replies should go to; empty means the mailbox itself.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "subject": {
+            "description": "Subject is one line of at most MaxSubjectCharacters.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the plain-text body, at most MaxSendTextBytes.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To lists bare recipient addresses, such as jane@acme.example.com; at least one is required.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "subject",
+          "text",
+          "to"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newReplyToMessageStep",
       "kind": "mutation",
       "operationId": "replyToMessage",
+      "inputType": "ReplyToMessageInput",
+      "description": "Reply to one message, or reply to all, by creating Outlook's threaded reply draft, which quotes the original, marking it with the Step's idempotency key, and sending it at most once per Step execution like sendMessage.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -147,12 +267,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReplyToMessageInput is one plain-text reply to a message in the mailbox.",
+        "properties": {
+          "isReplyAll": {
+            "description": "IsReplyAll also addresses the original To and Cc recipients, as Outlook's Reply all does.",
+            "type": "boolean"
+          },
+          "messageId": {
+            "description": "MessageID is the id of the message to answer, from searchMessages or getMessage.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the reply, at most MaxSendTextBytes; Outlook places it above the quoted original.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageId",
+          "text"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newMoveMessageStep",
       "kind": "mutation",
       "operationId": "moveMessage",
+      "inputType": "MoveMessageInput",
+      "description": "Move one message to another mail folder by folder ID or well-known name. Message IDs are immutable, so a repeated attempt that finds the message already in the folder reports it moved without moving it again.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -180,12 +325,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "MoveMessageInput moves one message to another folder of the same mailbox.",
+        "properties": {
+          "destinationFolder": {
+            "description": "DestinationFolder is a folder ID from the mail folder picker or a well-known name such as archive or deleteditems. The folder must exist; the connector never creates folders.",
+            "type": "string"
+          },
+          "messageId": {
+            "description": "MessageID is the message's id from searchMessages or getMessage.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "destinationFolder",
+          "messageId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSetMessageFlagsStep",
       "kind": "mutation",
       "operationId": "setMessageFlags",
+      "inputType": "SetMessageFlagsInput",
+      "description": "Set one message's read state, follow-up flag, and categories to absolute values; it reads them first and writes only the differences, so a repeated attempt changes nothing twice.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -213,7 +379,44 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SetMessageFlagsInput sets one message's state to absolute values; a nil field leaves that state alone.",
+        "properties": {
+          "categories": {
+            "description": "Categories replaces the message's categories with these names; an empty list removes every category. Names compare without case, at most MaxListedCategories of at most MaxCategoryCharacters each. A name missing from the mailbox's category list is still applied, without a color.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "flagStatus": {
+            "description": "FlagStatus sets the follow-up flag to notFlagged, flagged, or complete.",
+            "enum": [
+              "complete",
+              "flagged",
+              "notFlagged"
+            ],
+            "type": "string"
+          },
+          "isRead": {
+            "description": "IsRead marks the message read when true and unread when false.",
+            "type": "boolean"
+          },
+          "messageId": {
+            "description": "MessageID is the message's id from searchMessages or getMessage.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }
