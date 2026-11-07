@@ -850,6 +850,18 @@
         { "required": ["branch"], "anyOf": [{ "required": ["output"] }, { "required": ["pages"] }, { "required": ["failure"] }], "not": { "anyOf": [{ "required": ["retry"] }, { "required": ["uncertain"] }] } }
       ]
     },
+    "operationAgent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exposed"],
+      "properties": {
+        "exposed": { "type": "boolean" },
+        "approval": { "enum": ["recommended"] },
+        "description": { "type": "string", "pattern": "\\S" }
+      },
+      "if": { "properties": { "exposed": { "const": false } } },
+      "then": { "properties": { "approval": false, "description": false } }
+    },
     "operation": {
       "type": "object",
       "additionalProperties": false,
@@ -866,6 +878,7 @@
         "progress": { "type": "array", "uniqueItems": true, "items": { "enum": ["structured", "text"] } },
         "authorization": { "enum": ["none", "required"] },
         "execution": { "$ref": "#/$defs/execution" },
+        "agent": { "$ref": "#/$defs/operationAgent" },
         "pagination": {
           "type": "object",
           "additionalProperties": false,

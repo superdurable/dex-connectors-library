@@ -318,6 +318,38 @@ type Operation struct {
 	Mocks []OperationMock `yaml:"mocks,omitempty" json:"mocks,omitempty"`
 	// MockChecks name connector functions that validate mock requests and scripted answers.
 	MockChecks *MockChecks `yaml:"mockChecks,omitempty" json:"mockChecks,omitempty"`
+	// Agent records the review of this operation for agent use; nil means it is not offered to agents.
+	Agent *OperationAgent `yaml:"agent,omitempty" json:"agent,omitempty"`
+}
+
+// OperationAgentApprovalRecommended asks an agent host to stop for a person before the call runs.
+const OperationAgentApprovalRecommended = "recommended"
+
+// OperationAgent is an author's review of one operation for use as an agent tool.
+type OperationAgent struct {
+	// Exposed offers the operation to agents when true. False records a review that declined it.
+	Exposed *bool `yaml:"exposed" json:"exposed"`
+	// Approval is recommended for a high-risk operation. Empty leaves the decision to the agent host.
+	Approval string `yaml:"approval,omitempty" json:"approval,omitempty"`
+	// Description replaces the operation description for a model choosing a tool.
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+}
+
+func validateOperationAgent(operation Operation) []string {
+	if operation.Agent == nil {
+		return nil
+	}
+	if operation.Agent.Exposed == nil {
+		return []string{operation.Name + ": agent.exposed is required"}
+	}
+	var problems []string
+	if operation.Agent.Approval != "" && operation.Agent.Approval != OperationAgentApprovalRecommended {
+		problems = append(problems, operation.Name+": agent.approval must be recommended")
+	}
+	if !*operation.Agent.Exposed && (operation.Agent.Approval != "" || operation.Agent.Description != "") {
+		problems = append(problems, operation.Name+": agent.approval and agent.description require agent.exposed to be true")
+	}
+	return problems
 }
 
 // MockChecks names exported functions in the connector package for generated mock validation.
@@ -705,6 +737,7 @@ func (manifest Manifest) Validate() error {
 		if strings.TrimSpace(operation.Description) == "" {
 			problems = append(problems, operation.Name+": description is required")
 		}
+		problems = append(problems, validateOperationAgent(operation)...)
 		if operation.Idempotency != "none" && operation.Idempotency != "required" {
 			problems = append(problems, operation.Name+": invalid idempotency")
 		}

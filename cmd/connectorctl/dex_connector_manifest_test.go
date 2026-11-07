@@ -117,3 +117,73 @@ func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	require.NoError(t, os.WriteFile(manifestPath, []byte(manifestSource), 0o600))
 	require.ErrorContains(t, generate([]string{manifestPath}), `factory maps more than one field to "annotations"`)
 }
+
+func TestGeneratedLanguageManifestCarriesInputSchemaAndAgentReview(t *testing.T) {
+	manifestPath, packageManifestPath := copyTypeScriptGoldenConnector(t)
+	require.NoError(t, generate([]string{manifestPath}))
+	factory := generatedFactory(t, packageManifestPath, "getItem")
+	require.Equal(t, "GetItemInput", factory["inputType"])
+	require.NotContains(t, factory, "agent", "an unreviewed operation is not offered to agents")
+	inputSchema := factory["inputSchema"].(map[string]any)
+	require.Equal(t, "object", inputSchema["type"])
+	require.Contains(t, inputSchema["properties"], "id")
+	operationDescription := factory["description"]
+	require.NotEmpty(t, operationDescription, "the description falls back to the operation description")
+
+	source, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	reviewed := strings.Replace(string(source), "      inputType: GetItemInput\n", "      inputType: GetItemInput\n      agent: {exposed: true, approval: recommended, description: Read one <item>.}\n", 1)
+	require.NotEqual(t, string(source), reviewed)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(reviewed), 0o600))
+	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated file is stale", "drift in the agent block fails the check")
+	require.NoError(t, generate([]string{manifestPath}))
+	require.NoError(t, generate([]string{"--check", manifestPath}))
+	factory = generatedFactory(t, packageManifestPath, "getItem")
+	require.Equal(t, map[string]any{"exposed": true, "approval": "recommended"}, factory["agent"])
+	require.Equal(t, "Read one <item>.", factory["description"])
+	contents, err := os.ReadFile(packageManifestPath)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "<item>", "descriptions keep their characters")
+
+	declined := strings.Replace(string(source), "      inputType: GetItemInput\n", "      inputType: GetItemInput\n      agent: {exposed: false}\n", 1)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(declined), 0o600))
+	require.NoError(t, generate([]string{manifestPath}))
+	factory = generatedFactory(t, packageManifestPath, "getItem")
+	require.Equal(t, map[string]any{"exposed": false}, factory["agent"])
+	require.Equal(t, operationDescription, factory["description"])
+}
+
+func TestGeneratedLanguageManifestRejectsInputModelThatGoLacks(t *testing.T) {
+	manifestPath, _ := copyTypeScriptGoldenConnector(t)
+	source, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	renamed := strings.Replace(string(source), "inputType: GetItemInput", "inputType: MissingInput", 1)
+	require.NotEqual(t, string(source), renamed)
+	require.NoError(t, os.WriteFile(manifestPath, []byte(renamed), 0o600))
+	require.ErrorContains(t, generate([]string{manifestPath}), "MissingInput")
+}
+
+func copyTypeScriptGoldenConnector(t *testing.T) (string, string) {
+	t.Helper()
+	repository := t.TempDir()
+	require.NoError(t, os.CopyFS(repository, os.DirFS(filepath.Join("testdata", "typescript-golden"))))
+	connectorDirectory := filepath.Join(repository, "connectors", "hackernews")
+	return filepath.Join(connectorDirectory, "connector.yaml"), filepath.Join(connectorDirectory, "typescript", "dex-connector.json")
+}
+
+func generatedFactory(t *testing.T, packageManifestPath, operationID string) map[string]any {
+	t.Helper()
+	contents, err := os.ReadFile(packageManifestPath)
+	require.NoError(t, err)
+	var document struct {
+		Factories []map[string]any `json:"factories"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &document))
+	for _, factory := range document.Factories {
+		if factory["operationId"] == operationID {
+			return factory
+		}
+	}
+	require.FailNow(t, "operation is missing", operationID)
+	return nil
+}

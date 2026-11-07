@@ -4,12 +4,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
 )
 
@@ -30,8 +32,17 @@ type dexConnectorFactory struct {
 	Name        string               `json:"name"`
 	Kind        string               `json:"kind"`
 	OperationID string               `json:"operationId"`
+	InputType   string               `json:"inputType,omitempty"`
+	Description string               `json:"description"`
+	Agent       *dexConnectorAgent   `json:"agent,omitempty"`
 	Fields      dexConnectorFields   `json:"fields"`
 	Branches    []dexConnectorBranch `json:"branches"`
+	InputSchema map[string]any       `json:"inputSchema,omitempty"`
+}
+
+type dexConnectorAgent struct {
+	Exposed  bool   `json:"exposed"`
+	Approval string `json:"approval,omitempty"`
 }
 
 type dexConnectorFields struct {
@@ -53,6 +64,10 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 		return files, nil
 	}
 	connectorDirectory, err := connectorDirectoryInCatalog(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	inputModels, err := languageOperationInputModels(manifestPath, manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +110,15 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 				fields.Annotations = "annotations"
 			}
 			factory := dexConnectorFactory{
-				Kind: operation.Kind, OperationID: operation.Name, Fields: fields,
-				Branches: make([]dexConnectorBranch, 0, len(operation.Branches)),
+				Kind: operation.Kind, OperationID: operation.Name, Description: modelFacingOperationDescription(operation),
+				Fields: fields, Branches: make([]dexConnectorBranch, 0, len(operation.Branches)),
+			}
+			if inputModels != nil {
+				if factory.InputSchema, err = inputModels.JSONSchema(operation.InputType); err != nil {
+					return nil, fmt.Errorf("%s %s input schema: %w", language.name, operation.Name, err)
+				}
+				factory.InputType = operation.InputType
+				factory.Agent = dexConnectorOperationAgent(operation)
 			}
 			if language.name == "python" {
 				factory.Name = "new_" + lowerCamelToSnake(operation.Name) + "_step"
@@ -120,11 +142,10 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 			}
 			packageManifest.Factories = append(packageManifest.Factories, factory)
 		}
-		contents, err := json.MarshalIndent(packageManifest, "", "  ")
+		contents, err := encodeLanguageManifest(packageManifest)
 		if err != nil {
 			return nil, fmt.Errorf("encode %s connector package manifest: %w", language.name, err)
 		}
-		contents = append(contents, '\n')
 		path := filepath.Join(filepath.Dir(manifestPath), language.name)
 		if language.name == "python" {
 			importPackage := pythonImportPackageName(connectorDirectory)
@@ -133,6 +154,62 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 		files[filepath.Join(path, "dex-connector.json")] = contents
 	}
 	return files, nil
+}
+
+// Python and TypeScript share one graph, so both packages publish the same schema for an operation.
+// It returns nil for a fixture without authored Go models; the catalog test requires every schema.
+func languageOperationInputModels(manifestPath string, manifest schema.Manifest) (*gomodel.Graph, error) {
+	goDirectory := filepath.Join(filepath.Dir(manifestPath), "go")
+	hasAuthoredGoTypes, err := hasAuthoredGoSource(goDirectory)
+	if err != nil || !hasAuthoredGoTypes {
+		return nil, err
+	}
+	selectedOperations := make(map[string]bool)
+	for _, language := range []*schema.LanguagePackage{manifest.Spec.Languages.Python, manifest.Spec.Languages.TypeScript} {
+		if language == nil {
+			continue
+		}
+		for _, name := range language.Operations {
+			selectedOperations[name] = true
+		}
+	}
+	var inputTypes []string
+	for _, operation := range manifest.Spec.Operations {
+		if selectedOperations[operation.Name] {
+			inputTypes = append(inputTypes, operation.InputType)
+		}
+	}
+	graph, err := gomodel.Load(goDirectory, inputTypes)
+	if err != nil {
+		return nil, err
+	}
+	return &graph, nil
+}
+
+func modelFacingOperationDescription(operation schema.Operation) string {
+	if operation.Agent != nil && operation.Agent.Description != "" {
+		return strings.TrimSpace(operation.Agent.Description)
+	}
+	return strings.TrimSpace(operation.Description)
+}
+
+func dexConnectorOperationAgent(operation schema.Operation) *dexConnectorAgent {
+	if operation.Agent == nil {
+		return nil
+	}
+	return &dexConnectorAgent{Exposed: *operation.Agent.Exposed, Approval: operation.Agent.Approval}
+}
+
+// Descriptions are prose for a model, so keep comparison operators readable in the file.
+func encodeLanguageManifest(packageManifest dexConnectorPackageManifest) ([]byte, error) {
+	var contents bytes.Buffer
+	encoder := json.NewEncoder(&contents)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(packageManifest); err != nil {
+		return nil, err
+	}
+	return contents.Bytes(), nil
 }
 
 func pythonImportPackageName(connectorDirectory string) string {

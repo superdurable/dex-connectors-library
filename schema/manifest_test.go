@@ -300,6 +300,37 @@ func TestDispatchFenceRequiresSyncDurability(t *testing.T) {
 	require.NoError(t, manifest.Validate())
 }
 
+func TestOperationAgentReviewValidation(t *testing.T) {
+	exposed, declined := true, false
+	for name, testCase := range map[string]struct {
+		agent   *schema.OperationAgent
+		problem string
+	}{
+		"absent":             {nil, ""},
+		"exposed":            {&schema.OperationAgent{Exposed: &exposed}, ""},
+		"approval":           {&schema.OperationAgent{Exposed: &exposed, Approval: "recommended", Description: "Refund a charge."}, ""},
+		"declined":           {&schema.OperationAgent{Exposed: &declined}, ""},
+		"no exposed":         {&schema.OperationAgent{Approval: "recommended"}, "agent.exposed is required"},
+		"unknown approval":   {&schema.OperationAgent{Exposed: &exposed, Approval: "always"}, "agent.approval must be recommended"},
+		"declined approval":  {&schema.OperationAgent{Exposed: &declined, Approval: "recommended"}, "require agent.exposed to be true"},
+		"declined narrative": {&schema.OperationAgent{Exposed: &declined, Description: "Unused."}, "require agent.exposed to be true"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			manifest.Spec.Operations[0].Agent = testCase.agent
+			if testCase.problem == "" {
+				require.NoError(t, manifest.Validate())
+				return
+			}
+			require.ErrorContains(t, manifest.Validate(), testCase.problem)
+		})
+	}
+}
+
 func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1

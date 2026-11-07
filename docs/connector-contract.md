@@ -59,6 +59,32 @@ business Step. They preserve the same identity, attempt, retry, credential,
 and Stream contracts. Provider calls occur only in `Execute`, never in
 `WaitFor` or RPC.
 
+### Agent tools
+
+An agent host may run a Connector operation as a tool inside its own Step. The
+model chooses the call at run time, so the host needs what a Flow author reads
+from the code. Each language package carries that in `dex-connector.json`, which
+[Agent tool metadata](manifest-authoring.md#agent-tool-metadata) describes:
+
+- `inputType` and `inputSchema` tell the host how to describe and decode the
+  arguments. The schema uses the JSON field names of the operation input.
+- `agent.exposed` is `true` only for an operation reviewed for agent use. A host
+  must not offer an operation without it. An application still names the
+  operations each agent may use.
+- `agent.approval: recommended` marks an operation that should stop for a person.
+  It is metadata: the host decides, and an application may override it either
+  way. Approval and retry are separate questions, so it says nothing about
+  whether the call can repeat.
+
+A host calls `run_query`/`run_mutation` or `runQuery`/`runMutation` directly,
+which keeps Call ID, idempotency, credential, and fence behavior. These entry
+points raise `RetryError` for a safe retry, and the Step factories translate it
+into Dex retry behavior. A host that runs an operation outside a factory uses the
+same translation: `raise_dex_retry` in Python and `throwDexRetry` in TypeScript,
+both exported from the SDK root. A delay of at least one second, truncated to
+whole seconds, becomes a Dex retry-after. Anything shorter uses the Step's retry
+policy.
+
 ## Trigger source boundary
 
 Connector Triggers are long-running ingress adapters, not provider calls made

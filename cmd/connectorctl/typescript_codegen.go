@@ -19,16 +19,9 @@ func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest) (ma
 		return files, nil
 	}
 	goDirectory := filepath.Join(filepath.Dir(manifestPath), "go")
-	goFiles, err := filepath.Glob(filepath.Join(goDirectory, "*.go"))
+	hasAuthoredGoTypes, err := hasAuthoredGoSource(goDirectory)
 	if err != nil {
 		return nil, err
-	}
-	hasAuthoredGoTypes := false
-	for _, goFile := range goFiles {
-		if filepath.Base(goFile) != codegen.OutputFile {
-			hasAuthoredGoTypes = true
-			break
-		}
 	}
 	if !hasAuthoredGoTypes {
 		// Language-manifest fixtures omit authored Go models; real TypeScript packages must provide them.
@@ -51,6 +44,19 @@ func generatedTypeScriptFiles(manifestPath string, manifest schema.Manifest) (ma
 		files[codegen.TypeScriptGeneratedPath(manifestPath, name)] = content
 	}
 	return files, nil
+}
+
+func hasAuthoredGoSource(goDirectory string) (bool, error) {
+	goFiles, err := filepath.Glob(filepath.Join(goDirectory, "*.go"))
+	if err != nil {
+		return false, err
+	}
+	for _, goFile := range goFiles {
+		if filepath.Base(goFile) != codegen.OutputFile {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func publishedTypeScriptModelNames(path string) ([]string, error) {
