@@ -96,6 +96,7 @@ directories:
   - connectors/postgresql
   - connectors/posthog
   - connectors/postmark
+  - connectors/productboard
   - connectors/reamaze
   - connectors/resend
   - connectors/salesforce
