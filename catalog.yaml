@@ -67,6 +67,7 @@ directories:
   - connectors/google/forms
   - connectors/google/gemini
   - connectors/google/gmail
+  - connectors/google/pubsub
   - connectors/google/search-console
   - connectors/google/spreadsheet
   - connectors/google/tag-manager
