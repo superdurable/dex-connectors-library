@@ -1,0 +1,113 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-todo
+  displayName: Microsoft To Do
+  description: Read the signed-in user's task lists and tasks through Microsoft Graph.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft
+  codegen:
+    go:
+      package: todo
+  configuration:
+    fields:
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes in one Microsoft Graph page as a positive integer. Leave blank for the displayed default; increase only when a task page is unusually large.
+        default: 1048576
+  auth:
+    refreshable: true
+    type: oauth2
+    connectionKind: microsoft-todo-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Application (client) ID from https://entra.microsoft.com/ > Entra ID > App registrations > your app > Overview. Copy the GUID; blank prevents authorization and refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret client secret Value from https://entra.microsoft.com/ > Entra ID > App registrations > your app > Certificates & secrets > Client secrets. Copy the Value once into Dex Web; blank prevents authorization and refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Graph access token produced by OAuth consent and renewed automatically. Leave this derived field blank; never paste a token.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret rotating refresh token produced by OAuth consent. Leave this derived field blank; reauthorize if it is missing.
+    guide:
+      startURL: https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+      steps:
+        - Sign in to https://entra.microsoft.com/ and open Entra ID > App registrations > New registration. Choose accounts in any organizational directory because the connector uses the organizations endpoint; personal accounts are not supported by this connection.
+        - Open Authentication > Add a platform > Web, paste the exact Redirect URI displayed by Dex Web for this connection, and save it.
+        - Open API permissions > Add a permission > Microsoft Graph > Delegated permissions. Add Tasks.Read to read the signed-in person's task lists and tasks, and offline_access for a refresh token. If the tenant disables user consent, ask an administrator to grant consent.
+        - Open Certificates & secrets > Client secrets > New client secret and copy its Value once. Copy the Application (client) ID from Overview. Enter these in Dex Web and choose Authorize to sign in.
+    oauth2:
+      authorizationEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize
+      tokenEndpoint: https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [Tasks.Read, offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 8s
+        requiredScopes: [Tasks.Read]
+        scopeResourcePrefix: https://graph.microsoft.com/
+        caseInsensitiveScopes: true
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, invalid_request, invalid_scope, interaction_required, consent_required]
+        additionalParameters: {scope: Tasks.Read offline_access}
+  operations:
+    - name: listTaskLists
+      goName: ListTaskLists
+      inputType: ListTaskListsInput
+      outputType: TaskListsPage
+      kind: query
+      description: Read all pages of the signed-in person's To Do task lists, within a bounded collection limit.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Graph returned task lists.}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample task list is returned.
+          output: {lists: [{id: sample-list-1, displayName: Tasks}]}
+    - name: listTasks
+      goName: ListTasks
+      inputType: ListTasksInput
+      outputType: TasksPage
+      kind: query
+      description: Read all pages of tasks in a selected To Do list, within a bounded collection limit.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Graph returned the tasks.}
+        - {id: notFound, goName: NotFound, description: The task list was absent or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Graph conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Graph returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample task is returned.
+          output: {tasks: [{id: sample-task-1, title: Review request, status: notStarted}]}
