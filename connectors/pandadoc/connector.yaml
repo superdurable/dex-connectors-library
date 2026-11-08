@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pandadoc
+  displayName: PandaDoc
+  description: Read a document's name and status through the PandaDoc Public API.
+  company: PandaDoc
+  version: v0.1.0
+spec:
+  provider: pandadoc
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-pandadoc
+      operations: [getDocument]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-pandadoc"
+      operations: [getDocument]
+      triggers: []
+  codegen:
+    go:
+      package: pandadoc
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: PandaDoc Public API v1 root as an absolute HTTPS URL. Blank uses the displayed global endpoint; use the European regional endpoint for accounts signed in at app.pandadoc.eu, or a trusted local test gateway.
+        default: https://api.pandadoc.com/public/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow status reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete document-status response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: pandadoc-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret opaque PandaDoc Sandbox or Production API key from Dev Center > Configuration. Paste the complete key into this secret field; blank prevents calls. Dex sends it only in the Authorization API-Key header. Match the key and API region to the selected workspace.
+    guide:
+      startURL: https://app.pandadoc.com/a/#/api-dashboard/configuration
+      steps:
+        - Sign in to PandaDoc, open Dev Center > Configuration, and create or reveal a Sandbox API key for testing. Production keys require PandaDoc approval and a supported plan. Copy the complete opaque key into secret api_key in Dex Web; never put it in the Flow input. The key inherits its creator's workspace permissions and stops working if that user is removed. Revoke or rotate it in the same Configuration page.
+        - For a global account leave baseUrl blank. For an account signed in at app.pandadoc.eu, set baseUrl to https://api.pandadoc.eu/public/v1. Leave timeout and maxResponseBytes blank for their displayed defaults. Open a document in PandaDoc or use the document creation API response to find its non-secret ID; enter it as documentId. Blank is invalid.
+  operations:
+    - name: getDocument
+      goName: GetDocument
+      inputType: GetDocumentInput
+      outputType: DocumentStatus
+      kind: query
+      description: Read one document's ID, name, and status without recipients, fields, tokens, or pricing.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: PandaDoc returned the document.}
+        - {id: notFound, goName: NotFound, description: PandaDoc did not expose the document., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: PandaDoc conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: PandaDoc returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example completed document is returned.
+          output: {id: fANp5wW5EwY7AkiTkTGekZ, name: Example agreement, status: document.completed}

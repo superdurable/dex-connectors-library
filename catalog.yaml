@@ -93,6 +93,7 @@ directories:
   - connectors/opensearch
   - connectors/openweathermap
   - connectors/pagerduty
+  - connectors/pandadoc
   - connectors/paypal
   - connectors/pinecone
   - connectors/pipedrive

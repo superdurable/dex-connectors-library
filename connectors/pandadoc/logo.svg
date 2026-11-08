@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="PandaDoc">
+  <rect width="64" height="64" rx="12" fill="#1f2937"/>
+  <path d="M15 47V17h15c9 0 14 5 14 13s-5 13-14 13h-6v4zm9-22v10h6c3 0 5-2 5-5s-2-5-5-5z" fill="#fff"/>
+  <path d="M44 17h6v30h-6z" fill="#22c55e"/>
+</svg>
