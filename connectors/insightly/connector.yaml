@@ -12,6 +12,10 @@ spec:
       version: v0.1.0
       operations: [listContacts, getContact]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listContacts, getContact]
+      triggers: []
   provider: insightly
   codegen:
     go:
