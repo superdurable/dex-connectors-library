@@ -112,6 +112,7 @@ directories:
   - connectors/postmark
   - connectors/productboard
   - connectors/razorpay
+  - connectors/rippling
   - connectors/reamaze
   - connectors/recurly
   - connectors/resend
