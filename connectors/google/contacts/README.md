@@ -1,6 +1,6 @@
 # Google Contacts connector
 
-The Go and Python connectors list, get, and create contacts through the [Google People API](https://developers.google.com/people/api/rest). Their runnable [Go list](go/examples/contacts/README.md), [Go creation](go/examples/creation/README.md), [Python list](python/examples/contacts/README.md), and [Python creation](python/examples/creation/README.md) Flows use the static `google-contacts` Dex Web connection.
+The Go, Python, and TypeScript connectors list, get, and create contacts through the [Google People API](https://developers.google.com/people/api/rest). Their runnable [Go](go/examples/contacts/README.md), [Python](python/examples/contacts/README.md), and [TypeScript](typescript/examples/contacts/README.md) list Flows and corresponding creation Flows use the static `google-contacts` Dex Web connection.
 
 ## Connection setup
 

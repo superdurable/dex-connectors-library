@@ -13,6 +13,10 @@ spec:
       version: v0.1.0
       operations: [listContacts, getContact, createContact]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listContacts, getContact, createContact]
+      triggers: []
   codegen:
     go:
       package: contacts
