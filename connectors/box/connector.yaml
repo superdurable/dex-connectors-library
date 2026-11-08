@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: box
+  languages:
+    python:
+      version: v0.1.0
+      operations: [downloadFile, uploadFile]
+      triggers: []
   codegen:
     go:
       package: box
