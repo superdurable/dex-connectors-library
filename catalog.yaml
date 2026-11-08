@@ -54,6 +54,7 @@ directories:
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
   - connectors/jotform
+  - connectors/kit
   - connectors/klaviyo
   - connectors/linear
   - connectors/linkedin

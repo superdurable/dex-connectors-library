@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: kit
+  displayName: Kit
+  description: List and inspect subscriber metadata through the Kit API v4.
+  company: Kit
+  version: v0.1.0
+spec:
+  provider: kit
+  codegen:
+    go:
+      package: kit
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Kit API v4 root. Blank uses the displayed default. Override only for a compatible private test endpoint; do not append a resource path or key.
+        default: https://api.kit.com/v4
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for known larger subscriber pages. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: kit-v4-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret V4 API Key from https://app.kit.com/account_settings/developer_settings under Settings > Developer > Add a new key. Copy the one-time full key into this secret field, not the legacy V3 API Secret; blank makes calls select defect. Reset or delete it on the same page when retired.
+    guide:
+      startURL: https://app.kit.com/account_settings/developer_settings
+      steps:
+        - Sign in to your Kit account at https://app.kit.com and open Settings > Developer. Under V4 API Keys click Add a new key, give it an internal name, and copy the one-time key.
+        - Save the full V4 key in secret api_key. Dex sends it only in the X-Kit-Api-Key header. The legacy V3 API Secret is not accepted. Reset or delete the key under Settings > Developer to revoke access.
+        - This API Key connection is for automation of your own Kit account. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. The public Kit App Store requires a separate OAuth integration.
+  operations:
+    - name: listSubscribers
+      goName: ListSubscribers
+      inputType: ListSubscribersInput
+      outputType: SubscribersPage
+      kind: query
+      description: List one cursor page of subscriber IDs, email addresses, first names, and states.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Kit returned the selected subscriber page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample subscriber is listed.
+          output: {subscribers: [{id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}], hasNextPage: false, nextCursor: '', perPage: 20}
+    - name: getSubscriber
+      goName: GetSubscriber
+      inputType: GetSubscriberInput
+      outputType: SubscriberMetadata
+      kind: query
+      description: Read one subscriber's ID, email address, first name, and state.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Kit returned subscriber metadata.}
+        - {id: notFound, goName: NotFound, description: No subscriber with this ID is visible to the API user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Kit conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Kit returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one sample subscriber.
+          output: {id: 204, emailAddress: 'alice@example.com', firstName: Alice, state: active}
