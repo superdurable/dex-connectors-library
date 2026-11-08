@@ -65,6 +65,7 @@ directories:
   - connectors/google/workspace-admin
   - connectors/google/youtube
   - connectors/gorgias
+  - connectors/greenhouse
   - connectors/hackernews
   - connectors/harvest
   - connectors/heap

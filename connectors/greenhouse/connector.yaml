@@ -1,0 +1,88 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: greenhouse
+  displayName: Greenhouse
+  description: Read selected candidate profile fields through Harvest v3.
+  company: Greenhouse
+  version: v0.1.0
+spec:
+  provider: greenhouse
+  codegen:
+    go:
+      package: greenhouse
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Harvest v3 API root as an absolute HTTPS URL ending in /v3. Blank uses the displayed endpoint; override only for a trusted local test gateway.
+        default: https://harvest.greenhouse.io/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one candidate read as a positive Go duration. Blank uses the displayed default; increase only for slow reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete candidate response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually large responses.
+        default: 1048576
+  auth:
+    refreshable: true
+    type: apiKey
+    connectionKind: greenhouse-client-credentials
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: string
+        required: true
+        description: Non-secret Harvest v3 Client ID from https://app.greenhouse.io/ > Configure > Dev Center > API Credential Management > your Harvest V3 (OAuth) credential. Copy the complete ID; blank prevents token exchange.
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret Harvest v3 Client Secret shown once when you create the credential under Configure > Dev Center > API Credential Management at https://app.greenhouse.io/. Copy it into Dex Web; blank prevents token exchange. Rotate or revoke it on that page.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Secret Bearer access token Dex obtains from Greenhouse's token endpoint and renews before expiry. It is an output; leave it blank and never paste a token here.
+    guide:
+      startURL: https://app.greenhouse.io/
+      steps:
+        - Sign in as a Greenhouse Site Admin, open Configure > Dev Center > API Credential Management > Create new API credentials, select Harvest V3 (OAuth), and save a named custom integration. This client credentials flow has no redirect URI or consent screen.
+        - Under Manage permissions or scopes, enable harvest:candidates:list. The integration service user attached to this credential must have Site Admin access for list endpoints, or an authorized Site Admin user must be selected through Greenhouse administration.
+        - Copy the non-secret Client ID and one-time secret Client Secret into Dex Web. Leave access_token blank for automatic exchange at https://auth.greenhouse.io/token; revoke or rotate the credential under API Credential Management. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+    clientCredentials:
+      tokenExchangeTimeout: 8s
+      missingExpiry: reject
+      storedMissingExpiry: refresh
+      tokenEndpoint: https://auth.greenhouse.io/token
+      tokenEndpointAuthMethod: client_secret_basic
+      clientIDCredential: client_id
+      clientSecretCredential: client_secret
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+      terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
+  operations:
+    - name: getCandidate
+      goName: GetCandidate
+      inputType: GetCandidateInput
+      outputType: CandidateProfile
+      kind: query
+      description: Read one candidate's ID and names through Harvest v3.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Greenhouse returned the candidate.}
+        - {id: notFound, goName: NotFound, description: Greenhouse returned no accessible candidate for this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Greenhouse conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Greenhouse returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample candidate is returned.
+          output: {id: 53883394, firstName: Sample, lastName: Candidate}
