@@ -13,6 +13,10 @@ spec:
       version: v0.1.0
       operations: [runReport, getProperty, listAudiences]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [runReport, getProperty, listAudiences]
+      triggers: []
   codegen:
     go:
       package: analytics4
