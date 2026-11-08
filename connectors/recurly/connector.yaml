@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: recurly
+  displayName: Recurly
+  description: Read selected Recurly account identity through the Subscriptions API.
+  company: Recurly
+  version: v0.1.0
+spec:
+  provider: recurly
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-recurly
+      operations: [getAccount]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-recurly"
+      operations: [getAccount]
+      triggers: []
+  codegen:
+    go:
+      package: recurly
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Recurly Subscriptions API v3 root as an absolute HTTPS URL. Blank uses the displayed default; override only for a trusted local test gateway.
+        default: https://v3.recurly.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow account reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete account response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large accounts.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: recurly-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Recurly Private API Key from Integrations > API Credentials > Add Private API Key. Copy the complete unencoded key; blank prevents calls. Dex sends it as HTTP Basic username with an empty password. Recurly keys grant full account access.
+    guide:
+      startURL: https://app.recurly.com
+      steps:
+        - Sign in to the Recurly site with Integration permission. Open Integrations > API Credentials, scroll to Add Private API Key, name the integration and click Save Changes. Copy the complete unencoded secret key into Dex Web secret api_key; blank is invalid. Regenerate or revoke it later under Developers > API Keys. Do not paste the Base64 example shown under Need help using the API Key.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret account ID in Recurly account details or the API account response and enter it as accountId; blank is invalid. Account codes require a code- prefix, for example code-acme.
+  operations:
+    - name: getAccount
+      goName: GetAccount
+      inputType: GetAccountInput
+      outputType: AccountIdentity
+      kind: query
+      description: Read one account's ID and code without contact, billing, or payment details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Recurly returned the account.}
+        - {id: notFound, goName: NotFound, description: Recurly did not expose the account., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Recurly conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Recurly returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample account is returned.
+          output: {id: e28zov4fw0v2, code: acme-corp}
