@@ -87,10 +87,13 @@ and progress and text Stream options; static analyzer mappings for those options
 await matching schema support. Trigger factories are not emitted until the
 language package implements them. The vendored
 [`dex-connector.schema.json`](../schema/dex-connector.schema.json) is a copy of
-Dex `cli/internal/flowviz/dex-connector.schema.json` from `cli-v1.38.0`. Dex owns
-the file, and its analyzers reject unknown fields, so a new field lands and
-releases in Dex CLI before this repository generates it. The minimum Dex CLI for
-these packages is 1.38.0; see [Generated input schema](#generated-input-schema).
+Dex `cli/internal/flowviz/dex-connector.schema.json` from `cli-v1.38.0`, plus
+`agent.branches`. Dex owns the file, and its analyzers reject unknown fields, so a
+new field lands and releases in Dex CLI before this repository generates it.
+`agent.branches` is the exception: Dex CLI 1.38.0 decodes the `agent` block
+without rejecting unknown fields, so it accepts the field, and Dex's copy of the
+schema adds it later. The minimum Dex CLI for these packages is 1.38.0; see
+[Generated input schema](#generated-input-schema).
 
 For every declared TypeScript package, `connectorctl generate` also writes
 `typescript/src/generated/{models,definitions,steps,connection,mock}.ts`.
@@ -523,6 +526,7 @@ operations:
       exposed: true
       approval: recommended
       retry: safe
+      branches: {providerRejected: rejected, uncertain: unknown, invalidResponse: unknown, defect: rejected}
       description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
 ```
 
@@ -531,6 +535,7 @@ operations:
 | `exposed` | Yes | `true` offers the operation to agents. `false` records a review that declined it, which has the same effect as no block. |
 | `approval` | No | `recommended` asks the agent host to stop for a person before the call runs. Leave it out to keep the host's default. Requires `exposed: true`. |
 | `retry` | No | `safe` claims that repeating the call with the same Call ID, inside the operation's own Execute retry policy, cannot make a second effect. Absence means a repeat may not be safe. Mutations only. Requires `exposed: true`. |
+| `branches` | No | Map from optional branch ID to `rejected` or `unknown`; see [Branch classification](#branch-classification). Requires `exposed: true`. |
 | `description` | No | Text for a model choosing a tool. Requires `exposed: true`. Without it, the operation's `description` is used. |
 
 Set `approval: recommended` when a person should confirm the call even though it
@@ -556,14 +561,48 @@ The claim covers one Call ID within the operation's own policy, and no more:
 - A new Step execution gets a new Call ID, and so a new key. Nothing dedupes it
   against the earlier call.
 
+### Branch classification
+
+Branch IDs are the operation's own, so a host cannot tell from an ID alone
+whether a branch other than the happy path left the provider unchanged. A model
+that reads every such branch as "failed" calls again, and the new call has a new
+Call ID, so a write that did happen happens twice. `agent.branches` answers that
+question for each optional branch:
+
+| Value | Meaning |
+| --- | --- |
+| `rejected` | The call changed nothing. The provider refused it, or the connector refused it before sending the request. A host may report the failure to the model, which may correct the input and call again. |
+| `unknown` | The operation's effect may have happened. A host must not let the model repeat the call as if it had failed; it reports the outcome as unconfirmed. Mutations only. |
+
+A host treats an optional Mutation branch that is not listed as `unknown`, and an
+optional Query branch that is not listed as a failure. A missing entry therefore
+fails closed. Keys must be optional branch IDs of the operation; the happy-path
+branch is the success and takes no entry. `connectorctl validate` rejects any
+other key, and a Query may use only `rejected`.
+
+Classify a branch by reading where the operation selects it, in Go and in each
+language port, and asking whether the request had been sent:
+
+- A branch selected only before the request leaves the process, such as local
+  input validation or missing credentials in `defect`, is `rejected`.
+- A branch selected from a definite provider refusal, such as a 4xx in
+  `providerRejected`, is `rejected`.
+- A branch selected after the provider may have acted, such as `uncertain`, or
+  `invalidResponse` after a 2xx, is `unknown`. Stripe `createRefund` reaches
+  `invalidResponse` only after Stripe accepted the refund, so the refund exists.
+
+List every optional branch of a reviewed Mutation, so the map records each
+decision rather than leaving it to the default. If one branch is selected both
+before and after the request is sent, it is `unknown`.
+
 Write `agent.description` for a model, not a Connector author. State what the
 operation does and what the model must supply. Leave out durability, retry, and
 fence details. Do not name credentials or secrets.
 
 Reviewing an operation means checking its description, its input fields, and the
 harm a wrong call can do. Change this block in a pull request for that connector.
-Moving `exposed` to `true`, or changing `approval`, is a minor release of each
-language package that should offer it.
+Moving `exposed` to `true`, or changing `approval` or `branches`, is a minor
+release of each language package that should offer it.
 
 ### Generated input schema
 
@@ -580,7 +619,12 @@ imports a package carrying them:
   "operationId": "createRefund",
   "inputType": "CreateRefundInput",
   "description": "Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.",
-  "agent": { "exposed": true, "approval": "recommended", "retry": "safe" },
+  "agent": {
+    "exposed": true,
+    "approval": "recommended",
+    "retry": "safe",
+    "branches": { "defect": "rejected", "invalidResponse": "unknown", "providerRejected": "rejected", "uncertain": "unknown" }
+  },
   "fields": { "...": "..." },
   "branches": [],
   "inputSchema": {
@@ -597,6 +641,12 @@ imports a package carrying them:
   }
 }
 ```
+
+A host reads the file from the installed package. In Python it is package data,
+read with `importlib.resources.files("dex_connectors.stripe").joinpath("dex-connector.json")`.
+In TypeScript every package `exports` it as `./dex-connector.json`, so
+`import manifest from "@superdurable/connector-stripe/dex-connector.json" with { type: "json" }`
+works, and `connectorctl validate` rejects an `exports` map without that entry.
 
 `inputType` is the public model name in that language: a class in the package's
 `models` module for Python, and a type with a matching strict `<inputType>Schema`

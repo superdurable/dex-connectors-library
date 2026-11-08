@@ -64,7 +64,9 @@ and Stream contracts. Provider calls occur only in `Execute`, never in
 An agent host may run a Connector operation as a tool inside its own Step. The
 model chooses the call at run time, so the host needs what a Flow author reads
 from the code. Each language package carries that in `dex-connector.json`, which
-[Agent tool metadata](manifest-authoring.md#agent-tool-metadata) describes:
+the host reads from the installed package: Python package data, or the
+TypeScript export `./dex-connector.json`.
+[Agent tool metadata](manifest-authoring.md#agent-tool-metadata) describes it:
 
 - `inputType` and `inputSchema` tell the host how to describe and decode the
   arguments. The schema uses the JSON field names of the operation input. A host
@@ -86,6 +88,13 @@ from the code. Each language package carries that in `dex-connector.json`, which
   inside the provider's key retention, and a new Step execution has a new Call ID
   that nothing dedupes. See
   [Agent tool metadata](manifest-authoring.md#agent-tool-metadata).
+- `agent.branches` classifies optional branches. `rejected` means the call
+  changed nothing: the provider refused it, or the connector refused it before
+  sending. `unknown` means the effect may have happened, so a host must not let the
+  model repeat the call as a failed one; a repeat has a new Call ID, and nothing
+  dedupes it. A host treats an unlisted optional branch of a Mutation as
+  `unknown` and of a Query as a failure. See
+  [Branch classification](manifest-authoring.md#branch-classification).
 
 A host calls `run_query`/`run_mutation` or `runQuery`/`runMutation` directly,
 which keeps Call ID, idempotency, credential, and fence behavior. For a safe retry
