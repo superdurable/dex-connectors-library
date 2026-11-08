@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listForms, getSubmission]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-jotform'
+      operations: [listForms, getSubmission]
+      triggers: []
   codegen:
     go:
       package: jotform
