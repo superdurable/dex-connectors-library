@@ -64,6 +64,7 @@ directories:
   - connectors/google/contacts
   - connectors/google/docs
   - connectors/google/drive
+  - connectors/google/firestore
   - connectors/google/forms
   - connectors/google/gemini
   - connectors/google/gmail
