@@ -27,6 +27,7 @@ directories:
   - connectors/doist/todoist
   - connectors/elastic/elasticsearch
   - connectors/elevenlabs
+  - connectors/eventbrite
   - connectors/figma
   - connectors/freshworks/freshdesk
   - connectors/front
