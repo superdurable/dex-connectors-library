@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: eventbrite
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listOrganizations, listEvents, getAttendee]
+      triggers: []
   codegen:
     go:
       package: eventbrite
