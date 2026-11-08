@@ -8,6 +8,15 @@ metadata:
   version: v0.1.0
 spec:
   provider: meta-ads-insights
+  languages:
+    python:
+      version: v0.1.0
+      operations: [getAd]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [getAd]
+      triggers: []
   codegen:
     go:
       package: metaadsinsights
