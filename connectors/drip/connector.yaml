@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listAccounts, getSubscriber]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-drip'
+      operations: [listAccounts, getSubscriber]
+      triggers: []
   codegen:
     go:
       package: drip
