@@ -67,6 +67,7 @@ directories:
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
+  - connectors/opensearch
   - connectors/openweathermap
   - connectors/pagerduty
   - connectors/paypal

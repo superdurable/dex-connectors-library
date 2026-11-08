@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: opensearch
+  displayName: OpenSearch
+  description: Search documents in an OpenSearch index.
+  company: OpenSearch
+  version: v0.1.0
+spec:
+  provider: opensearch
+  codegen:
+    go:
+      package: opensearch
+  configuration:
+    fields:
+      - name: clusterUrl
+        goName: ClusterURL
+        type: url
+        description: Non-secret HTTPS URL of your OpenSearch REST endpoint, typically https://your-cluster.example:9200; find it in your cluster deployment or managed-service console. Do not append an index, query, or fragment. Blank prevents connection creation.
+        required: true
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one OpenSearch HTTP request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; raise only for slow searches.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete search response in bytes as a positive integer. Blank uses the displayed default; raise only for larger result pages. Oversized responses select invalidResponse.
+        default: 4194304
+  auth:
+    type: apiKey
+    connectionKind: opensearch-basic-auth
+    fields:
+      - name: username
+        goName: Username
+        type: string
+        description: Non-secret internal username from OpenSearch Dashboards at your cluster's Dashboards URL > Security > Internal users. Enter the exact user assigned read/search permission for the chosen index. Blank prevents calls.
+        required: true
+      - name: password
+        goName: Password
+        type: secretString
+        description: Secret password set when creating the internal user in OpenSearch Dashboards > Security > Internal users > Create internal user. It is stored only in Dex credentials; blank prevents calls. Rotate it from the same page.
+        required: true
+    guide:
+      startURL: https://docs.opensearch.org/latest/security-plugin/access-control/users-roles/
+      steps:
+        - Open your OpenSearch Dashboards URL and choose Security > Internal users > Create internal user. Set a username and password, then save them as username and password in this Dex connection.
+        - Choose Security > Roles > Create role and grant indices:data/read/search to the target index pattern. Map the internal user under that role's Mapped users tab. Avoid broader index permissions unless other operations need them.
+        - Find the HTTPS REST endpoint in your cluster deployment or managed-service console and save it as clusterUrl without an index path. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: searchDocuments
+      goName: SearchDocuments
+      inputType: SearchDocumentsInput
+      outputType: SearchPage
+      kind: query
+      description: Search one OpenSearch index with a Lucene query string and bounded offset page.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "OpenSearch returned a search page, possibly empty."}
+        - {id: indexNotFound, goName: IndexNotFound, description: The requested index does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OpenSearch conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OpenSearch returned malformed or oversized search data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: matchingDocument
+          branch: found
+          description: A sample product document matches the example search.
+          default: true
+          output: {total: 1, relation: eq, hits: [{index: products, id: sku-42, score: 1.25, source: {title: Meridian, category: release}}]}
