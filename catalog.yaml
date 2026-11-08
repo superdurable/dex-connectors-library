@@ -67,6 +67,7 @@ directories:
   - connectors/gorgias
   - connectors/hackernews
   - connectors/harvest
+  - connectors/heap
   - connectors/helpscout
   - connectors/hiver
   - connectors/hubspot
