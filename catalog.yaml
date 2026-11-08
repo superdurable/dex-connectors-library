@@ -21,6 +21,7 @@ directories:
   - connectors/brevo
   - connectors/calendly
   - connectors/campaignmonitor
+  - connectors/chargebee
   - connectors/clickup
   - connectors/close
   - connectors/cloudflare

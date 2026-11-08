@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: chargebee
+  displayName: Chargebee
+  description: Read selected Chargebee subscription status through the v2 API.
+  company: Chargebee
+  version: v0.1.0
+spec:
+  provider: chargebee
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-chargebee
+      operations: [getSubscription]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-chargebee"
+      operations: [getSubscription]
+      triggers: []
+  codegen:
+    go:
+      package: chargebee
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret site-specific API root https://{site}.chargebee.com/api/v2, using the site subdomain shown in the Chargebee console. Match the Test or Live site for the API key. Blank prevents connection creation; use a trusted local gateway only for tests.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow subscription reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete subscription response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large subscription metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: chargebee-api-token
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Chargebee Read-Only API key from Settings > Configure Chargebee > API Keys and Webhooks > API Keys > Add API Key at https://app.chargebee.com. Copy the complete opaque key; blank prevents calls. Dex sends it only as the HTTP Basic username with an empty password. Match the Test or Live site in baseUrl.
+    guide:
+      startURL: https://app.chargebee.com
+      steps:
+        - Sign in to the Chargebee Test or Live site, open Settings > Configure Chargebee > API Keys and Webhooks > API Keys > Add API Key, select Read-Only, name the key, and copy the complete opaque secret into Dex Web api_key. Blank is invalid. Rotate it on the same page.
+        - Copy the site's subdomain from its Chargebee console and enter the full non-secret https://{site}.chargebee.com/api/v2 into baseUrl; blank is invalid. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret subscription ID in Subscriptions or an API response and pass it as subscriptionId; blank is invalid.
+  operations:
+    - name: getSubscription
+      goName: GetSubscription
+      inputType: GetSubscriptionInput
+      outputType: SubscriptionStatus
+      kind: query
+      description: Read one subscription's ID, status, and currency code without customer or payment details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Chargebee returned the subscription.}
+        - {id: notFound, goName: NotFound, description: Chargebee did not expose the subscription., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Chargebee conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Chargebee returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample active subscription is returned.
+          output: {id: sub_123456, status: active, currencyCode: USD}
