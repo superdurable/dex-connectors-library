@@ -1,6 +1,6 @@
 # Google Analytics 4 connector
 
-The Go connector runs a bounded GA4 report, reads property metadata, and lists one page of audiences. The [property Flow](go/examples/property/README.md) uses the static `google-analytics-4` Dex Web connection and the operation-specific `getProperty` Step.
+The Go and Python connectors run a bounded GA4 report, reads property metadata, and lists one page of audiences. The [Go property Flow](go/examples/property/README.md) and [Python property Flow](python/examples/property/README.md) use the static `google-analytics-4` Dex Web connection and the operation-specific `getProperty` Step.
 
 ## Connection setup
 

@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: google-analytics-4
+  languages:
+    python:
+      version: v0.1.0
+      operations: [runReport, getProperty, listAudiences]
+      triggers: []
   codegen:
     go:
       package: analytics4
