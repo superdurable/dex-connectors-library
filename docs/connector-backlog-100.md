@@ -2,13 +2,13 @@
 
 Snapshot: 2026-11-07. This is a qualitative priority backlog, not a usage or revenue ranking. Zapier exposes a public “most popular” app ordering and popular/trending lists; n8n exposes a public integration directory and category pages. Neither publishes comparable per-app usage counts. The order below combines their discovery signals with common automation use cases and Dex's existing coverage. The proposed capabilities are product candidates, not verified provider API contracts or committed Dex operation names.
 
-Sources: [Zapier app directory](https://zapier.com/apps), [Zapier popular forms](https://zapier.com/apps/categories/forms), [n8n integration directory](https://n8n.io/integrations/), [n8n AI category](https://n8n.io/integrations/categories/ai/), [Zapier Facebook Lead Ads capabilities](https://zapier.com/apps/facebook-lead-ads/integrations), [n8n MongoDB capabilities](https://n8n.io/integrations/mongodb/), and [n8n Anthropic capabilities](https://n8n.io/integrations/anthropic/). Provider-specific API and authorization requirements must be checked before implementation.
+Sources: [Zapier app directory](https://zapier.com/apps), [Zapier popular forms](https://zapier.com/apps/categories/forms), [n8n integration directory](https://n8n.io/integrations/), [n8n AI category](https://n8n.io/integrations/categories/ai/), [Zapier Facebook Lead Ads capabilities](https://zapier.com/apps/facebook-lead-ads/integrations), [n8n MongoDB capabilities](https://n8n.io/integrations/mongodb/), and [n8n RabbitMQ capabilities](https://n8n.io/integrations/rabbitmq/). Provider-specific API and authorization requirements must be checked before implementation.
 
 ## Existing library and language gap
 
 The checked-in catalog has 102 connectors. All 102 manifests declare Python and TypeScript packages. Across their manifests, all 363 Go operations appear in both language lists. Go declares 13 Triggers across 11 connectors; Python and TypeScript declare none. Thus the immediate Python/TypeScript parity backlog is Trigger delivery in DocuSign, Linear, Help Scout, Intercom, Typeform, ClickUp, Slack (two), Calendly, Stripe, Superdurable Webhook, and Gmail (two). These counts describe manifest declarations, not live provider verification or release completion.
 
-The 100 entries below are **new connector candidates** absent from `catalog.yaml`; they do not count the 11 existing Trigger ports. Each row suggests an initial provider query, mutation, or Trigger. `Q` means a read-only query, `M` a provider mutation, and `T` a provider event source. A candidate Trigger should be included only after its event transport, duplicate handling, and permissions are verified. Go remains the reference implementation; Python and TypeScript follow the Go-verified provider scenarios and may initially expose a documented subset.
+The 100 entries below are **new connector candidates** absent from `catalog.yaml` at this snapshot; they do not count the 11 existing Trigger ports. Anthropic is excluded because its former standalone connector was retired in favor of `connectors/superdurable/llm`. Each row suggests an initial provider query, mutation, or Trigger. `Q` means a read-only query, `M` a provider mutation, and `T` a provider event source. A candidate Trigger should be included only after its event transport, duplicate handling, and permissions are verified. Go remains the reference implementation; Python and TypeScript follow the Go-verified provider scenarios and may initially expose a documented subset.
 
 ## Tier A — strongest general-purpose demand
 
@@ -29,7 +29,7 @@ The 100 entries below are **new connector candidates** absent from `catalog.yaml
 | 13 | SurveyMonkey | T: response completed; Q: get response; Q: list surveys |
 | 14 | Jotform | T: submission created; Q: get submission; Q: list forms |
 | 15 | Eventbrite | T: attendee registered; Q: get attendee; Q: list events |
-| 16 | Anthropic | M: create message; Q: get model; M: upload file |
+| 16 | RabbitMQ | T: consume queue message; M: publish to queue; M: publish to exchange |
 | 17 | Google BigQuery | Q: run query; M: insert rows; Q: get job |
 | 18 | Firebase Firestore | T: document changed; Q: get document; M: upsert document |
 | 19 | Redis | Q: get key; M: set key; M: publish message |
