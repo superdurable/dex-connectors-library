@@ -1,0 +1,685 @@
+{
+  "connector": "azure-devops",
+  "scenarios": [
+    {
+      "callId": "67853049-2440-4511-837e-1665e563b7cc",
+      "exchanges": [
+        {
+          "body": "{\"count\":1,\"value\":[{\"id\":\"eb6e4656-77fc-42a1-9181-4c6d8e9da5d1\",\"name\":\"Example\",\"state\":\"wellFormed\",\"url\":\"not-persisted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/projects",
+          "query": {
+            "$skip": [
+              "20"
+            ],
+            "$top": [
+              "2"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "projects": [
+            {
+              "id": "eb6e4656-77fc-42a1-9181-4c6d8e9da5d1",
+              "name": "Example",
+              "state": "wellFormed"
+            }
+          ],
+          "skip": 20,
+          "top": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "skip": 20,
+        "top": 2
+      },
+      "name": "listProjects-success",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "7689b229-e7cf-4ff0-8b93-a91240c76551",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/projects",
+          "query": {
+            "$skip": [
+              "20"
+            ],
+            "$top": [
+              "2"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "projects": [],
+          "skip": 0,
+          "top": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "skip": 20,
+        "top": 2
+      },
+      "name": "listProjects-providerRejected",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "e604a020-13f0-43f6-b39b-2eedb16b6401",
+      "exchanges": [
+        {
+          "body": "{\"value\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/projects",
+          "query": {
+            "$skip": [
+              "20"
+            ],
+            "$top": [
+              "2"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "projects": [],
+          "skip": 0,
+          "top": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "skip": 20,
+        "top": 2
+      },
+      "name": "listProjects-invalidResponse",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "73a2efcf-6c14-4a4b-bc09-09fb9644bf80",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "projects": [],
+          "skip": 0,
+          "top": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "skip": 20,
+        "top": 0
+      },
+      "name": "listProjects-defect",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "66e382da-778c-4434-9c5e-a160d67b35e4",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/projects",
+          "query": {
+            "$skip": [
+              "20"
+            ],
+            "$top": [
+              "2"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "skip": 20,
+        "top": 2
+      },
+      "name": "listProjects-rateLimit",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "b4586d70-5224-4b0b-942e-2976f5a02107",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/projects",
+          "query": {
+            "$skip": [
+              "20"
+            ],
+            "$top": [
+              "2"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "skip": 20,
+        "top": 2
+      },
+      "name": "listProjects-serverUnavailable",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "b050a4ea-480a-4a2e-9260-a6a7e1bc5684",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/projects",
+          "query": {
+            "$skip": [
+              "20"
+            ],
+            "$top": [
+              "2"
+            ],
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "skip": 20,
+        "top": 2
+      },
+      "name": "listProjects-transportFailure",
+      "operation": "listProjects"
+    },
+    {
+      "callId": "35ad1ccf-a82d-451e-a357-94daffb84bb5",
+      "exchanges": [
+        {
+          "body": "{\"id\":144,\"rev\":2,\"fields\":{\"System.Title\":\"Example task\",\"System.State\":\"Active\",\"System.WorkItemType\":\"Task\",\"System.Description\":\"not-persisted\"},\"_links\":{\"self\":\"not-persisted\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/wit/workitems/144",
+          "query": {
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": 144,
+          "state": "Active",
+          "title": "Example task",
+          "workItemType": "Task"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "144"
+      },
+      "name": "getWorkItem-success",
+      "operation": "getWorkItem"
+    },
+    {
+      "callId": "e9799db1-0634-40ed-b6eb-ecc69c75fe6d",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"No Result found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/wit/workitems/144",
+          "query": {
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": "",
+          "workItemType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "144"
+      },
+      "name": "getWorkItem-notFound",
+      "operation": "getWorkItem"
+    },
+    {
+      "callId": "94d056ec-4ac3-40ad-972a-4bb9ac281d15",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/wit/workitems/144",
+          "query": {
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": "",
+          "workItemType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "144"
+      },
+      "name": "getWorkItem-providerRejected",
+      "operation": "getWorkItem"
+    },
+    {
+      "callId": "a1fd9b23-5746-42a5-af54-6bb27f30b22f",
+      "exchanges": [
+        {
+          "body": "{\"id\":144,\"fields\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/wit/workitems/144",
+          "query": {
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": "",
+          "workItemType": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "144"
+      },
+      "name": "getWorkItem-invalidResponse",
+      "operation": "getWorkItem"
+    },
+    {
+      "callId": "197b3de8-d2da-41a2-a840-4c0cffe9dad7",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "state": "",
+          "title": "",
+          "workItemType": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "0"
+      },
+      "name": "getWorkItem-defect",
+      "operation": "getWorkItem"
+    },
+    {
+      "callId": "d92866e1-d885-4af8-a4fb-c26554cf8e22",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/wit/workitems/144",
+          "query": {
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "144"
+      },
+      "name": "getWorkItem-rateLimit",
+      "operation": "getWorkItem"
+    },
+    {
+      "callId": "c196fab1-01b8-4003-a0ed-da5ce07d8ea1",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/wit/workitems/144",
+          "query": {
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "144"
+      },
+      "name": "getWorkItem-serverUnavailable",
+      "operation": "getWorkItem"
+    },
+    {
+      "callId": "e86f0948-7024-479b-9bda-8f3c8ddfeaee",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/_apis/wit/workitems/144",
+          "query": {
+            "api-version": [
+              "7.1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic OnRlc3QtdG9rZW4="
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workItemId": "144"
+      },
+      "name": "getWorkItem-transportFailure",
+      "operation": "getWorkItem"
+    }
+  ],
+  "schemaVersion": 1
+}
