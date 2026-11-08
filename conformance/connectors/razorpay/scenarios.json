@@ -1,0 +1,289 @@
+{
+  "connector": "razorpay",
+  "scenarios": [
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"pay_DG4ZdRK8ZnXC3k\",\"entity\":\"payment\",\"status\":\"captured\",\"amount\":100,\"currency\":\"INR\",\"email\":\"private@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "amount": 100,
+          "currencyCode": "INR",
+          "id": "pay_DG4ZdRK8ZnXC3k",
+          "status": "captured"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-found",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "a1361226-b65b-52cd-81c9-423cc323222b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-notFound",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "d410c6a4-ee02-5101-a323-a2380562a585",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-providerRejected",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "27398a3d-ff91-5c77-b3bf-8082eeddb75d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"other\",\"entity\":\"payment\",\"status\":\"captured\",\"amount\":100,\"currency\":\"INR\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-invalidResponse",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "a6a73395-6808-5afe-9970-a95a5ce8b6a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": ""
+      },
+      "name": "getPayment-defect",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "c400fb80-ea62-5a9b-8758-ad00c036837a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-rateLimit",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "323e41bb-18e1-56b0-8499-8fc575952b9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-serverUnavailable",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "2091cba2-6eb8-550c-8d19-81eb661fad9c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-transportFailure",
+      "operation": "getPayment"
+    }
+  ],
+  "schemaVersion": 1
+}

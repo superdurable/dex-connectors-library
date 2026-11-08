@@ -108,6 +108,7 @@ directories:
   - connectors/posthog
   - connectors/postmark
   - connectors/productboard
+  - connectors/razorpay
   - connectors/reamaze
   - connectors/recurly
   - connectors/resend

@@ -1,0 +1,82 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: razorpay
+  displayName: Razorpay
+  description: Read selected Razorpay payment fields from the Payments API.
+  company: Razorpay
+  version: v0.1.0
+spec:
+  provider: razorpay
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-razorpay
+      operations: [getPayment]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-razorpay"
+      operations: [getPayment]
+      triggers: []
+  codegen:
+    go:
+      package: razorpay
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Razorpay API root as an absolute HTTPS URL ending in /v1. Blank uses the displayed endpoint; override only for a trusted local test gateway. Test and Live keys use this URL.
+        default: https://api.razorpay.com/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow payment reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete payment response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large payment metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: razorpay-api-keys
+    fields:
+      - name: key_id
+        goName: KeyID
+        type: secretString
+        required: true
+        description: Razorpay Key ID from Account & Settings > API Keys > Generate Key, beginning rzp_test_ or rzp_live_. Copy the complete value; blank prevents calls. Dex stores it with the secret credentials.
+      - name: key_secret
+        goName: KeySecret
+        type: secretString
+        required: true
+        description: Secret paired with the Razorpay Key ID on the same Generate Key page. Copy the complete opaque value when shown; blank prevents calls. Dex uses both fields only in HTTP Basic authentication.
+    guide:
+      startURL: https://dashboard.razorpay.com
+      steps:
+        - Sign in to the Razorpay Dashboard, select Test or Live Mode, then open Account & Settings > API Keys > Generate Key. Copy the Key ID beginning rzp_test_ or rzp_live_ and its paired opaque Key Secret into Dex Web secret key_id and key_secret. Blank is invalid. Regenerate the pair on the same page to rotate it; Test and Live keys cannot be mixed.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret pay_ payment ID on the Dashboard Payments page or from an API response and pass it as paymentId; blank is invalid. The payment amount returned is in currency subunits.
+  operations:
+    - name: getPayment
+      goName: GetPayment
+      inputType: GetPaymentInput
+      outputType: PaymentStatus
+      kind: query
+      description: Read one payment's ID, status, amount in currency subunits, and currency code.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Razorpay returned the payment.}
+        - {id: notFound, goName: NotFound, description: Razorpay did not expose the payment., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Razorpay conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Razorpay returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample captured payment is returned.
+          output: {id: pay_DG4ZdRK8ZnXC3k, status: captured, amount: 100, currencyCode: INR}
