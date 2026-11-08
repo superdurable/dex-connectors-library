@@ -1,0 +1,99 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: hootsuite
+  displayName: Hootsuite
+  description: List social profiles available to the connected Hootsuite user.
+  company: Hootsuite
+  version: v0.1.0
+spec:
+  provider: hootsuite
+  codegen:
+    go:
+      package: hootsuite
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Hootsuite API root as an absolute HTTPS URL. Blank uses the displayed production endpoint; override only for a trusted test gateway.
+        default: https://platform.hootsuite.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one Hootsuite request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete Hootsuite response in bytes. Blank uses the displayed default; increase only for a known large profile list.
+        default: 1048576
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: hootsuite-user-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://developer.hootsuite.com/ > My Apps > select your app > REST API credentials. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from https://developer.hootsuite.com/ > My Apps > select your app > REST API credentials. Store only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Hootsuite consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned with offline consent. Dex rotates it on refresh; blank requires reauthorization.
+    guide:
+      startURL: https://developer.hootsuite.com/
+      steps:
+        - Sign in to the Hootsuite Developer Portal > My Apps and create or select an app with REST API access. Developer access may require Hootsuite approval. The user authorizing must have access to the social profiles in Hootsuite.
+        - In My Apps > select the app > REST API credentials, register the exact redirect URI displayed by Dex Web. Copy the non-secret Client ID and one-time Client Secret into Dex Web; keep the secret private.
+        - Authorize in Dex Web with offline scope and complete Hootsuite consent. Dex stores and renews access and refresh tokens. No analytics scope is needed for listSocialProfiles.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Revoke the app grant in Hootsuite if access should end.
+    oauth2:
+      authorizationEndpoint: https://platform.hootsuite.com/oauth2/auth
+      tokenEndpoint: https://platform.hootsuite.com/oauth2/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [offline]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_basic
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listSocialProfiles
+      goName: ListSocialProfiles
+      inputType: ListSocialProfilesInput
+      outputType: SocialProfilesPage
+      kind: query
+      description: Return the connected user's visible social profile IDs, network types, and usernames.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Hootsuite returned the visible profiles.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hootsuite definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hootsuite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example social profile is visible.
+          output:
+            profiles: [{id: '115185509', type: FACEBOOK, username: Example Page}]
