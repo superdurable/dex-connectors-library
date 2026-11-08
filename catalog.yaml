@@ -23,6 +23,7 @@ directories:
   - connectors/calendly
   - connectors/campaignmonitor
   - connectors/chargebee
+  - connectors/clickhouse
   - connectors/clickup
   - connectors/close
   - connectors/cloudflare

@@ -1,0 +1,515 @@
+{
+  "connector": "clickhouse",
+  "scenarios": [
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"name\":\"events\"},{\"name\":\"users\"}],\"rows\":2,\"statistics\":{\"elapsed\":0.001}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "database": "analytics",
+          "hasMore": false,
+          "names": [
+            "events",
+            "users"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-listed",
+      "operation": "listTables"
+    },
+    {
+      "callId": "95b0091d-79fa-5c50-981c-c82719452587",
+      "exchanges": [
+        {
+          "body": "{\"data\":[],\"rows\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "database": "analytics",
+          "hasMore": false,
+          "names": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-empty",
+      "operation": "listTables"
+    },
+    {
+      "callId": "8a4535d1-1489-5075-980b-bf0ae1261edf",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"name\":\"table_000\"},{\"name\":\"table_001\"},{\"name\":\"table_002\"},{\"name\":\"table_003\"},{\"name\":\"table_004\"},{\"name\":\"table_005\"},{\"name\":\"table_006\"},{\"name\":\"table_007\"},{\"name\":\"table_008\"},{\"name\":\"table_009\"},{\"name\":\"table_010\"},{\"name\":\"table_011\"},{\"name\":\"table_012\"},{\"name\":\"table_013\"},{\"name\":\"table_014\"},{\"name\":\"table_015\"},{\"name\":\"table_016\"},{\"name\":\"table_017\"},{\"name\":\"table_018\"},{\"name\":\"table_019\"},{\"name\":\"table_020\"},{\"name\":\"table_021\"},{\"name\":\"table_022\"},{\"name\":\"table_023\"},{\"name\":\"table_024\"},{\"name\":\"table_025\"},{\"name\":\"table_026\"},{\"name\":\"table_027\"},{\"name\":\"table_028\"},{\"name\":\"table_029\"},{\"name\":\"table_030\"},{\"name\":\"table_031\"},{\"name\":\"table_032\"},{\"name\":\"table_033\"},{\"name\":\"table_034\"},{\"name\":\"table_035\"},{\"name\":\"table_036\"},{\"name\":\"table_037\"},{\"name\":\"table_038\"},{\"name\":\"table_039\"},{\"name\":\"table_040\"},{\"name\":\"table_041\"},{\"name\":\"table_042\"},{\"name\":\"table_043\"},{\"name\":\"table_044\"},{\"name\":\"table_045\"},{\"name\":\"table_046\"},{\"name\":\"table_047\"},{\"name\":\"table_048\"},{\"name\":\"table_049\"},{\"name\":\"table_050\"},{\"name\":\"table_051\"},{\"name\":\"table_052\"},{\"name\":\"table_053\"},{\"name\":\"table_054\"},{\"name\":\"table_055\"},{\"name\":\"table_056\"},{\"name\":\"table_057\"},{\"name\":\"table_058\"},{\"name\":\"table_059\"},{\"name\":\"table_060\"},{\"name\":\"table_061\"},{\"name\":\"table_062\"},{\"name\":\"table_063\"},{\"name\":\"table_064\"},{\"name\":\"table_065\"},{\"name\":\"table_066\"},{\"name\":\"table_067\"},{\"name\":\"table_068\"},{\"name\":\"table_069\"},{\"name\":\"table_070\"},{\"name\":\"table_071\"},{\"name\":\"table_072\"},{\"name\":\"table_073\"},{\"name\":\"table_074\"},{\"name\":\"table_075\"},{\"name\":\"table_076\"},{\"name\":\"table_077\"},{\"name\":\"table_078\"},{\"name\":\"table_079\"},{\"name\":\"table_080\"},{\"name\":\"table_081\"},{\"name\":\"table_082\"},{\"name\":\"table_083\"},{\"name\":\"table_084\"},{\"name\":\"table_085\"},{\"name\":\"table_086\"},{\"name\":\"table_087\"},{\"name\":\"table_088\"},{\"name\":\"table_089\"},{\"name\":\"table_090\"},{\"name\":\"table_091\"},{\"name\":\"table_092\"},{\"name\":\"table_093\"},{\"name\":\"table_094\"},{\"name\":\"table_095\"},{\"name\":\"table_096\"},{\"name\":\"table_097\"},{\"name\":\"table_098\"},{\"name\":\"table_099\"},{\"name\":\"table_100\"}],\"rows\":101}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "database": "analytics",
+          "hasMore": true,
+          "names": [
+            "table_000",
+            "table_001",
+            "table_002",
+            "table_003",
+            "table_004",
+            "table_005",
+            "table_006",
+            "table_007",
+            "table_008",
+            "table_009",
+            "table_010",
+            "table_011",
+            "table_012",
+            "table_013",
+            "table_014",
+            "table_015",
+            "table_016",
+            "table_017",
+            "table_018",
+            "table_019",
+            "table_020",
+            "table_021",
+            "table_022",
+            "table_023",
+            "table_024",
+            "table_025",
+            "table_026",
+            "table_027",
+            "table_028",
+            "table_029",
+            "table_030",
+            "table_031",
+            "table_032",
+            "table_033",
+            "table_034",
+            "table_035",
+            "table_036",
+            "table_037",
+            "table_038",
+            "table_039",
+            "table_040",
+            "table_041",
+            "table_042",
+            "table_043",
+            "table_044",
+            "table_045",
+            "table_046",
+            "table_047",
+            "table_048",
+            "table_049",
+            "table_050",
+            "table_051",
+            "table_052",
+            "table_053",
+            "table_054",
+            "table_055",
+            "table_056",
+            "table_057",
+            "table_058",
+            "table_059",
+            "table_060",
+            "table_061",
+            "table_062",
+            "table_063",
+            "table_064",
+            "table_065",
+            "table_066",
+            "table_067",
+            "table_068",
+            "table_069",
+            "table_070",
+            "table_071",
+            "table_072",
+            "table_073",
+            "table_074",
+            "table_075",
+            "table_076",
+            "table_077",
+            "table_078",
+            "table_079",
+            "table_080",
+            "table_081",
+            "table_082",
+            "table_083",
+            "table_084",
+            "table_085",
+            "table_086",
+            "table_087",
+            "table_088",
+            "table_089",
+            "table_090",
+            "table_091",
+            "table_092",
+            "table_093",
+            "table_094",
+            "table_095",
+            "table_096",
+            "table_097",
+            "table_098",
+            "table_099"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-hasMore",
+      "operation": "listTables"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "database": "",
+          "hasMore": false,
+          "names": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-providerRejected",
+      "operation": "listTables"
+    },
+    {
+      "callId": "70e762e3-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"name\":\"\"}],\"rows\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "database": "",
+          "hasMore": false,
+          "names": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-invalidResponse",
+      "operation": "listTables"
+    },
+    {
+      "callId": "8e29694d-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "database": "",
+          "hasMore": false,
+          "names": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": ""
+      },
+      "name": "listTables-defect",
+      "operation": "listTables"
+    },
+    {
+      "callId": "0740ee38-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-rateLimit",
+      "operation": "listTables"
+    },
+    {
+      "callId": "3fb444c7-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-serverUnavailable",
+      "operation": "listTables"
+    },
+    {
+      "callId": "e79d52f6-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "param_database": [
+              "analytics"
+            ],
+            "query": [
+              "SELECT name FROM system.tables WHERE database = {database:String} ORDER BY name LIMIT 101 FORMAT JSON"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Clickhouse-Key": [
+              "sample-clickhouse-password"
+            ],
+            "X-Clickhouse-User": [
+              "reader"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "database": "analytics"
+      },
+      "name": "listTables-transportFailure",
+      "operation": "listTables"
+    }
+  ],
+  "schemaVersion": 1
+}
