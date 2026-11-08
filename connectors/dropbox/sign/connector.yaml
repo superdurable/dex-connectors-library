@@ -1,0 +1,66 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: dropbox-sign
+  displayName: Dropbox Sign
+  description: Read a signature request's title and completion status without signer or document data.
+  company: Dropbox
+  version: v0.1.0
+spec:
+  provider: dropbox-sign
+  codegen:
+    go:
+      package: dropboxsign
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Dropbox Sign API v3 root as an absolute HTTPS URL. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://api.hellosign.com/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow status reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete provider response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large request metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: dropbox-sign-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Dropbox Sign API key from Settings > API > API Keys at app.hellosign.com. Paste the complete opaque key into this secret field; blank prevents calls. Dex sends it as the Basic-auth username with an empty password.
+    guide:
+      startURL: https://app.hellosign.com/home/settings/api
+      steps:
+        - Sign in to Dropbox Sign, open Settings > API, then API Keys. Create an API key or reveal an existing one. Copy its complete opaque value into secret api_key in Dex Web; never put it in the Flow input. Revoke or replace the key from the same page.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. After creating a signature request, copy its non-secret signature_request_id from the API response or locate a request in Dropbox Sign and use its request ID as signatureRequestId; blank is invalid.
+  operations:
+    - name: getSignatureRequest
+      goName: GetSignatureRequest
+      inputType: GetSignatureRequestInput
+      outputType: SignatureRequestStatus
+      kind: query
+      description: Read one signature request's title, completion, declined, and error flags without signer or document data.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Dropbox Sign returned the signature request.}
+        - {id: notFound, goName: NotFound, description: Dropbox Sign did not expose the request., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox Sign conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox Sign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example signature request is returned.
+          output: {id: fa5c8a0b0f492d768749333ad6fcc214c111e967, title: Example agreement, isComplete: true, isDeclined: false, hasError: false}

@@ -33,6 +33,7 @@ directories:
   - connectors/doist/todoist
   - connectors/drip
   - connectors/dropbox
+  - connectors/dropbox/sign
   - connectors/elastic/elasticsearch
   - connectors/elevenlabs
   - connectors/eventbrite
@@ -66,8 +67,8 @@ directories:
   - connectors/kit
   - connectors/klaviyo
   - connectors/linear
-  - connectors/lucid
   - connectors/linkedin
+  - connectors/lucid
   - connectors/mailgun
   - connectors/meta/facebook-lead-ads
   - connectors/meta/facebook-pages
