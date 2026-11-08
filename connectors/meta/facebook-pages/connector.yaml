@@ -11,7 +11,7 @@ spec:
   languages:
     python:
       version: v0.1.0
-      operations: [listPosts, getPost]
+      operations: [listPosts, getPost, publishTextPost]
       triggers: []
     typescript:
       version: v0.1.0
@@ -106,7 +106,8 @@ spec:
       description: Publish a plain-text post to a Facebook Page feed.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: async}
+      # Sync preserves the single-dispatch heartbeat; Meta has no post idempotency key.
+      execution: {executeMethodTimeout: 30s, durability: sync}
       branches:
         - {id: published, goName: Published, description: Meta returned the published post ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the post., optional: true}

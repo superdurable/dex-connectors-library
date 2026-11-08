@@ -5,11 +5,11 @@
 from datetime import datetime
 
 from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
-from dex_connectors.sdk.connectormock import Case, Query
+from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage
-from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_POST_DEFINITION, INVALID_RESPONSE, LISTED, LIST_POSTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED
+from ..models import GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage, PublishTextPostInput, PublishedPost
+from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_POST_DEFINITION, INVALID_RESPONSE, LISTED, LIST_POSTS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, PUBLISHED, PUBLISH_TEXT_POST_DEFINITION, UNCERTAIN
 
 def list_posts_listed(value: PagePostsPage, failure: Failure | None = None) -> Case[PagePostsPage]:
     return Case.branch_result(LISTED, value, failure)
@@ -81,6 +81,36 @@ def get_post_found_default() -> Case[PagePostMetadata]:
 
 setattr(get_post_found_default, '__module__', "dex_connectors.meta_facebook_pages.facebookpagesmock")
 
+def publish_text_post_published(value: PublishedPost, failure: Failure | None = None) -> Case[PublishedPost]:
+    return Case.branch_result(PUBLISHED, value, failure)
+
+setattr(publish_text_post_published, '__module__', "dex_connectors.meta_facebook_pages.facebookpagesmock")
+
+def publish_text_post_provider_rejected(value: PublishedPost, failure: Failure | None = None) -> Case[PublishedPost]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(publish_text_post_provider_rejected, '__module__', "dex_connectors.meta_facebook_pages.facebookpagesmock")
+
+def publish_text_post_uncertain(value: PublishedPost, failure: Failure) -> Case[PublishedPost]:
+    return Case.uncertain(value, failure)
+
+setattr(publish_text_post_uncertain, '__module__', "dex_connectors.meta_facebook_pages.facebookpagesmock")
+
+def publish_text_post_defect(value: PublishedPost, failure: Failure | None = None) -> Case[PublishedPost]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(publish_text_post_defect, '__module__', "dex_connectors.meta_facebook_pages.facebookpagesmock")
+
+def publish_text_post_retry(failure: Failure, after_seconds: float = 0) -> Case[PublishedPost]:
+    return Case.retry(failure, after_seconds)
+
+setattr(publish_text_post_retry, '__module__', "dex_connectors.meta_facebook_pages.facebookpagesmock")
+
+def publish_text_post_published_default() -> Case[PublishedPost]:
+    return Case.branch_result(PUBLISHED, PublishedPost(post_id='123456789_987654321'))
+
+setattr(publish_text_post_published_default, '__module__', "dex_connectors.meta_facebook_pages.facebookpagesmock")
+
 
 class Mock:
 
@@ -89,9 +119,12 @@ class Mock:
         self.list_posts_script.default(list_posts_listed_default())
         self.get_post_script: Query[GetPostInput, PagePostMetadata] = Query(GET_POST_DEFINITION)
         self.get_post_script.default(get_post_found_default())
+        self.publish_text_post_script: Mutation[PublishTextPostInput, PublishedPost] = Mutation(PUBLISH_TEXT_POST_DEFINITION)
+        self.publish_text_post_script.default(publish_text_post_published_default())
         self._connection = new_connection_with_operations(
             list_posts=self.list_posts_script,
             get_post=self.get_post_script,
+            publish_text_post=self.publish_text_post_script,
             reference=ConnectionRef(CONNECTOR_ID, connection_name),
         )
 
@@ -116,4 +149,10 @@ __all__ = [
     "get_post_defect",
     "get_post_retry",
     "get_post_found_default",
+    "publish_text_post_published",
+    "publish_text_post_provider_rejected",
+    "publish_text_post_uncertain",
+    "publish_text_post_defect",
+    "publish_text_post_retry",
+    "publish_text_post_published_default",
 ]

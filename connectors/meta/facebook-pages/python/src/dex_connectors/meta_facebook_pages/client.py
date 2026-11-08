@@ -34,6 +34,7 @@ from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from ._generated.definitions import GET_POST_DEFINITION, LIST_POSTS_DEFINITION
 from .models import GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage
+from .publish import PublishTextPostOperation
 
 Output = TypeVar("Output")
 _NUMERIC_ID = re.compile(r"[0-9]{1,40}\Z")
@@ -98,6 +99,10 @@ class Client:
     def get_post(self) -> "GetPostOperation":
         """Bind the post metadata Query."""
         return GetPostOperation(self)
+
+    def publish_text_post(self) -> PublishTextPostOperation:
+        """Bind the Page publishing Mutation."""
+        return PublishTextPostOperation(self)
 
     async def aclose(self) -> None:
         """Close the owned transport."""

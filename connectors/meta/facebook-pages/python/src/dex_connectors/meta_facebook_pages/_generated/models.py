@@ -66,3 +66,25 @@ class GetPostInput:
 
 
 setattr(GetPostInput, '__module__', 'dex_connectors.meta_facebook_pages.models')
+
+
+# PublishTextPostInput selects the Page and text to publish.
+@dataclass(frozen=True, slots=True)
+class PublishTextPostInput:
+    # PageID is the numeric Page ID from Meta Business Suite.
+    page_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'pageId'})
+    # Message is nonempty UTF-8 text for the public Page feed.
+    message: str = ''
+
+
+setattr(PublishTextPostInput, '__module__', 'dex_connectors.meta_facebook_pages.models')
+
+
+# PublishedPost identifies a post Meta accepted for publication.
+@dataclass(frozen=True, slots=True)
+class PublishedPost:
+    # PostID is Meta's PageID_PostID identifier.
+    post_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'postId'})
+
+
+setattr(PublishedPost, '__module__', 'dex_connectors.meta_facebook_pages.models')

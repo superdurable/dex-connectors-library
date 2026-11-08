@@ -18,12 +18,15 @@ CONNECTOR_ID = "facebook-pages"
 PROVIDER = "facebook-pages"
 LIST_POSTS_OPERATION_ID = "listPosts"
 GET_POST_OPERATION_ID = "getPost"
+PUBLISH_TEXT_POST_OPERATION_ID = "publishTextPost"
 DEFECT = "defect"
 FOUND = "found"
 INVALID_RESPONSE = "invalidResponse"
 LISTED = "listed"
 NOT_FOUND = "notFound"
 PROVIDER_REJECTED = "providerRejected"
+PUBLISHED = "published"
+UNCERTAIN = "uncertain"
 
 LIST_POSTS_DEFINITION = QueryDefinition(
     OperationRef(CONNECTOR_ID, LIST_POSTS_OPERATION_ID),
@@ -53,6 +56,21 @@ GET_POST_DEFINITION = QueryDefinition(
     StepDefaults(
         timedelta(seconds=30),
         2,
+        execute_retry=default_connector_step_execute_retry_policy(),
+    ),
+)
+
+PUBLISH_TEXT_POST_DEFINITION = MutationDefinition(
+    OperationRef(CONNECTOR_ID, PUBLISH_TEXT_POST_OPERATION_ID),
+    (
+        BranchDefinition(PUBLISHED, "Meta returned the published post ID.", False),
+        BranchDefinition(PROVIDER_REJECTED, "Meta definitively rejected the post.", True),
+        BranchDefinition(UNCERTAIN, "The publish outcome is unknown; inspect the Page before retrying manually.", True),
+        BranchDefinition(DEFECT, "Local input or connection credentials are invalid.", True),
+    ),
+    StepDefaults(
+        timedelta(seconds=30),
+        1,
         execute_retry=default_connector_step_execute_retry_policy(),
     ),
 )

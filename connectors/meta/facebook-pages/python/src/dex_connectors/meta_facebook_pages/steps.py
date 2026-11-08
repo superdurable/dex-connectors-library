@@ -4,3 +4,4 @@
 
 from ._generated.steps import new_get_post_step as new_get_post_step
 from ._generated.steps import new_list_posts_step as new_list_posts_step
+from ._generated.steps import new_publish_text_post_step as new_publish_text_post_step

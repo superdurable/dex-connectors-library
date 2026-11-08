@@ -7,6 +7,9 @@ from typing import Any, TypeVar
 
 import dex
 from dex_connectors.sdk import (
+    MutationResult,
+    MutationStep,
+    MutationStepConfig,
     QueryResult,
     QueryStep,
     QueryStepConfig,
@@ -14,7 +17,7 @@ from dex_connectors.sdk import (
 )
 
 from ..connection import Connection
-from ..models import GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage
+from ..models import GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage, PublishTextPostInput, PublishedPost
 
 StepInput = TypeVar("StepInput")
 
@@ -123,6 +126,56 @@ def new_get_post_step(
     )
 
 setattr(new_get_post_step, '__module__', 'dex_connectors.meta_facebook_pages.steps')
+
+def new_publish_text_post_step(
+    *,
+    step_type: str,
+    step_input_type: type[StepInput],
+    annotations: StepAnnotations | Mapping[str, str],
+    connection: Connection,
+    connection_name: str,
+    map_to_operation_input: Callable[[StepInput], PublishTextPostInput],
+    published: dex.StepTarget[MutationResult[PublishedPost]],
+    provider_rejected: dex.StepTarget[MutationResult[PublishedPost]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[PublishedPost]] | None = None,
+    defect: dex.StepTarget[MutationResult[PublishedPost]] | None = None,
+    result_attribute: dex.Attribute[MutationResult[PublishedPost]] | None = None,
+    step_options_override: dex.StepOptions | None = None,
+) -> MutationStep[StepInput, PublishTextPostInput, PublishedPost]:
+    if connection is None or connection.reference.name != connection_name:
+        raise ValueError("Facebook Pages Step connection name must match its connection reference")
+    if isinstance(annotations, StepAnnotations):
+        step_annotations = annotations
+    else:
+        if not isinstance(annotations, Mapping) or set(annotations) != {"groupId", "groupLabel", "explanation"}:
+            raise ValueError("Facebook Pages Step annotations require groupId, groupLabel, and explanation")
+        if any(not isinstance(value, str) for value in annotations.values()):
+            raise ValueError("Facebook Pages Step annotations must be strings")
+        step_annotations = StepAnnotations(annotations["groupId"], annotations["groupLabel"], annotations["explanation"])
+    branches = {
+        "published": published,
+    }
+    if provider_rejected is not None:
+        branches["providerRejected"] = provider_rejected
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
+    if defect is not None:
+        branches["defect"] = defect
+    return MutationStep(
+        MutationStepConfig(
+            step_type=step_type,
+            step_input_type=step_input_type,
+            annotations=step_annotations,
+            operation=_bound_operation(connection, "publish_text_post"),
+            connection=connection.reference,
+            map_to_operation_input=map_to_operation_input,
+            branches=branches,
+            result_attribute=result_attribute,
+            step_options_override=step_options_override,
+        )
+    )
+
+setattr(new_publish_text_post_step, '__module__', 'dex_connectors.meta_facebook_pages.steps')
 
 
 def _bound_operation(connection: Connection, operation_name: str) -> Any:

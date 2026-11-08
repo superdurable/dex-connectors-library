@@ -19,7 +19,7 @@ SCENARIOS = [
     for scenario in conformance.load_scenarios(
         ROOT / "conformance/connectors/meta/facebook-pages/scenarios.json"
     )
-    if scenario["operation"] in {"listPosts", "getPost"}
+    if scenario["operation"] in {"listPosts", "getPost", "publishTextPost"}
 ]
 CONNECTION = sdk.ConnectionRef("facebook-pages", "facebook-pages")
 ADAPTER = conformance.PythonOperationAdapter(
@@ -33,6 +33,7 @@ ADAPTER = conformance.PythonOperationAdapter(
         ),
         http_client,
     ),
+    with_context=True,
 )
 
 
