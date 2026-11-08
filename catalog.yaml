@@ -23,6 +23,7 @@ directories:
   - connectors/cloudflare
   - connectors/coda
   - connectors/cohere
+  - connectors/constantcontact
   - connectors/contentful
   - connectors/copper
   - connectors/datadog
