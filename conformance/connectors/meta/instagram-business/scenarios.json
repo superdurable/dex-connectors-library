@@ -1,0 +1,393 @@
+{
+  "connector": "instagram-business",
+  "scenarios": [
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"17900000000000001\",\"caption\":\"Hello\",\"media_type\":\"IMAGE\",\"timestamp\":\"2026-11-08T10:00:00+0000\",\"permalink\":\"https://www.instagram.com/p/example/\",\"comments\":{\"data\":[{\"text\":\"private\"}]}}],\"paging\":{\"cursors\":{\"after\":\"next-cursor\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "media": [
+            {
+              "caption": "Hello",
+              "id": "17900000000000001",
+              "mediaType": "IMAGE",
+              "permalink": "https://www.instagram.com/p/example/",
+              "timestamp": "2026-11-08T10:00:00+0000"
+            }
+          ],
+          "nextCursor": "next-cursor"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-success",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"missing\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "media": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-notFound",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"denied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "media": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-providerRejected",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "media": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-invalidResponse",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "media": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "bad/id"
+      },
+      "name": "listMedia-defect",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"limited\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-rateLimit",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-serverError",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-transport",
+      "operation": "listMedia"
+    }
+  ],
+  "schemaVersion": 1
+}
