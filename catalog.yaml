@@ -30,6 +30,7 @@ directories:
   - connectors/constantcontact
   - connectors/contentful
   - connectors/copper
+  - connectors/databricks
   - connectors/datadog
   - connectors/deel
   - connectors/discord
