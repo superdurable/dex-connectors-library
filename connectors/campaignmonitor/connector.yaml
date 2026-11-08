@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: campaignmonitor
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listClients]
+      triggers: []
   codegen:
     go:
       package: campaignmonitor
