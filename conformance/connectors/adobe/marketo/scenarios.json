@@ -1,0 +1,524 @@
+{
+  "connector": "adobe-marketo",
+  "scenarios": [
+    {
+      "callId": "b3d1b986-c601-5a02-b378-d1cbfea91d91",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":318581,\"firstName\":\"Sample\",\"lastName\":\"Lead\",\"email\":\"secret@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "firstName": "Sample",
+          "id": 318581,
+          "lastName": "Lead"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-found",
+      "operation": "getLead"
+    },
+    {
+      "callId": "1964f5df-e5db-5e05-af65-ec13a97f8014",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-notFound",
+      "operation": "getLead"
+    },
+    {
+      "callId": "5e54207a-36ab-5490-a514-56b1d2be5400",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"702\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-notFoundCode",
+      "operation": "getLead"
+    },
+    {
+      "callId": "81a625b0-34cd-5df7-bcec-d0aee52cfeb0",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"603\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-providerRejected",
+      "operation": "getLead"
+    },
+    {
+      "callId": "13acf162-3814-528a-932c-60c557265ae2",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-invalidResponse",
+      "operation": "getLead"
+    },
+    {
+      "callId": "83eaa2a8-1dd5-55d1-b3c8-2764a73f6e1b",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"result\":[{\"id\":123}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-wrongLead",
+      "operation": "getLead"
+    },
+    {
+      "callId": "45d59af9-fdc7-5fdf-bcd7-a2d41d631c13",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-rateLimit",
+      "operation": "getLead"
+    },
+    {
+      "callId": "f0490c84-bd64-538a-ba31-bebde11c6cfa",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"606\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-providerRateLimit",
+      "operation": "getLead"
+    },
+    {
+      "callId": "2bcbbfa9-cad1-5d99-a577-c28638b577e8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-serverUnavailable",
+      "operation": "getLead"
+    },
+    {
+      "callId": "c997463e-249c-5e03-bf5e-656dbdb26558",
+      "exchanges": [
+        {
+          "body": "{\"success\":false,\"errors\":[{\"code\":\"608\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-providerUnavailable",
+      "operation": "getLead"
+    },
+    {
+      "callId": "af2a9402-c664-584e-8103-a1e003f47f5b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-requestTimeout",
+      "operation": "getLead"
+    },
+    {
+      "callId": "ac7912ad-2043-5559-a89f-06af62ff0da4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 0
+      },
+      "name": "getLead-defect",
+      "operation": "getLead"
+    },
+    {
+      "callId": "fcc57593-1530-572a-806c-b279a7f81e1d",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-transportFailure",
+      "operation": "getLead"
+    }
+  ],
+  "schemaVersion": 1
+}
