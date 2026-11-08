@@ -1,0 +1,302 @@
+{
+  "connector": "rabbitmq",
+  "scenarios": [
+    {
+      "callId": "c4c68be5-8dc6-5d70-83b5-a9f1c6a7c57b",
+      "exchanges": [
+        {
+          "body": "{\"vhost\":\"/\",\"name\":\"work\",\"messages\":3,\"consumers\":1,\"state\":\"running\",\"message_stats\":{\"publish\":100}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "consumers": 1,
+          "messages": 3,
+          "name": "work",
+          "state": "running",
+          "virtualHost": "/"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-found",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "816ddf52-817e-5054-b8c6-71c6ec99fdc1",
+      "exchanges": [
+        {
+          "body": "not found",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "consumers": 0,
+          "messages": 0,
+          "name": "",
+          "state": "",
+          "virtualHost": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-notFound",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "5a1e5c6f-c9dd-5fc6-9352-b711db70a6c3",
+      "exchanges": [
+        {
+          "body": "forbidden",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "consumers": 0,
+          "messages": 0,
+          "name": "",
+          "state": "",
+          "virtualHost": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-providerRejected",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "2455c264-5829-546d-8627-6e3b322fde57",
+      "exchanges": [
+        {
+          "body": "{\"vhost\":\"/\",\"name\":\"work\",\"consumers\":1,\"state\":\"running\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "consumers": 0,
+          "messages": 0,
+          "name": "",
+          "state": "",
+          "virtualHost": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-invalidResponse",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "def6760d-1fab-54de-a594-47a71bd19d49",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "consumers": 0,
+          "messages": 0,
+          "name": "",
+          "state": "",
+          "virtualHost": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-defect",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "aa3a329c-a19d-5f01-a84f-ee47e80ded72",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-rateLimit",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "c45aae83-8a1b-566f-8bd7-d67f0d5b65d5",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-serverUnavailable",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "11344031-59ad-536d-9f41-21f57cb49f57",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-transportFailure",
+      "operation": "getQueueMetrics"
+    }
+  ],
+  "schemaVersion": 1
+}
