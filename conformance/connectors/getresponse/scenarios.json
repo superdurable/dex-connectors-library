@@ -1,0 +1,588 @@
+{
+  "connector": "getresponse",
+  "scenarios": [
+    {
+      "callId": "2ddfef08-72ec-4e16-86c7-4613b8716f02",
+      "exchanges": [
+        {
+          "body": "[{\"contactId\":\"abc123\",\"email\":\"ada@example.com\",\"name\":\"Ada Lovelace\",\"customFieldValues\":[{\"value\":\"not-persisted\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "perPage": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "contacts": [
+            {
+              "contactId": "abc123",
+              "email": "ada@example.com",
+              "name": "Ada Lovelace"
+            }
+          ],
+          "page": 2,
+          "perPage": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listContacts-success",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "78f73f38-1618-4c60-bbaf-a9236a865639",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "perPage": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contacts": [],
+          "page": 0,
+          "perPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listContacts-providerRejected",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "30f2c99b-6f66-4346-94da-5c712859c496",
+      "exchanges": [
+        {
+          "body": "{\"contacts\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "perPage": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contacts": [],
+          "page": 0,
+          "perPage": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listContacts-invalidResponse",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "747772c5-392e-49e1-9431-4a1b8315fbd9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contacts": [],
+          "page": 0,
+          "perPage": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "perPage": 3
+      },
+      "name": "listContacts-defect",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "15653014-2b26-4a9a-8ad4-02bc81a232dc",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "X-RateLimit-Reset": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "perPage": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listContacts-rateLimit",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "06bd1ef5-71fc-4442-be42-d607055cd945",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "perPage": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listContacts-serverUnavailable",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "b1bbf476-5b41-4154-87a0-01fe9fc97aad",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "perPage": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listContacts-transportFailure",
+      "operation": "listContacts"
+    },
+    {
+      "callId": "d57c0533-69ad-4edd-97bf-487b3d0c2fee",
+      "exchanges": [
+        {
+          "body": "{\"contactId\":\"abc123\",\"email\":\"ada@example.com\",\"name\":\"Ada Lovelace\",\"customFieldValues\":[{\"value\":\"not-persisted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "abc123",
+          "email": "ada@example.com",
+          "name": "Ada Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "getContact-success",
+      "operation": "getContact"
+    },
+    {
+      "callId": "7b4c8ea1-6287-4c16-9bb6-28d4a8744178",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"No Result found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "getContact-notFound",
+      "operation": "getContact"
+    },
+    {
+      "callId": "0b9a916c-1c5a-472a-8bcf-7a0f1017c56d",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "getContact-providerRejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "4f0f6684-eb21-4716-a4ec-f7036eb7e23f",
+      "exchanges": [
+        {
+          "body": "{\"email\":\"ada@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "getContact-invalidResponse",
+      "operation": "getContact"
+    },
+    {
+      "callId": "fedf94b6-b07e-4e30-b251-fecc0671064f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "email": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "../"
+      },
+      "name": "getContact-defect",
+      "operation": "getContact"
+    },
+    {
+      "callId": "0bdcb3bf-5392-4592-b01a-5118b80d5612",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "X-RateLimit-Reset": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "getContact-rateLimit",
+      "operation": "getContact"
+    },
+    {
+      "callId": "426eb0f9-b5bd-40b8-bb68-0f19ab727ce6",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "getContact-serverUnavailable",
+      "operation": "getContact"
+    },
+    {
+      "callId": "4950e624-b907-441b-9e00-488e520d3e6a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/abc123",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Auth-Token": [
+              "api-key test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "abc123"
+      },
+      "name": "getContact-transportFailure",
+      "operation": "getContact"
+    }
+  ],
+  "schemaVersion": 1
+}

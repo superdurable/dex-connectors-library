@@ -1,0 +1,3 @@
+# GetResponse Python connector
+
+The Python package implements `listContacts` and `getContact` with provider requests and branch decisions replayed against the Go reference. It returns contact ID, email address, and name without embedded custom fields. It supports GetResponse SMB accounts. Sign in at [GetResponse Integrations and API](https://app.getresponse.com/api), open Integrations and API > API, and generate or copy an API Key into the Dex connection secret `api_key`. Leave `baseUrl` blank for the displayed SMB API default. See [the connector README](../README.md) and [the runnable example](examples/contact_inspection/README.md).
