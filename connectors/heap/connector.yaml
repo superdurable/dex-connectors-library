@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: heap
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-heap
+      operations: [setUserProperties]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-heap'
+      operations: [setUserProperties]
+      triggers: []
   codegen:
     go:
       package: heap
