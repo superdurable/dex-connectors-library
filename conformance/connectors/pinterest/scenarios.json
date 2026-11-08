@@ -1,0 +1,389 @@
+{
+  "connector": "pinterest",
+  "scenarios": [
+    {
+      "callId": "78573215-0000-5a98-8459-ec18a0ba9a96",
+      "exchanges": [
+        {
+          "body": "{\"items\":[{\"id\":\"123456789\",\"board_id\":\"987654321\",\"title\":\"Example Pin\",\"media\":{\"images\":\"discard-me\"}}],\"bookmark\":\"following-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextBookmark": "following-page",
+          "pins": [
+            {
+              "boardId": "987654321",
+              "id": "123456789",
+              "title": "Example Pin"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listPins-listed",
+      "operation": "listPins"
+    },
+    {
+      "callId": "cef20c83-44fa-52f8-8a38-9c91661aad95",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listPins-providerRejected",
+      "operation": "listPins"
+    },
+    {
+      "callId": "18623f27-f3fa-5346-b41d-64ac132f573e",
+      "exchanges": [
+        {
+          "body": "{\"items\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listPins-invalidResponse",
+      "operation": "listPins"
+    },
+    {
+      "callId": "4a088134-4d2f-52bf-ada9-361b3dc39ba2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextBookmark": "",
+          "pins": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 251
+      },
+      "name": "listPins-defect",
+      "operation": "listPins"
+    },
+    {
+      "callId": "68ef9f77-4b6f-5a3a-818d-ac3ea98360a3",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Too many requests\"}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listPins-final429",
+      "operation": "listPins"
+    },
+    {
+      "callId": "8e57cd2d-57e0-5158-a6e1-c8c69066db9b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listPins-final503",
+      "operation": "listPins"
+    },
+    {
+      "callId": "eaa66b2c-4a35-54fe-bfbf-db545d6e72ff",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "name": "listPins-transportFailure",
+      "operation": "listPins"
+    },
+    {
+      "attempts": 2,
+      "callId": "79c2a3e4-e148-524f-9d53-f3d968b67ff5",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"items\":[{\"id\":\"123456789\",\"board_id\":\"987654321\",\"title\":\"Example Pin\",\"media\":{\"images\":\"discard-me\"}}],\"bookmark\":\"following-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v5/pins",
+          "query": {
+            "bookmark": [
+              "next-page"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-pinterest-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextBookmark": "following-page",
+          "pins": [
+            {
+              "boardId": "987654321",
+              "id": "123456789",
+              "title": "Example Pin"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "bookmark": "next-page",
+        "pageSize": 2
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "listPins-retryThenListed",
+      "operation": "listPins"
+    }
+  ],
+  "schemaVersion": 1
+}
