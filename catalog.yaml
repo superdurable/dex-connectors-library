@@ -102,6 +102,7 @@ directories:
   - connectors/sendgrid
   - connectors/sentry
   - connectors/shopify
+  - connectors/shortcut
   - connectors/slack
   - connectors/smartsheet
   - connectors/snowflake

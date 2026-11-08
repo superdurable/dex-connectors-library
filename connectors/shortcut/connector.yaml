@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: shortcut
+  displayName: Shortcut
+  description: Read story metadata from Shortcut REST API v3.
+  company: Shortcut
+  version: v0.1.0
+spec:
+  provider: shortcut
+  codegen:
+    go:
+      package: shortcut
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Shortcut REST API v3 root as an absolute HTTPS URL. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://api.app.shortcut.com/api/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete response in bytes as a positive integer. Blank uses the displayed default; increase for known larger stories.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: shortcut-api-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret API token from https://app.shortcut.com/settings/account/api-tokens. Create a token on Account Settings > API Tokens, copy its complete opaque value into this secret field; blank prevents calls. Dex sends it only in the Shortcut-Token header.
+    guide:
+      startURL: https://app.shortcut.com/settings/account/api-tokens
+      steps:
+        - Sign in to Shortcut and open Account Settings > API Tokens at https://app.shortcut.com/settings/account/api-tokens. Create a token and copy its complete opaque value into secret api_token; this token grants account access, so restrict access to the Dex connection and revoke it on that page when needed.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Shortcut uses 200 requests per minute and returns 429 when exceeded.
+        - Open a Story in Shortcut and copy its positive decimal story ID from the URL or API resource path /stories/{story-public-id}. Enter that non-secret ID as storyId; blank is invalid.
+  operations:
+    - name: getStory
+      goName: GetStory
+      inputType: GetStoryInput
+      outputType: StoryMetadata
+      kind: query
+      description: Read a story's ID, name, type, workflow state ID, and archived flag without its description or comments.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Shortcut returned the story.}
+        - {id: notFound, goName: NotFound, description: Shortcut could not find the story., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Shortcut conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Shortcut returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example story is returned.
+          output: {storyId: "12345", name: Example story, storyType: feature, workflowStateId: "678", archived: false}
+        - name: storyMissing
+          branch: notFound
+          description: The requested story is absent.
+          failure: {kind: NOT_FOUND, message: Shortcut did not find the story.}
