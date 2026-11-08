@@ -1,0 +1,284 @@
+{
+  "connector": "adyen",
+  "scenarios": [
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PL50C5F751CED39G71\",\"status\":\"completed\",\"amount\":{\"currency\":\"EUR\"},\"shopperEmail\":\"private@example.test\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "currencyCode": "EUR",
+          "id": "PL50C5F751CED39G71",
+          "status": "completed"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "getPaymentLink-found",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "a1361226-b65b-52cd-81c9-423cc323222b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "getPaymentLink-notFound",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "d410c6a4-ee02-5101-a323-a2380562a585",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "getPaymentLink-providerRejected",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "27398a3d-ff91-5c77-b3bf-8082eeddb75d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"PL50C5F751CED39G72\",\"status\":\"completed\",\"amount\":{\"currency\":\"EUR\"},\"shopperEmail\":\"private@example.test\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "getPaymentLink-invalidResponse",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "a6a73395-6808-5afe-9970-a95a5ce8b6a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": ""
+      },
+      "name": "getPaymentLink-defect",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "c400fb80-ea62-5a9b-8758-ad00c036837a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "getPaymentLink-rateLimit",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "323e41bb-18e1-56b0-8499-8fc575952b9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "getPaymentLink-serverUnavailable",
+      "operation": "getPaymentLink"
+    },
+    {
+      "callId": "2091cba2-6eb8-550c-8d19-81eb661fad9c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/paymentLinks/PL50C5F751CED39G71",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "X-Api-Key": [
+              "sample-adyen-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentLinkId": "PL50C5F751CED39G71"
+      },
+      "name": "getPaymentLink-transportFailure",
+      "operation": "getPaymentLink"
+    }
+  ],
+  "schemaVersion": 1
+}
