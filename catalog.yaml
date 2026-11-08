@@ -136,6 +136,7 @@ directories:
   - connectors/unsplash
   - connectors/vercel
   - connectors/webflow
+  - connectors/wise
   - connectors/woocommerce
   - connectors/wordpress
   - connectors/xero
