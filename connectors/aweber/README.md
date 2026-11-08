@@ -1,6 +1,6 @@
 # AWeber connector
 
-The Go connector's `listAccounts` Query discovers the account authorized through [AWeber OAuth 2.0](https://api.aweber.com/). The [runnable account Flow](go/examples/accounts/README.md) uses the static `aweber` Dex Web connection. Subscriber reads, writes, and webhooks remain in the backlog.
+The Go, [Python](python/README.md), and [TypeScript](typescript/README.md) connectors implement `listAccounts` to discover the account authorized through [AWeber OAuth 2.0](https://api.aweber.com/). The [runnable Go account Flow](go/examples/accounts/README.md) uses the static `aweber` Dex Web connection; each language package has its own runnable Flow. Subscriber reads, writes, and webhooks remain in the backlog.
 
 In [AWeber Developer](https://labs.aweber.com/apps), create a confidential integration, register the exact Dex Web redirect URL, and request `account.read`. Copy its Client ID and Client Secret into Dex Web, then authorize the customer account. The connector refreshes tokens through AWeber's token endpoint. It sends only Bearer tokens to the [accounts endpoint](https://api.aweber.com/); token contents never enter Flow inputs or results.
 

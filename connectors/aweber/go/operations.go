@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -108,8 +109,8 @@ func isRateLimit(body []byte) bool {
 func decodeAccountsPage(body []byte, input ListAccountsInput) (AccountsPage, error) {
 	var payload struct {
 		Entries []struct {
-			ID      int64  `json:"id"`
-			Company string `json:"company"`
+			ID      int64   `json:"id"`
+			Company *string `json:"company"`
 		} `json:"entries"`
 		Start     int `json:"start"`
 		TotalSize int `json:"total_size"`
@@ -122,10 +123,10 @@ func decodeAccountsPage(body []byte, input ListAccountsInput) (AccountsPage, err
 	}
 	page := AccountsPage{Accounts: make([]Account, 0, len(payload.Entries)), Offset: input.Offset, Limit: input.Limit, Total: payload.TotalSize}
 	for _, entry := range payload.Entries {
-		if entry.ID <= 0 {
-			return AccountsPage{}, fmt.Errorf("AWeber account ID is invalid")
+		if entry.ID <= 0 || entry.ID > math.MaxInt32 || entry.Company == nil {
+			return AccountsPage{}, fmt.Errorf("AWeber account entry is invalid")
 		}
-		page.Accounts = append(page.Accounts, Account{ID: strconv.FormatInt(entry.ID, 10), Company: entry.Company})
+		page.Accounts = append(page.Accounts, Account{ID: strconv.FormatInt(entry.ID, 10), Company: *entry.Company})
 	}
 	return page, nil
 }

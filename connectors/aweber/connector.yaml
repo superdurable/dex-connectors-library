@@ -8,6 +8,16 @@ metadata:
   version: v0.1.0
 spec:
   provider: aweber
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listAccounts]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-aweber'
+      operations: [listAccounts]
+      triggers: []
   codegen:
     go:
       package: aweber
