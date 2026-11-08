@@ -88,6 +88,7 @@ directories:
   - connectors/lucid
   - connectors/mailgun
   - connectors/meistertask
+  - connectors/meta/ads-insights
   - connectors/meta/facebook-lead-ads
   - connectors/meta/facebook-pages
   - connectors/meta/instagram-business

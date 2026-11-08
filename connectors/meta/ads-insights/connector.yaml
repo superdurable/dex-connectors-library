@@ -1,0 +1,68 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: meta-ads-insights
+  displayName: Meta Ads Insights
+  description: Read Meta Marketing API ad identity and delivery status.
+  company: Meta
+  version: v0.1.0
+spec:
+  provider: meta-ads-insights
+  codegen:
+    go:
+      package: metaadsinsights
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Versioned Meta Graph API root as an absolute HTTPS URL. Blank uses the displayed endpoint; override only for a supported version or trusted test gateway.
+        default: https://graph.facebook.com/v25.0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one Meta API request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete Marketing API response in bytes. Blank uses the displayed default; increase only for a known larger ad response.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: meta-marketing-access-token
+    fields:
+      - name: user_access_token
+        goName: UserAccessToken
+        type: secretString
+        required: true
+        description: Secret opaque User or System User access token from https://developers.facebook.com/tools/explorer/ > select a Marketing API app > Get Token > Get User Access Token, or Meta Business Settings > Users > System users > Generate token. Grant ads_read. Blank prevents calls; revoke it in Meta when retired.
+    guide:
+      startURL: https://developers.facebook.com/apps/
+      steps:
+        - In Meta for Developers > My Apps, create or select a Business app and add the Marketing API product. Grant ads_read to a User or System User with access to the relevant ad account. Production use for other businesses may require Advanced Access and App Review.
+        - In Graph API Explorer, select the app and request ads_read, then choose Get Token > Get User Access Token. For a System User, open Meta Business Settings > Users > System users > select user > Generate token and grant ads_read.
+        - In Ads Manager > Campaigns > Ads, select an ad and read its numeric ID from the details panel or URL. Enter that ID as adId in the Flow; it is not a secret. Store the opaque token only in Dex Connections.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Revoke or rotate the token in Meta when retired.
+  operations:
+    - name: getAd
+      goName: GetAd
+      inputType: GetAdInput
+      outputType: AdMetadata
+      kind: query
+      description: Read one ad's ID, name, configured status, and effective status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Meta returned the ad.}
+        - {id: notFound, goName: NotFound, description: The ad is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example ad is active.
+          output: {id: '123456789012345', name: 'Spring campaign image', status: ACTIVE, effectiveStatus: ACTIVE}
