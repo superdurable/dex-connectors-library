@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listClients]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-campaignmonitor'
+      operations: [listClients]
+      triggers: []
   codegen:
     go:
       package: campaignmonitor
