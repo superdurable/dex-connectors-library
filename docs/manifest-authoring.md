@@ -87,9 +87,10 @@ and progress and text Stream options; static analyzer mappings for those options
 await matching schema support. Trigger factories are not emitted until the
 language package implements them. The vendored
 [`dex-connector.schema.json`](../schema/dex-connector.schema.json) is a copy of
-Dex `cli/internal/flowviz/dex-connector.schema.json`. Dex owns the file, and its
-analyzers reject unknown fields, so a new field lands and releases in Dex CLI
-before this repository generates it.
+Dex `cli/internal/flowviz/dex-connector.schema.json` from `cli-v1.38.0`. Dex owns
+the file, and its analyzers reject unknown fields, so a new field lands and
+releases in Dex CLI before this repository generates it. The minimum Dex CLI for
+these packages is 1.38.0; see [Generated input schema](#generated-input-schema).
 
 For every declared TypeScript package, `connectorctl generate` also writes
 `typescript/src/generated/{models,definitions,steps,connection,mock}.ts`.
@@ -567,7 +568,10 @@ language package that should offer it.
 ### Generated input schema
 
 `connectorctl generate` writes these fields on every operation factory in
-`dex-connector.json`, whether or not it has an `agent` block:
+`dex-connector.json`, whether or not it has an `agent` block. Dex CLI accepts
+them from 1.38.0 (`cli-v1.38.0`). An earlier `dexcli` rejects the unknown
+`inputType` field, so analysis fails for any Python or TypeScript Flow that
+imports a package carrying them:
 
 ```json
 {
