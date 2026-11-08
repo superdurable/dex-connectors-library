@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: facebook-lead-ads
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listLeadForms, getLead]
+      triggers: []
   codegen:
     go:
       package: facebookleadads
