@@ -29,6 +29,7 @@ directories:
   - connectors/docusign
   - connectors/doist/todoist
   - connectors/drip
+  - connectors/dropbox
   - connectors/elastic/elasticsearch
   - connectors/elevenlabs
   - connectors/eventbrite

@@ -1,0 +1,719 @@
+{
+  "connector": "dropbox",
+  "scenarios": [
+    {
+      "callId": "1db34fe0-6724-52c5-9a6d-9c9b8082cb3a",
+      "exchanges": [
+        {
+          "body": "{\"entries\":[{\".tag\":\"file\",\"id\":\"id:example\",\"name\":\"example.txt\",\"path_display\":\"/Projects/example.txt\",\"content_hash\":\"not-persisted\"}],\"cursor\":\"next-cursor\",\"has_more\":true}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": "/Projects"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "cursor": "next-cursor",
+          "entries": [
+            {
+              "id": "id:example",
+              "kind": "file",
+              "name": "example.txt",
+              "pathDisplay": "/Projects/example.txt"
+            }
+          ],
+          "hasMore": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-success",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "2c69f8ac-79ca-5dbb-8e04-6d6e23c63db2",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"path/not_found/...\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": "/Projects"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "cursor": "",
+          "entries": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-notFound",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "70fcdd3b-ce03-5c11-a282-699390f0b1fb",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"access_denied/...\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": "/Projects"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "cursor": "",
+          "entries": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-providerRejected",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "8fa599d7-c2ca-532a-8d36-ed6a37a3cbe3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": "/Projects"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "cursor": "",
+          "entries": [],
+          "hasMore": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-invalidResponse",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "a616b8b7-9881-5427-b4d5-bc94a14c6115",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "cursor": "",
+          "entries": [],
+          "hasMore": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-defect",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "2fb0470a-11cc-5e5a-b6bd-375ac897b515",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"too_many_requests/...\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": "/Projects"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-rateLimit",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "639c510d-00d0-5a3e-9666-accde2d6e214",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"service_unavailable/...\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": "/Projects"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-serverUnavailable",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "1fc1552e-f9d9-5e1a-9e25-8116606b4894",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/list_folder",
+          "requestBody": {
+            "limit": 20,
+            "path": "/Projects"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 20,
+        "path": "/Projects"
+      },
+      "name": "listFolder-transportFailure",
+      "operation": "listFolder"
+    },
+    {
+      "callId": "6c825474-7667-55d5-affe-1b8ca609dd12",
+      "exchanges": [
+        {
+          "body": "{\".tag\":\"file\",\"id\":\"id:example\",\"name\":\"example.txt\",\"path_display\":\"/Projects/example.txt\",\"content_hash\":\"not-persisted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/get_metadata",
+          "requestBody": {
+            "path": "/Projects/example.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "id:example",
+          "kind": "file",
+          "name": "example.txt",
+          "pathDisplay": "/Projects/example.txt"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/example.txt"
+      },
+      "name": "getMetadata-success",
+      "operation": "getMetadata"
+    },
+    {
+      "callId": "435b2160-3808-50bb-9c50-95b9897e07e8",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"path/not_found/...\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/get_metadata",
+          "requestBody": {
+            "path": "/Projects/example.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 409
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "kind": "",
+          "name": "",
+          "pathDisplay": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/example.txt"
+      },
+      "name": "getMetadata-notFound",
+      "operation": "getMetadata"
+    },
+    {
+      "callId": "8da5ae2f-5c0e-51be-8595-a00b66d13fff",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"access_denied/...\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/get_metadata",
+          "requestBody": {
+            "path": "/Projects/example.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "kind": "",
+          "name": "",
+          "pathDisplay": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/example.txt"
+      },
+      "name": "getMetadata-providerRejected",
+      "operation": "getMetadata"
+    },
+    {
+      "callId": "8e365f1e-99b8-51e2-9785-28bc3e956077",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/get_metadata",
+          "requestBody": {
+            "path": "/Projects/example.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "kind": "",
+          "name": "",
+          "pathDisplay": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/example.txt"
+      },
+      "name": "getMetadata-invalidResponse",
+      "operation": "getMetadata"
+    },
+    {
+      "callId": "c6b9df68-6931-5387-a057-efa4c634a494",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "kind": "",
+          "name": "",
+          "pathDisplay": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "relative/path"
+      },
+      "name": "getMetadata-defect",
+      "operation": "getMetadata"
+    },
+    {
+      "callId": "5bb5e5ce-579e-574c-b98e-4ff14060a84a",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"too_many_requests/...\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/get_metadata",
+          "requestBody": {
+            "path": "/Projects/example.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/example.txt"
+      },
+      "name": "getMetadata-rateLimit",
+      "operation": "getMetadata"
+    },
+    {
+      "callId": "1fc4209a-350b-511f-8bbe-c6bced5cdc00",
+      "exchanges": [
+        {
+          "body": "{\"error_summary\":\"service_unavailable/...\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/get_metadata",
+          "requestBody": {
+            "path": "/Projects/example.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/example.txt"
+      },
+      "name": "getMetadata-serverUnavailable",
+      "operation": "getMetadata"
+    },
+    {
+      "callId": "cd01b088-bee7-511e-81c0-46e7b42c33f7",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/get_metadata",
+          "requestBody": {
+            "path": "/Projects/example.txt"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/example.txt"
+      },
+      "name": "getMetadata-transportFailure",
+      "operation": "getMetadata"
+    }
+  ],
+  "schemaVersion": 1
+}

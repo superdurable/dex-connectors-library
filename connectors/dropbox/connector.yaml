@@ -1,0 +1,124 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: dropbox
+  displayName: Dropbox
+  description: List Dropbox folders and read file or folder metadata through typed Dex Queries.
+  company: Dropbox
+  version: v0.1.0
+spec:
+  provider: dropbox
+  codegen:
+    go:
+      package: dropbox
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Dropbox RPC API root. Blank uses the displayed public endpoint; override only for an approved compatible gateway or local provider test.
+        default: https://api.dropboxapi.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one provider request in Go units such as 15s or 1m. Blank uses the displayed default; increase for slow network paths.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete JSON response size in bytes. Blank uses the displayed default; increase for larger folder pages. Oversized responses select invalidResponse.
+        default: 2097152
+  auth:
+    refreshable: true
+    type: oauth2
+    connectionKind: dropbox-user-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret app key copied from https://www.dropbox.com/developers/apps > select the app > Settings > App key. Blank means authorization or refresh cannot start.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret app secret copied from https://www.dropbox.com/developers/apps > select the app > Settings > App secret > Show. Store only in this credential field; blank means authorization or refresh cannot start.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret short-lived user access token returned after Dropbox consent and refreshed by Dex. Never enter it manually; blank means authorization is required.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned because offline access is requested. Dex stores it for automatic renewal; blank means reauthorization is required after access-token expiry.
+    guide:
+      startURL: https://www.dropbox.com/developers/apps
+      steps:
+        - Open https://www.dropbox.com/developers/apps > Create app; choose Scoped access, then App folder or Full Dropbox according to the files this Dex connection needs.
+        - Open the app > Permissions and enable files.metadata.read for the folder and metadata Queries. Enable files.content.read and files.content.write before using future download or upload operations; save permission changes.
+        - Open Settings > OAuth 2 > Redirect URIs, add the exact Redirect URI shown by Dex Web, and copy the App key and secret into their fields. The app key is not secret; the app secret is secret.
+        - Choose Authorize in Dex Web, complete consent as the Dropbox user who owns the files, and let Dex store and refresh the resulting secret tokens. Dropbox may require development users to be added before public app review.
+    oauth2:
+      authorizationEndpoint: https://www.dropbox.com/oauth2/authorize
+      tokenEndpoint: https://api.dropboxapi.com/oauth2/token
+      authorizationParameters: {token_access_type: offline}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [files.metadata.read]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      pkce: true
+      tokenEndpointAuthMethod: client_secret_basic
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
+        requiredScopes: [files.metadata.read]
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listFolder
+      goName: ListFolder
+      inputType: ListFolderInput
+      outputType: FolderPage
+      kind: query
+      description: List one bounded page of files and folders in a Dropbox folder.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Dropbox returned a folder page.}
+        - {id: notFound, goName: NotFound, description: Dropbox did not find this folder., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example file in the root folder.
+          output: {entries: [{id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}], cursor: example-cursor, hasMore: false}
+    - name: getMetadata
+      goName: GetMetadata
+      inputType: GetMetadataInput
+      outputType: EntryMetadata
+      kind: query
+      description: Read a Dropbox file or folder's stable ID, display path, and kind.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Dropbox returned the selected entry.}
+        - {id: notFound, goName: NotFound, description: Dropbox did not find this path or ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example file is found.
+          output: {id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}
