@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: insightly
+  displayName: Insightly CRM
+  description: Read Insightly contact identity with explicit page controls.
+  company: Insightly
+  version: v0.1.0
+spec:
+  provider: insightly
+  codegen:
+    go:
+      package: insightly
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Insightly CRM API v3.1 root. In Insightly CRM at https://login.insightly.com/, open the top-right user icon > User Settings > User Settings > API and copy your API URL including its pod; blank uses the displayed na1 default only for na1 accounts.
+        default: https://api.na1.insightly.com/v3.1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for large contact pages. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: insightly-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Insightly CRM API key. At https://login.insightly.com/, open the top-right user icon > User Settings > User Settings > API and copy the full key; blank makes calls select defect. Generate New API Key there to revoke the previous key.
+    guide:
+      startURL: https://login.insightly.com/
+      steps:
+        - Sign in to Insightly CRM at https://login.insightly.com/ and open the top-right user icon > User Settings > User Settings > API. Copy the full personal API key into the Dex secret api_key field.
+        - On the same API section, copy your pod-specific API URL into baseUrl when it differs from the displayed na1 default. Use the v3.1 URL; other configuration fields may stay blank for displayed defaults.
+        - The key is the HTTP Basic username with a blank password. An Insightly administrator can disable API access; Generate New API Key revokes the previous key.
+  operations:
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List contact IDs, names, and email addresses with a bounded page size and offset.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Insightly returned the requested contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Insightly returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid page input or connection credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact is listed.
+          output: {contacts: [{id: 45678, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}]}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactMetadata
+      kind: query
+      description: Read a contact's ID, names, and email address by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Insightly returned the selected contact.}
+        - {id: notFound, goName: NotFound, description: No contact matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Insightly conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Insightly returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid contact ID or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample contact is returned.
+          output: {id: 45678, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}

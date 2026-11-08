@@ -53,6 +53,7 @@ directories:
   - connectors/helpscout
   - connectors/hiver
   - connectors/hubspot
+  - connectors/insightly
   - connectors/intercom
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
