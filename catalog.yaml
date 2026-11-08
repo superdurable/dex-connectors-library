@@ -15,6 +15,7 @@ directories:
   - connectors/atlassian/trello
   - connectors/bamboohr
   - connectors/box
+  - connectors/braze
   - connectors/brevo
   - connectors/calendly
   - connectors/campaignmonitor
