@@ -1,6 +1,6 @@
 # Google Tag Manager connector
 
-The Go connector lists one page of accounts, containers, or workspace tags through the [Tag Manager v2 API](https://developers.google.com/tag-platform/tag-manager/api/reference/rest). The [accounts Flow](go/examples/accounts/README.md) uses the static `google-tag-manager` Dex Web connection and the operation-specific `listAccounts` Step.
+The Go and Python connectors list one page of accounts, containers, or workspace tags through the [Tag Manager v2 API](https://developers.google.com/tag-platform/tag-manager/api/reference/rest). The [Go accounts Flow](go/examples/accounts/README.md) and [Python accounts Flow](python/examples/accounts/README.md) use the static `google-tag-manager` Dex Web connection and the operation-specific `listAccounts` Step.
 
 ## Connection setup
 
