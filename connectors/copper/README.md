@@ -1,0 +1,7 @@
+# Copper CRM connector
+
+The Go connector reads lead status IDs and names with `listLeadStatuses`, then reads one lead's ID, name, status, and company name with `getLead`. It omits custom fields, email addresses, and other private details from Flow results. A positive decimal lead ID is required for `getLead`.
+
+For a private integration, sign in as an admin to [Copper](https://app.copper.com/), open **Settings > Integrations > API Keys**, and select **Generate API Key**. Save the full key in the Dex Web secret `api_key` field and the generating user's full email address in `user_email`. Copper requires both headers plus `X-PW-Application: developer_api`. Leave `baseUrl` blank for the Developer API v1 default. See the [Copper authentication guide](https://developer.copper.com/introduction/authentication.html), [request headers and rate limits](https://developer.copper.com/introduction/requests.html), [lead statuses](https://developer.copper.com/leads/list-lead-statuses.html), and [lead lookup](https://developer.copper.com/leads/fetch-a-lead-by-id.html).
+
+Both queries retry transport failures, HTTP 429, timeout, and server failures. Definite rejections, malformed or oversized JSON, invalid input, and a missing lead select optional branches. The [Go lead status discovery Flow](go/examples/lead-status-discovery/README.md) is a runnable consumer. Its provider requests and exact outcomes are recorded in [Go conformance scenarios](../../conformance/connectors/copper/scenarios.json). Live Copper authorization and responses remain unverified.
