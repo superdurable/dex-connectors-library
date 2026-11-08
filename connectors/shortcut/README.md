@@ -4,4 +4,4 @@ The Go `getStory` Query calls Shortcut REST API v3 `GET /stories/{story-public-i
 
 Create an API token in [Shortcut Account Settings > API Tokens](https://app.shortcut.com/settings/account/api-tokens). Enter it in Dex Web's secret `api_token` field. The public API endpoint, request timeout, and response limit have manifest defaults. See the [official REST API v3 reference](https://developer.shortcut.com/api/rest/v3).
 
-The runnable Dex Flow is in [`go/examples/story-inspection`](go/examples/story-inspection/README.md). Its static connection name is `shortcut`. Python and TypeScript ports are not yet declared.
+The runnable Dex Flow is in [`go/examples/story-inspection`](go/examples/story-inspection/README.md). Its static connection name is `shortcut`. Go, Python, and TypeScript packages each declare their first `v0.1.0` release and share Go-recorded conformance scenarios.

@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: shortcut
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-shortcut
+      operations: [getStory]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-shortcut"
+      operations: [getStory]
+      triggers: []
   codegen:
     go:
       package: shortcut
