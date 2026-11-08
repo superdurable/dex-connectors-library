@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listSubscribers, getSubscriber]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-kit'
+      operations: [listSubscribers, getSubscriber]
+      triggers: []
   codegen:
     go:
       package: kit
