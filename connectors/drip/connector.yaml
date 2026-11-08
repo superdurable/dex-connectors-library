@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: drip
+  displayName: Drip
+  description: Discover Drip accounts and read subscriber identity and status.
+  company: Drip
+  version: v0.1.0
+spec:
+  provider: drip
+  codegen:
+    go:
+      package: drip
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Drip API v2 root. Blank uses the displayed default; override only for a compatible private test endpoint.
+        default: https://api.getdrip.com/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for accounts with many records. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: drip-personal-api-token
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret personal API Token from https://www.getdrip.com/user/edit after signing in. Copy the full token into this field; blank makes calls select defect. Revoke or rotate the token in Drip account settings.
+    guide:
+      startURL: https://www.getdrip.com/user/edit
+      steps:
+        - Sign in to Drip and open your user profile at https://www.getdrip.com/user/edit. Find the personal API Token and copy its full value.
+        - Save the token in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Revoke or rotate the token in Drip when retired.
+        - This token is for a private integration you control. Public integrations use Drip OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults.
+  operations:
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountsList
+      kind: query
+      description: List IDs and names of Drip accounts accessible to the token.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Drip returned accessible accounts.}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample account is listed.
+          output: {accounts: [{id: '9999999', name: Sample Account}]}
+    - name: getSubscriber
+      goName: GetSubscriber
+      inputType: GetSubscriberInput
+      outputType: SubscriberMetadata
+      kind: query
+      description: Read one subscriber's ID, email, first name, last name, and status from a Drip account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Drip returned the selected subscriber.}
+        - {id: notFound, goName: NotFound, description: No active subscriber matches this ID or email in the selected account., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Drip conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Drip returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample subscriber is returned.
+          output: {id: sample-subscriber-id, email: 'ada@example.com', firstName: Ada, lastName: Lovelace, status: active}
