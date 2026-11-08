@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: lucid
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-lucid
+      operations: [listDocuments]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-lucid"
+      operations: [listDocuments]
+      triggers: []
   codegen:
     go:
       package: lucid
