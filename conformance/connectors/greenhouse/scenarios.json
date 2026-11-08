@@ -1,0 +1,406 @@
+{
+  "connector": "greenhouse",
+  "scenarios": [
+    {
+      "callId": "85280536-e6ad-5ba6-b27d-3bca56833b84",
+      "exchanges": [
+        {
+          "body": "[{\"id\":53883394,\"first_name\":\"Sample\",\"last_name\":\"Candidate\",\"email_addresses\":[{\"value\":\"secret@example.com\"}]}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "firstName": "Sample",
+          "id": 53883394,
+          "lastName": "Candidate"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-found",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "e453c959-90b7-5f4d-a564-3f78ed3e5808",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-notFound",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "af4116cb-c096-5121-806c-aef89ef2f0fe",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-providerRejected",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "44a43fee-a5ca-51b9-a04c-bd0abebd472d",
+      "exchanges": [
+        {
+          "body": "[{\"id\":1,\"first_name\":\"Wrong\",\"last_name\":\"Candidate\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-invalidResponse",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "f9adf27f-5e7e-572e-a760-92debc3f779f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 0
+      },
+      "name": "getCandidate-defect",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "39d9b497-10e3-5097-b98d-3f26bf7b39e1",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-rateLimit",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "301aa229-68de-5633-9869-722ad81d3d12",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-serverUnavailable",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "1c954a14-e0bd-59dd-a74a-b2fd63b6df55",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"timeout\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-requestTimeout",
+      "operation": "getCandidate"
+    },
+    {
+      "callId": "ad6d3bd9-628d-5b9e-874d-ae0de36c4fff",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/candidates",
+          "query": {
+            "fields": [
+              "id,first_name,last_name"
+            ],
+            "ids": [
+              "53883394"
+            ],
+            "per_page": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": 53883394
+      },
+      "name": "getCandidate-transportFailure",
+      "operation": "getCandidate"
+    }
+  ],
+  "schemaVersion": 1
+}

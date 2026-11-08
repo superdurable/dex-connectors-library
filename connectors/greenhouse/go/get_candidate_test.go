@@ -5,6 +5,7 @@ package greenhouse
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -101,15 +102,16 @@ func TestGetCandidateValidatesInputAndBoundsResponse(t *testing.T) {
 }
 
 type refreshingTestCredentials struct {
-	before Credentials
-	after  Credentials
+	before       Credentials
+	after        Credentials
+	resolveError error
 }
 
 func (source *refreshingTestCredentials) Resolve(sdkgo.Call) (Credentials, error) {
 	return source.before, nil
 }
 func (source *refreshingTestCredentials) ResolveWithRefresh(_ context.Context, _ sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
-	return source.before, nil
+	return source.before, source.resolveError
 }
 func (source *refreshingTestCredentials) ResolveAfterRejection(_ context.Context, _ sdkgo.Call, _ sdkgo.CredentialRefreshDriver[Credentials]) (Credentials, error) {
 	return source.after, nil
@@ -139,4 +141,13 @@ func TestGetCandidateRenewsRejectedAccessTokenOnce(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, GetCandidateBranchFound, result.Branch)
 	require.Equal(t, 2, requests)
+}
+
+func TestGetCandidateRetriesTransientCredentialRefreshFailure(t *testing.T) {
+	source := &refreshingTestCredentials{resolveError: errors.New("token endpoint unavailable")}
+	client, err := New(Config{}, source)
+	require.NoError(t, err)
+	_, err = sdkgo.RunQuery(queryContext{}, client.GetCandidate(), testConnection, GetCandidateInput{CandidateID: 53883394})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
 }

@@ -76,7 +76,13 @@ type providerResponse struct {
 
 func (client *Client) get(call sdkgo.Call, candidateID int64) providerResponse {
 	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if err != nil || credentials.Validate() != nil {
+	if err != nil {
+		if sdkgo.IsReauthorizationRequired(err) {
+			return providerResponse{err: errCredential}
+		}
+		return providerResponse{err: errRequest}
+	}
+	if credentials.Validate() != nil {
 		return providerResponse{err: errCredential}
 	}
 	if !providerhttp.IsHeaderSafeCredential(credentials.AccessToken.Reveal()) {
@@ -87,8 +93,17 @@ func (client *Client) get(call sdkgo.Call, candidateID int64) providerResponse {
 		if response.status != http.StatusUnauthorized || attempt > 0 {
 			return response
 		}
+		if _, supported := client.credentials.(sdkgo.RejectedCredentialRefreshingProvider[Credentials]); !supported {
+			return response
+		}
 		replacement, refreshErr := sdkgo.ResolveCredentialAfterRejection(call.Context, client.credentials, call, client.refreshDriver)
-		if refreshErr != nil || !providerhttp.IsHeaderSafeCredential(replacement.AccessToken.Reveal()) {
+		if refreshErr != nil {
+			if sdkgo.IsReauthorizationRequired(refreshErr) {
+				return response
+			}
+			return providerResponse{err: errRequest}
+		}
+		if !providerhttp.IsHeaderSafeCredential(replacement.AccessToken.Reveal()) {
 			return response
 		}
 		credentials = replacement

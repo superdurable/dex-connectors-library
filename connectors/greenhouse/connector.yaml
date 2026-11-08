@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: greenhouse
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-greenhouse
+      operations: [getCandidate]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-greenhouse'
+      operations: [getCandidate]
+      triggers: []
   codegen:
     go:
       package: greenhouse
