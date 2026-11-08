@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package telegram reads Bot API chat metadata through typed Dex Query Steps.
+// Package telegram reads Bot API chat metadata and sends text through typed Dex Steps.
 package telegram
 
 import (

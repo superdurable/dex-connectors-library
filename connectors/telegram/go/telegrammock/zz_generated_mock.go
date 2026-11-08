@@ -17,8 +17,9 @@ import (
 
 // Mock is a scripted telegram connection. Script each operation through its accessor.
 type Mock struct {
-	connection telegram.Connection
-	getChat    *connectormock.Query[telegram.GetChatInput, telegram.Chat]
+	connection  telegram.Connection
+	sendMessage *connectormock.Mutation[telegram.SendMessageInput, telegram.SentMessage]
+	getChat     *connectormock.Query[telegram.GetChatInput, telegram.Chat]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,8 +27,10 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getChat: connectormock.NewQuery[telegram.GetChatInput, telegram.Chat](t, telegram.GetChatDefinition),
+		sendMessage: connectormock.NewMutation[telegram.SendMessageInput, telegram.SentMessage](t, telegram.SendMessageDefinition),
+		getChat:     connectormock.NewQuery[telegram.GetChatInput, telegram.Chat](t, telegram.GetChatDefinition),
 	}
+	mock.sendMessage.Default(SendMessageDefault())
 	mock.getChat.Default(GetChatDefault())
 	connection, err := telegram.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "telegram", Name: connectionName})
 	if err != nil {
@@ -40,6 +43,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() telegram.Connection { return mock.connection }
 
+// SendMessage returns the sendMessage script.
+func (mock *Mock) SendMessage() *connectormock.Mutation[telegram.SendMessageInput, telegram.SentMessage] {
+	return mock.sendMessage
+}
+
 // GetChat returns the getChat script.
 func (mock *Mock) GetChat() *connectormock.Query[telegram.GetChatInput, telegram.Chat] {
 	return mock.getChat
@@ -47,9 +55,46 @@ func (mock *Mock) GetChat() *connectormock.Query[telegram.GetChatInput, telegram
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) SendMessage() sdkgo.Mutation[telegram.SendMessageInput, telegram.SentMessage] {
+	return operations.mock.sendMessage
+}
 func (operations mockOperations) GetChat() sdkgo.Query[telegram.GetChatInput, telegram.Chat] {
 	return operations.mock.getChat
 }
+
+// SendMessageSent selects the sent branch: Telegram created the message and returned its ID.
+func SendMessageSent(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendMessageBranchSent, value, failure)
+}
+
+// SendMessageProviderRejected selects the providerRejected branch: Telegram conclusively rejected the send before creating a message.
+func SendMessageProviderRejected(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendMessageBranchProviderRejected, value, failure)
+}
+
+// SendMessageUncertain returns an uncertain sendMessage outcome.
+func SendMessageUncertain(value telegram.SentMessage, failure sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendMessageDefect selects the defect branch: Local input, bot token, or dispatch checkpoint is invalid.
+func SendMessageDefect(value telegram.SentMessage, failure *sdkgo.Failure) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Branch(telegram.SendMessageBranchDefect, value, failure)
+}
+
+// SendMessageRetry asks Dex to retry the sendMessage Step, after the delay when it is positive.
+func SendMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[telegram.SentMessage] {
+	return connectormock.Retry[telegram.SentMessage](failure, after)
+}
+
+// SendMessageSentText is the manifest mock sentText: The example bot sent one text message to the Meridian team chat.
+func SendMessageSentText() connectormock.Case[telegram.SentMessage] {
+	value := connectormock.MustDecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":52,"date":1794110000}`)
+	return connectormock.Branch(telegram.SendMessageBranchSent, value, nil)
+}
+
+// SendMessageDefault is the manifest default, sentText, which New installs.
+func SendMessageDefault() connectormock.Case[telegram.SentMessage] { return SendMessageSentText() }
 
 // GetChatFound selects the found branch: Telegram returned the chat metadata.
 func GetChatFound(value telegram.Chat, failure *sdkgo.Failure) connectormock.Case[telegram.Chat] {

@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: telegram
   displayName: Telegram Bot
-  description: Read Telegram chat information through a bot token.
+  description: Read chat metadata and send text messages through a Telegram bot.
   company: Telegram
   version: v0.1.0
 spec:
@@ -42,8 +42,31 @@ spec:
       steps:
         - Open https://t.me/BotFather in Telegram, send /newbot, choose a bot name and username ending in bot, and copy the full numeric-ID:secret token shown once.
         - For an existing bot, open BotFather > /mybots > your bot > API Token. Save the token only in bot_token, never in Flow input. Use BotFather to revoke and replace a leaked token.
-        - Add the bot to the target chat and grant access needed to read its metadata. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Add the bot to the target chat and grant access needed to read its metadata or send text. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
   operations:
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send one text message to a chat. If Telegram does not confirm the outcome, check the chat before sending again.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: Telegram created the message and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send before creating a message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The request may have reached Telegram but no message ID was confirmed; do not resend automatically., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      # Sync exposes the single-dispatch heartbeat to retries; Telegram has no send idempotency key.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+      mocks:
+        - name: sentText
+          branch: sent
+          description: The example bot sent one text message to the Meridian team chat.
+          default: true
+          output: {chatId: -1001234567890, messageId: 52, date: 1794110000}
     - name: getChat
       goName: GetChat
       inputType: GetChatInput

@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "sendMessage/sentText/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[telegram.SentMessage](`{"chatId":-1001234567890,"messageId":52,"date":1794110000}`)
+			return err
+		}},
 		{name: "getChat/accessibleChat/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[telegram.Chat](`{"id":-1001234567890,"type":"supergroup","title":"Meridian Team","username":"meridian_team"}`)
 			return err
@@ -30,6 +34,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.SendMessage().Definition().Operation.OperationID != "sendMessage" {
+		t.Errorf("sendMessage mock has another definition")
+	}
 	if mock.GetChat().Definition().Operation.OperationID != "getChat" {
 		t.Errorf("getChat mock has another definition")
 	}
