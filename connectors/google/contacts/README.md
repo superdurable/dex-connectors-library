@@ -1,6 +1,6 @@
 # Google Contacts connector
 
-The Go connector reads one page of contacts or one contact through the [Google People API](https://developers.google.com/people/api/rest). Its [runnable contacts Flow](go/examples/contacts/README.md) uses the static `google-contacts` Dex Web connection and the `listContacts` Step.
+The Go connector lists, gets, and creates contacts through the [Google People API](https://developers.google.com/people/api/rest). Its [runnable list Flow](go/examples/contacts/README.md) and [creation Flow](go/examples/creation/README.md) use the static `google-contacts` Dex Web connection.
 
 ## Connection setup
 
@@ -9,3 +9,5 @@ In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), se
 `listContacts` uses a fixed `names,emailAddresses` field mask and returns one page of projected contacts with an optional next page token. Pass a returned `people/{id}` resource name to `getContact`. The page size defaults to 100 and can be set from 1 through 1000. Both operations return only the first display name and email address; either can be blank. The API origin, timeout, and response limit have manifest defaults; override them only for a trusted gateway or a known operational need.
 
 The [connections.list](https://developers.google.com/people/api/rest/v1/people.connections/list) and [people.get](https://developers.google.com/people/api/rest/v1/people/get) methods define these read operations. Live Google authorization and API behavior have not been verified in this checkout.
+
+`createContact` requires a given name and accepts optional family name and email address. It sends one People API create request. Since Google does not offer a create-contact idempotency key, a durable single-dispatch fence prevents a second send after an ambiguous response. A confirmed 429 or 503 can retry. An `uncertain` result means the user should inspect Contacts before creating another. The [people.createContact](https://developers.google.com/people/api/rest/v1/people/createContact) method defines the write request.

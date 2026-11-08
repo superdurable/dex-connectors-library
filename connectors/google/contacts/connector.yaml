@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: google-contacts
   displayName: Google Contacts
-  description: Read contacts through the Google People API.
+  description: Read and create contacts through the Google People API.
   company: Google
   version: v0.1.0
 spec:
@@ -119,4 +119,25 @@ spec:
           branch: found
           default: true
           description: One example contact was found.
+          output: {resourceName: people/c123, displayName: Example Contact, emailAddress: example@example.com}
+    - name: createContact
+      goName: CreateContact
+      inputType: CreateContactInput
+      outputType: Contact
+      kind: mutation
+      description: Create one contact. If Google does not confirm the outcome, inspect Contacts before creating another.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: Google created the contact and returned its resource name.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google conclusively rejected the contact., optional: true}
+        - {id: uncertain, goName: Uncertain, description: Google may have created the contact but its resource name was not confirmed; do not resend automatically., optional: true}
+        - {id: defect, goName: Defect, description: "Local contact input, connection credentials, or dispatch checkpoint is invalid.", optional: true}
+      # The People API has no create-contact idempotency key; sync preserves the dispatch heartbeat for retries.
+      execution: {executeMethodTimeout: 30s, durability: sync}
+      mocks:
+        - name: createdDefault
+          branch: created
+          default: true
+          description: An example contact was created.
           output: {resourceName: people/c123, displayName: Example Contact, emailAddress: example@example.com}

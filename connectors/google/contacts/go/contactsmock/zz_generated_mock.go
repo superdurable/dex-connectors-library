@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted google-contacts connection. Script each operation through its accessor.
 type Mock struct {
-	connection   contacts.Connection
-	listContacts *connectormock.Query[contacts.ListContactsInput, contacts.ContactsPage]
-	getContact   *connectormock.Query[contacts.GetContactInput, contacts.Contact]
+	connection    contacts.Connection
+	listContacts  *connectormock.Query[contacts.ListContactsInput, contacts.ContactsPage]
+	getContact    *connectormock.Query[contacts.GetContactInput, contacts.Contact]
+	createContact *connectormock.Mutation[contacts.CreateContactInput, contacts.Contact]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listContacts: connectormock.NewQuery[contacts.ListContactsInput, contacts.ContactsPage](t, contacts.ListContactsDefinition),
-		getContact:   connectormock.NewQuery[contacts.GetContactInput, contacts.Contact](t, contacts.GetContactDefinition),
+		listContacts:  connectormock.NewQuery[contacts.ListContactsInput, contacts.ContactsPage](t, contacts.ListContactsDefinition),
+		getContact:    connectormock.NewQuery[contacts.GetContactInput, contacts.Contact](t, contacts.GetContactDefinition),
+		createContact: connectormock.NewMutation[contacts.CreateContactInput, contacts.Contact](t, contacts.CreateContactDefinition),
 	}
 	mock.listContacts.Default(ListContactsDefault())
 	mock.getContact.Default(GetContactDefault())
+	mock.createContact.Default(CreateContactDefault())
 	connection, err := contacts.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-contacts", Name: connectionName})
 	if err != nil {
 		t.Fatalf("google-contacts mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) GetContact() *connectormock.Query[contacts.GetContactInput, co
 	return mock.getContact
 }
 
+// CreateContact returns the createContact script.
+func (mock *Mock) CreateContact() *connectormock.Mutation[contacts.CreateContactInput, contacts.Contact] {
+	return mock.createContact
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListContacts() sdkgo.Query[contacts.ListContactsInput, contacts.ContactsPage] {
@@ -60,6 +68,9 @@ func (operations mockOperations) ListContacts() sdkgo.Query[contacts.ListContact
 }
 func (operations mockOperations) GetContact() sdkgo.Query[contacts.GetContactInput, contacts.Contact] {
 	return operations.mock.getContact
+}
+func (operations mockOperations) CreateContact() sdkgo.Mutation[contacts.CreateContactInput, contacts.Contact] {
+	return operations.mock.createContact
 }
 
 // ListContactsListed selects the listed branch: Google returned a contact page.
@@ -136,3 +147,39 @@ func GetContactFoundDefault() connectormock.Case[contacts.Contact] {
 
 // GetContactDefault is the manifest default, foundDefault, which New installs.
 func GetContactDefault() connectormock.Case[contacts.Contact] { return GetContactFoundDefault() }
+
+// CreateContactCreated selects the created branch: Google created the contact and returned its resource name.
+func CreateContactCreated(value contacts.Contact, failure *sdkgo.Failure) connectormock.Case[contacts.Contact] {
+	return connectormock.Branch(contacts.CreateContactBranchCreated, value, failure)
+}
+
+// CreateContactProviderRejected selects the providerRejected branch: Google conclusively rejected the contact.
+func CreateContactProviderRejected(value contacts.Contact, failure *sdkgo.Failure) connectormock.Case[contacts.Contact] {
+	return connectormock.Branch(contacts.CreateContactBranchProviderRejected, value, failure)
+}
+
+// CreateContactUncertain returns an uncertain createContact outcome.
+func CreateContactUncertain(value contacts.Contact, failure sdkgo.Failure) connectormock.Case[contacts.Contact] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreateContactDefect selects the defect branch: Local contact input, connection credentials, or dispatch checkpoint is invalid.
+func CreateContactDefect(value contacts.Contact, failure *sdkgo.Failure) connectormock.Case[contacts.Contact] {
+	return connectormock.Branch(contacts.CreateContactBranchDefect, value, failure)
+}
+
+// CreateContactRetry asks Dex to retry the createContact Step, after the delay when it is positive.
+func CreateContactRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[contacts.Contact] {
+	return connectormock.Retry[contacts.Contact](failure, after)
+}
+
+// CreateContactCreatedDefault is the manifest mock createdDefault: An example contact was created.
+func CreateContactCreatedDefault() connectormock.Case[contacts.Contact] {
+	value := connectormock.MustDecodeOutput[contacts.Contact](`{"resourceName":"people/c123","displayName":"Example Contact","emailAddress":"example@example.com"}`)
+	return connectormock.Branch(contacts.CreateContactBranchCreated, value, nil)
+}
+
+// CreateContactDefault is the manifest default, createdDefault, which New installs.
+func CreateContactDefault() connectormock.Case[contacts.Contact] {
+	return CreateContactCreatedDefault()
+}
