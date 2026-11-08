@@ -1,0 +1,88 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: plaid
+  displayName: Plaid
+  description: Read account identifiers and categories for one linked Plaid Item.
+  company: Plaid
+  version: v0.1.0
+spec:
+  provider: plaid
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-plaid
+      operations: [getAccounts]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-plaid"
+      operations: [getAccounts]
+      triggers: []
+  codegen:
+    go:
+      package: plaid
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Plaid API root as an absolute HTTPS URL. Blank uses the displayed Sandbox host. For Production use https://production.plaid.com; override only for the matching environment or a trusted local test gateway.
+        default: https://sandbox.plaid.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow accounts reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete accounts response in bytes as a positive integer. Blank uses the displayed default; increase for Items with many linked accounts.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: plaid-item-credentials
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: secretString
+        required: true
+        description: Plaid client ID from Dashboard > Build > Keys at https://dashboard.plaid.com. Copy the complete identifier; blank prevents calls. Dex keeps it with the Item credentials and sends it only in the PLAID-CLIENT-ID header.
+      - name: secret
+        goName: Secret
+        type: secretString
+        required: true
+        description: Secret for the selected Sandbox or Production environment from Dashboard > Build > Keys at https://dashboard.plaid.com. Copy the complete opaque value; blank prevents calls. Dex sends it only in the PLAID-SECRET header.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Item access token returned by Plaid Link public-token exchange at POST /item/public_token/exchange. Supply the complete opaque token for one linked Item; blank prevents calls. Dex sends it only in the JSON request body.
+    guide:
+      startURL: https://dashboard.plaid.com
+      steps:
+        - Sign in to the Plaid Dashboard, open Build > Keys, copy the client ID and the secret for the selected Sandbox or Production environment into Dex Web secret client_id and secret. Blank is invalid. Rotate the secret on the same page if compromised.
+        - Link one Item through Plaid Link, exchange its public token through POST /item/public_token/exchange, and store the returned opaque access_token in this connection. Supply the non-secret item_id returned by that exchange as Flow input itemId; blank is invalid. One connection binds one Item access token.
+        - Leave baseUrl blank for Sandbox or set https://production.plaid.com for Production. Match the secret and Item token to that environment. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getAccounts
+      goName: GetAccounts
+      inputType: GetAccountsInput
+      outputType: AccountsSnapshot
+      kind: query
+      description: Read linked account IDs, types, and subtypes without names, masks, or balances.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Plaid returned the Item's accounts.}
+        - {id: notFound, goName: NotFound, description: Plaid did not expose the Item., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Plaid conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Plaid returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample checking account is returned.
+          output: {itemId: item_123456, accounts: [{id: account_123456, type: depository, subtype: checking}]}

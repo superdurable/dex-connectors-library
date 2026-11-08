@@ -105,6 +105,7 @@ directories:
   - connectors/paypal
   - connectors/pinecone
   - connectors/pipedrive
+  - connectors/plaid
   - connectors/postgresql
   - connectors/posthog
   - connectors/postmark
