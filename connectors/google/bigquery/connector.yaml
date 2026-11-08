@@ -1,0 +1,101 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-bigquery
+  displayName: Google BigQuery
+  description: Discover accessible datasets in one Google Cloud project.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google-bigquery
+  codegen:
+    go:
+      package: bigquery
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: BigQuery REST API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://bigquery.googleapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large dataset pages.
+        default: 2097152
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: google-bigquery-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://console.cloud.google.com/apis/credentials > OAuth 2.0 Client IDs > your Web application. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from the same Google Cloud Web application credentials page. Store only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Google consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned with offline consent. Dex rotates it on refresh; blank requires reauthorization.
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project and enable BigQuery API in APIs & Services > Library. In BigQuery Studio > Explorer, note the project ID and confirm the Google account can view its datasets.
+        - In Google Auth Platform > Branding and Audience, configure consent and add test users if an External app remains in Testing. Under Data Access add the displayed bigquery.readonly scope.
+        - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize with offline access.
+        - Supply the project ID from BigQuery Studio > Explorer to listDatasets. The operation returns dataset IDs and nextPageToken; pass the latter for the next page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      authorizationParameters: {access_type: offline, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [https://www.googleapis.com/auth/bigquery.readonly]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listDatasets
+      goName: ListDatasets
+      inputType: ListDatasetsInput
+      outputType: DatasetsPage
+      kind: query
+      description: List one page of accessible dataset IDs and display names in a Google Cloud project.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: BigQuery returned the selected dataset page.}
+        - {id: providerRejected, goName: ProviderRejected, description: BigQuery conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: BigQuery returned malformed or oversized dataset JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local project or page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example dataset is visible.
+          output: {datasets: [{id: sample_dataset, projectId: sample-project, friendlyName: Sample Dataset}], nextPageToken: ''}

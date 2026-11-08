@@ -1,0 +1,397 @@
+{
+  "connector": "google/bigquery",
+  "scenarios": [
+    {
+      "callId": "607f65af-1f3c-58ed-8ec2-c7624043d03f",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"bigquery#datasetList\",\"datasets\":[{\"datasetReference\":{\"datasetId\":\"sample_dataset\",\"projectId\":\"sample-project\"},\"friendlyName\":\"Sample Dataset\",\"labels\":{\"secret\":\"discard-me\"}}],\"nextPageToken\":\"following-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "datasets": [
+            {
+              "friendlyName": "Sample Dataset",
+              "id": "sample_dataset",
+              "projectId": "sample-project"
+            }
+          ],
+          "nextPageToken": "following-page"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listDatasets-listed",
+      "operation": "listDatasets"
+    },
+    {
+      "callId": "e2508fd6-4907-5430-8655-3b5642eee6e1",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Forbidden\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "datasets": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listDatasets-providerRejected",
+      "operation": "listDatasets"
+    },
+    {
+      "callId": "a67dd136-061d-53b5-a80a-fa83ba4fcafb",
+      "exchanges": [
+        {
+          "body": "{\"datasets\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "datasets": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listDatasets-invalidResponse",
+      "operation": "listDatasets"
+    },
+    {
+      "callId": "24b90f97-9185-5a6b-ba86-d6064a51f6bd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "datasets": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 101,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listDatasets-defect",
+      "operation": "listDatasets"
+    },
+    {
+      "callId": "a8c424fb-a745-58d2-b945-2ca71945fd3d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Rate limit\"}}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listDatasets-final429",
+      "operation": "listDatasets"
+    },
+    {
+      "callId": "754edb41-5bc7-5dea-834b-0db121964780",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listDatasets-final503",
+      "operation": "listDatasets"
+    },
+    {
+      "callId": "1e1378d8-20f1-5c39-95be-8ca5ebe1eb7b",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listDatasets-transportFailure",
+      "operation": "listDatasets"
+    },
+    {
+      "attempts": 2,
+      "callId": "0d251331-23df-59ae-9253-b0f047b89e1b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"kind\":\"bigquery#datasetList\",\"datasets\":[{\"datasetReference\":{\"datasetId\":\"sample_dataset\",\"projectId\":\"sample-project\"},\"friendlyName\":\"Sample Dataset\",\"labels\":{\"secret\":\"discard-me\"}}],\"nextPageToken\":\"following-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bigquery/v2/projects/sample-project/datasets",
+          "query": {
+            "maxResults": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-bigquery-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "datasets": [
+            {
+              "friendlyName": "Sample Dataset",
+              "id": "sample_dataset",
+              "projectId": "sample-project"
+            }
+          ],
+          "nextPageToken": "following-page"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "maxResults": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "listDatasets-retryThenListed",
+      "operation": "listDatasets"
+    }
+  ],
+  "schemaVersion": 1
+}
