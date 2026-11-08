@@ -22,6 +22,7 @@ type Config struct {
 	ClusterURL       string        `json:"clusterUrl,omitempty" yaml:"clusterUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxDocumentBytes int64         `json:"maxDocumentBytes,omitempty" yaml:"maxDocumentBytes,omitempty"`
 }
 
 type Credentials struct {
@@ -41,11 +42,19 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument]
+	DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument]
 	SearchDocuments() sdkgo.Query[SearchDocumentsInput, SearchPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) IndexDocument() sdkgo.Mutation[IndexDocumentInput, IndexedDocument] {
+	return operations.client.IndexDocument()
+}
+func (operations clientOperations) DeleteDocument() sdkgo.Mutation[DeleteDocumentInput, DeletedDocument] {
+	return operations.client.DeleteDocument()
+}
 func (operations clientOperations) SearchDocuments() sdkgo.Query[SearchDocumentsInput, SearchPage] {
 	return operations.client.SearchDocuments()
 }
@@ -148,6 +157,7 @@ func DefaultConfig() Config {
 	return Config{
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 4194304,
+		MaxDocumentBytes: 1048576,
 	}
 }
 
@@ -158,6 +168,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.MaxDocumentBytes == 0 {
+		config.MaxDocumentBytes = defaults.MaxDocumentBytes
 	}
 	return config
 }
@@ -178,6 +191,9 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.MaxDocumentBytes < 0 {
+		return fmt.Errorf("configuration maxDocumentBytes cannot be negative")
+	}
 	return nil
 }
 
@@ -189,6 +205,154 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential password is required")
 	}
 	return nil
+}
+
+const IndexDocumentBranchIndexed sdkgo.BranchID = "indexed"
+const IndexDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const IndexDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const IndexDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var IndexDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "indexDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: IndexDocumentBranchIndexed, Description: "OpenSearch stored the requested document at the stable ID."},
+		{ID: IndexDocumentBranchProviderRejected, Description: "OpenSearch conclusively rejected the document replacement.", Optional: true},
+		{ID: IndexDocumentBranchInvalidResponse, Description: "OpenSearch returned malformed or oversized indexing data.", Optional: true},
+		{ID: IndexDocumentBranchDefect, Description: "Local document input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type IndexDocumentResult = sdkgo.MutationResult[IndexedDocument]
+
+type IndexDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=opensearch"`
+	operationID                       struct{}                                              `connector:"operationId=indexDocument"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) IndexDocumentInput                           `connector:"mapToOperationInput"`
+	Indexed                           sdkgo.Target[IndexDocumentResult]                     `connector:"branch=indexed"`
+	ProviderRejected                  sdkgo.Target[IndexDocumentResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[IndexDocumentResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[IndexDocumentResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IndexedDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewIndexDocumentStep[IN any](config IndexDocumentStepConfig[IN]) sdkgo.MutationStep[IN, IndexDocumentInput, IndexedDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("opensearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, IndexDocumentInput, IndexedDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.IndexDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[IndexDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[IndexDocumentResult], 0, 4)
+			if config.Indexed.HasStep() {
+				branches = append(branches, config.Indexed.BranchTarget(IndexDocumentBranchIndexed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(IndexDocumentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(IndexDocumentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(IndexDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DeleteDocumentBranchAbsent sdkgo.BranchID = "absent"
+const DeleteDocumentBranchIndexNotFound sdkgo.BranchID = "indexNotFound"
+const DeleteDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DeleteDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DeleteDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DeleteDocumentDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "deleteDocument"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DeleteDocumentBranchAbsent, Description: "The document is absent, whether deleted now or already missing."},
+		{ID: DeleteDocumentBranchIndexNotFound, Description: "The requested index does not exist.", Optional: true},
+		{ID: DeleteDocumentBranchProviderRejected, Description: "OpenSearch conclusively rejected the deletion.", Optional: true},
+		{ID: DeleteDocumentBranchInvalidResponse, Description: "OpenSearch returned malformed or oversized deletion data.", Optional: true},
+		{ID: DeleteDocumentBranchDefect, Description: "Local document ID or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DeleteDocumentResult = sdkgo.MutationResult[DeletedDocument]
+
+type DeleteDocumentStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                              `connector:"connectorId=opensearch"`
+	operationID                       struct{}                                              `connector:"operationId=deleteDocument"`
+	StepType                          string                                                `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                        Connection                                            `connector:"connection"`
+	ConnectionName                    string                                                `connector:"connectionName"`
+	MapToOperationInput               func(IN) DeleteDocumentInput                          `connector:"mapToOperationInput"`
+	Absent                            sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=absent"`
+	IndexNotFound                     sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=indexNotFound,optional"`
+	ProviderRejected                  sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedDocument]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewDeleteDocumentStep[IN any](config DeleteDocumentStepConfig[IN]) sdkgo.MutationStep[IN, DeleteDocumentInput, DeletedDocument] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("opensearch connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, DeleteDocumentInput, DeletedDocument]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DeleteDocument(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DeleteDocumentResult] {
+			branches := make([]sdkgo.BranchTarget[DeleteDocumentResult], 0, 5)
+			if config.Absent.HasStep() {
+				branches = append(branches, config.Absent.BranchTarget(DeleteDocumentBranchAbsent))
+			}
+			if config.IndexNotFound.HasStep() {
+				branches = append(branches, config.IndexNotFound.BranchTarget(DeleteDocumentBranchIndexNotFound))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDocumentBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteDocumentBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DeleteDocumentBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const SearchDocumentsBranchFound sdkgo.BranchID = "found"

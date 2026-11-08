@@ -35,6 +35,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 type Client struct {
 	clusterURL       string
 	maxResponseBytes int64
+	maxDocumentBytes int64
 	credentials      CredentialSource
 	httpClient       *http.Client
 }
@@ -89,7 +90,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("OpenSearch cluster URL: %w", err)
 	}
-	client := &Client{clusterURL: clusterURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{clusterURL: clusterURL, maxResponseBytes: config.MaxResponseBytes, maxDocumentBytes: config.MaxDocumentBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, fmt.Errorf("OpenSearch client option is required")
@@ -103,6 +104,14 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 // SearchDocuments returns the typed search Query bound to this client.
 func (client *Client) SearchDocuments() SearchDocumentsOperation {
 	return SearchDocumentsOperation{client}
+}
+
+// IndexDocument returns the typed document replacement Mutation.
+func (client *Client) IndexDocument() IndexDocumentOperation { return IndexDocumentOperation{client} }
+
+// DeleteDocument returns the typed document removal Mutation.
+func (client *Client) DeleteDocument() DeleteDocumentOperation {
+	return DeleteDocumentOperation{client}
 }
 
 // Definition returns the manifest-generated search contract.
