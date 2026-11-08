@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wave
+  displayName: Wave
+  description: Read a Wave customer by business and customer IDs.
+  company: Wave
+  version: v0.1.0
+spec:
+  provider: wave
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-wave
+      operations: [getCustomer]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-wave"
+      operations: [getCustomer]
+      triggers: []
+  codegen:
+    go:
+      package: wave
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Wave GraphQL HTTPS root. Blank uses the displayed production root; override only for a trusted test gateway. Do not include /graphql/public, query, or credentials.
+        default: https://gql.waveapps.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one customer query as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete GraphQL JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: wave-full-access-token
+    fields:
+      - name: accessToken
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Full Access Token from Wave Developer Portal > Manage Applications > your own application > Full Access Token. Copy the complete token; blank prevents calls. Dex sends it only as a Bearer credential. This token can access the entire Wave account; rotate it in the portal when needed.
+    guide:
+      startURL: https://developer.waveapps.com
+      steps:
+        - In the Wave Developer Portal open Manage Applications, create or select an application for your own Wave account, and copy its Full Access Token into secret accessToken. Blank prevents calls. The token has broad account access and normally expires after several years; replace it before expiry. This connector does not perform the OAuth flow for other users.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. In Wave's API Playground use list businesses and list customers to find the non-secret GraphQL business and customer IDs. Pass both exact IDs as businessId and customerId; blank is invalid.
+  operations:
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerProfile
+      kind: query
+      description: Return one customer's ID and name within a Wave business.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Wave returned the customer.}
+        - {id: notFound, goName: NotFound, description: The business or customer was not found., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wave conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wave returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample customer is returned.
+          output: {businessId: business-1, id: customer-1, name: Example Customer}

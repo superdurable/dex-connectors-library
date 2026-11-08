@@ -145,6 +145,7 @@ directories:
   - connectors/typeform
   - connectors/unsplash
   - connectors/vercel
+  - connectors/wave
   - connectors/webflow
   - connectors/wise
   - connectors/woocommerce
