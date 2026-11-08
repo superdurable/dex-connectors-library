@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: constantcontact
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-constantcontact
+      operations: [getContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-constantcontact'
+      operations: [getContact]
+      triggers: []
   codegen:
     go:
       package: constantcontact
