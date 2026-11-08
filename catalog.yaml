@@ -95,6 +95,7 @@ directories:
   - connectors/openai
   - connectors/opensearch
   - connectors/openweathermap
+  - connectors/paddle
   - connectors/pagerduty
   - connectors/pandadoc
   - connectors/paypal

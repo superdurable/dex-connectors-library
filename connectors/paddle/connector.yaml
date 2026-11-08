@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: paddle
+  displayName: Paddle
+  description: Read selected Paddle transaction status through the Paddle Billing API.
+  company: Paddle
+  version: v0.1.0
+spec:
+  provider: paddle
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-paddle
+      operations: [getTransaction]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-paddle"
+      operations: [getTransaction]
+      triggers: []
+  codegen:
+    go:
+      package: paddle
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Paddle Billing API root as an absolute HTTPS URL. Blank uses the displayed Sandbox endpoint. For Live use https://api.paddle.com; override only for the matching environment or a trusted local test gateway.
+        default: https://sandbox-api.paddle.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow transaction reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete transaction response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large transactions.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: paddle-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Paddle server-side API key from My account > Settings > Authentication > API keys > New API key. Grant transaction.read, copy the complete pdl_sdbx_apikey_ or pdl_live_apikey_ value when shown; blank prevents calls. Dex sends it only in the Authorization Bearer header. Match the key to baseUrl.
+    guide:
+      startURL: https://sandbox-vendors.paddle.com
+      steps:
+        - Sign in to the Paddle Sandbox or Live dashboard, open My account > Settings > Authentication > API keys > New API key. Enter a name and description, grant transaction.read, set an expiry, and click Save. Copy the complete secret key, shown only once, into Dex Web secret api_key. Choose Rotatable during creation if rotation is needed; revoke or rotate the key on the same API keys page. Blank is invalid.
+        - Leave baseUrl blank for a pdl_sdbx_apikey_ Sandbox key. For a pdl_live_apikey_ Live key use https://api.paddle.com. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret txn_ transaction ID on the Paddle Transactions page or from an API response and pass it as transactionId; blank is invalid.
+  operations:
+    - name: getTransaction
+      goName: GetTransaction
+      inputType: GetTransactionInput
+      outputType: TransactionStatus
+      kind: query
+      description: Read one transaction's ID, status, and currency without customer or payment details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Paddle returned the transaction.}
+        - {id: notFound, goName: NotFound, description: Paddle did not expose the transaction., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Paddle conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Paddle returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One completed sample transaction is returned.
+          output: {id: txn_01hv8wptq8987qeep44cyrewp9, status: completed, currencyCode: USD}
