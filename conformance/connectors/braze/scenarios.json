@@ -1,0 +1,383 @@
+{
+  "connector": "braze",
+  "scenarios": [
+    {
+      "callId": "e2b4a8d4-a4db-5f1a-a76f-8eb324b30d54",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"users\":[{\"external_id\":\"sample-user-1\",\"braze_id\":\"braze-123\",\"first_name\":\"Avery\",\"last_name\":\"Reader\",\"email\":\"reader@example.com\",\"custom_attributes\":{\"secret\":\"redacted\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/export/ids",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ],
+            "fields_to_export": [
+              "external_id",
+              "braze_id",
+              "first_name",
+              "last_name",
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "brazeId": "braze-123",
+          "email": "reader@example.com",
+          "externalId": "sample-user-1",
+          "firstName": "Avery",
+          "lastName": "Reader"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "getUserProfile-found",
+      "operation": "getUserProfile"
+    },
+    {
+      "callId": "d200d01f-d144-5bfe-871d-778e41d0c8e4",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"users\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/export/ids",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ],
+            "fields_to_export": [
+              "external_id",
+              "braze_id",
+              "first_name",
+              "last_name",
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "externalId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "getUserProfile-notFound",
+      "operation": "getUserProfile"
+    },
+    {
+      "callId": "fc98dbd8-a9a9-5571-aaaf-9e84db082b62",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/export/ids",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ],
+            "fields_to_export": [
+              "external_id",
+              "braze_id",
+              "first_name",
+              "last_name",
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "externalId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "getUserProfile-providerRejected",
+      "operation": "getUserProfile"
+    },
+    {
+      "callId": "5510d067-e53d-52cc-bb31-ee8c2458ac67",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"success\",\"users\":[{\"external_id\":\"other\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/export/ids",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ],
+            "fields_to_export": [
+              "external_id",
+              "braze_id",
+              "first_name",
+              "last_name",
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "externalId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "getUserProfile-invalidResponse",
+      "operation": "getUserProfile"
+    },
+    {
+      "callId": "22725e50-14b3-5cb5-af35-353419c3bddd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "externalId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": ""
+      },
+      "name": "getUserProfile-defect",
+      "operation": "getUserProfile"
+    },
+    {
+      "callId": "43554fc8-794b-5e3b-8907-b0119709513c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/export/ids",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ],
+            "fields_to_export": [
+              "external_id",
+              "braze_id",
+              "first_name",
+              "last_name",
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "getUserProfile-rateLimit",
+      "operation": "getUserProfile"
+    },
+    {
+      "callId": "954e6711-2f51-5337-97a1-a76261d5018a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/export/ids",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ],
+            "fields_to_export": [
+              "external_id",
+              "braze_id",
+              "first_name",
+              "last_name",
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "getUserProfile-serverUnavailable",
+      "operation": "getUserProfile"
+    },
+    {
+      "callId": "665775e9-11e9-5e5a-9788-02d6079c3242",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/export/ids",
+          "requestBody": {
+            "external_ids": [
+              "sample-user-1"
+            ],
+            "fields_to_export": [
+              "external_id",
+              "braze_id",
+              "first_name",
+              "last_name",
+              "email"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-rest-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "externalId": "sample-user-1"
+      },
+      "name": "getUserProfile-transportFailure",
+      "operation": "getUserProfile"
+    }
+  ],
+  "schemaVersion": 1
+}

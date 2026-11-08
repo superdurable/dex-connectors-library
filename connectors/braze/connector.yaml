@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: braze
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-braze
+      operations: [getUserProfile]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-braze"
+      operations: [getUserProfile]
+      triggers: []
   codegen:
     go:
       package: braze

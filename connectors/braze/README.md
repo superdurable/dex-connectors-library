@@ -4,4 +4,4 @@ The Go `getUserProfile` Query calls Braze `POST /users/export/ids` for one exter
 
 Create a REST API key with `users.export.ids` permission in Braze Dashboard > Settings > APIs and Identifiers > API Keys. Enter the account's REST Endpoint in `baseUrl` and the key in the secret `rest_api_key` field. See the [Braze API basics](https://www.braze.com/docs/api/basics) and [user export endpoint](https://www.braze.com/docs/api/endpoints/export/user_data/post_users_identifier).
 
-The runnable Dex Flow is in [`go/examples/profile-inspection`](go/examples/profile-inspection/README.md). Its connection name is `braze`. The first release is `v0.1.0`; Python and TypeScript packages are not yet declared.
+The runnable Dex Flow is in [`go/examples/profile-inspection`](go/examples/profile-inspection/README.md). Its connection name is `braze`. The Go, Python, and TypeScript packages each declare their first `v0.1.0` release and share Go-recorded conformance scenarios.
