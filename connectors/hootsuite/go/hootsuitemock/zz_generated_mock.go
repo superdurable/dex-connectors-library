@@ -19,6 +19,8 @@ import (
 type Mock struct {
 	connection         hootsuite.Connection
 	listSocialProfiles *connectormock.Query[hootsuite.ListSocialProfilesInput, hootsuite.SocialProfilesPage]
+	listScheduledPosts *connectormock.Query[hootsuite.ListScheduledPostsInput, hootsuite.ScheduledPostsPage]
+	schedulePost       *connectormock.Mutation[hootsuite.SchedulePostInput, hootsuite.ScheduledPostReceipt]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,8 +29,12 @@ func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
 		listSocialProfiles: connectormock.NewQuery[hootsuite.ListSocialProfilesInput, hootsuite.SocialProfilesPage](t, hootsuite.ListSocialProfilesDefinition),
+		listScheduledPosts: connectormock.NewQuery[hootsuite.ListScheduledPostsInput, hootsuite.ScheduledPostsPage](t, hootsuite.ListScheduledPostsDefinition),
+		schedulePost:       connectormock.NewMutation[hootsuite.SchedulePostInput, hootsuite.ScheduledPostReceipt](t, hootsuite.SchedulePostDefinition),
 	}
 	mock.listSocialProfiles.Default(ListSocialProfilesDefault())
+	mock.listScheduledPosts.Default(ListScheduledPostsDefault())
+	mock.schedulePost.Default(SchedulePostDefault())
 	connection, err := hootsuite.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "hootsuite", Name: connectionName})
 	if err != nil {
 		t.Fatalf("hootsuite mock connection: %v", err)
@@ -45,10 +51,26 @@ func (mock *Mock) ListSocialProfiles() *connectormock.Query[hootsuite.ListSocial
 	return mock.listSocialProfiles
 }
 
+// ListScheduledPosts returns the listScheduledPosts script.
+func (mock *Mock) ListScheduledPosts() *connectormock.Query[hootsuite.ListScheduledPostsInput, hootsuite.ScheduledPostsPage] {
+	return mock.listScheduledPosts
+}
+
+// SchedulePost returns the schedulePost script.
+func (mock *Mock) SchedulePost() *connectormock.Mutation[hootsuite.SchedulePostInput, hootsuite.ScheduledPostReceipt] {
+	return mock.schedulePost
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListSocialProfiles() sdkgo.Query[hootsuite.ListSocialProfilesInput, hootsuite.SocialProfilesPage] {
 	return operations.mock.listSocialProfiles
+}
+func (operations mockOperations) ListScheduledPosts() sdkgo.Query[hootsuite.ListScheduledPostsInput, hootsuite.ScheduledPostsPage] {
+	return operations.mock.listScheduledPosts
+}
+func (operations mockOperations) SchedulePost() sdkgo.Mutation[hootsuite.SchedulePostInput, hootsuite.ScheduledPostReceipt] {
+	return operations.mock.schedulePost
 }
 
 // ListSocialProfilesListed selects the listed branch: Hootsuite returned the visible profiles.
@@ -85,4 +107,76 @@ func ListSocialProfilesListedDefault() connectormock.Case[hootsuite.SocialProfil
 // ListSocialProfilesDefault is the manifest default, listedDefault, which New installs.
 func ListSocialProfilesDefault() connectormock.Case[hootsuite.SocialProfilesPage] {
 	return ListSocialProfilesListedDefault()
+}
+
+// ListScheduledPostsListed selects the listed branch: Hootsuite returned one scheduled message page.
+func ListScheduledPostsListed(value hootsuite.ScheduledPostsPage, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostsPage] {
+	return connectormock.Branch(hootsuite.ListScheduledPostsBranchListed, value, failure)
+}
+
+// ListScheduledPostsProviderRejected selects the providerRejected branch: Hootsuite definitively rejected the lookup.
+func ListScheduledPostsProviderRejected(value hootsuite.ScheduledPostsPage, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostsPage] {
+	return connectormock.Branch(hootsuite.ListScheduledPostsBranchProviderRejected, value, failure)
+}
+
+// ListScheduledPostsInvalidResponse selects the invalidResponse branch: Hootsuite returned malformed or oversized JSON.
+func ListScheduledPostsInvalidResponse(value hootsuite.ScheduledPostsPage, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostsPage] {
+	return connectormock.Branch(hootsuite.ListScheduledPostsBranchInvalidResponse, value, failure)
+}
+
+// ListScheduledPostsDefect selects the defect branch: Local input or connection credentials are invalid.
+func ListScheduledPostsDefect(value hootsuite.ScheduledPostsPage, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostsPage] {
+	return connectormock.Branch(hootsuite.ListScheduledPostsBranchDefect, value, failure)
+}
+
+// ListScheduledPostsRetry asks Dex to retry the listScheduledPosts Step, after the delay when it is positive.
+func ListScheduledPostsRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hootsuite.ScheduledPostsPage] {
+	return connectormock.Retry[hootsuite.ScheduledPostsPage](failure, after)
+}
+
+// ListScheduledPostsListedDefault is the manifest mock listedDefault: One example scheduled message is visible.
+func ListScheduledPostsListedDefault() connectormock.Case[hootsuite.ScheduledPostsPage] {
+	value := connectormock.MustDecodeOutput[hootsuite.ScheduledPostsPage](`{"posts":[{"id":"4138476039","state":"SCHEDULED","socialProfileId":"115185509","scheduledSendTime":"2026-11-15T14:00:00Z"}],"nextCursor":""}`)
+	return connectormock.Branch(hootsuite.ListScheduledPostsBranchListed, value, nil)
+}
+
+// ListScheduledPostsDefault is the manifest default, listedDefault, which New installs.
+func ListScheduledPostsDefault() connectormock.Case[hootsuite.ScheduledPostsPage] {
+	return ListScheduledPostsListedDefault()
+}
+
+// SchedulePostScheduled selects the scheduled branch: Hootsuite accepted the scheduled message and returned its ID.
+func SchedulePostScheduled(value hootsuite.ScheduledPostReceipt, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostReceipt] {
+	return connectormock.Branch(hootsuite.SchedulePostBranchScheduled, value, failure)
+}
+
+// SchedulePostProviderRejected selects the providerRejected branch: Hootsuite definitively rejected the schedule request.
+func SchedulePostProviderRejected(value hootsuite.ScheduledPostReceipt, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostReceipt] {
+	return connectormock.Branch(hootsuite.SchedulePostBranchProviderRejected, value, failure)
+}
+
+// SchedulePostUncertain returns an uncertain schedulePost outcome.
+func SchedulePostUncertain(value hootsuite.ScheduledPostReceipt, failure sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostReceipt] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SchedulePostDefect selects the defect branch: Local post input, credentials, or dispatch checkpoint is invalid.
+func SchedulePostDefect(value hootsuite.ScheduledPostReceipt, failure *sdkgo.Failure) connectormock.Case[hootsuite.ScheduledPostReceipt] {
+	return connectormock.Branch(hootsuite.SchedulePostBranchDefect, value, failure)
+}
+
+// SchedulePostRetry asks Dex to retry the schedulePost Step, after the delay when it is positive.
+func SchedulePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[hootsuite.ScheduledPostReceipt] {
+	return connectormock.Retry[hootsuite.ScheduledPostReceipt](failure, after)
+}
+
+// SchedulePostScheduledDefault is the manifest mock scheduledDefault: One example message was scheduled.
+func SchedulePostScheduledDefault() connectormock.Case[hootsuite.ScheduledPostReceipt] {
+	value := connectormock.MustDecodeOutput[hootsuite.ScheduledPostReceipt](`{"id":"4138476039","state":"SCHEDULED","socialProfileId":"115185509"}`)
+	return connectormock.Branch(hootsuite.SchedulePostBranchScheduled, value, nil)
+}
+
+// SchedulePostDefault is the manifest default, scheduledDefault, which New installs.
+func SchedulePostDefault() connectormock.Case[hootsuite.ScheduledPostReceipt] {
+	return SchedulePostScheduledDefault()
 }

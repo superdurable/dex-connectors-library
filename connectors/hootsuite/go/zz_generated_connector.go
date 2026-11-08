@@ -44,12 +44,20 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	ListSocialProfiles() sdkgo.Query[ListSocialProfilesInput, SocialProfilesPage]
+	ListScheduledPosts() sdkgo.Query[ListScheduledPostsInput, ScheduledPostsPage]
+	SchedulePost() sdkgo.Mutation[SchedulePostInput, ScheduledPostReceipt]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) ListSocialProfiles() sdkgo.Query[ListSocialProfilesInput, SocialProfilesPage] {
 	return operations.client.ListSocialProfiles()
+}
+func (operations clientOperations) ListScheduledPosts() sdkgo.Query[ListScheduledPostsInput, ScheduledPostsPage] {
+	return operations.client.ListScheduledPosts()
+}
+func (operations clientOperations) SchedulePost() sdkgo.Mutation[SchedulePostInput, ScheduledPostReceipt] {
+	return operations.client.SchedulePost()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -315,6 +323,148 @@ func NewListSocialProfilesStep[IN any](config ListSocialProfilesStepConfig[IN]) 
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListSocialProfilesBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ListScheduledPostsBranchListed sdkgo.BranchID = "listed"
+const ListScheduledPostsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListScheduledPostsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListScheduledPostsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListScheduledPostsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listScheduledPosts"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListScheduledPostsBranchListed, Description: "Hootsuite returned one scheduled message page."},
+		{ID: ListScheduledPostsBranchProviderRejected, Description: "Hootsuite definitively rejected the lookup.", Optional: true},
+		{ID: ListScheduledPostsBranchInvalidResponse, Description: "Hootsuite returned malformed or oversized JSON.", Optional: true},
+		{ID: ListScheduledPostsBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListScheduledPostsResult = sdkgo.QueryResult[ScheduledPostsPage]
+
+type ListScheduledPostsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=hootsuite"`
+	operationID                    struct{}                                              `connector:"operationId=listScheduledPosts"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListScheduledPostsInput                      `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListScheduledPostsResult]                `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListScheduledPostsResult]                `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListScheduledPostsResult]                `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListScheduledPostsResult]                `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ScheduledPostsPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewListScheduledPostsStep[IN any](config ListScheduledPostsStepConfig[IN]) sdkgo.QueryStep[IN, ListScheduledPostsInput, ScheduledPostsPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hootsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListScheduledPostsInput, ScheduledPostsPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ListScheduledPosts(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListScheduledPostsResult] {
+			branches := make([]sdkgo.BranchTarget[ListScheduledPostsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListScheduledPostsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListScheduledPostsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListScheduledPostsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListScheduledPostsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SchedulePostBranchScheduled sdkgo.BranchID = "scheduled"
+const SchedulePostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SchedulePostBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SchedulePostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SchedulePostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "schedulePost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SchedulePostBranchScheduled, Description: "Hootsuite accepted the scheduled message and returned its ID."},
+		{ID: SchedulePostBranchProviderRejected, Description: "Hootsuite definitively rejected the schedule request.", Optional: true},
+		{ID: SchedulePostBranchUncertain, Description: "The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending.", Optional: true},
+		{ID: SchedulePostBranchDefect, Description: "Local post input, credentials, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+}
+
+type SchedulePostResult = sdkgo.MutationResult[ScheduledPostReceipt]
+
+type SchedulePostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                                   `connector:"connectorId=hootsuite"`
+	operationID                       struct{}                                                   `connector:"operationId=schedulePost"`
+	StepType                          string                                                     `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                                      `connector:"annotations"`
+	Connection                        Connection                                                 `connector:"connection"`
+	ConnectionName                    string                                                     `connector:"connectionName"`
+	MapToOperationInput               func(IN) SchedulePostInput                                 `connector:"mapToOperationInput"`
+	Scheduled                         sdkgo.Target[SchedulePostResult]                           `connector:"branch=scheduled"`
+	ProviderRejected                  sdkgo.Target[SchedulePostResult]                           `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SchedulePostResult]                           `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SchedulePostResult]                           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[ScheduledPostReceipt]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                           `connector:"stepOptionsOverride"`
+}
+
+func NewSchedulePostStep[IN any](config SchedulePostStepConfig[IN]) sdkgo.MutationStep[IN, SchedulePostInput, ScheduledPostReceipt] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("hootsuite connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SchedulePostInput, ScheduledPostReceipt]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SchedulePost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SchedulePostResult] {
+			branches := make([]sdkgo.BranchTarget[SchedulePostResult], 0, 4)
+			if config.Scheduled.HasStep() {
+				branches = append(branches, config.Scheduled.BranchTarget(SchedulePostBranchScheduled))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SchedulePostBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SchedulePostBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SchedulePostBranchDefect))
 			}
 			return branches
 		}(),

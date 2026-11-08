@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: hootsuite
   displayName: Hootsuite
-  description: List social profiles available to the connected Hootsuite user.
+  description: List social profiles, inspect scheduled messages, and schedule text posts.
   company: Hootsuite
   version: v0.1.0
 spec:
@@ -58,7 +58,7 @@ spec:
       steps:
         - Sign in to the Hootsuite Developer Portal > My Apps and create or select an app with REST API access. Developer access may require Hootsuite approval. The user authorizing must have access to the social profiles in Hootsuite.
         - In My Apps > select the app > REST API credentials, register the exact redirect URI displayed by Dex Web. Copy the non-secret Client ID and one-time Client Secret into Dex Web; keep the secret private.
-        - Authorize in Dex Web with offline scope and complete Hootsuite consent. Dex stores and renews access and refresh tokens. No analytics scope is needed for listSocialProfiles.
+        - Authorize in Dex Web with offline scope and complete Hootsuite consent. Dex stores and renews access and refresh tokens. No analytics scope is needed for these operations; posting permission follows the user's Hootsuite profile access.
         - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Revoke the app grant in Hootsuite if access should end.
     oauth2:
       authorizationEndpoint: https://platform.hootsuite.com/oauth2/auth
@@ -97,3 +97,45 @@ spec:
           description: One example social profile is visible.
           output:
             profiles: [{id: '115185509', type: FACEBOOK, username: Example Page}]
+    - name: listScheduledPosts
+      goName: ListScheduledPosts
+      inputType: ListScheduledPostsInput
+      outputType: ScheduledPostsPage
+      kind: query
+      description: Read one page of scheduled outbound messages within a UTC interval of at most four weeks.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Hootsuite returned one scheduled message page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hootsuite definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Hootsuite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example scheduled message is visible.
+          output:
+            posts: [{id: '4138476039', state: SCHEDULED, socialProfileId: '115185509', scheduledSendTime: '2026-11-15T14:00:00Z'}]
+            nextCursor: ''
+    - name: schedulePost
+      goName: SchedulePost
+      inputType: SchedulePostInput
+      outputType: ScheduledPostReceipt
+      kind: mutation
+      description: Schedule a text message on one social profile; inspect Hootsuite Planner if the outcome is uncertain.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: sync}
+      branches:
+        - {id: scheduled, goName: Scheduled, description: Hootsuite accepted the scheduled message and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Hootsuite definitively rejected the schedule request., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The request may have reached Hootsuite but no message ID was confirmed; inspect Planner before resending., optional: true}
+        - {id: defect, goName: Defect, description: "Local post input, credentials, or dispatch checkpoint is invalid.", optional: true}
+      mocks:
+        - name: scheduledDefault
+          branch: scheduled
+          default: true
+          description: One example message was scheduled.
+          output: {id: '4138476039', state: SCHEDULED, socialProfileId: '115185509'}

@@ -20,6 +20,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[hootsuite.SocialProfilesPage](`{"profiles":[{"id":"115185509","type":"FACEBOOK","username":"Example Page"}]}`)
 			return err
 		}},
+		{name: "listScheduledPosts/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hootsuite.ScheduledPostsPage](`{"posts":[{"id":"4138476039","state":"SCHEDULED","socialProfileId":"115185509","scheduledSendTime":"2026-11-15T14:00:00Z"}],"nextCursor":""}`)
+			return err
+		}},
+		{name: "schedulePost/scheduledDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[hootsuite.ScheduledPostReceipt](`{"id":"4138476039","state":"SCHEDULED","socialProfileId":"115185509"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +40,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.ListSocialProfiles().Definition().Operation.OperationID != "listSocialProfiles" {
 		t.Errorf("listSocialProfiles mock has another definition")
+	}
+	if mock.ListScheduledPosts().Definition().Operation.OperationID != "listScheduledPosts" {
+		t.Errorf("listScheduledPosts mock has another definition")
+	}
+	if mock.SchedulePost().Definition().Operation.OperationID != "schedulePost" {
+		t.Errorf("schedulePost mock has another definition")
 	}
 }
