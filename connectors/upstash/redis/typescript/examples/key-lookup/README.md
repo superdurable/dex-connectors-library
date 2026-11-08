@@ -1,0 +1,3 @@
+# TypeScript key lookup example
+
+The Worker runs `UpstashRedisKeyLookupTypeScript` through the static `upstash-redis` connection and stores the lookup result. Configure `baseUrl` and secret `rest_token` as described in the [connector README](../../README.md). From `connectors/upstash/redis/typescript`, run `npm run example:worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Run `npm run example:start -- <redis-key>` with your exact Redis string key. Optional branches are unwired. The integration test runs the same Flow against real Dex and a local provider fixture.

@@ -172,6 +172,7 @@ directories:
   - connectors/twilio/segment
   - connectors/typeform
   - connectors/unsplash
+  - connectors/upstash/redis
   - connectors/vercel
   - connectors/wave
   - connectors/webflow

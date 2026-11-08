@@ -1,0 +1,333 @@
+{
+  "connector": "upstash-redis",
+  "scenarios": [
+    {
+      "callId": "f09014ae-744b-58bd-8293-9f9839bec0c4",
+      "exchanges": [
+        {
+          "body": "{\"result\":\"example\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "GET",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "exists": true,
+          "key": "sample:key",
+          "value": "example"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "getKey-found",
+      "operation": "getKey"
+    },
+    {
+      "callId": "a2f37783-2eb9-5bfa-ae0a-1b54a953f39f",
+      "exchanges": [
+        {
+          "body": "{\"result\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "GET",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "exists": false,
+          "key": "sample:key",
+          "value": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "getKey-missing",
+      "operation": "getKey"
+    },
+    {
+      "callId": "e8075085-4361-5717-bbd8-3ff23ed533a6",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "GET",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "exists": false,
+          "key": "",
+          "value": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "getKey-providerRejected",
+      "operation": "getKey"
+    },
+    {
+      "callId": "c8c77985-b1e4-5449-bf55-dbbb4437f315",
+      "exchanges": [
+        {
+          "body": "{\"result\":17}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "GET",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "exists": false,
+          "key": "",
+          "value": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "getKey-invalidResponse",
+      "operation": "getKey"
+    },
+    {
+      "callId": "93462d1b-c5a0-5542-b6ef-62add77f61a5",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "exists": false,
+          "key": "",
+          "value": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": ""
+      },
+      "name": "getKey-defect",
+      "operation": "getKey"
+    },
+    {
+      "callId": "c347acb0-8af9-5bf2-8eef-ac07e139e2dc",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "GET",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "getKey-rateLimit",
+      "operation": "getKey"
+    },
+    {
+      "callId": "a4e9b193-84e2-5cd3-a3ca-04ca7a1a3f59",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "GET",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "getKey-serverUnavailable",
+      "operation": "getKey"
+    },
+    {
+      "callId": "f805e340-06c3-5c1b-a053-42a02faebba3",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": [
+            "GET",
+            "sample:key"
+          ],
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-redis-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "key": "sample:key"
+      },
+      "name": "getKey-transportFailure",
+      "operation": "getKey"
+    }
+  ],
+  "schemaVersion": 1
+}
