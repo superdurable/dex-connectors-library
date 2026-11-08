@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: jotform
+  displayName: Jotform
+  description: List forms and inspect submission metadata through the Jotform API.
+  company: Jotform
+  version: v0.1.0
+spec:
+  provider: jotform
+  codegen:
+    go:
+      package: jotform
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Jotform API endpoint, as an absolute HTTPS URL. Leave blank for the displayed US default; use https://eu-api.jotform.com for an EU account or https://hipaa-api.jotform.com for HIPAA. Override only for your account region or a trusted test gateway.
+        default: https://api.jotform.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for known larger form lists. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: jotform-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret provider-issued API key from Jotform My Account > API at https://www.jotform.com/myaccount/api. Create or select a read-only key and copy its full string; blank makes calls select defect. Dex stores it as a secret and sends it only in the APIKEY header.
+    guide:
+      startURL: https://www.jotform.com/myaccount/api
+      steps:
+        - Sign in at https://www.jotform.com/myaccount/api, then open My Account > API.
+        - Create a read-only API key for forms and submissions, copy the full provider-issued string into the secret api_key field, and save the connection. Revoke it on the same page when retired.
+        - Use the API endpoint for your account region (US, EU, or HIPAA). Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults only when the US endpoint applies.
+  operations:
+    - name: listForms
+      goName: ListForms
+      inputType: ListFormsInput
+      outputType: FormsPage
+      kind: query
+      description: List one page of form titles and IDs without submission answers.
+      idempotency: none
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      branches:
+        - {id: listed, goName: Listed, description: Jotform returned the selected form page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example form is listed.
+          output: {forms: [{id: "241234567890123", title: "Contact request", status: "ENABLED"}], offset: 0, limit: 20}
+    - name: getSubmission
+      goName: GetSubmission
+      inputType: GetSubmissionInput
+      outputType: SubmissionMetadata
+      kind: query
+      description: Read one submission's ID, form ID, status, and creation timestamp; answers are intentionally excluded.
+      idempotency: none
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      branches:
+        - {id: found, goName: Found, description: Jotform returned the submission metadata.}
+        - {id: notFound, goName: NotFound, description: The submission does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Jotform conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Jotform returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one example submission.
+          output: {id: "241234567890123456", formId: "241234567890123", status: "ACTIVE", createdAt: "2026-11-07 10:00:00"}

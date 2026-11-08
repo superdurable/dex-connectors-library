@@ -49,6 +49,7 @@ directories:
   - connectors/intercom
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
+  - connectors/jotform
   - connectors/klaviyo
   - connectors/linear
   - connectors/linkedin
@@ -67,6 +68,7 @@ directories:
   - connectors/newsapi
   - connectors/notion
   - connectors/openai
+  - connectors/opensearch
   - connectors/openweathermap
   - connectors/pagerduty
   - connectors/paypal
@@ -91,6 +93,7 @@ directories:
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
+  - connectors/telegram
   - connectors/tmdb
   - connectors/twilio/messaging
   - connectors/typeform
@@ -98,6 +101,7 @@ directories:
   - connectors/vercel
   - connectors/webflow
   - connectors/woocommerce
+  - connectors/wordpress
   - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/crm

@@ -1,0 +1,125 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wordpress
+  displayName: WordPress
+  description: Read published posts and create drafts or published posts through WordPress REST API.
+  company: WordPress
+  version: v0.1.0
+spec:
+  provider: wordpress
+  codegen:
+    go:
+      package: wordpress
+  configuration:
+    fields:
+      - name: siteUrl
+        goName: SiteURL
+        type: url
+        description: Absolute HTTPS URL of your WordPress site, such as https://example.com or https://example.com/blog; find it under Settings > General > Site Address at your site's /wp-admin/options-general.php. Do not append /wp-json, a query, or a fragment. Blank prevents connection creation; loopback HTTP is only for local tests.
+        required: true
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one WordPress REST request, as a positive Go duration such as 15s or 1m. Blank uses the displayed default; raise it only for a slow site.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete WordPress JSON response in bytes, as a positive integer. Blank uses the displayed default; raise it only for a known larger post page. Oversized responses select invalidResponse.
+        default: 4194304
+      - name: maxPostBytes
+        goName: MaxPostBytes
+        type: integer
+        description: Maximum complete post JSON request in bytes as a positive integer. Blank uses the displayed default; raise only for known larger posts.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: wordpress-application-password
+    fields:
+      - name: username
+        goName: Username
+        type: string
+        description: WordPress login name from https://YOUR-SITE/wp-admin/profile.php > Username; enter the exact non-secret account name that owns the application password. Blank prevents calls.
+        required: true
+      - name: application_password
+        goName: ApplicationPassword
+        type: secretString
+        description: Secret application password from https://YOUR-SITE/wp-admin/profile.php > Application Passwords > Add New Application Password; copy the one-time grouped value and store it only here. Blank prevents calls. This is not your normal login password.
+        required: true
+    guide:
+      startURL: https://wordpress.org/documentation/article/application-passwords/
+      steps:
+        - Open your own WordPress site's /wp-admin/options-general.php, find Settings > General > Site Address (URL), and save that absolute HTTPS URL as siteUrl without /wp-json.
+        - Open the same site's /wp-admin/profile.php, copy the Username, then under Application Passwords name this Dex connection and click Add New Application Password.
+        - Copy the secret password shown once, including or omitting its display spaces, and save it in application_password. Do not use the ordinary WordPress login password.
+        - For createPost, use a WordPress account with edit_posts permission for drafts and publish_posts permission to publish; Author or Editor normally has both. Keep timeout, maxResponseBytes, and maxPostBytes blank for their displayed defaults; revoke this application's password from the same profile page when the connection is retired.
+  operations:
+    - name: createPost
+      goName: CreatePost
+      inputType: CreatePostInput
+      outputType: CreatedPost
+      kind: mutation
+      description: Create one draft or published post. If WordPress does not confirm the outcome, inspect Posts before creating another.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: WordPress created the post and returned its numeric ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: WordPress conclusively rejected the new post., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The request may have reached WordPress but no post ID was confirmed; do not resend automatically., optional: true}
+        - {id: defect, goName: Defect, description: "Local post input, connection credentials, or dispatch checkpoint is invalid.", optional: true}
+      # Sync exposes the single-dispatch heartbeat to retries; WordPress provides no create-post idempotency key.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+      mocks:
+        - name: createdDraft
+          branch: created
+          description: A Meridian release draft was created for editorial review.
+          default: true
+          output: {id: 43, status: draft}
+    - name: getPost
+      goName: GetPost
+      inputType: GetPostInput
+      outputType: Post
+      kind: query
+      description: Read one published WordPress post by numeric ID.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: WordPress returned the published post.}
+        - {id: notFound, goName: NotFound, description: The post is missing or not visible to this connection., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: WordPress conclusively rejected the post lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: WordPress returned malformed or oversized post data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: publishedPost
+          branch: found
+          description: A published Meridian release post is returned to the example Flow.
+          default: true
+          output: {id: 42, slug: meridian-release, status: publish, link: 'https://example.test/meridian-release/', title: {rendered: Meridian release}, content: {rendered: '<p>Released.</p>'}, dateGMT: '2026-11-07T12:00:00'}
+    - name: listPosts
+      goName: ListPosts
+      inputType: ListPostsInput
+      outputType: PostPage
+      kind: query
+      description: Read one page of published posts, optionally after an ISO 8601 publication instant.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "WordPress returned one post page, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: WordPress conclusively rejected the post list., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: WordPress returned malformed or oversized post-page data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: publishedPosts
+          branch: listed
+          description: The first page contains a published Meridian release post.
+          default: true
+          output: {posts: [{id: 42, slug: meridian-release, status: publish, link: 'https://example.test/meridian-release/', title: {rendered: Meridian release}, content: {rendered: '<p>Released.</p>'}, dateGMT: '2026-11-07T12:00:00'}], page: 1, total: 1, totalPages: 1}
