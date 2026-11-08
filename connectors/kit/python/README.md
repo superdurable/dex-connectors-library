@@ -1,0 +1,3 @@
+# Kit Python connector
+
+The Python package implements `listSubscribers` and `getSubscriber` with provider requests and branch decisions replayed against the Go reference. It returns subscriber ID, email address, first name, and lifecycle state without embedded custom fields. For automation of your own account, open [Kit Developer settings](https://app.kit.com/account_settings/developer_settings), choose Add a new key under V4 API Keys, and save the one-time value in the Dex secret `api_key` field. Leave `baseUrl` blank for the displayed API v4 default. Kit public App Store integrations need OAuth. See [the connector README](../README.md) and [the runnable example](examples/subscriber_inspection/README.md).
