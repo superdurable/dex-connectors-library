@@ -132,6 +132,7 @@ directories:
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
   - connectors/surveymonkey
+  - connectors/teamwork
   - connectors/telegram
   - connectors/tmdb
   - connectors/twilio/messaging

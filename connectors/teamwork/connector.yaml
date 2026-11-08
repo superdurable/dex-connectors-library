@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: teamwork
+  displayName: Teamwork.com
+  description: Read task identity and state from Teamwork.com Projects.
+  company: Teamwork
+  version: v0.1.0
+spec:
+  provider: teamwork
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-teamwork
+      operations: [getTask]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-teamwork"
+      operations: [getTask]
+      triggers: []
+  codegen:
+    go:
+      package: teamwork
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Required Teamwork.com site root as an absolute HTTPS URL, for example https://example.teamwork.com or https://example.eu.teamwork.com. Copy the address before /app from the signed-in browser; blank is invalid. Use the site containing the task.
+        required: true
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow task reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete task response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large task metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: teamwork-personal-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret opaque Teamwork.com API key from your site > avatar > Edit my details > API & Mobile > Show your token > Key. Blank prevents calls. Dex sends it as the Basic Auth username with an empty password; never place it in the site URL.
+    guide:
+      startURL: https://apidocs.teamwork.com/guides/teamwork/getting-started-with-the-teamwork-com-api
+      steps:
+        - Open your Teamwork.com site, click the avatar at bottom left > Edit my details > API & Mobile > Show your token, then copy the secret Key into Dex Web api_token. Blank is invalid. Disable or rotate it from the same page. The key has the site user's permissions.
+        - Copy the required non-secret site root from the browser address before /app into baseUrl; US and EU site domains differ. Leave timeout and maxResponseBytes blank for their displayed defaults. Open the desired task or query the Projects API to find its numeric task ID and pass it as taskId; blank is invalid. Current clients accept IDs through 9007199254740991 for exact cross-language decoding.
+  operations:
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: TaskSummary
+      kind: query
+      description: Read one task's ID, name, and status without descriptions or assignee details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Teamwork returned the task.}
+        - {id: notFound, goName: NotFound, description: Teamwork did not expose the task., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Teamwork conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Teamwork returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample task is returned.
+          output: {id: "12345", name: "Review launch", status: pending}
