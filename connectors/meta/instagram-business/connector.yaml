@@ -1,0 +1,70 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: instagram-business
+  displayName: Instagram Business
+  description: Read media from a professional Instagram account linked to a Facebook Page.
+  company: Meta
+  version: v0.1.0
+spec:
+  provider: instagram-business
+  codegen:
+    go:
+      package: instagrambusiness
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Versioned Meta Graph API root as an absolute HTTPS URL. Blank uses the displayed endpoint; override only for a supported version or trusted test gateway.
+        default: https://graph.facebook.com/v25.0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one Meta API request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete Graph API response in bytes. Blank uses the displayed default; increase only for a known larger media page.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: meta-instagram-user-access-token
+    fields:
+      - name: user_access_token
+        goName: UserAccessToken
+        type: secretString
+        required: true
+        description: Secret opaque User access token from https://developers.facebook.com/tools/explorer/ > select your Meta app > Get Token > Get User Access Token. Grant pages_show_list, pages_read_engagement, and instagram_basic. Blank prevents calls; revoke it in Meta when retired.
+    guide:
+      startURL: https://developers.facebook.com/tools/explorer/
+      steps:
+        - In Meta for Developers > My Apps, create or select a Business app with Instagram API with Facebook Login. Link a professional Instagram account to a Facebook Page; consumer accounts are unsupported.
+        - In Graph API Explorer, select the app and request pages_show_list, pages_read_engagement, and instagram_basic. Choose Get Token > Get User Access Token. Production use may require App Review and advanced access.
+        - Use GET /me/accounts?fields=instagram_business_account in Graph API Explorer to find the numeric Instagram account ID for igUserId. Store the complete opaque User access token only in Dex Connections.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Do not put the access token in Flow inputs or logs.
+  operations:
+    - name: listMedia
+      goName: ListMedia
+      inputType: ListMediaInput
+      outputType: MediaListPage
+      kind: query
+      description: Read one cursor page of Instagram media IDs, captions, types, timestamps, and permalinks.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one media page.}
+        - {id: notFound, goName: NotFound, description: The account is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example Instagram image is available.
+          output:
+            media: [{id: '17900000000000001', caption: 'Hello', mediaType: IMAGE, timestamp: '2026-11-08T10:00:00+0000', permalink: 'https://www.instagram.com/p/example/'}]
+            nextCursor: ''

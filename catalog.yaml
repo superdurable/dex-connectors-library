@@ -90,6 +90,7 @@ directories:
   - connectors/meistertask
   - connectors/meta/facebook-lead-ads
   - connectors/meta/facebook-pages
+  - connectors/meta/instagram-business
   - connectors/meta/whatsapp-business
   - connectors/microsoft/azure-devops
   - connectors/microsoft/entra-id
