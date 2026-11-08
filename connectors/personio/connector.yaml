@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: personio
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-personio
+      operations: [getPerson]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-personio'
+      operations: [getPerson]
+      triggers: []
   codegen:
     go:
       package: personio
