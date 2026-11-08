@@ -1,0 +1,74 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: anthropic
+  displayName: Anthropic
+  description: Inspect Claude model metadata through the Anthropic Models API.
+  company: Anthropic
+  version: v0.1.0
+spec:
+  provider: anthropic
+  codegen:
+    go:
+      package: anthropic
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Anthropic HTTPS API root; leave blank for the displayed default. Override only for a trusted compatible gateway or local test server; never include a key in the URL.
+        default: https://api.anthropic.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration for one Models API request, as a positive Go duration such as 15s or 1m. Leave blank for the displayed default; raise it only for a slow compatible gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Models API response in bytes, as a positive integer. Leave blank for the displayed default; increase only for a known larger response.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: anthropic-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        description: Secret sk-ant- API key created at https://platform.claude.com/settings/keys under Settings > API Keys > Create key; copy the one-time value for a single workspace and store it only here. Blank prevents all provider requests.
+        required: true
+    guide:
+      startURL: https://platform.claude.com/settings/keys
+      steps:
+        - Sign in at https://platform.claude.com/settings/keys and open Settings > API Keys for the intended workspace.
+        - Click Create key, name it, select an expiration, link it to your account or a service account, and scope it to one workspace that can use the models this connection should inspect. Copy its sk-ant- secret value when shown once.
+        - Paste the key into the secret api_key field; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - To rotate or revoke the key, return to Settings > API Keys; a replacement saved in Dex applies on the next call.
+  operations:
+    - name: getModel
+      goName: GetModel
+      inputType: GetModelInput
+      outputType: ModelInfo
+      kind: query
+      description: Resolve a Claude model ID or alias and return its identity and display metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Anthropic returned the requested model.}
+        - {id: notFound, goName: NotFound, description: Anthropic has no accessible model with that ID or alias., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Anthropic conclusively rejected the model lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Anthropic returned malformed or oversized model data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: modelFound
+          branch: found
+          description: The example resolves one Claude model alias.
+          default: true
+          output: {id: claude-sonnet-4-6, displayName: Claude Sonnet 4.6, createdAt: '2026-02-17T00:00:00Z'}
+        - name: modelMissing
+          branch: notFound
+          description: The requested model is unavailable.
+          failure: {kind: NOT_FOUND, message: Anthropic did not find the model.}

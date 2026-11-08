@@ -6,6 +6,7 @@ directories:
   - connectors/alphavantage
   - connectors/amazon/s3
   - connectors/amazon/sqs
+  - connectors/anthropic
   - connectors/asana
   - connectors/atlassian/bitbucket
   - connectors/atlassian/confluence
