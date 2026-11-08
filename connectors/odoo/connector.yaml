@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: odoo
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-odoo
+      operations: [searchPartners]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-odoo'
+      operations: [searchPartners]
+      triggers: []
   codegen:
     go:
       package: odoo

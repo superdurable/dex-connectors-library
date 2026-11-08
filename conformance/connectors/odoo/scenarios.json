@@ -1,0 +1,462 @@
+{
+  "connector": "odoo",
+  "scenarios": [
+    {
+      "callId": "233a7444-79bc-579d-8730-5fb8357d4572",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"name\":\"Acme Company\",\"email\":\"secret@example.com\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "is_company",
+                "=",
+                true
+              ],
+              [
+                "name",
+                "ilike",
+                "%Acme%"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "partners": [
+            {
+              "id": 42,
+              "name": "Acme Company"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": "%Acme%"
+      },
+      "name": "searchPartners-found",
+      "operation": "searchPartners"
+    },
+    {
+      "callId": "7b3970bc-fdb3-5993-bcb0-0f077e0c6de7",
+      "exchanges": [
+        {
+          "body": "[]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "is_company",
+                "=",
+                true
+              ],
+              [
+                "name",
+                "ilike",
+                "%Acme%"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "partners": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": "%Acme%"
+      },
+      "name": "searchPartners-empty",
+      "operation": "searchPartners"
+    },
+    {
+      "callId": "dfd1c5e9-5b44-5868-8e20-7de0d1141ca3",
+      "exchanges": [
+        {
+          "body": "forbidden",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "is_company",
+                "=",
+                true
+              ],
+              [
+                "name",
+                "ilike",
+                "%Acme%"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "partners": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": "%Acme%"
+      },
+      "name": "searchPartners-providerRejected",
+      "operation": "searchPartners"
+    },
+    {
+      "callId": "019c8336-ef17-525f-8718-a9feae164531",
+      "exchanges": [
+        {
+          "body": "[{\"id\":0,\"name\":\"Bad\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "is_company",
+                "=",
+                true
+              ],
+              [
+                "name",
+                "ilike",
+                "%Acme%"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "partners": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": "%Acme%"
+      },
+      "name": "searchPartners-invalidResponse",
+      "operation": "searchPartners"
+    },
+    {
+      "callId": "ebcec1e6-5a6f-5ece-a8c2-e4c8eba1813f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "partners": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": ""
+      },
+      "name": "searchPartners-defect",
+      "operation": "searchPartners"
+    },
+    {
+      "callId": "c389ec38-f2a2-5c7b-96cb-e0eb0e8b4c53",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "is_company",
+                "=",
+                true
+              ],
+              [
+                "name",
+                "ilike",
+                "%Acme%"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": "%Acme%"
+      },
+      "name": "searchPartners-rateLimit",
+      "operation": "searchPartners"
+    },
+    {
+      "callId": "c7f99a6a-0bd9-5ce5-a17a-346dc5f3ff49",
+      "exchanges": [
+        {
+          "body": "unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "is_company",
+                "=",
+                true
+              ],
+              [
+                "name",
+                "ilike",
+                "%Acme%"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": "%Acme%"
+      },
+      "name": "searchPartners-serverUnavailable",
+      "operation": "searchPartners"
+    },
+    {
+      "callId": "3013c3c8-9ed6-5171-b534-089b612ef114",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/json/2/res.partner/search_read",
+          "requestBody": {
+            "domain": [
+              [
+                "is_company",
+                "=",
+                true
+              ],
+              [
+                "name",
+                "ilike",
+                "%Acme%"
+              ]
+            ],
+            "fields": [
+              "id",
+              "name"
+            ],
+            "limit": 5
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-odoo-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "X-Odoo-Database": [
+              "mycompany"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 5,
+        "namePattern": "%Acme%"
+      },
+      "name": "searchPartners-transportFailure",
+      "operation": "searchPartners"
+    }
+  ],
+  "schemaVersion": 1
+}
