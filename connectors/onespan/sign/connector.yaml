@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: onespan-sign
+  displayName: OneSpan Sign
+  description: Read a transaction package's name and status through the OneSpan Sign REST API.
+  company: OneSpan
+  version: v0.1.0
+spec:
+  provider: onespan-sign
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-onespan-sign
+      operations: [getPackage]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-onespan-sign"
+      operations: [getPackage]
+      triggers: []
+  codegen:
+    go:
+      package: onespansign
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: OneSpan Sign API root as an absolute HTTPS URL ending in /api. Blank uses the displayed Sandbox endpoint. For a Production account use the API root matching its login environment, such as https://apps.esignlive.com/api; override only for that environment or a trusted local test gateway.
+        default: https://sandbox.esignlive.com/api
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow package reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete package response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large package metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: onespan-sign-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret opaque OneSpan Sign account API Key from Admin > API Access > Authentication Settings > API Key and Client Apps > API Key > View. Paste the complete value; blank prevents calls. Dex sends it only in the Authorization Basic header. Use a key for the selected Sandbox or Production environment.
+    guide:
+      startURL: https://sandbox.esignlive.com
+      steps:
+        - Sign in as the account owner at the OneSpan Sign Sandbox or Production login URL. Open Admin > API Access > Authentication Settings > API Key and Client Apps, then the API Key section and View. Copy the complete opaque API Key into secret api_key in Dex Web; never enter it in a Flow input. If the key is unavailable, request access from OneSpan Sign support. Contact support to rotate or revoke an account API Key.
+        - For Sandbox leave baseUrl blank. For Production, set baseUrl to the API root matching the account's login environment, such as https://apps.esignlive.com/api; include /api. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret package ID in the transaction URL or the create-package API response and enter it as packageId; blank is invalid.
+  operations:
+    - name: getPackage
+      goName: GetPackage
+      inputType: GetPackageInput
+      outputType: PackageStatus
+      kind: query
+      description: Read one transaction package's ID, name, and status without signer identities or document contents.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: OneSpan Sign returned the package.}
+        - {id: notFound, goName: NotFound, description: OneSpan Sign did not expose the package., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: OneSpan Sign conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: OneSpan Sign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example completed package is returned.
+          output: {id: '9sKhW-h-qS9m6Ho3zRv3n2a-rkI=', name: Example agreement, status: COMPLETED}

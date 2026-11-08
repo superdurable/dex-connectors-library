@@ -90,6 +90,7 @@ directories:
   - connectors/newsapi
   - connectors/nimble
   - connectors/notion
+  - connectors/onespan/sign
   - connectors/openai
   - connectors/opensearch
   - connectors/openweathermap
