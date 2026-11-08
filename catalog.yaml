@@ -140,6 +140,7 @@ directories:
   - connectors/wise
   - connectors/woocommerce
   - connectors/wordpress
+  - connectors/wrike
   - connectors/xero
   - connectors/zendesk/sell
   - connectors/zendesk/support
