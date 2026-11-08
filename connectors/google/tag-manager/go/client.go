@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package tagmanager reads Google Tag Manager reports, properties, and audiences through Dex Queries.
+// Package tagmanager reads Google Tag Manager accounts, containers, and workspace tags through Dex Queries.
 package tagmanager
 
 import (
