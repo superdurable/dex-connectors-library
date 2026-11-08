@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package wordpress reads published WordPress posts through typed Dex Query Steps.
+// Package wordpress reads and creates WordPress posts through typed Dex Steps.
 // The runnable examples/post-inspection Flow shows connection and Worker registration.
 package wordpress
 
@@ -36,6 +36,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 type Client struct {
 	siteURL          string
 	maxResponseBytes int64
+	maxPostBytes     int64
 	credentials      CredentialSource
 	httpClient       *http.Client
 }
@@ -114,7 +115,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if strings.HasSuffix(siteURL, "/wp-json") {
 		return nil, fmt.Errorf("WordPress site URL must omit /wp-json")
 	}
-	client := &Client{siteURL: siteURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{siteURL: siteURL, maxResponseBytes: config.MaxResponseBytes, maxPostBytes: config.MaxPostBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, fmt.Errorf("WordPress client option is required")
@@ -130,6 +131,9 @@ func (client *Client) GetPost() GetPostOperation { return GetPostOperation{clien
 
 // ListPosts returns the typed published-post list Query bound to this client.
 func (client *Client) ListPosts() ListPostsOperation { return ListPostsOperation{client} }
+
+// CreatePost returns the typed post-creation Mutation bound to this client.
+func (client *Client) CreatePost() CreatePostOperation { return CreatePostOperation{client} }
 
 // Definition returns the manifest-generated post lookup contract.
 func (GetPostOperation) Definition() sdkgo.QueryDefinition { return GetPostDefinition }

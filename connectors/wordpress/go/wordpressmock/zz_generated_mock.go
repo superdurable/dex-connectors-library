@@ -18,6 +18,7 @@ import (
 // Mock is a scripted wordpress connection. Script each operation through its accessor.
 type Mock struct {
 	connection wordpress.Connection
+	createPost *connectormock.Mutation[wordpress.CreatePostInput, wordpress.CreatedPost]
 	getPost    *connectormock.Query[wordpress.GetPostInput, wordpress.Post]
 	listPosts  *connectormock.Query[wordpress.ListPostsInput, wordpress.PostPage]
 }
@@ -27,9 +28,11 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		getPost:   connectormock.NewQuery[wordpress.GetPostInput, wordpress.Post](t, wordpress.GetPostDefinition),
-		listPosts: connectormock.NewQuery[wordpress.ListPostsInput, wordpress.PostPage](t, wordpress.ListPostsDefinition),
+		createPost: connectormock.NewMutation[wordpress.CreatePostInput, wordpress.CreatedPost](t, wordpress.CreatePostDefinition),
+		getPost:    connectormock.NewQuery[wordpress.GetPostInput, wordpress.Post](t, wordpress.GetPostDefinition),
+		listPosts:  connectormock.NewQuery[wordpress.ListPostsInput, wordpress.PostPage](t, wordpress.ListPostsDefinition),
 	}
+	mock.createPost.Default(CreatePostDefault())
 	mock.getPost.Default(GetPostDefault())
 	mock.listPosts.Default(ListPostsDefault())
 	connection, err := wordpress.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "wordpress", Name: connectionName})
@@ -43,6 +46,11 @@ func New(t testing.TB, connectionName string) *Mock {
 // Connection returns the typed connection to pass to the connector's Step factories.
 func (mock *Mock) Connection() wordpress.Connection { return mock.connection }
 
+// CreatePost returns the createPost script.
+func (mock *Mock) CreatePost() *connectormock.Mutation[wordpress.CreatePostInput, wordpress.CreatedPost] {
+	return mock.createPost
+}
+
 // GetPost returns the getPost script.
 func (mock *Mock) GetPost() *connectormock.Query[wordpress.GetPostInput, wordpress.Post] {
 	return mock.getPost
@@ -55,12 +63,49 @@ func (mock *Mock) ListPosts() *connectormock.Query[wordpress.ListPostsInput, wor
 
 type mockOperations struct{ mock *Mock }
 
+func (operations mockOperations) CreatePost() sdkgo.Mutation[wordpress.CreatePostInput, wordpress.CreatedPost] {
+	return operations.mock.createPost
+}
 func (operations mockOperations) GetPost() sdkgo.Query[wordpress.GetPostInput, wordpress.Post] {
 	return operations.mock.getPost
 }
 func (operations mockOperations) ListPosts() sdkgo.Query[wordpress.ListPostsInput, wordpress.PostPage] {
 	return operations.mock.listPosts
 }
+
+// CreatePostCreated selects the created branch: WordPress created the post and returned its numeric ID.
+func CreatePostCreated(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.CreatePostBranchCreated, value, failure)
+}
+
+// CreatePostProviderRejected selects the providerRejected branch: WordPress conclusively rejected the new post.
+func CreatePostProviderRejected(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.CreatePostBranchProviderRejected, value, failure)
+}
+
+// CreatePostUncertain returns an uncertain createPost outcome.
+func CreatePostUncertain(value wordpress.CreatedPost, failure sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// CreatePostDefect selects the defect branch: Local post input, connection credentials, or dispatch checkpoint is invalid.
+func CreatePostDefect(value wordpress.CreatedPost, failure *sdkgo.Failure) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Branch(wordpress.CreatePostBranchDefect, value, failure)
+}
+
+// CreatePostRetry asks Dex to retry the createPost Step, after the delay when it is positive.
+func CreatePostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[wordpress.CreatedPost] {
+	return connectormock.Retry[wordpress.CreatedPost](failure, after)
+}
+
+// CreatePostCreatedDraft is the manifest mock createdDraft: A Meridian release draft was created for editorial review.
+func CreatePostCreatedDraft() connectormock.Case[wordpress.CreatedPost] {
+	value := connectormock.MustDecodeOutput[wordpress.CreatedPost](`{"id":43,"status":"draft"}`)
+	return connectormock.Branch(wordpress.CreatePostBranchCreated, value, nil)
+}
+
+// CreatePostDefault is the manifest default, createdDraft, which New installs.
+func CreatePostDefault() connectormock.Case[wordpress.CreatedPost] { return CreatePostCreatedDraft() }
 
 // GetPostFound selects the found branch: WordPress returned the published post.
 func GetPostFound(value wordpress.Post, failure *sdkgo.Failure) connectormock.Case[wordpress.Post] {

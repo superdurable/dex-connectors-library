@@ -22,6 +22,7 @@ type Config struct {
 	SiteURL          string        `json:"siteUrl,omitempty" yaml:"siteUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxPostBytes     int64         `json:"maxPostBytes,omitempty" yaml:"maxPostBytes,omitempty"`
 }
 
 type Credentials struct {
@@ -41,12 +42,16 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	CreatePost() sdkgo.Mutation[CreatePostInput, CreatedPost]
 	GetPost() sdkgo.Query[GetPostInput, Post]
 	ListPosts() sdkgo.Query[ListPostsInput, PostPage]
 }
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) CreatePost() sdkgo.Mutation[CreatePostInput, CreatedPost] {
+	return operations.client.CreatePost()
+}
 func (operations clientOperations) GetPost() sdkgo.Query[GetPostInput, Post] {
 	return operations.client.GetPost()
 }
@@ -152,6 +157,7 @@ func DefaultConfig() Config {
 	return Config{
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 4194304,
+		MaxPostBytes:     1048576,
 	}
 }
 
@@ -162,6 +168,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.MaxPostBytes == 0 {
+		config.MaxPostBytes = defaults.MaxPostBytes
 	}
 	return config
 }
@@ -182,6 +191,9 @@ func (config Config) Validate() error {
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
 	}
+	if config.MaxPostBytes < 0 {
+		return fmt.Errorf("configuration maxPostBytes cannot be negative")
+	}
 	return nil
 }
 
@@ -193,6 +205,77 @@ func (credentials Credentials) Validate() error {
 		return fmt.Errorf("credential application_password is required")
 	}
 	return nil
+}
+
+const CreatePostBranchCreated sdkgo.BranchID = "created"
+const CreatePostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const CreatePostBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const CreatePostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var CreatePostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "createPost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: CreatePostBranchCreated, Description: "WordPress created the post and returned its numeric ID."},
+		{ID: CreatePostBranchProviderRejected, Description: "WordPress conclusively rejected the new post.", Optional: true},
+		{ID: CreatePostBranchUncertain, Description: "The request may have reached WordPress but no post ID was confirmed; do not resend automatically.", Optional: true},
+		{ID: CreatePostBranchDefect, Description: "Local post input, connection credentials, or dispatch checkpoint is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+}
+
+type CreatePostResult = sdkgo.MutationResult[CreatedPost]
+
+type CreatePostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=wordpress"`
+	operationID                       struct{}                                          `connector:"operationId=createPost"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) CreatePostInput                          `connector:"mapToOperationInput"`
+	Created                           sdkgo.Target[CreatePostResult]                    `connector:"branch=created"`
+	ProviderRejected                  sdkgo.Target[CreatePostResult]                    `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[CreatePostResult]                    `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[CreatePostResult]                    `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CreatedPost]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewCreatePostStep[IN any](config CreatePostStepConfig[IN]) sdkgo.MutationStep[IN, CreatePostInput, CreatedPost] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("wordpress connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, CreatePostInput, CreatedPost]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.CreatePost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[CreatePostResult] {
+			branches := make([]sdkgo.BranchTarget[CreatePostResult], 0, 4)
+			if config.Created.HasStep() {
+				branches = append(branches, config.Created.BranchTarget(CreatePostBranchCreated))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(CreatePostBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(CreatePostBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(CreatePostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
 }
 
 const GetPostBranchFound sdkgo.BranchID = "found"

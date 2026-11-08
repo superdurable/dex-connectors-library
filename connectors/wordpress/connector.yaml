@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: wordpress
   displayName: WordPress
-  description: Read published posts from a WordPress site's REST API.
+  description: Read published posts and create drafts or published posts through WordPress REST API.
   company: WordPress
   version: v0.1.0
 spec:
@@ -28,6 +28,11 @@ spec:
         type: integer
         description: Maximum complete WordPress JSON response in bytes, as a positive integer. Blank uses the displayed default; raise it only for a known larger post page. Oversized responses select invalidResponse.
         default: 4194304
+      - name: maxPostBytes
+        goName: MaxPostBytes
+        type: integer
+        description: Maximum complete post JSON request in bytes as a positive integer. Blank uses the displayed default; raise only for known larger posts.
+        default: 1048576
   auth:
     type: apiKey
     connectionKind: wordpress-application-password
@@ -48,8 +53,31 @@ spec:
         - Open your own WordPress site's /wp-admin/options-general.php, find Settings > General > Site Address (URL), and save that absolute HTTPS URL as siteUrl without /wp-json.
         - Open the same site's /wp-admin/profile.php, copy the Username, then under Application Passwords name this Dex connection and click Add New Application Password.
         - Copy the secret password shown once, including or omitting its display spaces, and save it in application_password. Do not use the ordinary WordPress login password.
-        - Keep timeout and maxResponseBytes blank for their displayed defaults; revoke this application's password from the same profile page when the connection is retired.
+        - For createPost, use a WordPress account with edit_posts permission for drafts and publish_posts permission to publish; Author or Editor normally has both. Keep timeout, maxResponseBytes, and maxPostBytes blank for their displayed defaults; revoke this application's password from the same profile page when the connection is retired.
   operations:
+    - name: createPost
+      goName: CreatePost
+      inputType: CreatePostInput
+      outputType: CreatedPost
+      kind: mutation
+      description: Create one draft or published post. If WordPress does not confirm the outcome, inspect Posts before creating another.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: created, goName: Created, description: WordPress created the post and returned its numeric ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: WordPress conclusively rejected the new post., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The request may have reached WordPress but no post ID was confirmed; do not resend automatically., optional: true}
+        - {id: defect, goName: Defect, description: "Local post input, connection credentials, or dispatch checkpoint is invalid.", optional: true}
+      # Sync exposes the single-dispatch heartbeat to retries; WordPress provides no create-post idempotency key.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+      mocks:
+        - name: createdDraft
+          branch: created
+          description: A Meridian release draft was created for editorial review.
+          default: true
+          output: {id: 43, status: draft}
     - name: getPost
       goName: GetPost
       inputType: GetPostInput

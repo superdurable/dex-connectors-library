@@ -16,6 +16,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "createPost/createdDraft/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[wordpress.CreatedPost](`{"id":43,"status":"draft"}`)
+			return err
+		}},
 		{name: "getPost/publishedPost/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[wordpress.Post](`{"id":42,"slug":"meridian-release","status":"publish","link":"https://example.test/meridian-release/","title":{"rendered":"Meridian release"},"content":{"rendered":"\u003cp\u003eReleased.\u003c/p\u003e"},"dateGMT":"2026-11-07T12:00:00"}`)
 			return err
@@ -34,6 +38,9 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.CreatePost().Definition().Operation.OperationID != "createPost" {
+		t.Errorf("createPost mock has another definition")
+	}
 	if mock.GetPost().Definition().Operation.OperationID != "getPost" {
 		t.Errorf("getPost mock has another definition")
 	}
