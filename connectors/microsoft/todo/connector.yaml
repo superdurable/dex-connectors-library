@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: microsoft
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-todo
+      operations: [listTaskLists, listTasks]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-microsoft-todo'
+      operations: [listTaskLists, listTasks]
+      triggers: []
   codegen:
     go:
       package: todo

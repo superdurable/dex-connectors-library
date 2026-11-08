@@ -200,12 +200,12 @@ func listFailureAttempt(result readFailure) sdkgo.QueryAttempt[TaskListsPage] {
 	if result.branch == "notFound" {
 		result.branch = ListTaskListsBranchProviderRejected
 	}
-	return sdkgo.NewQueryBranch(result.branch, TaskListsPage{}, &failure, sdkgo.Receipt{})
+	return sdkgo.NewQueryBranch(result.branch, TaskListsPage{Lists: []TaskList{}}, &failure, sdkgo.Receipt{})
 }
 func taskFailureAttempt(result readFailure) sdkgo.QueryAttempt[TasksPage] {
 	failure := sdkgo.Failure{Kind: result.kind, Provider: "microsoft-todo", Operation: "listTasks", Message: result.message}
 	if result.branch == "" {
 		return sdkgo.NewQueryRetry[TasksPage](failure, result.retryAfter)
 	}
-	return sdkgo.NewQueryBranch(result.branch, TasksPage{}, &failure, sdkgo.Receipt{})
+	return sdkgo.NewQueryBranch(result.branch, TasksPage{Tasks: []Task{}}, &failure, sdkgo.Receipt{})
 }
