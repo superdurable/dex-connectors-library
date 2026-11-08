@@ -56,6 +56,7 @@ directories:
   - connectors/getresponse
   - connectors/github
   - connectors/gitlab
+  - connectors/google/analytics
   - connectors/google/calendar
   - connectors/google/docs
   - connectors/google/drive
