@@ -1,0 +1,91 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: facebook-lead-ads
+  displayName: Facebook Lead Ads
+  description: List Page lead forms and inspect lead identity through Meta Graph API.
+  company: Meta
+  version: v0.1.0
+spec:
+  provider: facebook-lead-ads
+  codegen:
+    go:
+      package: facebookleadads
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Versioned Meta Graph API root as an absolute HTTPS URL. Blank uses the displayed endpoint; override only for a supported version or trusted test gateway.
+        default: https://graph.facebook.com/v25.0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one Meta API request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete Graph API response in bytes. Blank uses the displayed default; increase only for a known larger form page.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: meta-page-access-token
+    fields:
+      - name: page_access_token
+        goName: PageAccessToken
+        type: secretString
+        required: true
+        description: Secret opaque Page access token from https://developers.facebook.com/tools/explorer/ > select your Meta app > Get Token > Get Page Access Token > select the Page. Grant leads_retrieval and Page read permissions before copying the complete token into Dex. Blank prevents calls; revoke it from the same app or Page access settings when retired.
+    guide:
+      startURL: https://developers.facebook.com/tools/explorer/
+      steps:
+        - In Meta for Developers > My Apps, create or select a Business app with Marketing API access. An administrator must grant the app and token holder lead access to the Page and its forms; production use may require App Review and advanced permissions.
+        - In Graph API Explorer, select that app, request leads_retrieval, pages_show_list, pages_read_engagement, and pages_manage_ads as required for the Page, then choose Get Token > Get Page Access Token and select the Page.
+        - Save the complete opaque Page access token only in page_access_token in Dex. Never put it in Flow input or logs. Revoke or rotate it in Meta when retired.
+        - Find the Page ID in Meta Business Suite > Settings > Business assets > Pages; listLeadForms returns form IDs, and the leadgen webhook or Ads Manager supplies lead IDs. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listLeadForms
+      goName: ListLeadForms
+      inputType: ListLeadFormsInput
+      outputType: LeadFormsPage
+      kind: query
+      description: Read one page of lead-form IDs, names, and statuses for a Facebook Page.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one lead-form page.}
+        - {id: notFound, goName: NotFound, description: The Page is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example Page lead form is available.
+          output:
+            forms: [{id: '123456789012345', name: 'Contact request', status: 'ACTIVE'}]
+            nextCursor: ''
+    - name: getLead
+      goName: GetLead
+      inputType: GetLeadInput
+      outputType: LeadMetadata
+      kind: query
+      description: Read lead ID, creation time, form ID, and ad ID without answer fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Meta returned lead identity metadata.}
+        - {id: notFound, goName: NotFound, description: The lead is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one example lead.
+          output: {id: '987654321012345', formId: '123456789012345', adId: '112233445566778', createdTime: '2026-11-08T10:00:00+0000'}
