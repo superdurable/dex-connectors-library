@@ -84,9 +84,10 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 			return fmt.Errorf("spec.languages.typescript requires %s: %w", packagePath, err)
 		}
 		var declaration struct {
-			Name    string    `json:"name"`
-			Version string    `json:"version"`
-			Files   *[]string `json:"files"`
+			Name    string                      `json:"name"`
+			Version string                      `json:"version"`
+			Files   *[]string                   `json:"files"`
+			Exports *map[string]json.RawMessage `json:"exports"`
 		}
 		if err := json.Unmarshal(contents, &declaration); err != nil {
 			return fmt.Errorf("parse %s: %w", packagePath, err)
@@ -96,6 +97,10 @@ func validateLanguagePackages(manifestPath string, manifest schema.Manifest) err
 		}
 		if declaration.Files != nil && !slices.Contains(*declaration.Files, "dex-connector.json") && !slices.Contains(*declaration.Files, "./dex-connector.json") {
 			return fmt.Errorf("%s files must include dex-connector.json", packagePath)
+		}
+		// An exports map hides every unlisted file, so an agent host could not import the manifest.
+		if declaration.Exports != nil && string((*declaration.Exports)["./dex-connector.json"]) != `"./dex-connector.json"` {
+			return fmt.Errorf(`%s exports must map "./dex-connector.json" to "./dex-connector.json"`, packagePath)
 		}
 	}
 	return nil
