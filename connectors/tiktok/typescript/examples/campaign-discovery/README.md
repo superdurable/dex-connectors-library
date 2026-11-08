@@ -1,0 +1,3 @@
+# TypeScript campaign discovery example
+
+The Worker runs `TikTokCampaignDiscoveryTypeScript` through the static `tiktok-business` connection and stores the selected campaign page. Configure the secret `access_token` as described in the [connector README](../../README.md). From `connectors/tiktok/typescript`, run `npm run example:worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Run `npm run example:start -- <advertiser-id>` with your decimal Ads Manager account ID. Optional branches are unwired. The integration test runs the same Flow against real Dex and a local provider fixture.
