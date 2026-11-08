@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: google-contacts
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listContacts, getContact, createContact]
+      triggers: []
   codegen:
     go:
       package: contacts
