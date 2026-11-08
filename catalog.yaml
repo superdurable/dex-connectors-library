@@ -22,6 +22,7 @@ directories:
   - connectors/braintree
   - connectors/braze
   - connectors/brevo
+  - connectors/buffer
   - connectors/calendly
   - connectors/campaignmonitor
   - connectors/chargebee
