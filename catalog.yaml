@@ -3,6 +3,7 @@ kind: ConnectorCatalogSource
 directories:
   - connectors/activecampaign
   - connectors/adobe/acrobat-sign
+  - connectors/adobe/marketo
   - connectors/adyen
   - connectors/airtable
   - connectors/algolia
