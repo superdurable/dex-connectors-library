@@ -1,6 +1,6 @@
 # Google Search Console connector
 
-The Go connector lists properties accessible to the connected Google account, returning each property URL and permission level. The [sites Flow](go/examples/sites/README.md) uses the static `google-search-console` Dex Web connection and the `listSites` Step.
+The Go and [Python](python/README.md) connectors list properties accessible to the connected Google account, returning each property URL and permission level. Their runnable sites Flows use the static `google-search-console` Dex Web connection and the `listSites` Step. Python replays the Go-recorded provider scenarios.
 
 ## Connection setup
 
