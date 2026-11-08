@@ -74,6 +74,7 @@ directories:
   - connectors/intuit/quickbooks
   - connectors/iterable
   - connectors/jotform
+  - connectors/keap
   - connectors/kit
   - connectors/klaviyo
   - connectors/lever
