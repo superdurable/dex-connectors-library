@@ -7,6 +7,15 @@ metadata:
   company: Microsoft
   version: v0.1.0
 spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listProjects, getWorkItem]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listProjects, getWorkItem]
+      triggers: []
   provider: azure-devops
   codegen:
     go:
