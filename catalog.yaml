@@ -34,6 +34,7 @@ directories:
   - connectors/eventbrite
   - connectors/figma
   - connectors/freshworks/freshdesk
+  - connectors/freshworks/freshsales
   - connectors/front
   - connectors/getresponse
   - connectors/github
