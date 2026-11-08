@@ -20,8 +20,10 @@ const ConnectorID = "dropbox"
 
 type Config struct {
 	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
+	ContentBaseURL   string        `json:"contentBaseUrl,omitempty" yaml:"contentBaseUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxDownloadBytes int64         `json:"maxDownloadBytes,omitempty" yaml:"maxDownloadBytes,omitempty"`
 }
 
 type Credentials struct {
@@ -45,6 +47,8 @@ type Connection struct {
 type Operations interface {
 	ListFolder() sdkgo.Query[ListFolderInput, FolderPage]
 	GetMetadata() sdkgo.Query[GetMetadataInput, EntryMetadata]
+	ContinueFolder() sdkgo.Query[ContinueFolderInput, FolderPage]
+	DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile]
 }
 
 type clientOperations struct{ client *Client }
@@ -54,6 +58,12 @@ func (operations clientOperations) ListFolder() sdkgo.Query[ListFolderInput, Fol
 }
 func (operations clientOperations) GetMetadata() sdkgo.Query[GetMetadataInput, EntryMetadata] {
 	return operations.client.GetMetadata()
+}
+func (operations clientOperations) ContinueFolder() sdkgo.Query[ContinueFolderInput, FolderPage] {
+	return operations.client.ContinueFolder()
+}
+func (operations clientOperations) DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile] {
+	return operations.client.DownloadFile()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -194,8 +204,10 @@ func (Connection) GoString() string { return "dropbox.Connection{[REDACTED]}" }
 func DefaultConfig() Config {
 	return Config{
 		BaseURL:          "https://api.dropboxapi.com",
+		ContentBaseURL:   "https://content.dropboxapi.com",
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 2097152,
+		MaxDownloadBytes: 1048576,
 	}
 }
 
@@ -204,11 +216,17 @@ func withConfigDefaults(config Config) Config {
 	if config.BaseURL == "" {
 		config.BaseURL = defaults.BaseURL
 	}
+	if config.ContentBaseURL == "" {
+		config.ContentBaseURL = defaults.ContentBaseURL
+	}
 	if config.Timeout == 0 {
 		config.Timeout = defaults.Timeout
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.MaxDownloadBytes == 0 {
+		config.MaxDownloadBytes = defaults.MaxDownloadBytes
 	}
 	return config
 }
@@ -220,11 +238,20 @@ func (config Config) Validate() error {
 			return fmt.Errorf("configuration baseUrl must be an absolute URL")
 		}
 	}
+	if config.ContentBaseURL != "" {
+		parsed, err := url.Parse(config.ContentBaseURL)
+		if err != nil || parsed.Scheme == "" || parsed.Hostname() == "" {
+			return fmt.Errorf("configuration contentBaseUrl must be an absolute URL")
+		}
+	}
 	if config.Timeout < 0 {
 		return fmt.Errorf("configuration timeout cannot be negative")
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.MaxDownloadBytes < 0 {
+		return fmt.Errorf("configuration maxDownloadBytes cannot be negative")
 	}
 	return nil
 }
@@ -402,6 +429,166 @@ func NewGetMetadataStep[IN any](config GetMetadataStepConfig[IN]) sdkgo.QuerySte
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetMetadataBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const ContinueFolderBranchListed sdkgo.BranchID = "listed"
+const ContinueFolderBranchCursorExpired sdkgo.BranchID = "cursorExpired"
+const ContinueFolderBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ContinueFolderBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ContinueFolderBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ContinueFolderDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "continueFolder"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ContinueFolderBranchListed, Description: "Dropbox returned another folder page or change set."},
+		{ID: ContinueFolderBranchCursorExpired, Description: "Dropbox requires a new listFolder call to reset this cursor.", Optional: true},
+		{ID: ContinueFolderBranchProviderRejected, Description: "Dropbox conclusively rejected the request.", Optional: true},
+		{ID: ContinueFolderBranchInvalidResponse, Description: "Dropbox returned malformed or oversized JSON.", Optional: true},
+		{ID: ContinueFolderBranchDefect, Description: "Local cursor or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ContinueFolderResult = sdkgo.QueryResult[FolderPage]
+
+type ContinueFolderStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                      `connector:"connectorId=dropbox"`
+	operationID                    struct{}                                      `connector:"operationId=continueFolder"`
+	StepType                       string                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                         `connector:"annotations"`
+	Connection                     Connection                                    `connector:"connection"`
+	ConnectionName                 string                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) ContinueFolderInput                  `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ContinueFolderResult]            `connector:"branch=listed"`
+	CursorExpired                  sdkgo.Target[ContinueFolderResult]            `connector:"branch=cursorExpired,optional"`
+	ProviderRejected               sdkgo.Target[ContinueFolderResult]            `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ContinueFolderResult]            `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ContinueFolderResult]            `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[FolderPage]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                              `connector:"stepOptionsOverride"`
+}
+
+func NewContinueFolderStep[IN any](config ContinueFolderStepConfig[IN]) sdkgo.QueryStep[IN, ContinueFolderInput, FolderPage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ContinueFolderInput, FolderPage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.ContinueFolder(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ContinueFolderResult] {
+			branches := make([]sdkgo.BranchTarget[ContinueFolderResult], 0, 5)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ContinueFolderBranchListed))
+			}
+			if config.CursorExpired.HasStep() {
+				branches = append(branches, config.CursorExpired.BranchTarget(ContinueFolderBranchCursorExpired))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ContinueFolderBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ContinueFolderBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ContinueFolderBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const DownloadFileBranchDownloaded sdkgo.BranchID = "downloaded"
+const DownloadFileBranchNotFound sdkgo.BranchID = "notFound"
+const DownloadFileBranchTooLarge sdkgo.BranchID = "tooLarge"
+const DownloadFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const DownloadFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const DownloadFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var DownloadFileDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "downloadFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: DownloadFileBranchDownloaded, Description: "Dropbox returned the selected file content."},
+		{ID: DownloadFileBranchNotFound, Description: "Dropbox did not find this file.", Optional: true},
+		{ID: DownloadFileBranchTooLarge, Description: "The file exceeds the configured download limit.", Optional: true},
+		{ID: DownloadFileBranchProviderRejected, Description: "Dropbox conclusively rejected the request.", Optional: true},
+		{ID: DownloadFileBranchInvalidResponse, Description: "Dropbox returned missing or malformed file metadata.", Optional: true},
+		{ID: DownloadFileBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type DownloadFileResult = sdkgo.QueryResult[DownloadedFile]
+
+type DownloadFileStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                          `connector:"connectorId=dropbox"`
+	operationID                    struct{}                                          `connector:"operationId=downloadFile"`
+	StepType                       string                                            `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                     Connection                                        `connector:"connection"`
+	ConnectionName                 string                                            `connector:"connectionName"`
+	MapToOperationInput            func(IN) DownloadFileInput                        `connector:"mapToOperationInput"`
+	Downloaded                     sdkgo.Target[DownloadFileResult]                  `connector:"branch=downloaded"`
+	NotFound                       sdkgo.Target[DownloadFileResult]                  `connector:"branch=notFound,optional"`
+	TooLarge                       sdkgo.Target[DownloadFileResult]                  `connector:"branch=tooLarge,optional"`
+	ProviderRejected               sdkgo.Target[DownloadFileResult]                  `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[DownloadFileResult]                  `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[DownloadFileResult]                  `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[DownloadedFile]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewDownloadFileStep[IN any](config DownloadFileStepConfig[IN]) sdkgo.QueryStep[IN, DownloadFileInput, DownloadedFile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, DownloadFileInput, DownloadedFile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.DownloadFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[DownloadFileResult] {
+			branches := make([]sdkgo.BranchTarget[DownloadFileResult], 0, 6)
+			if config.Downloaded.HasStep() {
+				branches = append(branches, config.Downloaded.BranchTarget(DownloadFileBranchDownloaded))
+			}
+			if config.NotFound.HasStep() {
+				branches = append(branches, config.NotFound.BranchTarget(DownloadFileBranchNotFound))
+			}
+			if config.TooLarge.HasStep() {
+				branches = append(branches, config.TooLarge.BranchTarget(DownloadFileBranchTooLarge))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(DownloadFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(DownloadFileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(DownloadFileBranchDefect))
 			}
 			return branches
 		}(),

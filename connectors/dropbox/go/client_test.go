@@ -72,3 +72,49 @@ func TestGetMetadataNotFound(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, GetMetadataBranchNotFound, result.Branch)
 }
+
+func TestContinueFolderUsesCursorAndRecognizesReset(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/2/files/list_folder/continue", r.URL.Path)
+		var request struct {
+			Cursor string `json:"cursor"`
+		}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		require.Equal(t, "next-cursor", request.Cursor)
+		w.WriteHeader(http.StatusConflict)
+		_, err := w.Write([]byte(`{"error_summary":"reset/..."}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: testCredentials()})
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(queryContext{}, client.ContinueFolder(), testConnection, ContinueFolderInput{Cursor: "next-cursor"})
+	require.NoError(t, err)
+	require.Equal(t, ContinueFolderBranchCursorExpired, result.Branch)
+}
+
+func TestDownloadFileUsesContentEndpointAndKeepsOnlyBoundedBytes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/2/files/download", r.URL.Path)
+		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		var argument struct {
+			Path string `json:"path"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(r.Header.Get("Dropbox-API-Arg")), &argument))
+		require.Equal(t, "/Projects/naïve.txt", argument.Path)
+		require.Contains(t, r.Header.Get("Dropbox-API-Arg"), `\u00ef`)
+		w.Header().Set("Dropbox-API-Result", `{".tag":"file","id":"id:example","name":"naïve.txt","path_display":"/Projects/naïve.txt","content_hash":"not-persisted"}`)
+		_, err := w.Write([]byte("Hello"))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client, err := New(Config{ContentBaseURL: server.URL, MaxDownloadBytes: 8}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: testCredentials()})
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(queryContext{}, client.DownloadFile(), testConnection, DownloadFileInput{Path: "/Projects/naïve.txt"})
+	require.NoError(t, err)
+	require.Equal(t, DownloadFileBranchDownloaded, result.Branch)
+	require.Equal(t, "SGVsbG8=", result.Value.ContentBase64)
+	require.Equal(t, 5, result.Value.ContentBytes)
+	require.Equal(t, EntryMetadata{ID: "id:example", Name: "naïve.txt", PathDisplay: "/Projects/naïve.txt", Kind: "file"}, result.Value.File)
+}

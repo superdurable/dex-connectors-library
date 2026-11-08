@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package dropbox exposes typed Dropbox file metadata Queries to Dex Flows.
+// Package dropbox exposes typed Dropbox file Queries to Dex Flows.
 package dropbox
 
 import (
@@ -30,7 +30,9 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 // Client holds immutable provider configuration and resolves OAuth credentials per call.
 type Client struct {
 	baseURL          string
+	contentBaseURL   string
 	maxResponseBytes int64
+	maxDownloadBytes int64
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	httpClient       *http.Client
@@ -49,7 +51,11 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Dropbox API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	contentBaseURL, err := providerhttp.ValidateBaseURL(config.ContentBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Dropbox content API URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, contentBaseURL: contentBaseURL, maxResponseBytes: config.MaxResponseBytes, maxDownloadBytes: config.MaxDownloadBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, fmt.Errorf("Dropbox client option is required")
@@ -66,19 +72,9 @@ var errRefresh = errors.New("Dropbox credential refresh failed")
 var errRequest = errors.New("Dropbox request failed")
 
 func (client *Client) post(call sdkgo.Call, path string, payload []byte) ([]byte, int, time.Duration, error) {
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
-		return nil, 0, 0, errCredential
-	}
+	accessToken, err := client.resolveAccessToken(call)
 	if err != nil {
-		return nil, 0, 0, errRefresh
-	}
-	if credentials.Validate() != nil {
-		return nil, 0, 0, errCredential
-	}
-	accessToken := credentials.AccessToken.Reveal()
-	if !providerhttp.IsHeaderSafeCredential(accessToken) {
-		return nil, 0, 0, errCredential
+		return nil, 0, 0, err
 	}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.baseURL+path, bytes.NewReader(payload))
 	if err != nil {
@@ -101,7 +97,63 @@ func (client *Client) post(call sdkgo.Call, path string, payload []byte) ([]byte
 	return body, response.StatusCode, retryAfter, err
 }
 
-type queryBranches struct{ found, notFound, rejected, invalid, defect sdkgo.BranchID }
+func (client *Client) resolveAccessToken(call sdkgo.Call) (string, error) {
+	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if sdkgo.IsReauthorizationRequired(err) {
+		return "", errCredential
+	}
+	if err != nil {
+		return "", errRefresh
+	}
+	if credentials.Validate() != nil {
+		return "", errCredential
+	}
+	accessToken := credentials.AccessToken.Reveal()
+	if !providerhttp.IsHeaderSafeCredential(accessToken) {
+		return "", errCredential
+	}
+	return accessToken, nil
+}
+
+type contentResponse struct {
+	body       []byte
+	metadata   string
+	status     int
+	retryAfter time.Duration
+	err        error
+}
+
+func (client *Client) download(call sdkgo.Call, filePath string) contentResponse {
+	accessToken, err := client.resolveAccessToken(call)
+	if err != nil {
+		return contentResponse{err: err}
+	}
+	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.contentBaseURL+"/2/files/download", nil)
+	if err != nil {
+		return contentResponse{err: errRequest}
+	}
+	request.Header.Set("Dropbox-API-Arg", `{"path":`+strconv.QuoteToASCII(filePath)+`}`)
+	request.Header.Set("Authorization", "Bearer "+accessToken)
+	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return contentResponse{err: errRequest}
+	}
+	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	limit := client.maxDownloadBytes
+	if response.StatusCode != http.StatusOK {
+		limit = client.maxResponseBytes
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, limit)
+	metadata := response.Header.Get("Dropbox-API-Result")
+	if len(metadata) > 65536 || strings.Contains(metadata, accessToken) || bytes.Contains(body, []byte(accessToken)) {
+		return contentResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
+	}
+	return contentResponse{body: body, metadata: metadata, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+type queryBranches struct{ found, notFound, cursorExpired, rejected, invalid, defect sdkgo.BranchID }
 
 func invokeQuery[T any](call sdkgo.Call, client *Client, operation, path string, payload []byte, branches queryBranches, decode func([]byte) (T, error)) sdkgo.QueryAttempt[T] {
 	var zero T
@@ -125,8 +177,11 @@ func invokeQuery[T any](call sdkgo.Call, client *Client, operation, path string,
 		var providerError struct {
 			ErrorSummary string `json:"error_summary"`
 		}
-		if json.Unmarshal(body, &providerError) == nil && strings.HasPrefix(providerError.ErrorSummary, "path/not_found") {
+		if json.Unmarshal(body, &providerError) == nil && branches.notFound != "" && strings.HasPrefix(providerError.ErrorSummary, "path/not_found") {
 			return queryBranch(operation, branches.notFound, zero, sdkgo.FailureNotFound, "Dropbox did not find the resource")
+		}
+		if branches.cursorExpired != "" && strings.HasPrefix(providerError.ErrorSummary, "reset/") {
+			return queryBranch(operation, branches.cursorExpired, zero, sdkgo.FailureProviderRejection, "Dropbox folder cursor expired")
 		}
 	}
 	if status != http.StatusOK {

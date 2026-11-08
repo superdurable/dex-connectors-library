@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package folderdiscovery runs Azure DevOps listFolder as one Dex Flow.
+// Package folderdiscovery runs Dropbox listFolder as one Dex Flow.
 package folderdiscovery
 
 import (
@@ -42,7 +42,7 @@ func (flow *Flow) GetSteps() []dex.StepDef {
 		dex.DefineStartStep(startRequest{}),
 		dex.DefineStep(dropbox.NewListFolderStep(dropbox.ListFolderStepConfig[dropbox.ListFolderInput]{
 			StepType: operationStepType, ConnectionName: ConnectionName,
-			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Azure DevOps", Explanation: "Call the provider's listFolder operation."},
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Dropbox", Explanation: "Call the provider's listFolder operation."},
 			Connection:          flow.connection,
 			MapToOperationInput: MapToOperationInput,
 			Listed:              sdkgo.GoTo(completeResult{}),

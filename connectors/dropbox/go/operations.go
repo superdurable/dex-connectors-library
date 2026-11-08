@@ -48,11 +48,20 @@ type GetMetadataInput struct {
 	Path string `json:"path"`
 }
 
+// ContinueFolderInput selects the page or changes after a Dropbox cursor.
+type ContinueFolderInput struct {
+	// Cursor is returned by a previous folder listing or continuation.
+	Cursor string `json:"cursor"`
+}
+
 // ListFolderOperation reads one folder page.
 type ListFolderOperation struct{ client *Client }
 
 // GetMetadataOperation reads one file or folder identity.
 type GetMetadataOperation struct{ client *Client }
+
+// ContinueFolderOperation reads the next folder page or change set.
+type ContinueFolderOperation struct{ client *Client }
 
 // ListFolder binds folder discovery to this client.
 func (client *Client) ListFolder() ListFolderOperation { return ListFolderOperation{client} }
@@ -60,11 +69,19 @@ func (client *Client) ListFolder() ListFolderOperation { return ListFolderOperat
 // GetMetadata binds entry metadata lookup to this client.
 func (client *Client) GetMetadata() GetMetadataOperation { return GetMetadataOperation{client} }
 
+// ContinueFolder binds cursor continuation to this client.
+func (client *Client) ContinueFolder() ContinueFolderOperation {
+	return ContinueFolderOperation{client}
+}
+
 // Definition returns the generated folder Query contract.
 func (ListFolderOperation) Definition() sdkgo.QueryDefinition { return ListFolderDefinition }
 
 // Definition returns the generated entry Query contract.
 func (GetMetadataOperation) Definition() sdkgo.QueryDefinition { return GetMetadataDefinition }
+
+// Definition returns the generated continuation Query contract.
+func (ContinueFolderOperation) Definition() sdkgo.QueryDefinition { return ContinueFolderDefinition }
 
 // Invoke lists one page of direct child entries.
 func (operation ListFolderOperation) Invoke(call sdkgo.Call, input ListFolderInput) sdkgo.QueryAttempt[FolderPage] {
@@ -95,6 +112,21 @@ func (operation GetMetadataOperation) Invoke(call sdkgo.Call, input GetMetadataI
 		return queryBranch("getMetadata", branches.defect, EntryMetadata{}, sdkgo.FailureLocalDefect, "metadata request could not be built")
 	}
 	return invokeQuery(call, operation.client, "getMetadata", "/2/files/get_metadata", payload, branches, decodeEntry)
+}
+
+// Invoke continues a Dropbox folder listing from its last returned cursor.
+func (operation ContinueFolderOperation) Invoke(call sdkgo.Call, input ContinueFolderInput) sdkgo.QueryAttempt[FolderPage] {
+	branches := queryBranches{found: ContinueFolderBranchListed, cursorExpired: ContinueFolderBranchCursorExpired, rejected: ContinueFolderBranchProviderRejected, invalid: ContinueFolderBranchInvalidResponse, defect: ContinueFolderBranchDefect}
+	if input.Cursor == "" || len(input.Cursor) > 4096 || !utf8.ValidString(input.Cursor) || strings.ContainsAny(input.Cursor, "\r\n\x00") {
+		return queryBranch("continueFolder", branches.defect, FolderPage{}, sdkgo.FailureValidation, "folder cursor is invalid")
+	}
+	payload, err := json.Marshal(struct {
+		Cursor string `json:"cursor"`
+	}{Cursor: input.Cursor})
+	if err != nil {
+		return queryBranch("continueFolder", branches.defect, FolderPage{}, sdkgo.FailureLocalDefect, "continuation request could not be built")
+	}
+	return invokeQuery(call, operation.client, "continueFolder", "/2/files/list_folder/continue", payload, branches, decodeFolderPage)
 }
 
 func validDropboxPath(path string, allowRoot bool) bool {

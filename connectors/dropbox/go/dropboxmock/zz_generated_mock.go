@@ -17,9 +17,11 @@ import (
 
 // Mock is a scripted dropbox connection. Script each operation through its accessor.
 type Mock struct {
-	connection  dropbox.Connection
-	listFolder  *connectormock.Query[dropbox.ListFolderInput, dropbox.FolderPage]
-	getMetadata *connectormock.Query[dropbox.GetMetadataInput, dropbox.EntryMetadata]
+	connection     dropbox.Connection
+	listFolder     *connectormock.Query[dropbox.ListFolderInput, dropbox.FolderPage]
+	getMetadata    *connectormock.Query[dropbox.GetMetadataInput, dropbox.EntryMetadata]
+	continueFolder *connectormock.Query[dropbox.ContinueFolderInput, dropbox.FolderPage]
+	downloadFile   *connectormock.Query[dropbox.DownloadFileInput, dropbox.DownloadedFile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +29,15 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listFolder:  connectormock.NewQuery[dropbox.ListFolderInput, dropbox.FolderPage](t, dropbox.ListFolderDefinition),
-		getMetadata: connectormock.NewQuery[dropbox.GetMetadataInput, dropbox.EntryMetadata](t, dropbox.GetMetadataDefinition),
+		listFolder:     connectormock.NewQuery[dropbox.ListFolderInput, dropbox.FolderPage](t, dropbox.ListFolderDefinition),
+		getMetadata:    connectormock.NewQuery[dropbox.GetMetadataInput, dropbox.EntryMetadata](t, dropbox.GetMetadataDefinition),
+		continueFolder: connectormock.NewQuery[dropbox.ContinueFolderInput, dropbox.FolderPage](t, dropbox.ContinueFolderDefinition),
+		downloadFile:   connectormock.NewQuery[dropbox.DownloadFileInput, dropbox.DownloadedFile](t, dropbox.DownloadFileDefinition),
 	}
 	mock.listFolder.Default(ListFolderDefault())
 	mock.getMetadata.Default(GetMetadataDefault())
+	mock.continueFolder.Default(ContinueFolderDefault())
+	mock.downloadFile.Default(DownloadFileDefault())
 	connection, err := dropbox.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "dropbox", Name: connectionName})
 	if err != nil {
 		t.Fatalf("dropbox mock connection: %v", err)
@@ -53,6 +59,16 @@ func (mock *Mock) GetMetadata() *connectormock.Query[dropbox.GetMetadataInput, d
 	return mock.getMetadata
 }
 
+// ContinueFolder returns the continueFolder script.
+func (mock *Mock) ContinueFolder() *connectormock.Query[dropbox.ContinueFolderInput, dropbox.FolderPage] {
+	return mock.continueFolder
+}
+
+// DownloadFile returns the downloadFile script.
+func (mock *Mock) DownloadFile() *connectormock.Query[dropbox.DownloadFileInput, dropbox.DownloadedFile] {
+	return mock.downloadFile
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListFolder() sdkgo.Query[dropbox.ListFolderInput, dropbox.FolderPage] {
@@ -60,6 +76,12 @@ func (operations mockOperations) ListFolder() sdkgo.Query[dropbox.ListFolderInpu
 }
 func (operations mockOperations) GetMetadata() sdkgo.Query[dropbox.GetMetadataInput, dropbox.EntryMetadata] {
 	return operations.mock.getMetadata
+}
+func (operations mockOperations) ContinueFolder() sdkgo.Query[dropbox.ContinueFolderInput, dropbox.FolderPage] {
+	return operations.mock.continueFolder
+}
+func (operations mockOperations) DownloadFile() sdkgo.Query[dropbox.DownloadFileInput, dropbox.DownloadedFile] {
+	return operations.mock.downloadFile
 }
 
 // ListFolderListed selects the listed branch: Dropbox returned a folder page.
@@ -139,3 +161,90 @@ func GetMetadataFoundDefault() connectormock.Case[dropbox.EntryMetadata] {
 
 // GetMetadataDefault is the manifest default, foundDefault, which New installs.
 func GetMetadataDefault() connectormock.Case[dropbox.EntryMetadata] { return GetMetadataFoundDefault() }
+
+// ContinueFolderListed selects the listed branch: Dropbox returned another folder page or change set.
+func ContinueFolderListed(value dropbox.FolderPage, failure *sdkgo.Failure) connectormock.Case[dropbox.FolderPage] {
+	return connectormock.Branch(dropbox.ContinueFolderBranchListed, value, failure)
+}
+
+// ContinueFolderCursorExpired selects the cursorExpired branch: Dropbox requires a new listFolder call to reset this cursor.
+func ContinueFolderCursorExpired(value dropbox.FolderPage, failure *sdkgo.Failure) connectormock.Case[dropbox.FolderPage] {
+	return connectormock.Branch(dropbox.ContinueFolderBranchCursorExpired, value, failure)
+}
+
+// ContinueFolderProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the request.
+func ContinueFolderProviderRejected(value dropbox.FolderPage, failure *sdkgo.Failure) connectormock.Case[dropbox.FolderPage] {
+	return connectormock.Branch(dropbox.ContinueFolderBranchProviderRejected, value, failure)
+}
+
+// ContinueFolderInvalidResponse selects the invalidResponse branch: Dropbox returned malformed or oversized JSON.
+func ContinueFolderInvalidResponse(value dropbox.FolderPage, failure *sdkgo.Failure) connectormock.Case[dropbox.FolderPage] {
+	return connectormock.Branch(dropbox.ContinueFolderBranchInvalidResponse, value, failure)
+}
+
+// ContinueFolderDefect selects the defect branch: Local cursor or connection credentials are invalid.
+func ContinueFolderDefect(value dropbox.FolderPage, failure *sdkgo.Failure) connectormock.Case[dropbox.FolderPage] {
+	return connectormock.Branch(dropbox.ContinueFolderBranchDefect, value, failure)
+}
+
+// ContinueFolderRetry asks Dex to retry the continueFolder Step, after the delay when it is positive.
+func ContinueFolderRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.FolderPage] {
+	return connectormock.Retry[dropbox.FolderPage](failure, after)
+}
+
+// ContinueFolderListedDefault is the manifest mock listedDefault: One example file in a continuation page.
+func ContinueFolderListedDefault() connectormock.Case[dropbox.FolderPage] {
+	value := connectormock.MustDecodeOutput[dropbox.FolderPage](`{"entries":[{"id":"id:continued","name":"continued.txt","pathDisplay":"/continued.txt","kind":"file"}],"cursor":"example-cursor-2","hasMore":false}`)
+	return connectormock.Branch(dropbox.ContinueFolderBranchListed, value, nil)
+}
+
+// ContinueFolderDefault is the manifest default, listedDefault, which New installs.
+func ContinueFolderDefault() connectormock.Case[dropbox.FolderPage] {
+	return ContinueFolderListedDefault()
+}
+
+// DownloadFileDownloaded selects the downloaded branch: Dropbox returned the selected file content.
+func DownloadFileDownloaded(value dropbox.DownloadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.DownloadedFile] {
+	return connectormock.Branch(dropbox.DownloadFileBranchDownloaded, value, failure)
+}
+
+// DownloadFileNotFound selects the notFound branch: Dropbox did not find this file.
+func DownloadFileNotFound(value dropbox.DownloadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.DownloadedFile] {
+	return connectormock.Branch(dropbox.DownloadFileBranchNotFound, value, failure)
+}
+
+// DownloadFileTooLarge selects the tooLarge branch: The file exceeds the configured download limit.
+func DownloadFileTooLarge(value dropbox.DownloadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.DownloadedFile] {
+	return connectormock.Branch(dropbox.DownloadFileBranchTooLarge, value, failure)
+}
+
+// DownloadFileProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the request.
+func DownloadFileProviderRejected(value dropbox.DownloadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.DownloadedFile] {
+	return connectormock.Branch(dropbox.DownloadFileBranchProviderRejected, value, failure)
+}
+
+// DownloadFileInvalidResponse selects the invalidResponse branch: Dropbox returned missing or malformed file metadata.
+func DownloadFileInvalidResponse(value dropbox.DownloadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.DownloadedFile] {
+	return connectormock.Branch(dropbox.DownloadFileBranchInvalidResponse, value, failure)
+}
+
+// DownloadFileDefect selects the defect branch: Local input or connection credentials are invalid.
+func DownloadFileDefect(value dropbox.DownloadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.DownloadedFile] {
+	return connectormock.Branch(dropbox.DownloadFileBranchDefect, value, failure)
+}
+
+// DownloadFileRetry asks Dex to retry the downloadFile Step, after the delay when it is positive.
+func DownloadFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.DownloadedFile] {
+	return connectormock.Retry[dropbox.DownloadedFile](failure, after)
+}
+
+// DownloadFileDownloadedDefault is the manifest mock downloadedDefault: One example text file is downloaded.
+func DownloadFileDownloadedDefault() connectormock.Case[dropbox.DownloadedFile] {
+	value := connectormock.MustDecodeOutput[dropbox.DownloadedFile](`{"file":{"id":"id:example","name":"example.txt","pathDisplay":"/example.txt","kind":"file"},"contentBase64":"SGVsbG8=","contentBytes":5}`)
+	return connectormock.Branch(dropbox.DownloadFileBranchDownloaded, value, nil)
+}
+
+// DownloadFileDefault is the manifest default, downloadedDefault, which New installs.
+func DownloadFileDefault() connectormock.Case[dropbox.DownloadedFile] {
+	return DownloadFileDownloadedDefault()
+}

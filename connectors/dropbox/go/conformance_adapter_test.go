@@ -20,10 +20,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	if scenario.Name == "listFolder-defect" {
 		credentials = Credentials{}
 	}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
+	client, err := New(Config{BaseURL: endpoint, ContentBaseURL: endpoint, MaxDownloadBytes: 8}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
-		"listFolder":  newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListFolder(), testConnection),
-		"getMetadata": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetMetadata(), testConnection),
+		"listFolder":     newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListFolder(), testConnection),
+		"getMetadata":    newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.GetMetadata(), testConnection),
+		"continueFolder": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ContinueFolder(), testConnection),
+		"downloadFile":   newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.DownloadFile(), testConnection),
 	}}
 }

@@ -24,6 +24,14 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[dropbox.EntryMetadata](`{"id":"id:example","name":"example.txt","pathDisplay":"/example.txt","kind":"file"}`)
 			return err
 		}},
+		{name: "continueFolder/listedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropbox.FolderPage](`{"entries":[{"id":"id:continued","name":"continued.txt","pathDisplay":"/continued.txt","kind":"file"}],"cursor":"example-cursor-2","hasMore":false}`)
+			return err
+		}},
+		{name: "downloadFile/downloadedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[dropbox.DownloadedFile](`{"file":{"id":"id:example","name":"example.txt","pathDisplay":"/example.txt","kind":"file"},"contentBase64":"SGVsbG8=","contentBytes":5}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +47,11 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetMetadata().Definition().Operation.OperationID != "getMetadata" {
 		t.Errorf("getMetadata mock has another definition")
+	}
+	if mock.ContinueFolder().Definition().Operation.OperationID != "continueFolder" {
+		t.Errorf("continueFolder mock has another definition")
+	}
+	if mock.DownloadFile().Definition().Operation.OperationID != "downloadFile" {
+		t.Errorf("downloadFile mock has another definition")
 	}
 }

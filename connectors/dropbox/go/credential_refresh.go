@@ -22,7 +22,7 @@ const (
 
 var (
 	// dropboxRequiredOAuthScopes must match the manifest scopes.
-	dropboxRequiredOAuthScopes = []string{"files.metadata.read"}
+	dropboxRequiredOAuthScopes = []string{"files.metadata.read", "files.content.read"}
 	// dropboxTerminalRefreshErrorCodes are RFC 6749 section 5.2 codes; Dropbox documents none of its own.
 	dropboxTerminalRefreshErrorCodes = []string{"invalid_client", "invalid_grant", "unauthorized_client"}
 )
@@ -74,7 +74,7 @@ func (driver *CredentialRefreshDriver) Refresh(
 		return sdkgo.CredentialRefreshResult[Credentials]{}, err
 	}
 	if token.Scope != "" && !oauthtoken.HasAllScopes(token.Scope, dropboxRequiredOAuthScopes) {
-		return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.NewReauthorizationRequiredError(errors.New("Dropbox credential lacks files.metadata.read"))
+		return sdkgo.CredentialRefreshResult[Credentials]{}, sdkgo.NewReauthorizationRequiredError(errors.New("Dropbox credential lacks a required file scope"))
 	}
 	credentials.AccessToken = token.AccessToken
 	credentials.RefreshToken = token.NextRefreshToken(credentials.RefreshToken)

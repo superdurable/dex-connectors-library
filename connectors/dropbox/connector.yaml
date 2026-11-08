@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: dropbox
   displayName: Dropbox
-  description: List Dropbox folders and read file or folder metadata through typed Dex Queries.
+  description: List and continue Dropbox folder pages, read metadata, and download bounded file content through typed Dex Queries.
   company: Dropbox
   version: v0.1.0
 spec:
@@ -18,6 +18,11 @@ spec:
         type: url
         description: Dropbox RPC API root. Blank uses the displayed public endpoint; override only for an approved compatible gateway or local provider test.
         default: https://api.dropboxapi.com
+      - name: contentBaseUrl
+        goName: ContentBaseURL
+        type: url
+        description: Dropbox content API root for downloads. Blank uses the displayed public endpoint; override only for an approved compatible gateway or local provider test.
+        default: https://content.dropboxapi.com
       - name: timeout
         goName: Timeout
         type: duration
@@ -28,6 +33,11 @@ spec:
         type: integer
         description: Positive maximum complete JSON response size in bytes. Blank uses the displayed default; increase for larger folder pages. Oversized responses select invalidResponse.
         default: 2097152
+      - name: maxDownloadBytes
+        goName: MaxDownloadBytes
+        type: integer
+        description: Positive maximum downloaded file content in bytes. Blank uses the displayed default; increase only for bounded files your Flow can safely persist. Larger content selects tooLarge.
+        default: 1048576
   auth:
     refreshable: true
     type: oauth2
@@ -57,7 +67,7 @@ spec:
       startURL: https://www.dropbox.com/developers/apps
       steps:
         - Open https://www.dropbox.com/developers/apps > Create app; choose Scoped access, then App folder or Full Dropbox according to the files this Dex connection needs.
-        - Open the app > Permissions and enable files.metadata.read for the folder and metadata Queries. Enable files.content.read and files.content.write before using future download or upload operations; save permission changes.
+        - Open the app > Permissions, enable files.metadata.read and files.content.read for the folder, metadata, and download Queries, then save. Enable files.content.write before using a future upload operation.
         - Open Settings > OAuth 2 > Redirect URIs, add the exact Redirect URI shown by Dex Web, and copy the App key and secret into their fields. The app key is not secret; the app secret is secret.
         - Choose Authorize in Dex Web, complete consent as the Dropbox user who owns the files, and let Dex store and refresh the resulting secret tokens. Dropbox may require development users to be added before public app review.
     oauth2:
@@ -66,7 +76,7 @@ spec:
       authorizationParameters: {token_access_type: offline}
       clientIDCredential: oauth_client_id
       clientSecretCredential: oauth_client_secret
-      scopes: [files.metadata.read]
+      scopes: [files.metadata.read, files.content.read]
       credentialMappings:
         - {credential: access_token, source: access_token}
         - {credential: refresh_token, source: refresh_token}
@@ -77,7 +87,7 @@ spec:
         missingExpiry: reject
         storedMissingExpiry: refresh
         scopeSeparators: whitespaceAndComma
-        requiredScopes: [files.metadata.read]
+        requiredScopes: [files.metadata.read, files.content.read]
         terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
   operations:
     - name: listFolder
@@ -122,3 +132,46 @@ spec:
           default: true
           description: One example file is found.
           output: {id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}
+    - name: continueFolder
+      goName: ContinueFolder
+      inputType: ContinueFolderInput
+      outputType: FolderPage
+      kind: query
+      description: Continue one Dropbox folder page or read later changes from its cursor.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Dropbox returned another folder page or change set.}
+        - {id: cursorExpired, goName: CursorExpired, description: Dropbox requires a new listFolder call to reset this cursor., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local cursor or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example file in a continuation page.
+          output: {entries: [{id: 'id:continued', name: continued.txt, pathDisplay: /continued.txt, kind: file}], cursor: example-cursor-2, hasMore: false}
+    - name: downloadFile
+      goName: DownloadFile
+      inputType: DownloadFileInput
+      outputType: DownloadedFile
+      kind: query
+      description: Download a bounded Dropbox file and return Base64 content with its file identity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: downloaded, goName: Downloaded, description: Dropbox returned the selected file content.}
+        - {id: notFound, goName: NotFound, description: Dropbox did not find this file., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The file exceeds the configured download limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Dropbox conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Dropbox returned missing or malformed file metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: downloadedDefault
+          branch: downloaded
+          default: true
+          description: One example text file is downloaded.
+          output: {file: {id: 'id:example', name: example.txt, pathDisplay: /example.txt, kind: file}, contentBase64: SGVsbG8=, contentBytes: 5}
