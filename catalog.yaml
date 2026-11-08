@@ -25,6 +25,7 @@ directories:
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
+  - connectors/elastic/elasticsearch
   - connectors/elevenlabs
   - connectors/figma
   - connectors/freshworks/freshdesk

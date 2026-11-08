@@ -1,0 +1,125 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: elasticsearch
+  displayName: Elasticsearch
+  description: Search, replace, and delete documents in an Elasticsearch index.
+  company: Elastic
+  version: v0.1.0
+spec:
+  provider: elasticsearch
+  codegen:
+    go:
+      package: elasticsearch
+  configuration:
+    fields:
+      - name: clusterUrl
+        goName: ClusterURL
+        type: url
+        description: Non-secret absolute HTTPS Elasticsearch endpoint from https://cloud.elastic.co/ > deployment > Manage > Application endpoints > Elasticsearch > Direct endpoint, or your self-managed cluster HTTP settings. Do not append an index, query, or fragment. Blank prevents connection creation.
+        required: true
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Elasticsearch HTTP request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; raise only for slow searches.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete search response in bytes as a positive integer. Blank uses the displayed default; raise only for larger result pages. Oversized responses select invalidResponse.
+        default: 4194304
+      - name: maxDocumentBytes
+        goName: MaxDocumentBytes
+        type: integer
+        description: Maximum complete document JSON request in bytes as a positive integer. Blank uses the displayed default; raise only when indexing a larger document.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: elasticsearch-basic-auth
+    fields:
+      - name: username
+        goName: Username
+        type: string
+        description: Non-secret native username from https://cloud.elastic.co/ > deployment > Open Kibana > Stack Management > Security > Users > Create user, or the same page in self-managed Kibana. Enter the exact username with index read, index, or delete privileges. Blank prevents calls.
+        required: true
+      - name: password
+        goName: Password
+        type: secretString
+        description: Secret password set at https://cloud.elastic.co/ > deployment > Open Kibana > Stack Management > Security > Users > Create user, or in self-managed Kibana. Copy the exact password into Dex credentials; blank prevents calls. Rotate it from the same Users page.
+        required: true
+    guide:
+      startURL: https://cloud.elastic.co/
+      steps:
+        - Open https://cloud.elastic.co/, choose the Elastic Stack deployment, and open Kibana. For a self-managed Stack cluster, open its Kibana URL directly. This Basic-auth connection does not support Elastic Cloud Serverless.
+        - In Kibana choose Stack Management > Security > Roles > Create role and grant read for searches, index for document replacement, and delete for deletion on the target index pattern. Save the role.
+        - Choose Stack Management > Security > Users > Create user, set a username and password, assign the new role, and save username plus secret password in Dex. Rotate the password on the same Users page.
+        - In https://cloud.elastic.co/ choose deployment > Manage > Application endpoints > Elasticsearch > Direct endpoint, then save its HTTPS URL as clusterUrl without an index path. For self-managed clusters use the HTTPS HTTP endpoint. Leave timeout, maxResponseBytes, and maxDocumentBytes blank for their displayed defaults.
+  operations:
+    - name: indexDocument
+      goName: IndexDocument
+      inputType: IndexDocumentInput
+      outputType: IndexedDocument
+      kind: mutation
+      description: Create or fully replace one document in an existing index under a stable ID. Use an index without nonrepeatable ingest pipeline effects so retries preserve the intended source.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: indexed, goName: Indexed, description: Elasticsearch stored the requested document at the stable ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected the document replacement., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized indexing data., optional: true}
+        - {id: defect, goName: Defect, description: Local document input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: indexedProduct
+          branch: indexed
+          description: A sample product document was stored under its SKU.
+          default: true
+          output: {index: products, id: sku-42}
+    - name: deleteDocument
+      goName: DeleteDocument
+      inputType: DeleteDocumentInput
+      outputType: DeletedDocument
+      kind: mutation
+      description: Ensure one document is absent by deleting its stable ID; repeating the request is safe.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: absent, goName: Absent, description: "The document is absent, whether deleted now or already missing."}
+        - {id: indexNotFound, goName: IndexNotFound, description: The requested index does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected the deletion., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized deletion data., optional: true}
+        - {id: defect, goName: Defect, description: Local document ID or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: deletedProduct
+          branch: absent
+          description: A sample product document was removed from the index.
+          default: true
+          output: {index: products, id: sku-42, wasDeleted: true}
+    - name: searchDocuments
+      goName: SearchDocuments
+      inputType: SearchDocumentsInput
+      outputType: SearchPage
+      kind: query
+      description: Search one Elasticsearch index with a Lucene query string and bounded offset page.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: "Elasticsearch returned a search page, possibly empty."}
+        - {id: indexNotFound, goName: IndexNotFound, description: The requested index does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized search data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: matchingDocument
+          branch: found
+          description: A sample product document matches the example search.
+          default: true
+          output: {total: 1, relation: eq, hits: [{index: products, id: sku-42, score: 1.25, source: {title: Meridian, category: release}}]}
