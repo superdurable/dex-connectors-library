@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -31,12 +32,22 @@ func TestPublishedInputSchemasAcceptConformanceInputs(t *testing.T) {
 					InputType   string          `json:"inputType"`
 					Description string          `json:"description"`
 					InputSchema json.RawMessage `json:"inputSchema"`
+					Agent       *struct {
+						Branches map[string]string `json:"branches"`
+					} `json:"agent"`
+					Branches []dexConnectorBranch `json:"branches"`
 				} `json:"factories"`
 			}
 			require.NoError(t, json.Unmarshal(contents, &manifest), path)
 			for _, factory := range manifest.Factories {
 				require.NotEmpty(t, factory.InputType, "%s %s", path, factory.OperationID)
 				require.NotEmpty(t, factory.Description, "%s %s", path, factory.OperationID)
+				if factory.Agent != nil {
+					for branchID := range factory.Agent.Branches {
+						require.True(t, slices.ContainsFunc(factory.Branches, func(branch dexConnectorBranch) bool { return branch.ID == branchID && branch.Optional }),
+							"%s %s agent.branches.%s must name an optional branch", path, factory.OperationID, branchID)
+					}
+				}
 				if published, seen := publishedSchemas[factory.OperationID]; seen {
 					require.JSONEq(t, published, string(factory.InputSchema), "Python and TypeScript differ for %s %s", directory, factory.OperationID)
 					continue
@@ -82,8 +93,10 @@ func TestFirstReviewedOperationsCarryTheirRetryClaims(t *testing.T) {
 		directory, operation string
 		agent                map[string]any
 	}{
-		{"connectors/stripe", "createRefund", map[string]any{"exposed": true, "approval": "recommended", "retry": "safe"}},
-		{"connectors/slack", "postThreadReply", map[string]any{"exposed": true}},
+		{"connectors/stripe", "createRefund", map[string]any{"exposed": true, "approval": "recommended", "retry": "safe",
+			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "invalidResponse": "unknown", "defect": "rejected"}}},
+		{"connectors/slack", "postThreadReply", map[string]any{"exposed": true,
+			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "defect": "rejected"}}},
 	} {
 		for path, contents := range publishedLanguageManifests(t, testCase.directory) {
 			var manifest struct {
@@ -108,12 +121,18 @@ func TestPackageManifestSchemaRejectsWhatTheAnalyzerRejectsAndAgentTypos(t *test
 			"fields":{"stepType":"stepType","annotations":"annotations","connectionName":"connectionName"},"branches":[{"id":"done","field":"done"}]}]}`))
 	}
 	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"retry":"safe"}`)))
+	require.NoError(t, schemaDocument.Validate(operationFactory("mutation", `{"exposed":true,"branches":{"failed":"rejected","lost":"unknown"}}`)))
+	require.NoError(t, schemaDocument.Validate(operationFactory("query", `{"exposed":true,"branches":{"missing":"rejected"}}`)))
 	for name, document := range map[string]any{
-		"unknown agent field": operationFactory("mutation", `{"exposed":true,"retyr":"safe"}`),
-		"retry on a query":    operationFactory("query", `{"exposed":true,"retry":"safe"}`),
-		"retry when declined": operationFactory("mutation", `{"exposed":false,"retry":"safe"}`),
-		"unknown retry value": operationFactory("mutation", `{"exposed":true,"retry":"always"}`),
-		"null agent":          operationFactory("mutation", `null`),
+		"unknown agent field":    operationFactory("mutation", `{"exposed":true,"retyr":"safe"}`),
+		"retry on a query":       operationFactory("query", `{"exposed":true,"retry":"safe"}`),
+		"retry when declined":    operationFactory("mutation", `{"exposed":false,"retry":"safe"}`),
+		"unknown retry value":    operationFactory("mutation", `{"exposed":true,"retry":"always"}`),
+		"null agent":             operationFactory("mutation", `null`),
+		"unknown branch value":   operationFactory("mutation", `{"exposed":true,"branches":{"failed":"maybe"}}`),
+		"branches when declined": operationFactory("mutation", `{"exposed":false,"branches":{"failed":"rejected"}}`),
+		"unknown on a query":     operationFactory("query", `{"exposed":true,"branches":{"failed":"unknown"}}`),
+		"empty branches":         operationFactory("mutation", `{"exposed":true,"branches":{}}`),
 	} {
 		require.Error(t, schemaDocument.Validate(document), name)
 	}

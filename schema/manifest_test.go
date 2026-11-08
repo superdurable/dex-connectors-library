@@ -318,6 +318,12 @@ func TestOperationAgentReviewValidation(t *testing.T) {
 		"unknown approval":   {&schema.OperationAgent{Exposed: &exposed, Approval: "always"}, "agent.approval must be recommended"},
 		"declined approval":  {&schema.OperationAgent{Exposed: &declined, Approval: "recommended"}, "require agent.exposed to be true"},
 		"declined narrative": {&schema.OperationAgent{Exposed: &declined, Description: "Unused."}, "require agent.exposed to be true"},
+		"branches":           {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "rejected"}}, ""},
+		"unknown branch":     {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "unknown"}}, ""},
+		"missing branch":     {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"lost": "unknown"}}, "agent.branches.lost is not a branch of the operation"},
+		"happy-path branch":  {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"found": "rejected"}}, "agent.branches.found is the happy-path branch"},
+		"bad classification": {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "failed"}}, "agent.branches.defect must be rejected or unknown"},
+		"declined branches":  {&schema.OperationAgent{Exposed: &declined, Branches: map[string]string{"defect": "rejected"}}, "require agent.exposed to be true"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			file, err := os.Open("testdata/api-key-methods.yaml")
@@ -346,6 +352,10 @@ func TestOperationAgentRetryIsOnlyForMutations(t *testing.T) {
 	manifest.Spec.Operations[0].Kind, manifest.Spec.Operations[0].Idempotency = "query", "none"
 	manifest.Spec.Operations[0].Agent = &schema.OperationAgent{Exposed: &exposed, Retry: "safe"}
 	require.ErrorContains(t, manifest.Validate(), "agent.retry is only for mutations")
+	manifest.Spec.Operations[0].Agent = &schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "unknown"}}
+	require.ErrorContains(t, manifest.Validate(), "agent.branches.defect unknown is only for mutations")
+	manifest.Spec.Operations[0].Agent.Branches["defect"] = "rejected"
+	require.NoError(t, manifest.Validate())
 }
 
 func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {

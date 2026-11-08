@@ -133,15 +133,16 @@ func TestGeneratedLanguageManifestCarriesInputSchemaAndAgentReview(t *testing.T)
 
 	source, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	reviewed := strings.Replace(string(source), "      inputType: GetItemInput\n", "      inputType: GetItemInput\n      agent: {exposed: true, approval: recommended, description: Read one <item>.}\n", 1)
+	reviewed := strings.Replace(string(source), "      inputType: GetItemInput\n", "      inputType: GetItemInput\n      agent: {exposed: true, approval: recommended, branches: {notFound: rejected}, description: Read one <item>.}\n", 1)
 	require.NotEqual(t, string(source), reviewed)
 	require.ErrorContains(t, generateWithManifest(t, manifestPath, strings.Replace(reviewed, "exposed: true,", "exposed: true, retry: safe,", 1)), "agent.retry is only for mutations")
+	require.ErrorContains(t, generateWithManifest(t, manifestPath, strings.Replace(reviewed, "{notFound: rejected}", "{notFuond: rejected}", 1)), "agent.branches.notFuond is not a branch of the operation")
 	require.NoError(t, os.WriteFile(manifestPath, []byte(reviewed), 0o600))
 	require.ErrorContains(t, generate([]string{"--check", manifestPath}), "generated file is stale", "drift in the agent block fails the check")
 	require.NoError(t, generate([]string{manifestPath}))
 	require.NoError(t, generate([]string{"--check", manifestPath}))
 	factory = generatedFactory(t, packageManifestPath, "getItem")
-	require.Equal(t, map[string]any{"exposed": true, "approval": "recommended"}, factory["agent"])
+	require.Equal(t, map[string]any{"exposed": true, "approval": "recommended", "branches": map[string]any{"notFound": "rejected"}}, factory["agent"])
 	require.Equal(t, "Read one <item>.", factory["description"])
 	contents, err := os.ReadFile(packageManifestPath)
 	require.NoError(t, err)
@@ -167,8 +168,8 @@ func TestGeneratedLanguageManifestRejectsInputModelThatGoLacks(t *testing.T) {
 
 func TestDexConnectorOperationAgentCarriesRetry(t *testing.T) {
 	exposed := true
-	operation := schema.Operation{Agent: &schema.OperationAgent{Exposed: &exposed, Retry: schema.OperationAgentRetrySafe}}
-	require.Equal(t, &dexConnectorAgent{Exposed: true, Retry: "safe"}, dexConnectorOperationAgent(operation))
+	operation := schema.Operation{Agent: &schema.OperationAgent{Exposed: &exposed, Retry: schema.OperationAgentRetrySafe, Branches: map[string]string{"lost": "unknown"}}}
+	require.Equal(t, &dexConnectorAgent{Exposed: true, Retry: "safe", Branches: map[string]string{"lost": "unknown"}}, dexConnectorOperationAgent(operation))
 }
 
 func generateWithManifest(t *testing.T, manifestPath, source string) error {

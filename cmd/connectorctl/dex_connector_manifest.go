@@ -41,9 +41,10 @@ type dexConnectorFactory struct {
 }
 
 type dexConnectorAgent struct {
-	Exposed  bool   `json:"exposed"`
-	Approval string `json:"approval,omitempty"`
-	Retry    string `json:"retry,omitempty"`
+	Exposed  bool              `json:"exposed"`
+	Approval string            `json:"approval,omitempty"`
+	Retry    string            `json:"retry,omitempty"`
+	Branches map[string]string `json:"branches,omitempty"`
 }
 
 type dexConnectorFields struct {
@@ -198,7 +199,7 @@ func dexConnectorOperationAgent(operation schema.Operation) *dexConnectorAgent {
 	if operation.Agent == nil {
 		return nil
 	}
-	return &dexConnectorAgent{Exposed: *operation.Agent.Exposed, Approval: operation.Agent.Approval, Retry: operation.Agent.Retry}
+	return &dexConnectorAgent{Exposed: *operation.Agent.Exposed, Approval: operation.Agent.Approval, Retry: operation.Agent.Retry, Branches: operation.Agent.Branches}
 }
 
 // Descriptions are prose for a model, so keep comparison operators readable in the file.

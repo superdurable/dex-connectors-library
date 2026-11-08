@@ -858,17 +858,23 @@
         "exposed": { "type": "boolean" },
         "approval": { "enum": ["recommended"] },
         "retry": { "enum": ["safe"] },
-        "description": { "type": "string", "pattern": "\\S" }
+        "description": { "type": "string", "pattern": "\\S" },
+        "branches": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]+$" },
+          "additionalProperties": { "enum": ["rejected", "unknown"] }
+        }
       },
       "if": { "properties": { "exposed": { "const": false } } },
-      "then": { "properties": { "approval": false, "retry": false, "description": false } }
+      "then": { "properties": { "approval": false, "retry": false, "description": false, "branches": false } }
     },
     "operation": {
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "goName", "inputType", "outputType", "kind", "description", "idempotency", "branches", "execution"],
       "if": { "properties": { "kind": { "const": "query" } } },
-      "then": { "properties": { "agent": { "properties": { "retry": false } } } },
+      "then": { "properties": { "agent": { "properties": { "retry": false, "branches": { "additionalProperties": { "const": "rejected" } } } } } },
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },

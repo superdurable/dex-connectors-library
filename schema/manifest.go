@@ -339,7 +339,16 @@ type OperationAgent struct {
 	Retry string `yaml:"retry,omitempty" json:"retry,omitempty"`
 	// Description replaces the operation description for a model choosing a tool.
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+	// Branches classifies optional branches for an agent host by whether the operation's effect may
+	// have happened. An agent host treats an unlisted optional Mutation branch as unknown.
+	Branches map[string]string `yaml:"branches,omitempty" json:"branches,omitempty"`
 }
+
+// OperationAgentBranchRejected says the call changed nothing: the provider or connector refused it.
+const OperationAgentBranchRejected = "rejected"
+
+// OperationAgentBranchUnknown says the operation's effect may have happened.
+const OperationAgentBranchUnknown = "unknown"
 
 func validateOperationAgent(operation Operation) []string {
 	if operation.Agent == nil {
@@ -361,8 +370,38 @@ func validateOperationAgent(operation Operation) []string {
 	if operation.Agent.Description != "" && strings.TrimSpace(operation.Agent.Description) == "" {
 		problems = append(problems, operation.Name+": agent.description must not be blank")
 	}
-	if !*operation.Agent.Exposed && (operation.Agent.Approval != "" || operation.Agent.Retry != "" || operation.Agent.Description != "") {
-		problems = append(problems, operation.Name+": agent.approval, agent.retry, and agent.description require agent.exposed to be true")
+	if !*operation.Agent.Exposed && (operation.Agent.Approval != "" || operation.Agent.Retry != "" || operation.Agent.Description != "" || len(operation.Agent.Branches) > 0) {
+		problems = append(problems, operation.Name+": agent.approval, agent.retry, agent.description, and agent.branches require agent.exposed to be true")
+	}
+	return append(problems, validateOperationAgentBranches(operation)...)
+}
+
+// The happy-path branch is the success, so only optional branches carry a classification.
+func validateOperationAgentBranches(operation Operation) []string {
+	optionalBranches := make(map[string]bool, len(operation.Branches))
+	for _, branch := range operation.Branches {
+		optionalBranches[branch.ID] = branch.Optional
+	}
+	branchIDs := make([]string, 0, len(operation.Agent.Branches))
+	for branchID := range operation.Agent.Branches {
+		branchIDs = append(branchIDs, branchID)
+	}
+	sort.Strings(branchIDs)
+	var problems []string
+	for _, branchID := range branchIDs {
+		isOptional, exists := optionalBranches[branchID]
+		switch {
+		case !exists:
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" is not a branch of the operation")
+		case !isOptional:
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" is the happy-path branch; classify only optional branches")
+		}
+		switch classification := operation.Agent.Branches[branchID]; {
+		case classification == OperationAgentBranchUnknown && operation.Kind != "mutation":
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" unknown is only for mutations")
+		case classification != OperationAgentBranchRejected && classification != OperationAgentBranchUnknown:
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" must be rejected or unknown")
+		}
 	}
 	return problems
 }
