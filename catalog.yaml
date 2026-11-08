@@ -105,6 +105,7 @@ directories:
   - connectors/newsapi
   - connectors/nimble
   - connectors/notion
+  - connectors/odoo
   - connectors/onespan/sign
   - connectors/openai
   - connectors/opensearch
