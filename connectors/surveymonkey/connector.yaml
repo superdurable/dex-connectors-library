@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: surveymonkey
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listSurveys, getResponse]
+      triggers: []
   codegen:
     go:
       package: surveymonkey
