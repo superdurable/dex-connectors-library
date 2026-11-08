@@ -20,6 +20,7 @@ type Mock struct {
 	connection     cloudstorage.Connection
 	listObjects    *connectormock.Query[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage]
 	downloadObject *connectormock.Query[cloudstorage.DownloadObjectInput, cloudstorage.DownloadedObject]
+	uploadObject   *connectormock.Mutation[cloudstorage.UploadObjectInput, cloudstorage.Object]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -29,9 +30,11 @@ func New(t testing.TB, connectionName string) *Mock {
 	mock := &Mock{
 		listObjects:    connectormock.NewQuery[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage](t, cloudstorage.ListObjectsDefinition),
 		downloadObject: connectormock.NewQuery[cloudstorage.DownloadObjectInput, cloudstorage.DownloadedObject](t, cloudstorage.DownloadObjectDefinition),
+		uploadObject:   connectormock.NewMutation[cloudstorage.UploadObjectInput, cloudstorage.Object](t, cloudstorage.UploadObjectDefinition),
 	}
 	mock.listObjects.Default(ListObjectsDefault())
 	mock.downloadObject.Default(DownloadObjectDefault())
+	mock.uploadObject.Default(UploadObjectDefault())
 	connection, err := cloudstorage.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "google-cloud-storage", Name: connectionName})
 	if err != nil {
 		t.Fatalf("google-cloud-storage mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) DownloadObject() *connectormock.Query[cloudstorage.DownloadObj
 	return mock.downloadObject
 }
 
+// UploadObject returns the uploadObject script.
+func (mock *Mock) UploadObject() *connectormock.Mutation[cloudstorage.UploadObjectInput, cloudstorage.Object] {
+	return mock.uploadObject
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListObjects() sdkgo.Query[cloudstorage.ListObjectsInput, cloudstorage.ObjectsPage] {
@@ -60,6 +68,9 @@ func (operations mockOperations) ListObjects() sdkgo.Query[cloudstorage.ListObje
 }
 func (operations mockOperations) DownloadObject() sdkgo.Query[cloudstorage.DownloadObjectInput, cloudstorage.DownloadedObject] {
 	return operations.mock.downloadObject
+}
+func (operations mockOperations) UploadObject() sdkgo.Mutation[cloudstorage.UploadObjectInput, cloudstorage.Object] {
+	return operations.mock.uploadObject
 }
 
 // ListObjectsListed selects the listed branch: Google returned an object page.
@@ -137,4 +148,40 @@ func DownloadObjectDownloadedDefault() connectormock.Case[cloudstorage.Downloade
 // DownloadObjectDefault is the manifest default, downloadedDefault, which New installs.
 func DownloadObjectDefault() connectormock.Case[cloudstorage.DownloadedObject] {
 	return DownloadObjectDownloadedDefault()
+}
+
+// UploadObjectUploaded selects the uploaded branch: The named object now has the requested content.
+func UploadObjectUploaded(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UploadObjectBranchUploaded, value, failure)
+}
+
+// UploadObjectObjectExists selects the objectExists branch: An object with different content already exists at that name.
+func UploadObjectObjectExists(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UploadObjectBranchObjectExists, value, failure)
+}
+
+// UploadObjectProviderRejected selects the providerRejected branch: Google definitively rejected the upload.
+func UploadObjectProviderRejected(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UploadObjectBranchProviderRejected, value, failure)
+}
+
+// UploadObjectDefect selects the defect branch: Local upload input or connection credentials are invalid.
+func UploadObjectDefect(value cloudstorage.Object, failure *sdkgo.Failure) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Branch(cloudstorage.UploadObjectBranchDefect, value, failure)
+}
+
+// UploadObjectRetry asks Dex to retry the uploadObject Step, after the delay when it is positive.
+func UploadObjectRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[cloudstorage.Object] {
+	return connectormock.Retry[cloudstorage.Object](failure, after)
+}
+
+// UploadObjectUploadedDefault is the manifest mock uploadedDefault: An example text object is present.
+func UploadObjectUploadedDefault() connectormock.Case[cloudstorage.Object] {
+	value := connectormock.MustDecodeOutput[cloudstorage.Object](`{"name":"example.txt","generation":"123"}`)
+	return connectormock.Branch(cloudstorage.UploadObjectBranchUploaded, value, nil)
+}
+
+// UploadObjectDefault is the manifest default, uploadedDefault, which New installs.
+func UploadObjectDefault() connectormock.Case[cloudstorage.Object] {
+	return UploadObjectUploadedDefault()
 }

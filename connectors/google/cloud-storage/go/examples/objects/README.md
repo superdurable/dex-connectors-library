@@ -5,7 +5,7 @@ Run the Worker with a `google-cloud-storage` Dex Web connection configured from 
 From this module, generate and inspect the FDG 2.0 graph:
 
 ```sh
-dexcli visualize examples/objects/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/google-cloud-storage-objects-fdg.json --open=false
+dexcli visualize examples/objects/flow/workflow.go --schema-version 2.0 --lint app --json --out /tmp/google-cloud-storage-objects-fdg --open=false
 ```
 
 With a Dex stack and connection available, run `go run ./examples/objects`. The mock-backed integration test is `GOWORK=off go test -tags=integration ./examples/objects/flow -run TestObjectsUsesDefaultMockWithRealDex`. The Google provider has not been authorized or called in this checkout.

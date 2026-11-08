@@ -31,6 +31,7 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 type Client struct {
 	baseURL          string
 	maxResponseBytes int64
+	maxUploadBytes   int64
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	httpClient       *http.Client
@@ -45,11 +46,14 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
+	if config.MaxUploadBytes > 64<<20 || config.MaxResponseBytes < config.MaxUploadBytes {
+		return nil, errors.New("Google Cloud Storage upload limit must be at most 64 MiB and no greater than response limit")
+	}
 	baseURL, err := providerhttp.ValidateBaseURL(config.BaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("Google Cloud Storage API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, maxUploadBytes: config.MaxUploadBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Google Cloud Storage client option is required")

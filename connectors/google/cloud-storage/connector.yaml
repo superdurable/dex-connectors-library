@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: google-cloud-storage
   displayName: Google Cloud Storage
-  description: List and download objects from Google Cloud Storage buckets.
+  description: List, download, and upload objects in Google Cloud Storage buckets.
   company: Google
   version: v0.1.0
 spec:
@@ -26,7 +26,12 @@ spec:
       - name: maxResponseBytes
         goName: MaxResponseBytes
         type: integer
-        description: Positive maximum downloaded response size in bytes. Blank uses the displayed default; increase only for known larger objects.
+        description: Positive maximum downloaded response size in bytes, at least maxUploadBytes. Blank uses the displayed default; increase for known larger objects or uploads.
+        default: 2097152
+      - name: maxUploadBytes
+        goName: MaxUploadBytes
+        type: integer
+        description: Positive maximum decoded upload size in bytes, at most 67108864 and no greater than maxResponseBytes. Blank uses the displayed default; increase only for known larger objects.
         default: 2097152
   auth:
     type: oauth2
@@ -57,10 +62,10 @@ spec:
       startURL: https://console.cloud.google.com/apis/credentials
       steps:
         - Select a Google Cloud project. In APIs & Services > Library enable Cloud Storage JSON API; in Cloud Storage > Buckets confirm the account can view the target bucket and objects.
-        - In Google Auth Platform > Branding and Audience, configure consent and add test users while an External app remains in Testing. Under Data Access add the displayed devstorage.read_write scope, which also supports a future upload operation.
+        - In Google Auth Platform > Branding and Audience, configure consent and add test users while an External app remains in Testing. Under Data Access add the displayed devstorage.read_write scope for object reads and uploads.
         - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize with offline access.
         - In Cloud Storage > Buckets open a bucket and copy its name; listObjects returns object names to use with downloadObject.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
+        - Leave baseUrl, timeout, maxResponseBytes, and maxUploadBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
     oauth2:
       authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
       tokenEndpoint: https://oauth2.googleapis.com/token
@@ -120,3 +125,23 @@ spec:
           default: true
           description: An example text object was downloaded.
           output: {contentBase64: aGVsbG8=, contentType: text/plain}
+    - name: uploadObject
+      goName: UploadObject
+      inputType: UploadObjectInput
+      outputType: Object
+      kind: mutation
+      description: Create an object only if absent, or confirm existing content matches the requested bytes.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: uploaded, goName: Uploaded, description: The named object now has the requested content.}
+        - {id: objectExists, goName: ObjectExists, description: An object with different content already exists at that name., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the upload., optional: true}
+        - {id: defect, goName: Defect, description: Local upload input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: uploadedDefault
+          branch: uploaded
+          default: true
+          description: An example text object is present.
+          output: {name: example.txt, generation: '123'}

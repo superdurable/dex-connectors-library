@@ -39,6 +39,18 @@ func newTestClient(t *testing.T, baseURL string) *Client {
 	return client
 }
 
+func TestUploadLimitMustFitResponseLimitAndMaximum(t *testing.T) {
+	credentials := Credentials{OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"), AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token")}
+	provider := sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials}
+	for _, config := range []Config{
+		{MaxUploadBytes: 65 << 20, MaxResponseBytes: 65 << 20},
+		{MaxUploadBytes: 2048, MaxResponseBytes: 1024},
+	} {
+		_, err := New(config, provider)
+		require.ErrorContains(t, err, "upload limit")
+	}
+}
+
 func TestListAndDownloadObject(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "Bearer "+testAccessToken, r.Header.Get("Authorization"))

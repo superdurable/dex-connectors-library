@@ -22,6 +22,7 @@ type Config struct {
 	BaseURL          string        `json:"baseUrl,omitempty" yaml:"baseUrl,omitempty"`
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
+	MaxUploadBytes   int64         `json:"maxUploadBytes,omitempty" yaml:"maxUploadBytes,omitempty"`
 }
 
 type Credentials struct {
@@ -45,6 +46,7 @@ type Connection struct {
 type Operations interface {
 	ListObjects() sdkgo.Query[ListObjectsInput, ObjectsPage]
 	DownloadObject() sdkgo.Query[DownloadObjectInput, DownloadedObject]
+	UploadObject() sdkgo.Mutation[UploadObjectInput, Object]
 }
 
 type clientOperations struct{ client *Client }
@@ -54,6 +56,9 @@ func (operations clientOperations) ListObjects() sdkgo.Query[ListObjectsInput, O
 }
 func (operations clientOperations) DownloadObject() sdkgo.Query[DownloadObjectInput, DownloadedObject] {
 	return operations.client.DownloadObject()
+}
+func (operations clientOperations) UploadObject() sdkgo.Mutation[UploadObjectInput, Object] {
+	return operations.client.UploadObject()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -196,6 +201,7 @@ func DefaultConfig() Config {
 		BaseURL:          "https://storage.googleapis.com",
 		Timeout:          time.Duration(30000000000),
 		MaxResponseBytes: 2097152,
+		MaxUploadBytes:   2097152,
 	}
 }
 
@@ -209,6 +215,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxResponseBytes == 0 {
 		config.MaxResponseBytes = defaults.MaxResponseBytes
+	}
+	if config.MaxUploadBytes == 0 {
+		config.MaxUploadBytes = defaults.MaxUploadBytes
 	}
 	return config
 }
@@ -225,6 +234,9 @@ func (config Config) Validate() error {
 	}
 	if config.MaxResponseBytes < 0 {
 		return fmt.Errorf("configuration maxResponseBytes cannot be negative")
+	}
+	if config.MaxUploadBytes < 0 {
+		return fmt.Errorf("configuration maxUploadBytes cannot be negative")
 	}
 	return nil
 }
@@ -396,6 +408,77 @@ func NewDownloadObjectStep[IN any](config DownloadObjectStepConfig[IN]) sdkgo.Qu
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DownloadObjectBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UploadObjectBranchUploaded sdkgo.BranchID = "uploaded"
+const UploadObjectBranchObjectExists sdkgo.BranchID = "objectExists"
+const UploadObjectBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UploadObjectBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UploadObjectDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "uploadObject"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UploadObjectBranchUploaded, Description: "The named object now has the requested content."},
+		{ID: UploadObjectBranchObjectExists, Description: "An object with different content already exists at that name.", Optional: true},
+		{ID: UploadObjectBranchProviderRejected, Description: "Google definitively rejected the upload.", Optional: true},
+		{ID: UploadObjectBranchDefect, Description: "Local upload input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UploadObjectResult = sdkgo.MutationResult[Object]
+
+type UploadObjectStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                     `connector:"connectorId=google-cloud-storage"`
+	operationID                       struct{}                                     `connector:"operationId=uploadObject"`
+	StepType                          string                                       `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                        `connector:"annotations"`
+	Connection                        Connection                                   `connector:"connection"`
+	ConnectionName                    string                                       `connector:"connectionName"`
+	MapToOperationInput               func(IN) UploadObjectInput                   `connector:"mapToOperationInput"`
+	Uploaded                          sdkgo.Target[UploadObjectResult]             `connector:"branch=uploaded"`
+	ObjectExists                      sdkgo.Target[UploadObjectResult]             `connector:"branch=objectExists,optional"`
+	ProviderRejected                  sdkgo.Target[UploadObjectResult]             `connector:"branch=providerRejected,optional"`
+	Defect                            sdkgo.Target[UploadObjectResult]             `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[Object]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                             `connector:"stepOptionsOverride"`
+}
+
+func NewUploadObjectStep[IN any](config UploadObjectStepConfig[IN]) sdkgo.MutationStep[IN, UploadObjectInput, Object] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("google-cloud-storage connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UploadObjectInput, Object]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UploadObject(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UploadObjectResult] {
+			branches := make([]sdkgo.BranchTarget[UploadObjectResult], 0, 4)
+			if config.Uploaded.HasStep() {
+				branches = append(branches, config.Uploaded.BranchTarget(UploadObjectBranchUploaded))
+			}
+			if config.ObjectExists.HasStep() {
+				branches = append(branches, config.ObjectExists.BranchTarget(UploadObjectBranchObjectExists))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UploadObjectBranchProviderRejected))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UploadObjectBranchDefect))
 			}
 			return branches
 		}(),
