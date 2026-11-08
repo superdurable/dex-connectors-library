@@ -1,0 +1,7 @@
+# Nimble CRM connector
+
+The Go connector reads a page of contact IDs with `listContactIDs` and one contact's basic name and email fields with `getContact`. `listContactIDs` takes a one-based `page` and `perPage` from 1 through 100. `getContact` takes the 24-character hexadecimal ID returned by Nimble. Custom fields, links, and other provider data remain outside Flow results.
+
+Sign in to [Nimble CRM](https://app.nimble.com/) as an account administrator, open **Settings > API Token > Generate New Token**, name the token and choose contact-read scopes, then copy it into Dex Web secret `api_key`. An administrator may need to grant API access under **Settings > Users**. The connector sends the token only in an Authorization Bearer header. See the [Nimble API reference](https://www.nimble.com/developers/docs/) and [token setup guide](https://support.nimble.com/en/articles/822159-generate-an-api-key-to-access-the-nimble-api).
+
+Both queries retry transport failures, HTTP 429, timeout, and server failures. Definite rejections, malformed or oversized JSON, invalid input, and a missing contact select optional branches. The [Go contact ID discovery Flow](go/examples/contact-id-discovery/README.md) is a runnable consumer. Provider requests and exact outcomes are recorded in [Go conformance scenarios](../../conformance/connectors/nimble/scenarios.json). Live Nimble authorization and responses remain unverified.

@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: nimble
+  displayName: Nimble CRM
+  description: Read Nimble contact IDs and selected contact identity.
+  company: Nimble
+  version: v0.1.0
+spec:
+  provider: nimble
+  codegen:
+    go:
+      package: nimble
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Nimble API v1 root at https://app.nimble.com/api/v1. Blank uses the displayed provider URL; override only for a provider-approved private endpoint.
+        default: https://app.nimble.com/api/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for large contact responses. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: nimble-api-token
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Nimble API token. At https://app.nimble.com/, open Settings > API Token, select Generate New Token, name it and choose contact-read scopes; copy the token into this secret field. Blank selects defect.
+    guide:
+      startURL: https://app.nimble.com/
+      steps:
+        - Sign in to https://app.nimble.com/ as a Nimble Account Administrator. Open Settings > API Token > Generate New Token, give the token a name, choose the contact-read scopes, then select Generate and copy the token into Dex secret api_key.
+        - If API access is not enabled, an administrator must grant it under Settings > Users. The connector sends the token only in the Authorization Bearer header; revoke it in Settings > API Token.
+        - Keep baseUrl, timeout, and maxResponseBytes blank for their displayed defaults unless your provider endpoint or response size requires an override.
+  operations:
+    - name: listContactIDs
+      goName: ListContactIDs
+      inputType: ListContactIDsInput
+      outputType: ContactIDsPage
+      kind: query
+      description: List contact IDs with explicit page and page-size controls.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Nimble returned the requested contact ID page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Nimble conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Nimble returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid page input or connection credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact ID is listed.
+          output: {ids: ['5049fb849b85f669e40000dc'], page: 1, pages: 1, perPage: 20, total: 1}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactMetadata
+      kind: query
+      description: Read one contact's ID and basic name and email fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Nimble returned the selected contact.}
+        - {id: notFound, goName: NotFound, description: No contact matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Nimble conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Nimble returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid contact ID or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample contact identity is returned.
+          output: {id: '5049fb849b85f669e40000dc', firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}

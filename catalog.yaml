@@ -75,6 +75,7 @@ directories:
   - connectors/mysql
   - connectors/netlify
   - connectors/newsapi
+  - connectors/nimble
   - connectors/notion
   - connectors/openai
   - connectors/opensearch
