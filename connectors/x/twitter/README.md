@@ -1,0 +1,7 @@
+# X Post connector
+
+The Go, Python, and TypeScript `getPost` Queries read one public Post's decimal ID and text through [X API v2 Post lookup](https://github.com/xdevplatform/docs/blob/main/x-api/posts/lookup/quickstart.mdx). X returns the data inside a `data` object; the connector discards author, media, metrics, and error details. A missing or inaccessible Post selects `notFound`; 429, transport failures, and 5xx responses retry.
+
+Create or select a Project and App in the [X Developer Console](https://console.x.com), confirm Post read access and API usage balance, then copy its **Bearer Token** from **Keys and tokens**. Save it in Dex Web's secret `access_token` field. This app token reads public Posts; it is not a user OAuth access token. Rotate it in the same console and update the connection if revoked. Pass the numeric value after `/status/` in an x.com Post URL as `postId`.
+
+The runnable [Go](go/examples/post-inspection/README.md), [Python](python/examples/post_inspection/README.md), and [TypeScript](typescript/examples/post-inspection/README.md) Flows use the static `x-twitter` connection. Live X authorization, API billing access, provider reads, and Dex Web field rendering have not been verified here.

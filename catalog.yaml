@@ -178,6 +178,7 @@ directories:
   - connectors/woocommerce
   - connectors/wordpress
   - connectors/wrike
+  - connectors/x/twitter
   - connectors/xero
   - connectors/zendesk/sell
   - connectors/zendesk/support

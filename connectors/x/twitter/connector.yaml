@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: x-twitter
+  displayName: X
+  description: Retrieve a public X Post by its numeric ID.
+  company: X
+  version: v0.1.0
+spec:
+  provider: x-twitter
+  languages:
+    python:
+      version: v0.1.0
+      operations: [getPost]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-x-twitter'
+      operations: [getPost]
+      triggers: []
+  codegen:
+    go:
+      package: x
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: X API v2 HTTPS origin and version path. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://api.x.com/2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Post response in bytes as a positive integer. Blank uses the displayed default; increase for known larger responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: x-twitter-bearer-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret app Bearer Token from https://console.x.com > your Project and App > Keys and tokens > Bearer Token. Copy the complete token into this field; blank prevents requests. Dex sends it only in the Authorization header.
+    guide:
+      startURL: https://console.x.com
+      steps:
+        - Sign in at https://console.x.com, create or select a Project and App with API access that permits Post lookup. Confirm the app has read access and an available API usage balance.
+        - Open the app's Keys and tokens page, generate or reveal its Bearer Token, and copy the complete secret to Dex Web access_token. Regenerate it on the same page to rotate. Do not enter the API Key or API Key Secret in this field.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Copy the numeric Post ID from an x.com post URL after /status/ and pass it as postId. Blank is invalid.
+  operations:
+    - name: getPost
+      goName: GetPost
+      inputType: GetPostInput
+      outputType: PostMetadata
+      kind: query
+      description: Read a public Post's ID and text without author, metrics, or media.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: X returned the requested Post.}
+        - {id: notFound, goName: NotFound, description: X did not expose that Post., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: X conclusively rejected the lookup or app token., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: X returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local Post ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example public Post is returned.
+          output: {id: '1845123456789012345', text: Example public Post}
