@@ -22,7 +22,7 @@ const (
 
 var (
 	// dropboxRequiredOAuthScopes must match the manifest scopes.
-	dropboxRequiredOAuthScopes = []string{"files.metadata.read", "files.content.read"}
+	dropboxRequiredOAuthScopes = []string{"files.metadata.read", "files.content.read", "files.content.write"}
 	// dropboxTerminalRefreshErrorCodes are RFC 6749 section 5.2 codes; Dropbox documents none of its own.
 	dropboxTerminalRefreshErrorCodes = []string{"invalid_client", "invalid_grant", "unauthorized_client"}
 )

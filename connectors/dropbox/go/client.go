@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package dropbox exposes typed Dropbox file Queries to Dex Flows.
+// Package dropbox exposes typed Dropbox file operations to Dex Flows.
 package dropbox
 
 import (
@@ -33,6 +33,7 @@ type Client struct {
 	contentBaseURL   string
 	maxResponseBytes int64
 	maxDownloadBytes int64
+	maxUploadBytes   int64
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	httpClient       *http.Client
@@ -47,6 +48,9 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
+	if config.MaxUploadBytes > 150*1024*1024 {
+		return nil, fmt.Errorf("Dropbox upload limit exceeds 150 MiB")
+	}
 	baseURL, err := providerhttp.ValidateBaseURL(config.BaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("Dropbox API URL: %w", err)
@@ -55,7 +59,7 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("Dropbox content API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, contentBaseURL: contentBaseURL, maxResponseBytes: config.MaxResponseBytes, maxDownloadBytes: config.MaxDownloadBytes, credentials: credentials}
+	client := &Client{baseURL: baseURL, contentBaseURL: contentBaseURL, maxResponseBytes: config.MaxResponseBytes, maxDownloadBytes: config.MaxDownloadBytes, maxUploadBytes: config.MaxUploadBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, fmt.Errorf("Dropbox client option is required")
@@ -151,6 +155,32 @@ func (client *Client) download(call sdkgo.Call, filePath string) contentResponse
 		return contentResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
 	return contentResponse{body: body, metadata: metadata, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+func (client *Client) upload(call sdkgo.Call, filePath string, content []byte) contentResponse {
+	accessToken, err := client.resolveAccessToken(call)
+	if err != nil {
+		return contentResponse{err: err}
+	}
+	request, err := http.NewRequestWithContext(call.Context, http.MethodPost, client.contentBaseURL+"/2/files/upload", bytes.NewReader(content))
+	if err != nil {
+		return contentResponse{err: errRequest}
+	}
+	request.Header.Set("Dropbox-API-Arg", `{"path":`+strconv.QuoteToASCII(filePath)+`,"mode":"overwrite","autorename":false}`)
+	request.Header.Set("Authorization", "Bearer "+accessToken)
+	request.Header.Set("Content-Type", "application/octet-stream")
+	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return contentResponse{err: errRequest}
+	}
+	defer func() { _ = response.Body.Close() }()
+	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	body, err := providerhttp.ReadBoundedBody(response.Body, client.maxResponseBytes)
+	if bytes.Contains(body, []byte(accessToken)) {
+		return contentResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
+	}
+	return contentResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
 }
 
 type queryBranches struct{ found, notFound, cursorExpired, rejected, invalid, defect sdkgo.BranchID }

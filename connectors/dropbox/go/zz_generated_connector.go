@@ -24,6 +24,7 @@ type Config struct {
 	Timeout          time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	MaxResponseBytes int64         `json:"maxResponseBytes,omitempty" yaml:"maxResponseBytes,omitempty"`
 	MaxDownloadBytes int64         `json:"maxDownloadBytes,omitempty" yaml:"maxDownloadBytes,omitempty"`
+	MaxUploadBytes   int64         `json:"maxUploadBytes,omitempty" yaml:"maxUploadBytes,omitempty"`
 }
 
 type Credentials struct {
@@ -49,6 +50,7 @@ type Operations interface {
 	GetMetadata() sdkgo.Query[GetMetadataInput, EntryMetadata]
 	ContinueFolder() sdkgo.Query[ContinueFolderInput, FolderPage]
 	DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile]
+	UploadFile() sdkgo.Mutation[UploadFileInput, UploadedFile]
 }
 
 type clientOperations struct{ client *Client }
@@ -64,6 +66,9 @@ func (operations clientOperations) ContinueFolder() sdkgo.Query[ContinueFolderIn
 }
 func (operations clientOperations) DownloadFile() sdkgo.Query[DownloadFileInput, DownloadedFile] {
 	return operations.client.DownloadFile()
+}
+func (operations clientOperations) UploadFile() sdkgo.Mutation[UploadFileInput, UploadedFile] {
+	return operations.client.UploadFile()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -208,6 +213,7 @@ func DefaultConfig() Config {
 		Timeout:          time.Duration(15000000000),
 		MaxResponseBytes: 2097152,
 		MaxDownloadBytes: 1048576,
+		MaxUploadBytes:   1048576,
 	}
 }
 
@@ -227,6 +233,9 @@ func withConfigDefaults(config Config) Config {
 	}
 	if config.MaxDownloadBytes == 0 {
 		config.MaxDownloadBytes = defaults.MaxDownloadBytes
+	}
+	if config.MaxUploadBytes == 0 {
+		config.MaxUploadBytes = defaults.MaxUploadBytes
 	}
 	return config
 }
@@ -252,6 +261,9 @@ func (config Config) Validate() error {
 	}
 	if config.MaxDownloadBytes < 0 {
 		return fmt.Errorf("configuration maxDownloadBytes cannot be negative")
+	}
+	if config.MaxUploadBytes < 0 {
+		return fmt.Errorf("configuration maxUploadBytes cannot be negative")
 	}
 	return nil
 }
@@ -589,6 +601,77 @@ func NewDownloadFileStep[IN any](config DownloadFileStepConfig[IN]) sdkgo.QueryS
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DownloadFileBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const UploadFileBranchUploaded sdkgo.BranchID = "uploaded"
+const UploadFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const UploadFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const UploadFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var UploadFileDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "uploadFile"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: UploadFileBranchUploaded, Description: "Dropbox stored the replacement file content."},
+		{ID: UploadFileBranchProviderRejected, Description: "Dropbox conclusively rejected the upload.", Optional: true},
+		{ID: UploadFileBranchInvalidResponse, Description: "Dropbox returned malformed or oversized upload metadata.", Optional: true},
+		{ID: UploadFileBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type UploadFileResult = sdkgo.MutationResult[UploadedFile]
+
+type UploadFileStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                           `connector:"connectorId=dropbox"`
+	operationID                       struct{}                                           `connector:"operationId=uploadFile"`
+	StepType                          string                                             `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                              `connector:"annotations"`
+	Connection                        Connection                                         `connector:"connection"`
+	ConnectionName                    string                                             `connector:"connectionName"`
+	MapToOperationInput               func(IN) UploadFileInput                           `connector:"mapToOperationInput"`
+	Uploaded                          sdkgo.Target[UploadFileResult]                     `connector:"branch=uploaded"`
+	ProviderRejected                  sdkgo.Target[UploadFileResult]                     `connector:"branch=providerRejected,optional"`
+	InvalidResponse                   sdkgo.Target[UploadFileResult]                     `connector:"branch=invalidResponse,optional"`
+	Defect                            sdkgo.Target[UploadFileResult]                     `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UploadedFile]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                   `connector:"stepOptionsOverride"`
+}
+
+func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationStep[IN, UploadFileInput, UploadedFile] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("dropbox connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, UploadFileInput, UploadedFile]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.UploadFile(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[UploadFileResult] {
+			branches := make([]sdkgo.BranchTarget[UploadFileResult], 0, 4)
+			if config.Uploaded.HasStep() {
+				branches = append(branches, config.Uploaded.BranchTarget(UploadFileBranchUploaded))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(UploadFileBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(UploadFileBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(UploadFileBranchDefect))
 			}
 			return branches
 		}(),

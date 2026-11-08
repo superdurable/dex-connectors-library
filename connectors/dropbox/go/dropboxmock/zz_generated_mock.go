@@ -22,6 +22,7 @@ type Mock struct {
 	getMetadata    *connectormock.Query[dropbox.GetMetadataInput, dropbox.EntryMetadata]
 	continueFolder *connectormock.Query[dropbox.ContinueFolderInput, dropbox.FolderPage]
 	downloadFile   *connectormock.Query[dropbox.DownloadFileInput, dropbox.DownloadedFile]
+	uploadFile     *connectormock.Mutation[dropbox.UploadFileInput, dropbox.UploadedFile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -33,11 +34,13 @@ func New(t testing.TB, connectionName string) *Mock {
 		getMetadata:    connectormock.NewQuery[dropbox.GetMetadataInput, dropbox.EntryMetadata](t, dropbox.GetMetadataDefinition),
 		continueFolder: connectormock.NewQuery[dropbox.ContinueFolderInput, dropbox.FolderPage](t, dropbox.ContinueFolderDefinition),
 		downloadFile:   connectormock.NewQuery[dropbox.DownloadFileInput, dropbox.DownloadedFile](t, dropbox.DownloadFileDefinition),
+		uploadFile:     connectormock.NewMutation[dropbox.UploadFileInput, dropbox.UploadedFile](t, dropbox.UploadFileDefinition),
 	}
 	mock.listFolder.Default(ListFolderDefault())
 	mock.getMetadata.Default(GetMetadataDefault())
 	mock.continueFolder.Default(ContinueFolderDefault())
 	mock.downloadFile.Default(DownloadFileDefault())
+	mock.uploadFile.Default(UploadFileDefault())
 	connection, err := dropbox.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "dropbox", Name: connectionName})
 	if err != nil {
 		t.Fatalf("dropbox mock connection: %v", err)
@@ -69,6 +72,11 @@ func (mock *Mock) DownloadFile() *connectormock.Query[dropbox.DownloadFileInput,
 	return mock.downloadFile
 }
 
+// UploadFile returns the uploadFile script.
+func (mock *Mock) UploadFile() *connectormock.Mutation[dropbox.UploadFileInput, dropbox.UploadedFile] {
+	return mock.uploadFile
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListFolder() sdkgo.Query[dropbox.ListFolderInput, dropbox.FolderPage] {
@@ -82,6 +90,9 @@ func (operations mockOperations) ContinueFolder() sdkgo.Query[dropbox.ContinueFo
 }
 func (operations mockOperations) DownloadFile() sdkgo.Query[dropbox.DownloadFileInput, dropbox.DownloadedFile] {
 	return operations.mock.downloadFile
+}
+func (operations mockOperations) UploadFile() sdkgo.Mutation[dropbox.UploadFileInput, dropbox.UploadedFile] {
+	return operations.mock.uploadFile
 }
 
 // ListFolderListed selects the listed branch: Dropbox returned a folder page.
@@ -248,3 +259,37 @@ func DownloadFileDownloadedDefault() connectormock.Case[dropbox.DownloadedFile] 
 func DownloadFileDefault() connectormock.Case[dropbox.DownloadedFile] {
 	return DownloadFileDownloadedDefault()
 }
+
+// UploadFileUploaded selects the uploaded branch: Dropbox stored the replacement file content.
+func UploadFileUploaded(value dropbox.UploadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.UploadedFile] {
+	return connectormock.Branch(dropbox.UploadFileBranchUploaded, value, failure)
+}
+
+// UploadFileProviderRejected selects the providerRejected branch: Dropbox conclusively rejected the upload.
+func UploadFileProviderRejected(value dropbox.UploadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.UploadedFile] {
+	return connectormock.Branch(dropbox.UploadFileBranchProviderRejected, value, failure)
+}
+
+// UploadFileInvalidResponse selects the invalidResponse branch: Dropbox returned malformed or oversized upload metadata.
+func UploadFileInvalidResponse(value dropbox.UploadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.UploadedFile] {
+	return connectormock.Branch(dropbox.UploadFileBranchInvalidResponse, value, failure)
+}
+
+// UploadFileDefect selects the defect branch: Local input or connection credentials are invalid.
+func UploadFileDefect(value dropbox.UploadedFile, failure *sdkgo.Failure) connectormock.Case[dropbox.UploadedFile] {
+	return connectormock.Branch(dropbox.UploadFileBranchDefect, value, failure)
+}
+
+// UploadFileRetry asks Dex to retry the uploadFile Step, after the delay when it is positive.
+func UploadFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[dropbox.UploadedFile] {
+	return connectormock.Retry[dropbox.UploadedFile](failure, after)
+}
+
+// UploadFileUploadedDefault is the manifest mock uploadedDefault: One example text file is overwritten.
+func UploadFileUploadedDefault() connectormock.Case[dropbox.UploadedFile] {
+	value := connectormock.MustDecodeOutput[dropbox.UploadedFile](`{"file":{"id":"id:example","name":"example.txt","pathDisplay":"/example.txt","kind":"file"}}`)
+	return connectormock.Branch(dropbox.UploadFileBranchUploaded, value, nil)
+}
+
+// UploadFileDefault is the manifest default, uploadedDefault, which New installs.
+func UploadFileDefault() connectormock.Case[dropbox.UploadedFile] { return UploadFileUploadedDefault() }

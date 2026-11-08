@@ -6,6 +6,7 @@ package dropbox
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -117,4 +118,34 @@ func TestDownloadFileUsesContentEndpointAndKeepsOnlyBoundedBytes(t *testing.T) {
 	require.Equal(t, "SGVsbG8=", result.Value.ContentBase64)
 	require.Equal(t, 5, result.Value.ContentBytes)
 	require.Equal(t, EntryMetadata{ID: "id:example", Name: "naïve.txt", PathDisplay: "/Projects/naïve.txt", Kind: "file"}, result.Value.File)
+}
+
+func TestUploadFileOverwritesSamePathAndReturnsIdentity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/2/files/upload", r.URL.Path)
+		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		require.Equal(t, "application/octet-stream", r.Header.Get("Content-Type"))
+		var argument struct {
+			Path       string `json:"path"`
+			Mode       string `json:"mode"`
+			Autorename bool   `json:"autorename"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(r.Header.Get("Dropbox-API-Arg")), &argument))
+		require.Equal(t, "/Projects/example.txt", argument.Path)
+		require.Equal(t, "overwrite", argument.Mode)
+		require.False(t, argument.Autorename)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.Equal(t, "Hello", string(body))
+		_, err = w.Write([]byte(`{"id":"id:example","name":"example.txt","path_display":"/Projects/example.txt"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client, err := New(Config{ContentBaseURL: server.URL, MaxUploadBytes: 8}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: testCredentials()})
+	require.NoError(t, err)
+	result, err := sdkgo.RunMutation(queryContext{}, client.UploadFile(), testConnection, UploadFileInput{Path: "/Projects/example.txt", ContentBase64: "SGVsbG8="})
+	require.NoError(t, err)
+	require.Equal(t, UploadFileBranchUploaded, result.Branch)
+	require.Equal(t, UploadedFile{File: EntryMetadata{ID: "id:example", Name: "example.txt", PathDisplay: "/Projects/example.txt", Kind: "file"}}, result.Value)
 }
