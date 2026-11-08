@@ -98,6 +98,7 @@ directories:
   - connectors/vercel
   - connectors/webflow
   - connectors/woocommerce
+  - connectors/wordpress
   - connectors/xero
   - connectors/zendesk/support
   - connectors/zoho/crm
