@@ -116,6 +116,7 @@ directories:
   - connectors/woocommerce
   - connectors/wordpress
   - connectors/xero
+  - connectors/zendesk/sell
   - connectors/zendesk/support
   - connectors/zoho/crm
   - connectors/zoho/desk
