@@ -1,0 +1,362 @@
+{
+  "connector": "customerio",
+  "scenarios": [
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"cio_id\":\"a3000001\",\"email\":\"person@example.com\",\"id\":2}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "customerIDs": [
+            "a3000001"
+          ],
+          "email": "person@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-found",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "95b0091d-79fa-5c50-981c-c82719452587",
+      "exchanges": [
+        {
+          "body": "{\"results\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "customerIDs": [],
+          "email": "person@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-empty",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "8a4535d1-1489-5075-980b-bf0ae1261edf",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"cio_id\":\"a3000001\",\"email\":\"person@example.com\"},{\"cio_id\":\"a3000002\",\"email\":\"person@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "customerIDs": [
+            "a3000001",
+            "a3000002"
+          ],
+          "email": "person@example.com"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-multiple",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "customerIDs": [],
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-providerRejected",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "70e762e3-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"cio_id\":\"\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "customerIDs": [],
+          "email": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-invalidResponse",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "8e29694d-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "customerIDs": [],
+          "email": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": ""
+      },
+      "name": "getCustomersByEmail-defect",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "0740ee38-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-rateLimit",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "3fb444c7-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-serverUnavailable",
+      "operation": "getCustomersByEmail"
+    },
+    {
+      "callId": "e79d52f6-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/customers",
+          "query": {
+            "email": [
+              "person@example.com"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-customerio-private-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "email": "person@example.com"
+      },
+      "name": "getCustomersByEmail-transportFailure",
+      "operation": "getCustomersByEmail"
+    }
+  ],
+  "schemaVersion": 1
+}

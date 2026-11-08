@@ -1,0 +1,44 @@
+{
+  "connectorId": "customerio",
+  "releaseTag": "connectors/customerio/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-customerio",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_customers_by_email_step",
+      "kind": "query",
+      "operationId": "getCustomersByEmail",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

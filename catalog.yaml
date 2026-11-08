@@ -7,9 +7,9 @@ directories:
   - connectors/airtable
   - connectors/algolia
   - connectors/alphavantage
-  - connectors/amplitude
   - connectors/amazon/s3
   - connectors/amazon/sqs
+  - connectors/amplitude
   - connectors/asana
   - connectors/ashby
   - connectors/atlassian/bitbucket
@@ -33,6 +33,7 @@ directories:
   - connectors/constantcontact
   - connectors/contentful
   - connectors/copper
+  - connectors/customerio
   - connectors/databricks
   - connectors/datadog
   - connectors/deel
@@ -116,10 +117,10 @@ directories:
   - connectors/postmark
   - connectors/productboard
   - connectors/razorpay
-  - connectors/rippling
   - connectors/reamaze
   - connectors/recurly
   - connectors/resend
+  - connectors/rippling
   - connectors/salesforce
   - connectors/sendgrid
   - connectors/sentry
