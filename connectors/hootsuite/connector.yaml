@@ -13,6 +13,10 @@ spec:
       version: v0.1.0
       operations: [listSocialProfiles, listScheduledPosts, schedulePost]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listSocialProfiles, listScheduledPosts, schedulePost]
+      triggers: []
   codegen:
     go:
       package: hootsuite
