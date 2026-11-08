@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: adobe-acrobat-sign
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-adobe-acrobat-sign
+      operations: [getAgreement]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-adobe-acrobat-sign"
+      operations: [getAgreement]
+      triggers: []
   codegen:
     go:
       package: acrobatsign

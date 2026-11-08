@@ -1,6 +1,6 @@
 # Adobe Acrobat Sign connector
 
-The Go `getAgreement` Query reads an agreement's ID, name, and status from Acrobat Sign REST API v6. It excludes participant identities and document contents from the Dex result. Python and TypeScript packages are not yet implemented.
+The Go, Python, and TypeScript `getAgreement` Queries read an agreement's ID, name, and status from Acrobat Sign REST API v6. They exclude participant identities and document contents from the Dex result.
 
 ## Connection
 
@@ -10,4 +10,4 @@ Leave `baseUrl` blank for the displayed commercial discovery endpoint. The conne
 
 ## Example and verification
 
-Run the [agreement inspection Flow](go/examples/agreement-inspection/README.md) with a static `adobe-acrobat-sign` connection. Provider tests and the mock-backed Dex integration test cover the checked-in path. A real Adobe authorization and agreement read have not been verified locally.
+Run the [Go](go/examples/agreement-inspection/README.md), [Python](python/examples/agreement_inspection/README.md), or [TypeScript](typescript/examples/agreement-inspection/README.md) agreement inspection Flow with a static `adobe-acrobat-sign` connection. Go-recorded conformance covers all three implementations; each has a mock-backed real Dex integration test. A real Adobe authorization and agreement read have not been verified locally.
