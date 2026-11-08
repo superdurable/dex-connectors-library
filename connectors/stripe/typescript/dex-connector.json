@@ -316,7 +316,13 @@
       "agent": {
         "exposed": true,
         "approval": "recommended",
-        "retry": "safe"
+        "retry": "safe",
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "unknown",
+          "providerRejected": "rejected",
+          "uncertain": "unknown"
+        }
       },
       "fields": {
         "stepType": "stepType",

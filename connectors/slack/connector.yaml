@@ -306,6 +306,8 @@ spec:
       branches: *postBranches
       agent:
         exposed: true
+        # defect is raised before chat.postMessage is sent; every path that may have posted is uncertain.
+        branches: {providerRejected: rejected, uncertain: unknown, defect: rejected}
         description: Post one reply to an existing Slack channel thread.
       execution:
         executeMethodTimeout: 30s

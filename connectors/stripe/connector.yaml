@@ -257,6 +257,8 @@ spec:
         exposed: true
         approval: recommended
         retry: safe
+        # defect is raised before the request is sent; invalidResponse follows a 2xx, so the refund exists.
+        branches: {providerRejected: rejected, uncertain: unknown, invalidResponse: unknown, defect: rejected}
         description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
       branches:
         - {id: refunded, goName: Refunded, description: Stripe accepted the refund; read its status to tell succeeded from pending.}

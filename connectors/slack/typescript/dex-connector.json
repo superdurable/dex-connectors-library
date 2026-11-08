@@ -195,7 +195,12 @@
       "inputType": "PostThreadReplyInput",
       "description": "Post one reply to an existing Slack channel thread.",
       "agent": {
-        "exposed": true
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected",
+          "uncertain": "unknown"
+        }
       },
       "fields": {
         "stepType": "stepType",
