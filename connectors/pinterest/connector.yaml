@@ -8,6 +8,16 @@ metadata:
   version: v0.1.0
 spec:
   provider: pinterest
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listPins]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-pinterest'
+      operations: [listPins]
+      triggers: []
   codegen:
     go:
       package: pinterest
