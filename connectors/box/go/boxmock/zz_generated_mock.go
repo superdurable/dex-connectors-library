@@ -19,6 +19,7 @@ import (
 type Mock struct {
 	connection   box.Connection
 	downloadFile *connectormock.Query[box.DownloadFileInput, box.DownloadedFile]
+	uploadFile   *connectormock.Mutation[box.UploadFileInput, box.UploadedFile]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,8 +28,10 @@ func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
 		downloadFile: connectormock.NewQuery[box.DownloadFileInput, box.DownloadedFile](t, box.DownloadFileDefinition),
+		uploadFile:   connectormock.NewMutation[box.UploadFileInput, box.UploadedFile](t, box.UploadFileDefinition),
 	}
 	mock.downloadFile.Default(DownloadFileDefault())
+	mock.uploadFile.Default(UploadFileDefault())
 	connection, err := box.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "box", Name: connectionName})
 	if err != nil {
 		t.Fatalf("box mock connection: %v", err)
@@ -45,10 +48,18 @@ func (mock *Mock) DownloadFile() *connectormock.Query[box.DownloadFileInput, box
 	return mock.downloadFile
 }
 
+// UploadFile returns the uploadFile script.
+func (mock *Mock) UploadFile() *connectormock.Mutation[box.UploadFileInput, box.UploadedFile] {
+	return mock.uploadFile
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) DownloadFile() sdkgo.Query[box.DownloadFileInput, box.DownloadedFile] {
 	return operations.mock.downloadFile
+}
+func (operations mockOperations) UploadFile() sdkgo.Mutation[box.UploadFileInput, box.UploadedFile] {
+	return operations.mock.uploadFile
 }
 
 // DownloadFileDownloaded selects the downloaded branch: Box returned the selected file content.
@@ -96,3 +107,47 @@ func DownloadFileDownloadedDefault() connectormock.Case[box.DownloadedFile] {
 func DownloadFileDefault() connectormock.Case[box.DownloadedFile] {
 	return DownloadFileDownloadedDefault()
 }
+
+// UploadFileUploaded selects the uploaded branch: The existing Box file now has the requested content.
+func UploadFileUploaded(value box.UploadedFile, failure *sdkgo.Failure) connectormock.Case[box.UploadedFile] {
+	return connectormock.Branch(box.UploadFileBranchUploaded, value, failure)
+}
+
+// UploadFileNotFound selects the notFound branch: Box did not find the file or the user lacks access.
+func UploadFileNotFound(value box.UploadedFile, failure *sdkgo.Failure) connectormock.Case[box.UploadedFile] {
+	return connectormock.Branch(box.UploadFileBranchNotFound, value, failure)
+}
+
+// UploadFileProviderRejected selects the providerRejected branch: Box conclusively rejected the replacement.
+func UploadFileProviderRejected(value box.UploadedFile, failure *sdkgo.Failure) connectormock.Case[box.UploadedFile] {
+	return connectormock.Branch(box.UploadFileBranchProviderRejected, value, failure)
+}
+
+// UploadFileUncertain returns an uncertain uploadFile outcome.
+func UploadFileUncertain(value box.UploadedFile, failure sdkgo.Failure) connectormock.Case[box.UploadedFile] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// UploadFileInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized file metadata.
+func UploadFileInvalidResponse(value box.UploadedFile, failure *sdkgo.Failure) connectormock.Case[box.UploadedFile] {
+	return connectormock.Branch(box.UploadFileBranchInvalidResponse, value, failure)
+}
+
+// UploadFileDefect selects the defect branch: Local input or connection credentials are invalid.
+func UploadFileDefect(value box.UploadedFile, failure *sdkgo.Failure) connectormock.Case[box.UploadedFile] {
+	return connectormock.Branch(box.UploadFileBranchDefect, value, failure)
+}
+
+// UploadFileRetry asks Dex to retry the uploadFile Step, after the delay when it is positive.
+func UploadFileRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[box.UploadedFile] {
+	return connectormock.Retry[box.UploadedFile](failure, after)
+}
+
+// UploadFileUploadedDefault is the manifest mock uploadedDefault: One existing file has the requested content.
+func UploadFileUploadedDefault() connectormock.Case[box.UploadedFile] {
+	value := connectormock.MustDecodeOutput[box.UploadedFile](`{"fileId":"12345","name":"example.txt","sha1":"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"}`)
+	return connectormock.Branch(box.UploadFileBranchUploaded, value, nil)
+}
+
+// UploadFileDefault is the manifest default, uploadedDefault, which New installs.
+func UploadFileDefault() connectormock.Case[box.UploadedFile] { return UploadFileUploadedDefault() }

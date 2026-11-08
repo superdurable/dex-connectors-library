@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package box downloads bounded Box files through typed Dex Query Steps.
+// Package box downloads bounded files and replaces existing content through typed Dex Steps.
 package box
 
 import (
@@ -29,8 +29,10 @@ func WithHTTPClient(httpClient *http.Client) Option { return httpClientOption{ht
 // Client holds immutable Box HTTP settings and resolves OAuth credentials per call.
 type Client struct {
 	baseURL          string
+	uploadBaseURL    string
 	maxResponseBytes int64
 	maxDownloadBytes int64
+	maxUploadBytes   int64
 	credentials      CredentialSource
 	refreshDriver    *CredentialRefreshDriver
 	httpClient       *http.Client
@@ -45,11 +47,18 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
+	if config.MaxUploadBytes > 50*1024*1024 {
+		return nil, errors.New("Box direct upload limit exceeds 50 MiB")
+	}
 	baseURL, err := providerhttp.ValidateBaseURL(config.BaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("Box API URL: %w", err)
 	}
-	client := &Client{baseURL: baseURL, maxResponseBytes: config.MaxResponseBytes, maxDownloadBytes: config.MaxDownloadBytes, credentials: credentials}
+	uploadBaseURL, err := providerhttp.ValidateBaseURL(config.UploadBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("Box upload API URL: %w", err)
+	}
+	client := &Client{baseURL: baseURL, uploadBaseURL: uploadBaseURL, maxResponseBytes: config.MaxResponseBytes, maxDownloadBytes: config.MaxDownloadBytes, maxUploadBytes: config.MaxUploadBytes, credentials: credentials}
 	for _, option := range options {
 		if option == nil {
 			return nil, errors.New("Box client option is required")
@@ -66,24 +75,32 @@ var errRefresh = errors.New("Box credential refresh failed")
 var errRequest = errors.New("Box request failed")
 
 type fileResponse struct {
-	body       []byte
-	status     int
-	retryAfter time.Duration
-	err        error
+	body        []byte
+	status      int
+	retryAfter  time.Duration
+	requestSent bool
+	err         error
+}
+
+func (client *Client) resolveAccessToken(call sdkgo.Call) (string, error) {
+	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
+	if sdkgo.IsReauthorizationRequired(err) {
+		return "", errCredential
+	}
+	if err != nil {
+		return "", errRefresh
+	}
+	if credentials.Validate() != nil || validateResolvedCredentials(credentials) != nil {
+		return "", errCredential
+	}
+	return credentials.AccessToken.Reveal(), nil
 }
 
 func (client *Client) download(call sdkgo.Call, fileID string) fileResponse {
-	credentials, err := sdkgo.ResolveCredential(call.Context, client.credentials, call, client.refreshDriver)
-	if sdkgo.IsReauthorizationRequired(err) {
-		return fileResponse{err: errCredential}
-	}
+	accessToken, err := client.resolveAccessToken(call)
 	if err != nil {
-		return fileResponse{err: errRefresh}
+		return fileResponse{err: err}
 	}
-	if credentials.Validate() != nil || validateResolvedCredentials(credentials) != nil {
-		return fileResponse{err: errCredential}
-	}
-	accessToken := credentials.AccessToken.Reveal()
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+"/2.0/files/"+url.PathEscape(fileID)+"/content", nil)
 	if err != nil {
 		return fileResponse{err: errRequest}

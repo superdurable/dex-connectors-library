@@ -20,6 +20,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[box.DownloadedFile](`{"fileId":"12345","contentBase64":"SGVsbG8=","contentBytes":5}`)
 			return err
 		}},
+		{name: "uploadFile/uploadedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[box.UploadedFile](`{"fileId":"12345","name":"example.txt","sha1":"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -32,5 +36,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
 	if mock.DownloadFile().Definition().Operation.OperationID != "downloadFile" {
 		t.Errorf("downloadFile mock has another definition")
+	}
+	if mock.UploadFile().Definition().Operation.OperationID != "uploadFile" {
+		t.Errorf("uploadFile mock has another definition")
 	}
 }

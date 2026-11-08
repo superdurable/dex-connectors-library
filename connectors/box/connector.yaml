@@ -3,7 +3,7 @@ kind: Connector
 metadata:
   name: box
   displayName: Box
-  description: Download bounded files from Box through typed Dex operations.
+  description: Download bounded files and replace existing file content through typed Dex operations.
   company: Box
   version: v0.1.0
 spec:
@@ -32,6 +32,16 @@ spec:
         goName: MaxDownloadBytes
         type: integer
         description: Positive maximum downloaded file content in bytes. Blank uses the displayed default; increase only for bounded files the Flow can safely persist.
+        default: 1048576
+      - name: uploadBaseUrl
+        goName: UploadBaseURL
+        type: url
+        description: Box upload API root. Blank uses the displayed public endpoint; override only for an approved compatible gateway or local provider test.
+        default: https://upload.box.com/api
+      - name: maxUploadBytes
+        goName: MaxUploadBytes
+        type: integer
+        description: Positive maximum decoded upload size in bytes, at most 52428800. Blank uses the displayed default; increase only for bounded files the Flow can safely carry.
         default: 1048576
   auth:
     type: oauth2
@@ -62,7 +72,7 @@ spec:
       startURL: https://app.box.com/developers/console
       steps:
         - Open https://app.box.com/developers/console > Create New App > Platform App > User Authentication (OAuth 2.0).
-        - Open Configuration > Application Scopes and enable Read and write all files and folders stored in Box (root_readwrite), which Box requires for download and the planned upload operation. Save changes; enterprise administrators may need to approve the app.
+        - Open Configuration > Application Scopes and enable Read and write all files and folders stored in Box (root_readwrite), which Box requires for download and upload. Save changes; enterprise administrators may need to approve the app.
         - Open Configuration > OAuth 2.0 Redirect URI, register the exact URI shown by Dex Web, then copy the Client ID and one-time Client Secret from OAuth 2.0 Credentials. The ID is not secret; the secret must stay in Dex credentials.
         - Choose Authorize in Dex Web and complete consent as a user with access to the file. Dex stores and rotates the secret access and refresh tokens.
     oauth2:
@@ -105,3 +115,25 @@ spec:
           default: true
           description: One example text file is downloaded.
           output: {fileId: '12345', contentBase64: SGVsbG8=, contentBytes: 5}
+    - name: uploadFile
+      goName: UploadFile
+      inputType: UploadFileInput
+      outputType: UploadedFile
+      kind: mutation
+      description: Replace an existing Box file's current content with bounded Base64 bytes, skipping an already identical file.
+      idempotency: required
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: uploaded, goName: Uploaded, description: The existing Box file now has the requested content.}
+        - {id: notFound, goName: NotFound, description: Box did not find the file or the user lacks access., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box conclusively rejected the replacement., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The replacement may have reached Box but read-back could not confirm its content., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized file metadata., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: uploadedDefault
+          branch: uploaded
+          default: true
+          description: One existing file has the requested content.
+          output: {fileId: '12345', name: example.txt, sha1: F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0}
