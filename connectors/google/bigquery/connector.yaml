@@ -8,6 +8,16 @@ metadata:
   version: v0.1.0
 spec:
   provider: google-bigquery
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listDatasets]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-google-bigquery'
+      operations: [listDatasets]
+      triggers: []
   codegen:
     go:
       package: bigquery

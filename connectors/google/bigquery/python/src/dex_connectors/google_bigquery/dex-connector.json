@@ -1,0 +1,44 @@
+{
+  "connectorId": "google-bigquery",
+  "releaseTag": "connectors/google/bigquery/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-bigquery",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_datasets_step",
+      "kind": "query",
+      "operationId": "listDatasets",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
