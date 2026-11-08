@@ -82,6 +82,39 @@
           "optional": true
         }
       ]
+    },
+    {
+      "name": "newPublishTextPostStep",
+      "kind": "mutation",
+      "operationId": "publishTextPost",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "published",
+          "field": "published",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
     }
   ]
 }

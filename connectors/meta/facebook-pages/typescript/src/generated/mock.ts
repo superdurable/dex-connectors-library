@@ -2,11 +2,11 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, type Case, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { ListPostsInput, PagePostMetadata, PagePostsPage, GetPostInput } from './models.js';
-import { ListPostsInputSchema, PagePostMetadataSchema, PagePostsPageSchema, GetPostInputSchema } from './models.js';
-import { ProviderID, ListPostsDefinition, GetPostDefinition } from './definitions.js';
+import type { ListPostsInput, PagePostMetadata, PagePostsPage, GetPostInput, PublishTextPostInput, PublishedPost } from './models.js';
+import { ListPostsInputSchema, PagePostMetadataSchema, PagePostsPageSchema, GetPostInputSchema, PublishTextPostInputSchema, PublishedPostSchema } from './models.js';
+import { ProviderID, ListPostsDefinition, GetPostDefinition, PublishTextPostDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
 /** Go zero value for ListPostsInput in scripted cases. */
@@ -27,6 +27,15 @@ export const emptyPagePostsPage: PagePostsPage = PagePostsPageSchema.parse({
 });
 /** Go zero value for GetPostInput in scripted cases. */
 export const emptyGetPostInput: GetPostInput = GetPostInputSchema.parse({
+  "postId": '',
+});
+/** Go zero value for PublishTextPostInput in scripted cases. */
+export const emptyPublishTextPostInput: PublishTextPostInput = PublishTextPostInputSchema.parse({
+  "pageId": '',
+  "message": '',
+});
+/** Go zero value for PublishedPost in scripted cases. */
+export const emptyPublishedPost: PublishedPost = PublishedPostSchema.parse({
   "postId": '',
 });
 
@@ -70,23 +79,45 @@ export function getPostFoundDefault(): Case<PagePostMetadata> {
 /** Default getPost scenario. */
 export function getPostDefault(): Case<PagePostMetadata> { return getPostFoundDefault(); }
 
+/** Script the published branch. */
+export function publishTextPostPublished(value: PublishedPost, failure?: Failure): Case<PublishedPost> { return branchCase("published", value, failure); }
+/** Script the providerRejected branch. */
+export function publishTextPostProviderRejected(value: PublishedPost, failure?: Failure): Case<PublishedPost> { return branchCase("providerRejected", value, failure); }
+/** Script the defect branch. */
+export function publishTextPostDefect(value: PublishedPost, failure?: Failure): Case<PublishedPost> { return branchCase("defect", value, failure); }
+/** Script a safe retry of publishTextPost. */
+export function publishTextPostRetry(failure: Failure, retryAfterMs = 0): Case<PublishedPost> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain publishTextPost attempt. */
+export function publishTextPostUncertain(value: PublishedPost, failure: Failure): Case<PublishedPost> { return uncertainCase(value, failure); }
+/** Manifest scenario publishedDefault for publishTextPost. */
+export function publishTextPostPublishedDefault(): Case<PublishedPost> {
+  const value = PublishedPostSchema.parse({"postId":"123456789_987654321"});
+  return branchCase("published", value);
+}
+/** Default publishTextPost scenario. */
+export function publishTextPostDefault(): Case<PublishedPost> { return publishTextPostPublishedDefault(); }
+
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
   readonly #listPosts: MockQuery<ListPostsInput, PagePostsPage>;
   readonly #getPost: MockQuery<GetPostInput, PagePostMetadata>;
+  readonly #publishTextPost: MockMutation<PublishTextPostInput, PublishedPost>;
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
     this.#listPosts = newQuery<ListPostsInput, PagePostsPage>(ListPostsDefinition).default(listPostsDefault());
     this.#getPost = newQuery<GetPostInput, PagePostMetadata>(GetPostDefinition).default(getPostDefault());
+    this.#publishTextPost = newMutation<PublishTextPostInput, PublishedPost>(PublishTextPostDefinition).default(publishTextPostDefault());
     this.#connection = newConnectionWithOperations(this, { provider: ProviderID, name: connectionName });
   }
 
   connection(): Connection { return this.#connection; }
   listPosts(): MockQuery<ListPostsInput, PagePostsPage> { return this.#listPosts; }
   getPost(): MockQuery<GetPostInput, PagePostMetadata> { return this.#getPost; }
+  publishTextPost(): MockMutation<PublishTextPostInput, PublishedPost> { return this.#publishTextPost; }
   assertNoFailures(): void {
     this.#listPosts.assertNoFailures();
     this.#getPost.assertNoFailures();
+    this.#publishTextPost.assertNoFailures();
   }
 }

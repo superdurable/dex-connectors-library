@@ -1,13 +1,15 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { SecretString, newQueryBranch, newQueryRetry, type Call, type CredentialProvider, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
-import { GetPostDefinition, ListPostsDefinition } from './generated/definitions.js';
-import type { Config, Credentials, GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage } from './generated/models.js';
+import { SecretString, newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type CallID, type CredentialProvider, type Failure, type Mutation, type MutationAttempt, type MutationDefinition, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
+import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, ProviderTransportError, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { CheckpointError, InsufficientTimeError, newFence } from '@superdurable/connectors-sdk/singledispatch';
+import { GetPostDefinition, ListPostsDefinition, PublishTextPostDefinition } from './generated/definitions.js';
+import type { Config, Credentials, GetPostInput, ListPostsInput, PagePostMetadata, PagePostsPage, PublishedPost, PublishTextPostInput } from './generated/models.js';
 
 const emptyPage = (): PagePostsPage => ({ posts: [], nextCursor: '' });
 const emptyPost = (): PagePostMetadata => ({ id: '', message: '', createdTime: '', permalinkUrl: '' });
+const emptyPublishedPost = (): PublishedPost => ({ postId: '' });
 const numericID = /^[0-9]{1,40}$/;
 const postID = /^[0-9]{1,40}(?:_[0-9]{1,40})?$/;
 
@@ -44,6 +46,66 @@ export class FacebookPagesClient {
 
   /** Bind the Page feed Query. */ listPosts(): ListPostsOperation { return new ListPostsOperation(this); }
   /** Bind the post identity Query. */ getPost(): GetPostOperation { return new GetPostOperation(this); }
+  /** Bind the Page publishing Mutation. */ publishTextPost(): PublishTextPostOperation {
+    return new PublishTextPostOperation((call, input) => this.publishTextPostAttempt(call, input));
+  }
+
+  private async publishTextPostAttempt(call: Call, input: PublishTextPostInput): Promise<MutationAttempt<PublishedPost>> {
+    const operation = 'publishTextPost';
+    const zero = emptyPublishedPost();
+    if (!input || typeof input.pageId !== 'string' || !numericID.test(input.pageId) || typeof input.message !== 'string' || !input.message.trim() || Buffer.from(input.message, 'utf8').toString('utf8') !== input.message || Buffer.byteLength(input.message, 'utf8') > 65_536) {
+      return newMutationBranch('defect', zero, {}, failure(operation, 'VALIDATION', 'Page ID or message is invalid'));
+    }
+    let fence: ReturnType<typeof newFence>;
+    try { fence = newFence(call, PublishTextPostDefinition.stepDefaults.executeMethodTimeoutMs ?? 30_000); }
+    catch { return newMutationBranch('defect', zero, {}, failure(operation, 'LOCAL_DEFECT', 'Meta dispatch fence is unavailable')); }
+    if (fence.decide().kind !== 'sendAllowed') return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta publish outcome cannot be confirmed; inspect the Page before retrying'));
+    let accessToken: string;
+    try {
+      const resolved = await this.credentials.resolve(call, call.context.cancellationSignal);
+      accessToken = resolved.pageAccessToken instanceof SecretString ? resolved.pageAccessToken.reveal() : '';
+    } catch { return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid')); }
+    if (!accessToken || !isHeaderSafeCredential(accessToken)) return newMutationBranch('defect', zero, {}, failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid'));
+    const form = new URLSearchParams({ message: input.message }).toString();
+    const request: ProviderRequest = {
+      url: `${this.baseUrl}/${input.pageId}/feed`, method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Bearer ${accessToken}`, 'User-Agent': 'Dex Connector (https://superdurable.io)' },
+      body: Buffer.from(form), maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs,
+      addressPolicy: this.baseUrl.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP',
+      signal: call.context.cancellationSignal,
+    };
+    let response: ProviderResponse;
+    try { response = await fence.dispatch(signal => this.sendRequest({ ...request, signal })); }
+    catch (error) {
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError) return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta dispatch was not started'));
+      if (error instanceof ProviderTransportError && error.isProvablyNotSent) {
+        try { await fence.recordCanResend(); return newMutationRetry(failure(operation, 'TRANSPORT', 'Meta could not be reached before sending')); }
+        catch { return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta publish outcome is unknown')); }
+      }
+      if (error instanceof BodyTooLargeError && error.status !== undefined) {
+        if (error.status === 200) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta publish response could not be confirmed'));
+        response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
+      }
+      else return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta publish outcome is unknown'));
+    }
+    if (response.status === 429 || response.status === 503) {
+      try { await fence.recordCanResend(); }
+      catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Meta retry checkpoint is unavailable')); }
+      const kind = response.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY';
+      return newMutationRetry(failure(operation, kind, 'Meta did not process the post'), parseRetryAfter(headerValue(response.headers['retry-after'])));
+    }
+    if (response.status >= 500 || response.status === 408 || response.status === 409) return newMutationUncertain(zero, failure(operation, 'AVAILABILITY', 'Meta publish outcome is unknown'));
+    if (response.status >= 400 && response.status < 500) {
+      const kind = response.status === 401 ? 'AUTHENTICATION' : response.status === 403 ? 'AUTHORIZATION' : 'PROVIDER_REJECTION';
+      return newMutationBranch('providerRejected', zero, {}, failure(operation, kind, `Meta rejected HTTP ${response.status}`));
+    }
+    if (response.body.length > this.maxResponseBytes) return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta publish response could not be confirmed'));
+    const document = parseJSON(response.body);
+    if (response.status !== 200 || !isObject(document) || typeof document.id !== 'string' || !postID.test(document.id)) return newMutationUncertain(zero, failure(operation, 'PROTOCOL', 'Meta publish response is incomplete'));
+    try { await fence.recordProviderId(document.id); }
+    catch { return newMutationUncertain(zero, failure(operation, 'LOCAL_DEFECT', 'Meta post ID could not be checkpointed')); }
+    return newMutationBranch('published', { postId: document.id });
+  }
 
   /** Fetch one provider response and classify transport and HTTP failures. */
   async exchange(call: Call, operation: string, path: string): Promise<ProviderOutcome> {
@@ -78,6 +140,15 @@ export class FacebookPagesClient {
     if (response.body.length > this.maxResponseBytes) return { branch: 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Meta response exceeded the configured limit') };
     return { body: response.body };
   }
+}
+
+/** Publish one plain-text Page post through a durable dispatch fence. */
+export class PublishTextPostOperation implements Mutation<PublishTextPostInput, PublishedPost> {
+  /** Bind a client's single-dispatch publishing callback. */
+  constructor(private readonly publish: (call: Call, input: PublishTextPostInput) => Promise<MutationAttempt<PublishedPost>>) {}
+  /** Return the manifest-generated publishing contract. */ definition(): MutationDefinition { return PublishTextPostDefinition; }
+  /** Record the stable Call ID; Meta does not deduplicate on this key. */ idempotencyKey(callID: CallID): string { return callID; }
+  /** Publish once, returning uncertainty when the result cannot be confirmed. */ invoke(call: Call, input: PublishTextPostInput): Promise<MutationAttempt<PublishedPost>> { return this.publish(call, input); }
 }
 
 /** Read one Page feed page without comments or reactions. */

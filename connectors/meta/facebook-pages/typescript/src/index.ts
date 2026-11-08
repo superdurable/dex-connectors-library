@@ -5,4 +5,4 @@ export * from './generated/definitions.js';
 export * from './generated/steps.js';
 export { Connection, newConnection, newConnectionWithOperations } from './generated/connection.js';
 export { newProjectConnection } from './project.js';
-export { FacebookPagesClient, GetPostOperation, ListPostsOperation, type FacebookPagesClientOptions } from './client.js';
+export { FacebookPagesClient, GetPostOperation, ListPostsOperation, PublishTextPostOperation, type FacebookPagesClientOptions } from './client.js';

@@ -2,10 +2,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { goToBranch, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
+import { goToBranch, newMutationStep, type Mutation, type MutationResult, type MutationStep, type MutationStepConfig, newQueryStep, type Query, type QueryResult, type QueryStep, type QueryStepConfig } from '@superdurable/connectors-sdk';
 import type { StepTarget } from '@superdurable/dex';
 import type { Connection } from './connection.js';
-import type { ListPostsInput, PagePostsPage, GetPostInput, PagePostMetadata } from './models.js';
+import type { ListPostsInput, PagePostsPage, GetPostInput, PagePostMetadata, PublishTextPostInput, PublishedPost } from './models.js';
 
 /** Configuration for the listPosts connector Step. */
 export interface ListPostsStepConfig<StepInput, OperationInput = ListPostsInput, OperationOutput = PagePostsPage> extends Omit<QueryStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
@@ -65,6 +65,34 @@ export function newGetPostStep<StepInput, OperationInput = GetPostInput, Operati
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
+    ...(defect ? [goToBranch("defect", defect)] : []),
+  ] });
+}
+
+/** Configuration for the publishTextPost connector Step. */
+export interface PublishTextPostStepConfig<StepInput, OperationInput = PublishTextPostInput, OperationOutput = PublishedPost> extends Omit<MutationStepConfig<StepInput, OperationInput, OperationOutput>, 'operation' | 'connection' | 'branches'> {
+  /** Named connection supplying this operation. */
+  connection: Connection<{ publishTextPost(): Mutation<OperationInput, OperationOutput> }>;
+  /** Name matching the bound connection. */
+  connectionName: string;
+  /** Meta returned the published post ID. */
+  published: StepTarget<MutationResult<OperationOutput>>;
+  /** Meta definitively rejected the post. */
+  providerRejected?: StepTarget<MutationResult<OperationOutput>>;
+  /** The publish outcome is unknown; inspect the Page before retrying manually. */
+  uncertain?: StepTarget<MutationResult<OperationOutput>>;
+  /** Local input or connection credentials are invalid. */
+  defect?: StepTarget<MutationResult<OperationOutput>>;
+}
+
+/** Build the publishTextPost Step from a named connection. */
+export function newPublishTextPostStep<StepInput, OperationInput = PublishTextPostInput, OperationOutput = PublishedPost>(configuration: PublishTextPostStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
+  const { connection, connectionName, published, providerRejected, uncertain, defect, ...stepConfiguration } = configuration;
+  if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
+  return newMutationStep({ ...stepConfiguration, operation: connection.operations.publishTextPost(), connection: connection.reference, branches: [
+    goToBranch("published", published),
+    ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
+    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });
 }

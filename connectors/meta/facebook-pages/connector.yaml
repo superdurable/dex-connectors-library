@@ -15,7 +15,7 @@ spec:
       triggers: []
     typescript:
       version: v0.1.0
-      operations: [listPosts, getPost]
+      operations: [listPosts, getPost, publishTextPost]
       triggers: []
   codegen:
     go:

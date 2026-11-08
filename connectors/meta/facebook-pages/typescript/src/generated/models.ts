@@ -75,6 +75,18 @@ export interface GetPostInput {
   /** PostID is a numeric or PageID_PostID Graph API identifier. */
   "postId": string;
 }
+/** PublishTextPostInput selects the Page and text to publish. */
+export interface PublishTextPostInput {
+  /** PageID is the numeric Page ID from Meta Business Suite. */
+  "pageId": string;
+  /** Message is nonempty UTF-8 text for the public Page feed. */
+  "message": string;
+}
+/** PublishedPost identifies a post Meta accepted for publication. */
+export interface PublishedPost {
+  /** PostID is Meta's PageID_PostID identifier. */
+  "postId": string;
+}
 
 /** Runtime validator for ListPostsInput. */
 export const ListPostsInputSchema = z.strictObject({
@@ -100,3 +112,14 @@ export const PagePostsPageSchema = z.strictObject({
 export const GetPostInputSchema = z.strictObject({
   "postId": z.string(),
 }) satisfies z.ZodType<GetPostInput>;
+
+/** Runtime validator for PublishTextPostInput. */
+export const PublishTextPostInputSchema = z.strictObject({
+  "pageId": z.string(),
+  "message": z.string(),
+}) satisfies z.ZodType<PublishTextPostInput>;
+
+/** Runtime validator for PublishedPost. */
+export const PublishedPostSchema = z.strictObject({
+  "postId": z.string(),
+}) satisfies z.ZodType<PublishedPost>;

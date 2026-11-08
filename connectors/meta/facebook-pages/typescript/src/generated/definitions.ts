@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import type { QueryDefinition } from '@superdurable/connectors-sdk';
+import type { MutationDefinition, QueryDefinition } from '@superdurable/connectors-sdk';
 
 /** Stable connector identity. */
 export const ConnectorID = "facebook-pages";
@@ -74,3 +74,32 @@ export const GetPostDefinition: QueryDefinition = {
 };
 /** Manifest metadata for getPost. */
 export const GetPostMetadata = { kind: "query", idempotency: "none", authorization: "required" } as const;
+
+/** Branch IDs for publishTextPost. */
+export const PublishTextPostBranch = {
+  Published: "published",
+  ProviderRejected: "providerRejected",
+  Uncertain: "uncertain",
+  Defect: "defect",
+} as const;
+/** Meta returned the published post ID. */
+export const PublishTextPostBranchPublished = PublishTextPostBranch.Published;
+/** Meta definitively rejected the post. */
+export const PublishTextPostBranchProviderRejected = PublishTextPostBranch.ProviderRejected;
+/** The publish outcome is unknown; inspect the Page before retrying manually. */
+export const PublishTextPostBranchUncertain = PublishTextPostBranch.Uncertain;
+/** Local input or connection credentials are invalid. */
+export const PublishTextPostBranchDefect = PublishTextPostBranch.Defect;
+/** Manifest definition for publishTextPost. */
+export const PublishTextPostDefinition: MutationDefinition = {
+  operation: { connectorId: ConnectorID, operationId: "publishTextPost" },
+  branches: [
+    { id: "published", description: "Meta returned the published post ID." },
+    { id: "providerRejected", description: "Meta definitively rejected the post.", optional: true },
+    { id: "uncertain", description: "The publish outcome is unknown; inspect the Page before retrying manually.", optional: true },
+    { id: "defect", description: "Local input or connection credentials are invalid.", optional: true },
+  ],
+  stepDefaults: { executeMethodTimeoutMs: 30000, executeDurability: "sync" },
+};
+/** Manifest metadata for publishTextPost. */
+export const PublishTextPostMetadata = { kind: "mutation", idempotency: "required", authorization: "required" } as const;

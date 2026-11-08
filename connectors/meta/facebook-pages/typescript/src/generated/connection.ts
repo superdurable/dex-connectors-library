@@ -2,9 +2,9 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { ConnectionRefSchema, type ConnectionRef, type Query } from '@superdurable/connectors-sdk';
+import { ConnectionRefSchema, type ConnectionRef, type Mutation, type Query } from '@superdurable/connectors-sdk';
 import type { LoadedProject } from '@superdurable/connectors-sdk/projectconfig';
-import type { ListPostsInput, PagePostsPage, GetPostInput, PagePostMetadata } from './models.js';
+import type { ListPostsInput, PagePostsPage, GetPostInput, PagePostMetadata, PublishTextPostInput, PublishedPost } from './models.js';
 import { ConnectorID, ProviderID } from './definitions.js';
 
 /** Typed operations supplied by a client or mock. */
@@ -13,6 +13,8 @@ export interface Operations {
   listPosts(): Query<ListPostsInput, PagePostsPage>;
   /** Invoke getPost through this connection. */
   getPost(): Query<GetPostInput, PagePostMetadata>;
+  /** Invoke publishTextPost through this connection. */
+  publishTextPost(): Mutation<PublishTextPostInput, PublishedPost>;
 }
 
 /** Named connector connection kept outside Flow state. */
