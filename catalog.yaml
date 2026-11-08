@@ -70,6 +70,7 @@ directories:
   - connectors/jotform
   - connectors/kit
   - connectors/klaviyo
+  - connectors/lever
   - connectors/linear
   - connectors/linkedin
   - connectors/lucid

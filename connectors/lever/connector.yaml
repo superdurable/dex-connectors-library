@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: lever
+  displayName: Lever
+  description: Read selected Lever opportunity fields from the Data API.
+  company: Lever
+  version: v0.1.0
+spec:
+  provider: lever
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-lever
+      operations: [getOpportunity]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-lever"
+      operations: [getOpportunity]
+      triggers: []
+  codegen:
+    go:
+      package: lever
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Lever Data API root as an absolute HTTPS URL ending in /v1. Blank uses the displayed endpoint; override only for a trusted local test gateway.
+        default: https://api.lever.co/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow opportunity reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete opportunity response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: lever-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Lever API key from Settings > Integrations and API > API Credentials. Copy the complete opaque value; blank prevents calls. Dex sends it as the Basic username with an empty password.
+    guide:
+      startURL: https://hire.lever.co
+      steps:
+        - In Lever, open Settings > Integrations and API > API Credentials, create an API key with read access to opportunities, and copy the opaque secret into Dex Web api_key. Blank is invalid; revoke or rotate it on the same page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret opportunity UID in Lever or the list opportunities API and pass it as opportunityId; blank is invalid. Confidential opportunities require corresponding account access.
+  operations:
+    - name: getOpportunity
+      goName: GetOpportunity
+      inputType: GetOpportunityInput
+      outputType: OpportunityStage
+      kind: query
+      description: Read one opportunity's ID, candidate name, and current stage UID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Lever returned the opportunity.}
+        - {id: notFound, goName: NotFound, description: Lever did not expose the opportunity., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Lever conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lever returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample opportunity is returned.
+          output: {id: 250d8f03-738a-4bba-a671-8a3d73477145, name: Sample Candidate, stage: 00922a60-7c15-422b-b086-f62000824fd7}
