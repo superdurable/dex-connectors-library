@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: productboard
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-productboard
+      operations: [listFeatures]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-productboard"
+      operations: [listFeatures]
+      triggers: []
   codegen:
     go:
       package: productboard

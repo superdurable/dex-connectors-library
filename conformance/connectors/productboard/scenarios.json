@@ -1,0 +1,312 @@
+{
+  "connector": "productboard",
+  "scenarios": [
+    {
+      "callId": "aa59c2a2-1fb0-5517-b7ae-5eb8a50c37c9",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"feature-1\",\"type\":\"feature\",\"fields\":{\"name\":\"Example feature\",\"description\":\"private\"}}],\"links\":{\"next\":\"https://api.productboard.com/v2/entities?pageCursor=cursor-2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "features": [
+            {
+              "id": "feature-1",
+              "name": "Example feature"
+            }
+          ],
+          "nextCursor": "cursor-2"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-listed",
+      "operation": "listFeatures"
+    },
+    {
+      "callId": "147cdd76-ed57-5fbf-8fc4-c07e4e71edf9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "features": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-providerRejected",
+      "operation": "listFeatures"
+    },
+    {
+      "callId": "56d42409-2534-5fd9-808d-ddfc5e7a6d2a",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"feature-1\",\"type\":\"feature\",\"fields\":{}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "features": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-invalidResponse",
+      "operation": "listFeatures"
+    },
+    {
+      "callId": "9a8628cc-0327-55df-9823-8c1b43087f1f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "features": [],
+          "nextCursor": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "bad\nvalue"
+      },
+      "name": "listFeatures-defect",
+      "operation": "listFeatures"
+    },
+    {
+      "callId": "26799ad6-fd15-5ec3-9918-219d174d124f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-rateLimit",
+      "operation": "listFeatures"
+    },
+    {
+      "callId": "499ff734-4540-59ef-9159-123a717affb4",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-serverUnavailable",
+      "operation": "listFeatures"
+    },
+    {
+      "callId": "bc99fd46-3ef4-5176-ab95-1765580db04a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-transportFailure",
+      "operation": "listFeatures"
+    }
+  ],
+  "schemaVersion": 1
+}
