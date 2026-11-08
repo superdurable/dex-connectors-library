@@ -2,6 +2,7 @@ apiVersion: connectors.dex.dev/catalog-source/v1alpha1
 kind: ConnectorCatalogSource
 directories:
   - connectors/activecampaign
+  - connectors/adobe/acrobat-sign
   - connectors/airtable
   - connectors/algolia
   - connectors/alphavantage
