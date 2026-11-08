@@ -1,0 +1,677 @@
+{
+  "connector": "jotform",
+  "scenarios": [
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":[{\"id\":\"241234567890123\",\"title\":\"Contact request\",\"status\":\"ENABLED\",\"questions\":{\"private\":\"excluded\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "forms": [
+            {
+              "id": "241234567890123",
+              "status": "ENABLED",
+              "title": "Contact request"
+            }
+          ],
+          "limit": 2,
+          "offset": 10
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 10
+      },
+      "name": "listForms-success",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "forms": [],
+          "limit": 0,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 10
+      },
+      "name": "listForms-providerRejected",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "forms": [],
+          "limit": 0,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 10
+      },
+      "name": "listForms-invalidResponse",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "forms": [],
+          "limit": 0,
+          "offset": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": -1
+      },
+      "name": "listForms-defect",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 10
+      },
+      "name": "listForms-rateLimit",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 10
+      },
+      "name": "listForms-serverError",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 10
+      },
+      "name": "listForms-transport",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":{\"id\":\"241234567890123456\",\"form_id\":\"241234567890123\",\"status\":\"ACTIVE\",\"created_at\":\"2026-11-07 10:00:00\",\"answers\":{\"private\":\"excluded\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-11-07 10:00:00",
+          "formId": "241234567890123",
+          "id": "241234567890123456",
+          "status": "ACTIVE"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-success",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "formId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-providerRejected",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":200,\"content\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "formId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-invalidResponse",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "formId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "bad/id"
+      },
+      "name": "getSubmission-defect",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-rateLimit",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-serverError",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-transport",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"missing\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "",
+          "formId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-notFound",
+      "operation": "getSubmission"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":400,\"content\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/user/forms",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "forms": [],
+          "limit": 0,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 10
+      },
+      "name": "listForms-providerCodeRejected",
+      "operation": "listForms"
+    },
+    {
+      "callId": "30046d2e-c66d-59a9-98ee-44df89ef591a",
+      "exchanges": [
+        {
+          "body": "{\"responseCode\":404,\"content\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/submission/241234567890123456",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Apikey": [
+              "test-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "",
+          "formId": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "submissionId": "241234567890123456"
+      },
+      "name": "getSubmission-providerCodeNotFound",
+      "operation": "getSubmission"
+    }
+  ],
+  "schemaVersion": 1
+}

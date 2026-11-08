@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: jotform
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listForms, getSubmission]
+      triggers: []
   codegen:
     go:
       package: jotform
