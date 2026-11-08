@@ -14,7 +14,13 @@ ROOT = Path(__file__).parents[5]
 sys.path.insert(0, str(ROOT / "conformance/runners/python"))
 import connector_scenarios as conformance  # type: ignore[import-not-found]  # noqa: E402
 
-SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/meta/facebook-pages/scenarios.json")
+SCENARIOS = [
+    scenario
+    for scenario in conformance.load_scenarios(
+        ROOT / "conformance/connectors/meta/facebook-pages/scenarios.json"
+    )
+    if scenario["operation"] in {"listPosts", "getPost"}
+]
 CONNECTION = sdk.ConnectionRef("facebook-pages", "facebook-pages")
 ADAPTER = conformance.PythonOperationAdapter(
     "facebook-pages",

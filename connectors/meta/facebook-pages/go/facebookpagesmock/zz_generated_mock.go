@@ -17,9 +17,10 @@ import (
 
 // Mock is a scripted facebook-pages connection. Script each operation through its accessor.
 type Mock struct {
-	connection facebookpages.Connection
-	listPosts  *connectormock.Query[facebookpages.ListPostsInput, facebookpages.PagePostsPage]
-	getPost    *connectormock.Query[facebookpages.GetPostInput, facebookpages.PagePostMetadata]
+	connection      facebookpages.Connection
+	listPosts       *connectormock.Query[facebookpages.ListPostsInput, facebookpages.PagePostsPage]
+	getPost         *connectormock.Query[facebookpages.GetPostInput, facebookpages.PagePostMetadata]
+	publishTextPost *connectormock.Mutation[facebookpages.PublishTextPostInput, facebookpages.PublishedPost]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -27,11 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listPosts: connectormock.NewQuery[facebookpages.ListPostsInput, facebookpages.PagePostsPage](t, facebookpages.ListPostsDefinition),
-		getPost:   connectormock.NewQuery[facebookpages.GetPostInput, facebookpages.PagePostMetadata](t, facebookpages.GetPostDefinition),
+		listPosts:       connectormock.NewQuery[facebookpages.ListPostsInput, facebookpages.PagePostsPage](t, facebookpages.ListPostsDefinition),
+		getPost:         connectormock.NewQuery[facebookpages.GetPostInput, facebookpages.PagePostMetadata](t, facebookpages.GetPostDefinition),
+		publishTextPost: connectormock.NewMutation[facebookpages.PublishTextPostInput, facebookpages.PublishedPost](t, facebookpages.PublishTextPostDefinition),
 	}
 	mock.listPosts.Default(ListPostsDefault())
 	mock.getPost.Default(GetPostDefault())
+	mock.publishTextPost.Default(PublishTextPostDefault())
 	connection, err := facebookpages.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "facebook-pages", Name: connectionName})
 	if err != nil {
 		t.Fatalf("facebook-pages mock connection: %v", err)
@@ -53,6 +56,11 @@ func (mock *Mock) GetPost() *connectormock.Query[facebookpages.GetPostInput, fac
 	return mock.getPost
 }
 
+// PublishTextPost returns the publishTextPost script.
+func (mock *Mock) PublishTextPost() *connectormock.Mutation[facebookpages.PublishTextPostInput, facebookpages.PublishedPost] {
+	return mock.publishTextPost
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPosts() sdkgo.Query[facebookpages.ListPostsInput, facebookpages.PagePostsPage] {
@@ -60,6 +68,9 @@ func (operations mockOperations) ListPosts() sdkgo.Query[facebookpages.ListPosts
 }
 func (operations mockOperations) GetPost() sdkgo.Query[facebookpages.GetPostInput, facebookpages.PagePostMetadata] {
 	return operations.mock.getPost
+}
+func (operations mockOperations) PublishTextPost() sdkgo.Mutation[facebookpages.PublishTextPostInput, facebookpages.PublishedPost] {
+	return operations.mock.publishTextPost
 }
 
 // ListPostsListed selects the listed branch: Meta returned one Page feed page.
@@ -142,4 +153,40 @@ func GetPostFoundDefault() connectormock.Case[facebookpages.PagePostMetadata] {
 // GetPostDefault is the manifest default, foundDefault, which New installs.
 func GetPostDefault() connectormock.Case[facebookpages.PagePostMetadata] {
 	return GetPostFoundDefault()
+}
+
+// PublishTextPostPublished selects the published branch: Meta returned the published post ID.
+func PublishTextPostPublished(value facebookpages.PublishedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.PublishedPost] {
+	return connectormock.Branch(facebookpages.PublishTextPostBranchPublished, value, failure)
+}
+
+// PublishTextPostProviderRejected selects the providerRejected branch: Meta definitively rejected the post.
+func PublishTextPostProviderRejected(value facebookpages.PublishedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.PublishedPost] {
+	return connectormock.Branch(facebookpages.PublishTextPostBranchProviderRejected, value, failure)
+}
+
+// PublishTextPostUncertain returns an uncertain publishTextPost outcome.
+func PublishTextPostUncertain(value facebookpages.PublishedPost, failure sdkgo.Failure) connectormock.Case[facebookpages.PublishedPost] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// PublishTextPostDefect selects the defect branch: Local input or connection credentials are invalid.
+func PublishTextPostDefect(value facebookpages.PublishedPost, failure *sdkgo.Failure) connectormock.Case[facebookpages.PublishedPost] {
+	return connectormock.Branch(facebookpages.PublishTextPostBranchDefect, value, failure)
+}
+
+// PublishTextPostRetry asks Dex to retry the publishTextPost Step, after the delay when it is positive.
+func PublishTextPostRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[facebookpages.PublishedPost] {
+	return connectormock.Retry[facebookpages.PublishedPost](failure, after)
+}
+
+// PublishTextPostPublishedDefault is the manifest mock publishedDefault: Meta accepted the Page post.
+func PublishTextPostPublishedDefault() connectormock.Case[facebookpages.PublishedPost] {
+	value := connectormock.MustDecodeOutput[facebookpages.PublishedPost](`{"postId":"123456789_987654321"}`)
+	return connectormock.Branch(facebookpages.PublishTextPostBranchPublished, value, nil)
+}
+
+// PublishTextPostDefault is the manifest default, publishedDefault, which New installs.
+func PublishTextPostDefault() connectormock.Case[facebookpages.PublishedPost] {
+	return PublishTextPostPublishedDefault()
 }

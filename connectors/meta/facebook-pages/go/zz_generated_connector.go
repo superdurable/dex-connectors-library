@@ -42,6 +42,7 @@ type Connection struct {
 type Operations interface {
 	ListPosts() sdkgo.Query[ListPostsInput, PagePostsPage]
 	GetPost() sdkgo.Query[GetPostInput, PagePostMetadata]
+	PublishTextPost() sdkgo.Mutation[PublishTextPostInput, PublishedPost]
 }
 
 type clientOperations struct{ client *Client }
@@ -51,6 +52,9 @@ func (operations clientOperations) ListPosts() sdkgo.Query[ListPostsInput, PageP
 }
 func (operations clientOperations) GetPost() sdkgo.Query[GetPostInput, PagePostMetadata] {
 	return operations.client.GetPost()
+}
+func (operations clientOperations) PublishTextPost() sdkgo.Mutation[PublishTextPostInput, PublishedPost] {
+	return operations.client.PublishTextPost()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -336,6 +340,77 @@ func NewGetPostStep[IN any](config GetPostStepConfig[IN]) sdkgo.QueryStep[IN, Ge
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(GetPostBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const PublishTextPostBranchPublished sdkgo.BranchID = "published"
+const PublishTextPostBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const PublishTextPostBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const PublishTextPostBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var PublishTextPostDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "publishTextPost"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: PublishTextPostBranchPublished, Description: "Meta returned the published post ID."},
+		{ID: PublishTextPostBranchProviderRejected, Description: "Meta definitively rejected the post.", Optional: true},
+		{ID: PublishTextPostBranchUncertain, Description: "The publish outcome is unknown; inspect the Page before retrying manually.", Optional: true},
+		{ID: PublishTextPostBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type PublishTextPostResult = sdkgo.MutationResult[PublishedPost]
+
+type PublishTextPostStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                            `connector:"connectorId=facebook-pages"`
+	operationID                       struct{}                                            `connector:"operationId=publishTextPost"`
+	StepType                          string                                              `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                               `connector:"annotations"`
+	Connection                        Connection                                          `connector:"connection"`
+	ConnectionName                    string                                              `connector:"connectionName"`
+	MapToOperationInput               func(IN) PublishTextPostInput                       `connector:"mapToOperationInput"`
+	Published                         sdkgo.Target[PublishTextPostResult]                 `connector:"branch=published"`
+	ProviderRejected                  sdkgo.Target[PublishTextPostResult]                 `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[PublishTextPostResult]                 `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[PublishTextPostResult]                 `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[PublishedPost]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
+}
+
+func NewPublishTextPostStep[IN any](config PublishTextPostStepConfig[IN]) sdkgo.MutationStep[IN, PublishTextPostInput, PublishedPost] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("facebook-pages connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, PublishTextPostInput, PublishedPost]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.PublishTextPost(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[PublishTextPostResult] {
+			branches := make([]sdkgo.BranchTarget[PublishTextPostResult], 0, 4)
+			if config.Published.HasStep() {
+				branches = append(branches, config.Published.BranchTarget(PublishTextPostBranchPublished))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(PublishTextPostBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(PublishTextPostBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(PublishTextPostBranchDefect))
 			}
 			return branches
 		}(),

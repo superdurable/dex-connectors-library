@@ -725,6 +725,403 @@
       },
       "name": "getPost-transport",
       "operation": "getPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"123456789_987654321\"}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "published",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "providerId": "123456789_987654321",
+          "state": "claimed"
+        },
+        "output": {
+          "postId": "123456789_987654321"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-success",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"denied\"}}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "claimed"
+        },
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-providerRejected",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "claimed"
+        },
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-uncertain",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "claimed"
+        },
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-invalidResponse",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"limited\"}}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-rateLimit",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unavailable\"}}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-serverUnavailable",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-transportBefore",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "bad/id"
+      },
+      "name": "publishTextPost-defect",
+      "operation": "publishTextPost"
     }
   ],
   "schemaVersion": 1

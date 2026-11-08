@@ -24,6 +24,10 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 			_, err := connectormock.DecodeOutput[facebookpages.PagePostMetadata](`{"id":"123456789_987654321","message":"Welcome to our Page","createdTime":"2026-11-08T10:00:00+0000","permalinkUrl":"https://www.facebook.com/123456789/posts/987654321"}`)
 			return err
 		}},
+		{name: "publishTextPost/publishedDefault/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[facebookpages.PublishedPost](`{"postId":"123456789_987654321"}`)
+			return err
+		}},
 	}
 	for _, fixture := range fixtures {
 		if err := fixture.decode(); err != nil {
@@ -39,5 +43,8 @@ func TestNewBindsEveryOperation(t *testing.T) {
 	}
 	if mock.GetPost().Definition().Operation.OperationID != "getPost" {
 		t.Errorf("getPost mock has another definition")
+	}
+	if mock.PublishTextPost().Definition().Operation.OperationID != "publishTextPost" {
+		t.Errorf("publishTextPost mock has another definition")
 	}
 }

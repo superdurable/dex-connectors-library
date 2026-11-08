@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret opaque Page access token from https://developers.facebook.com/tools/explorer/ > select your Meta app > Get Token > Get Page Access Token > select the Page. Grant pages_read_engagement and required Page access before copying the complete token into Dex. Blank prevents calls; revoke it from the same app or Page access settings when retired. */
+  /** Secret opaque Page access token from https://developers.facebook.com/tools/explorer/ > select your Meta app > Get Token > Get Page Access Token > select the Page. Grant pages_read_engagement for queries and pages_manage_posts for publishing. Blank prevents calls; revoke it from the same app or Page access settings when retired. */
   pageAccessToken: SecretString;
 }
 
