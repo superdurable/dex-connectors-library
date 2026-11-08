@@ -41,12 +41,20 @@ type Connection struct {
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
 	ListPhoneNumbers() sdkgo.Query[ListPhoneNumbersInput, PhoneNumbersPage]
+	SendTextMessage() sdkgo.Mutation[SendTextMessageInput, SentMessage]
+	SendTemplateMessage() sdkgo.Mutation[SendTemplateMessageInput, SentMessage]
 }
 
 type clientOperations struct{ client *Client }
 
 func (operations clientOperations) ListPhoneNumbers() sdkgo.Query[ListPhoneNumbersInput, PhoneNumbersPage] {
 	return operations.client.ListPhoneNumbers()
+}
+func (operations clientOperations) SendTextMessage() sdkgo.Mutation[SendTextMessageInput, SentMessage] {
+	return operations.client.SendTextMessage()
+}
+func (operations clientOperations) SendTemplateMessage() sdkgo.Mutation[SendTemplateMessageInput, SentMessage] {
+	return operations.client.SendTemplateMessage()
 }
 
 // NewConnection wraps a client built with New, such as a test client with a static credential provider.
@@ -255,6 +263,148 @@ func NewListPhoneNumbersStep[IN any](config ListPhoneNumbersStepConfig[IN]) sdkg
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(ListPhoneNumbersBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendTextMessageBranchSent sdkgo.BranchID = "sent"
+const SendTextMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendTextMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendTextMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendTextMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendTextMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendTextMessageBranchSent, Description: "Meta returned a WhatsApp message ID."},
+		{ID: SendTextMessageBranchProviderRejected, Description: "Meta definitively rejected the message.", Optional: true},
+		{ID: SendTextMessageBranchUncertain, Description: "The send outcome cannot be confirmed; do not resend blindly.", Optional: true},
+		{ID: SendTextMessageBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+}
+
+type SendTextMessageResult = sdkgo.MutationResult[SentMessage]
+
+type SendTextMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=whatsapp-business"`
+	operationID                       struct{}                                          `connector:"operationId=sendTextMessage"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendTextMessageInput                     `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendTextMessageResult]               `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendTextMessageResult]               `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendTextMessageResult]               `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendTextMessageResult]               `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewSendTextMessageStep[IN any](config SendTextMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendTextMessageInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("whatsapp-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendTextMessageInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendTextMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendTextMessageResult] {
+			branches := make([]sdkgo.BranchTarget[SendTextMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendTextMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendTextMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendTextMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendTextMessageBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const SendTemplateMessageBranchSent sdkgo.BranchID = "sent"
+const SendTemplateMessageBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const SendTemplateMessageBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
+const SendTemplateMessageBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var SendTemplateMessageDefinition = sdkgo.MutationDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "sendTemplateMessage"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: SendTemplateMessageBranchSent, Description: "Meta returned a WhatsApp message ID."},
+		{ID: SendTemplateMessageBranchProviderRejected, Description: "Meta definitively rejected the template send.", Optional: true},
+		{ID: SendTemplateMessageBranchUncertain, Description: "The send outcome cannot be confirmed; do not resend blindly.", Optional: true},
+		{ID: SendTemplateMessageBranchDefect, Description: "Local input or credentials are invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilitySync,
+	},
+}
+
+type SendTemplateMessageResult = sdkgo.MutationResult[SentMessage]
+
+type SendTemplateMessageStepConfig[IN any] struct {
+	sdkgo.MutationFactoryConfigMarker `connector:"factory=mutation"`
+	connectorID                       struct{}                                          `connector:"connectorId=whatsapp-business"`
+	operationID                       struct{}                                          `connector:"operationId=sendTemplateMessage"`
+	StepType                          string                                            `connector:"stepType"`
+	Annotations                       sdkgo.StepAnnotations                             `connector:"annotations"`
+	Connection                        Connection                                        `connector:"connection"`
+	ConnectionName                    string                                            `connector:"connectionName"`
+	MapToOperationInput               func(IN) SendTemplateMessageInput                 `connector:"mapToOperationInput"`
+	Sent                              sdkgo.Target[SendTemplateMessageResult]           `connector:"branch=sent"`
+	ProviderRejected                  sdkgo.Target[SendTemplateMessageResult]           `connector:"branch=providerRejected,optional"`
+	Uncertain                         sdkgo.Target[SendTemplateMessageResult]           `connector:"branch=uncertain,optional"`
+	Defect                            sdkgo.Target[SendTemplateMessageResult]           `connector:"branch=defect,optional"`
+	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[SentMessage]] `connector:"resultAttribute"`
+	StepOptionsOverride               *dex.StepOptions                                  `connector:"stepOptionsOverride"`
+}
+
+func NewSendTemplateMessageStep[IN any](config SendTemplateMessageStepConfig[IN]) sdkgo.MutationStep[IN, SendTemplateMessageInput, SentMessage] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("whatsapp-business connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewMutationStep(sdkgo.MutationStepConfig[IN, SendTemplateMessageInput, SentMessage]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		Operation: config.Connection.operations.SendTemplateMessage(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[SendTemplateMessageResult] {
+			branches := make([]sdkgo.BranchTarget[SendTemplateMessageResult], 0, 4)
+			if config.Sent.HasStep() {
+				branches = append(branches, config.Sent.BranchTarget(SendTemplateMessageBranchSent))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(SendTemplateMessageBranchProviderRejected))
+			}
+			if config.Uncertain.HasStep() {
+				branches = append(branches, config.Uncertain.BranchTarget(SendTemplateMessageBranchUncertain))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(SendTemplateMessageBranchDefect))
 			}
 			return branches
 		}(),

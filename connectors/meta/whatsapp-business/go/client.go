@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package whatsappbusiness reads WhatsApp Business Platform phone-number metadata through Dex Queries.
+// Package whatsappbusiness reads phone-number metadata and sends messages through Dex operations.
 package whatsappbusiness
 
 import (

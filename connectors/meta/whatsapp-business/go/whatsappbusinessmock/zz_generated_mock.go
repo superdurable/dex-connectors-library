@@ -17,8 +17,10 @@ import (
 
 // Mock is a scripted whatsapp-business connection. Script each operation through its accessor.
 type Mock struct {
-	connection       whatsappbusiness.Connection
-	listPhoneNumbers *connectormock.Query[whatsappbusiness.ListPhoneNumbersInput, whatsappbusiness.PhoneNumbersPage]
+	connection          whatsappbusiness.Connection
+	listPhoneNumbers    *connectormock.Query[whatsappbusiness.ListPhoneNumbersInput, whatsappbusiness.PhoneNumbersPage]
+	sendTextMessage     *connectormock.Mutation[whatsappbusiness.SendTextMessageInput, whatsappbusiness.SentMessage]
+	sendTemplateMessage *connectormock.Mutation[whatsappbusiness.SendTemplateMessageInput, whatsappbusiness.SentMessage]
 }
 
 // New returns a mock connection named connectionName. Unscripted Query and Mutation calls use
@@ -26,9 +28,13 @@ type Mock struct {
 func New(t testing.TB, connectionName string) *Mock {
 	t.Helper()
 	mock := &Mock{
-		listPhoneNumbers: connectormock.NewQuery[whatsappbusiness.ListPhoneNumbersInput, whatsappbusiness.PhoneNumbersPage](t, whatsappbusiness.ListPhoneNumbersDefinition),
+		listPhoneNumbers:    connectormock.NewQuery[whatsappbusiness.ListPhoneNumbersInput, whatsappbusiness.PhoneNumbersPage](t, whatsappbusiness.ListPhoneNumbersDefinition),
+		sendTextMessage:     connectormock.NewMutation[whatsappbusiness.SendTextMessageInput, whatsappbusiness.SentMessage](t, whatsappbusiness.SendTextMessageDefinition),
+		sendTemplateMessage: connectormock.NewMutation[whatsappbusiness.SendTemplateMessageInput, whatsappbusiness.SentMessage](t, whatsappbusiness.SendTemplateMessageDefinition),
 	}
 	mock.listPhoneNumbers.Default(ListPhoneNumbersDefault())
+	mock.sendTextMessage.Default(SendTextMessageDefault())
+	mock.sendTemplateMessage.Default(SendTemplateMessageDefault())
 	connection, err := whatsappbusiness.NewConnectionWithOperations(mockOperations{mock: mock}, sdkgo.ConnectionRef{Provider: "whatsapp-business", Name: connectionName})
 	if err != nil {
 		t.Fatalf("whatsapp-business mock connection: %v", err)
@@ -45,10 +51,26 @@ func (mock *Mock) ListPhoneNumbers() *connectormock.Query[whatsappbusiness.ListP
 	return mock.listPhoneNumbers
 }
 
+// SendTextMessage returns the sendTextMessage script.
+func (mock *Mock) SendTextMessage() *connectormock.Mutation[whatsappbusiness.SendTextMessageInput, whatsappbusiness.SentMessage] {
+	return mock.sendTextMessage
+}
+
+// SendTemplateMessage returns the sendTemplateMessage script.
+func (mock *Mock) SendTemplateMessage() *connectormock.Mutation[whatsappbusiness.SendTemplateMessageInput, whatsappbusiness.SentMessage] {
+	return mock.sendTemplateMessage
+}
+
 type mockOperations struct{ mock *Mock }
 
 func (operations mockOperations) ListPhoneNumbers() sdkgo.Query[whatsappbusiness.ListPhoneNumbersInput, whatsappbusiness.PhoneNumbersPage] {
 	return operations.mock.listPhoneNumbers
+}
+func (operations mockOperations) SendTextMessage() sdkgo.Mutation[whatsappbusiness.SendTextMessageInput, whatsappbusiness.SentMessage] {
+	return operations.mock.sendTextMessage
+}
+func (operations mockOperations) SendTemplateMessage() sdkgo.Mutation[whatsappbusiness.SendTemplateMessageInput, whatsappbusiness.SentMessage] {
+	return operations.mock.sendTemplateMessage
 }
 
 // ListPhoneNumbersListed selects the listed branch: Meta returned one phone-number page.
@@ -90,4 +112,76 @@ func ListPhoneNumbersListedDefault() connectormock.Case[whatsappbusiness.PhoneNu
 // ListPhoneNumbersDefault is the manifest default, listedDefault, which New installs.
 func ListPhoneNumbersDefault() connectormock.Case[whatsappbusiness.PhoneNumbersPage] {
 	return ListPhoneNumbersListedDefault()
+}
+
+// SendTextMessageSent selects the sent branch: Meta returned a WhatsApp message ID.
+func SendTextMessageSent(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Branch(whatsappbusiness.SendTextMessageBranchSent, value, failure)
+}
+
+// SendTextMessageProviderRejected selects the providerRejected branch: Meta definitively rejected the message.
+func SendTextMessageProviderRejected(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Branch(whatsappbusiness.SendTextMessageBranchProviderRejected, value, failure)
+}
+
+// SendTextMessageUncertain returns an uncertain sendTextMessage outcome.
+func SendTextMessageUncertain(value whatsappbusiness.SentMessage, failure sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendTextMessageDefect selects the defect branch: Local input or credentials are invalid.
+func SendTextMessageDefect(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Branch(whatsappbusiness.SendTextMessageBranchDefect, value, failure)
+}
+
+// SendTextMessageRetry asks Dex to retry the sendTextMessage Step, after the delay when it is positive.
+func SendTextMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Retry[whatsappbusiness.SentMessage](failure, after)
+}
+
+// SendTextMessageSentDefault is the manifest mock sentDefault: Meta accepted the text message.
+func SendTextMessageSentDefault() connectormock.Case[whatsappbusiness.SentMessage] {
+	value := connectormock.MustDecodeOutput[whatsappbusiness.SentMessage](`{"messageId":"wamid.example-text-message"}`)
+	return connectormock.Branch(whatsappbusiness.SendTextMessageBranchSent, value, nil)
+}
+
+// SendTextMessageDefault is the manifest default, sentDefault, which New installs.
+func SendTextMessageDefault() connectormock.Case[whatsappbusiness.SentMessage] {
+	return SendTextMessageSentDefault()
+}
+
+// SendTemplateMessageSent selects the sent branch: Meta returned a WhatsApp message ID.
+func SendTemplateMessageSent(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Branch(whatsappbusiness.SendTemplateMessageBranchSent, value, failure)
+}
+
+// SendTemplateMessageProviderRejected selects the providerRejected branch: Meta definitively rejected the template send.
+func SendTemplateMessageProviderRejected(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Branch(whatsappbusiness.SendTemplateMessageBranchProviderRejected, value, failure)
+}
+
+// SendTemplateMessageUncertain returns an uncertain sendTemplateMessage outcome.
+func SendTemplateMessageUncertain(value whatsappbusiness.SentMessage, failure sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Uncertain(value, failure)
+}
+
+// SendTemplateMessageDefect selects the defect branch: Local input or credentials are invalid.
+func SendTemplateMessageDefect(value whatsappbusiness.SentMessage, failure *sdkgo.Failure) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Branch(whatsappbusiness.SendTemplateMessageBranchDefect, value, failure)
+}
+
+// SendTemplateMessageRetry asks Dex to retry the sendTemplateMessage Step, after the delay when it is positive.
+func SendTemplateMessageRetry(failure sdkgo.Failure, after time.Duration) connectormock.Case[whatsappbusiness.SentMessage] {
+	return connectormock.Retry[whatsappbusiness.SentMessage](failure, after)
+}
+
+// SendTemplateMessageSentDefault is the manifest mock sentDefault: Meta accepted the template message.
+func SendTemplateMessageSentDefault() connectormock.Case[whatsappbusiness.SentMessage] {
+	value := connectormock.MustDecodeOutput[whatsappbusiness.SentMessage](`{"messageId":"wamid.example-template-message"}`)
+	return connectormock.Branch(whatsappbusiness.SendTemplateMessageBranchSent, value, nil)
+}
+
+// SendTemplateMessageDefault is the manifest default, sentDefault, which New installs.
+func SendTemplateMessageDefault() connectormock.Case[whatsappbusiness.SentMessage] {
+	return SendTemplateMessageSentDefault()
 }
