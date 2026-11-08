@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: segment
+  displayName: Twilio Segment
+  description: Read a Segment Public API source by ID.
+  company: Twilio
+  version: v0.1.0
+spec:
+  provider: segment
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-twilio-segment
+      operations: [getSource]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-twilio-segment'
+      operations: [getSource]
+      triggers: []
+  codegen:
+    go:
+      package: segment
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Segment Public API HTTPS root for the Workspace region. Blank uses the displayed US endpoint; use the documented EU endpoint for EU Workspaces or a trusted local test gateway. Do not append /sources or credentials.
+        default: https://api.segmentapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Source lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete Source JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: segment-public-api-token
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Public API token from Segment App > Workspace > Settings > Access Management > Tokens > Create Token. Copy the complete token for this Workspace; blank prevents calls. Dex sends it only in the Bearer header. Never use a Config API token or a Source write key.
+    guide:
+      startURL: https://app.segment.com
+      steps:
+        - Sign in to Segment, select the Workspace, then open Settings > Access Management > Tokens > Create Token. Select Public API, grant read access to Sources, and copy the complete secret into Dex Web api_key. Blank is invalid. Revoke it under the same Tokens page when needed. Each Workspace needs its own token.
+        - Leave baseUrl blank for a US Workspace. For an EU Workspace enter https://eu1.api.segmentapis.com; leave timeout and maxResponseBytes blank for their displayed defaults. Find the Source's non-secret opaque ID in Segment Sources or a Public API response and pass it as sourceId; blank is invalid. The Source slug is not its ID.
+  operations:
+    - name: getSource
+      goName: GetSource
+      inputType: GetSourceInput
+      outputType: SourceProfile
+      kind: query
+      description: Return one Source's ID, slug, and optional display name without write keys.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Segment returned the Source.}
+        - {id: notFound, goName: NotFound, description: Segment did not expose the Source., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Segment conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Segment returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample Source is returned without its write keys.
+          output: {id: source123, slug: my-source, name: My Source}

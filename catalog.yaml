@@ -145,6 +145,7 @@ directories:
   - connectors/telegram
   - connectors/tmdb
   - connectors/twilio/messaging
+  - connectors/twilio/segment
   - connectors/typeform
   - connectors/unsplash
   - connectors/vercel
