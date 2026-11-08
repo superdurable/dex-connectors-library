@@ -1,0 +1,67 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: miro
+  displayName: Miro
+  description: Read a board ID and name through Miro REST API v2.
+  company: Miro
+  version: v0.1.0
+spec:
+  provider: miro
+  codegen:
+    go:
+      package: miro
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Miro REST API v2 root as an absolute HTTPS URL. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://api.miro.com/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow board reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete board response in bytes as a positive integer. Blank uses the displayed default; increase for known larger responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: miro-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret opaque Miro OAuth access token from Your apps > selected app > Install app and get OAuth token after granting boards:read. Paste the complete token into this secret field; blank prevents calls. Dex sends it only as a Bearer token. Rotate expiring tokens before expiry.
+    guide:
+      startURL: https://miro.com/app/settings/user-profile/apps
+      steps:
+        - Sign in to Miro, open account avatar > Settings > Your apps, and create or select an app in a Developer team. In app Permissions add boards:read, then save. An admin may need to allow the app. This connector reads only board identity and name.
+        - On that app's settings page click Install app and get OAuth token, select the team, and approve the requested access. Copy the complete opaque token once into secret access_token in Dex Web. For long-lived service use, choose the app's non-expiring token option when creating it; for expiring tokens, replace the Dex secret when rotated. Revoke access by uninstalling the app or revoking its token in Miro.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Open a board in Miro and copy the non-secret board ID from its URL after /board/; enter it as boardId. Blank is invalid.
+  operations:
+    - name: getBoard
+      goName: GetBoard
+      inputType: GetBoardInput
+      outputType: BoardMetadata
+      kind: query
+      description: Read one board's ID and name without owner, members, policies, or description.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Miro returned the board.}
+        - {id: notFound, goName: NotFound, description: Miro did not expose the board., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Miro conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Miro returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example board is returned.
+          output: {id: "uXjVOD6LSME=", name: Example board}

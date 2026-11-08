@@ -79,6 +79,7 @@ directories:
   - connectors/microsoft/outlook-mail
   - connectors/microsoft/sql-server
   - connectors/microsoft/teams
+  - connectors/miro
   - connectors/mixpanel
   - connectors/monday
   - connectors/mysql
