@@ -65,6 +65,7 @@ directories:
   - connectors/google/gmail
   - connectors/google/search-console
   - connectors/google/spreadsheet
+  - connectors/google/tag-manager
   - connectors/google/workspace-admin
   - connectors/google/youtube
   - connectors/gorgias
