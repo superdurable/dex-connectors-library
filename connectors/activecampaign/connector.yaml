@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: activecampaign
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listContacts, getContact]
+      triggers: []
   codegen:
     go:
       package: activecampaign
