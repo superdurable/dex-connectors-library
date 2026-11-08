@@ -13,6 +13,10 @@ spec:
       version: v0.1.0
       operations: [listLeadForms, getLead]
       triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listLeadForms, getLead]
+      triggers: []
   codegen:
     go:
       package: facebookleadads
