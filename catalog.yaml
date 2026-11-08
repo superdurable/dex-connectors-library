@@ -67,6 +67,7 @@ directories:
   - connectors/linkedin
   - connectors/mailgun
   - connectors/meta/facebook-lead-ads
+  - connectors/meta/facebook-pages
   - connectors/meta/whatsapp-business
   - connectors/microsoft/azure-devops
   - connectors/microsoft/entra-id
