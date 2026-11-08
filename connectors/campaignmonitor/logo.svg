@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Campaign Monitor">
+  <rect width="128" height="128" rx="24" fill="#22236f"/>
+  <path d="M23 43h82v48H23z" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+  <path d="m25 45 39 30 39-30" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+</svg>

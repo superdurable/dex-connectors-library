@@ -16,6 +16,7 @@ directories:
   - connectors/bamboohr
   - connectors/brevo
   - connectors/calendly
+  - connectors/campaignmonitor
   - connectors/clickup
   - connectors/close
   - connectors/cloudflare
