@@ -1,0 +1,357 @@
+{
+  "connector": "personio",
+  "scenarios": [
+    {
+      "callId": "d9e4f88f-f539-5f35-98a5-4caec221843e",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"3003\",\"first_name\":\"Jane\",\"last_name\":\"Doe\",\"email\":\"private@example.com\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "firstName": "Jane",
+          "id": "3003",
+          "lastName": "Doe"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-found",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "c225bd1e-ed26-5e2b-b359-8f21319c7ca8",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-notFound",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "07747158-4b1d-5e5b-8e3e-381cf468eaee",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-providerRejected",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "ef8e8b6b-2269-5a60-beb7-b47c5543d00d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-invalidResponse",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "7461ba2b-f532-512f-a267-82aab22a65f2",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"other\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-wrongPerson",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "9ec1984f-8025-54a4-a13d-656a72bbb435",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-rateLimit",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "41fa25bd-d3ea-5d92-bc37-2b6284608357",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-serverUnavailable",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "eb23f8e6-f884-5c08-a8c8-0ab710cacdf4",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-requestTimeout",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "05edb364-09a3-5754-8446-a31138e9ec50",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "firstName": "",
+          "id": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "../other"
+      },
+      "name": "getPerson-defect",
+      "operation": "getPerson"
+    },
+    {
+      "callId": "6a288890-6165-582f-8d11-ba927db276df",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/persons/3003",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "personId": "3003"
+      },
+      "name": "getPerson-transportFailure",
+      "operation": "getPerson"
+    }
+  ],
+  "schemaVersion": 1
+}

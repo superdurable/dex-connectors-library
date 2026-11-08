@@ -117,6 +117,7 @@ directories:
   - connectors/pagerduty
   - connectors/pandadoc
   - connectors/paypal
+  - connectors/personio
   - connectors/pinecone
   - connectors/pipedrive
   - connectors/plaid
