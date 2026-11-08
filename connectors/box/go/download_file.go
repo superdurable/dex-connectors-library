@@ -61,6 +61,9 @@ func (operation DownloadFileOperation) Invoke(call sdkgo.Call, input DownloadFil
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewQueryRetry[DownloadedFile](queryFailure(operationName, sdkgo.FailureAvailability, "Box download is temporarily unavailable"), response.retryAfter)
 	}
+	if response.status != http.StatusOK && errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
+		return queryBranch(operationName, DownloadFileBranchInvalidResponse, DownloadedFile{}, sdkgo.FailureResponseTooLarge, "Box error response exceeds the configured limit")
+	}
 	if response.status == http.StatusNotFound {
 		return queryBranch(operationName, DownloadFileBranchNotFound, DownloadedFile{}, sdkgo.FailureNotFound, "Box did not find the file")
 	}
