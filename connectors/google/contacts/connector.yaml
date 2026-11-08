@@ -1,0 +1,122 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-contacts
+  displayName: Google Contacts
+  description: Read contacts through the Google People API.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google-contacts
+  codegen:
+    go:
+      package: contacts
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Google People API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://people.googleapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive maximum duration of one People API request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete response size in bytes. Blank uses the displayed default; increase only for unusually large contact pages.
+        default: 2097152
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: google-contacts-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://console.cloud.google.com/apis/credentials > OAuth 2.0 Client IDs > your Web application. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from the same Google Cloud Web application credentials page. Store only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Google consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned with offline consent. Dex rotates it on refresh; blank requires reauthorization.
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project and enable People API in APIs & Services > Library. Use an account with access to the target contacts.
+        - In Google Auth Platform > Branding and Audience, configure consent and add test users if an External app remains in Testing. Under Data Access, add the displayed contacts scope.
+        - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize with offline access.
+        - Run listContacts to find a contact resource name such as people/c123 before calling getContact.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      authorizationParameters: {access_type: offline, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [https://www.googleapis.com/auth/contacts]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List one page of the connected user's contact names and email addresses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized contact JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example contact is visible.
+          output: {contacts: [{resourceName: people/c123, displayName: Example Contact, emailAddress: example@example.com}], nextPageToken: ''}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: Contact
+      kind: query
+      description: Get one contact by its People API resource name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Google returned the contact.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized contact JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local resource name or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example contact was found.
+          output: {resourceName: people/c123, displayName: Example Contact, emailAddress: example@example.com}

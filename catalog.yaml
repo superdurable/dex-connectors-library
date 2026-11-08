@@ -58,6 +58,7 @@ directories:
   - connectors/gitlab
   - connectors/google/analytics
   - connectors/google/calendar
+  - connectors/google/contacts
   - connectors/google/docs
   - connectors/google/drive
   - connectors/google/forms
