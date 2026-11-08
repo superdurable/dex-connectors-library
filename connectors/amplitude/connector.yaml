@@ -1,0 +1,81 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: amplitude
+  displayName: Amplitude
+  description: Search project users by Amplitude ID, device ID, user ID, or user ID prefix.
+  company: Amplitude
+  version: v0.1.0
+spec:
+  provider: amplitude
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-amplitude
+      operations: [searchUsers]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-amplitude"
+      operations: [searchUsers]
+      triggers: []
+  codegen:
+    go:
+      package: amplitude
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Dashboard REST API HTTPS root. Blank uses the displayed US-region default; override with https://analytics.eu.amplitude.com for EU data residency or a verified regional host. Do not include path, query, or credentials.
+        default: https://amplitude.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one user search as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete user-search JSON response in bytes as a positive integer. Blank uses the displayed default; increase if a project returns many matches.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: amplitude-project-keys
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret project API key from Amplitude > Organization settings > API Keys > select project > Generate API Key or existing key. Copy its complete value, not the key name; blank prevents calls. Dex sends it as the Basic-auth username.
+      - name: secretKey
+        goName: SecretKey
+        type: secretString
+        required: true
+        description: Secret project secret key from Amplitude > Organization settings > API Keys > select project > Generate Secret Key. Copy the complete key at creation; the Key ID is not the secret. Blank prevents calls. Dex sends it as the Basic-auth password.
+    guide:
+      startURL: https://amplitude.com
+      steps:
+        - In Amplitude open Organization settings > API Keys and select the project. A Manager or Admin can generate an API key and secret key. Copy the API key into apiKey and the secret key itself, not its Key ID, into secretKey. Both are secrets and blank prevents calls. Select keys for the same project.
+        - Leave baseUrl blank for the US region, or use https://analytics.eu.amplitude.com for an EU project. Leave timeout and maxResponseBytes blank for their displayed defaults. Find a non-secret user ID in Amplitude's User Lookup and pass the full ID or prefix as user; blank is invalid.
+  operations:
+    - name: searchUsers
+      goName: SearchUsers
+      inputType: SearchUsersInput
+      outputType: UserSearchPage
+      kind: query
+      description: Search users and return their user IDs and match type.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: searched, goName: Searched, description: "Amplitude returned matching user IDs, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: Amplitude conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Amplitude returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: searchedDefault
+          branch: searched
+          default: true
+          description: One sample user matches the search.
+          output: {user: example-user, userIDs: [example-user], matchType: match_user_or_device_id}

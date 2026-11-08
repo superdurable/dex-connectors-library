@@ -1,0 +1,368 @@
+{
+  "connector": "amplitude",
+  "scenarios": [
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"matches\":[{\"user_id\":\"example-user\",\"amplitude_id\":12345}],\"type\":\"match_user_or_device_id\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "matchType": "match_user_or_device_id",
+          "user": "example-user",
+          "userIDs": [
+            "example-user"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-matched",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "95b0091d-79fa-5c50-981c-c82719452587",
+      "exchanges": [
+        {
+          "body": "{\"matches\":[],\"type\":\"nomatch\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "matchType": "nomatch",
+          "user": "example-user",
+          "userIDs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-empty",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "8a4535d1-1489-5075-980b-bf0ae1261edf",
+      "exchanges": [
+        {
+          "body": "{\"matches\":[{\"user_id\":\"example-user\",\"amplitude_id\":12345},{\"user_id\":\"example-user-2\",\"amplitude_id\":12346}],\"type\":\"match_user_id_prefix\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "searched",
+        "failureKind": "",
+        "output": {
+          "matchType": "match_user_id_prefix",
+          "user": "example-user",
+          "userIDs": [
+            "example-user",
+            "example-user-2"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-prefixMatches",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "matchType": "",
+          "user": "",
+          "userIDs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-providerRejected",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "70e762e3-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{\"matches\":[{\"user_id\":\"\"}],\"type\":\"nomatch\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "matchType": "",
+          "user": "",
+          "userIDs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-invalidResponse",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "8e29694d-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "matchType": "",
+          "user": "",
+          "userIDs": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": ""
+      },
+      "name": "searchUsers-defect",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "0740ee38-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-rateLimit",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "3fb444c7-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-serverUnavailable",
+      "operation": "searchUsers"
+    },
+    {
+      "callId": "e79d52f6-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/2/usersearch",
+          "query": {
+            "user": [
+              "example-user"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFtcGxpdHVkZS1hcGkta2V5OnNhbXBsZS1hbXBsaXR1ZGUtc2VjcmV0LWtleQ=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "user": "example-user"
+      },
+      "name": "searchUsers-transportFailure",
+      "operation": "searchUsers"
+    }
+  ],
+  "schemaVersion": 1
+}
