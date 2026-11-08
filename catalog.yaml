@@ -19,6 +19,7 @@ directories:
   - connectors/atlassian/trello
   - connectors/bamboohr
   - connectors/box
+  - connectors/braintree
   - connectors/braze
   - connectors/brevo
   - connectors/calendly

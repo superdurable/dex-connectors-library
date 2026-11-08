@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: braintree
+  displayName: Braintree
+  description: Read one Braintree transaction by GraphQL ID.
+  company: Braintree
+  version: v0.1.0
+spec:
+  provider: braintree
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-braintree
+      operations: [getTransaction]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-braintree'
+      operations: [getTransaction]
+      triggers: []
+  codegen:
+    go:
+      package: braintree
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Braintree GraphQL API root. Blank uses the displayed sandbox root; use the documented production root for live payments. Do not append /graphql or credentials.
+        default: https://payments.sandbox.braintree-api.com
+      - name: apiVersion
+        goName: APIVersion
+        type: string
+        description: Braintree GraphQL schema date in YYYY-MM-DD format. Blank uses the displayed date; override only to match an existing integration's schema version.
+        default: '2019-01-01'
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one transaction query as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete GraphQL JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: braintree-api-key
+    fields:
+      - name: publicKey
+        goName: PublicKey
+        type: string
+        required: true
+        description: Public API key from the matching Braintree sandbox or production Control Panel > gear icon > API > API Keys. Copy the complete value with no colon; blank prevents calls. This identifier is not secret but must match privateKey.
+      - name: privateKey
+        goName: PrivateKey
+        type: secretString
+        required: true
+        description: Secret API key from the same Braintree Control Panel > gear icon > API > API Keys > View in the Private Key column. Copy the complete value; blank prevents calls. Dex combines it with publicKey into a Basic header and never exposes it in Flow data.
+    guide:
+      startURL: https://developer.paypal.com/braintree/articles/control-panel/important-gateway-credentials
+      steps:
+        - Choose the sandbox or production Control Panel, open the gear icon > API > API Keys, and generate an API key if needed. Copy its Public Key into publicKey and open View under Private Key to copy the secret into privateKey. Blank prevents calls; never mix sandbox and production keys.
+        - Leave baseUrl blank for sandbox, or enter https://payments.braintree-api.com for production. Leave apiVersion, timeout, and maxResponseBytes blank for their displayed defaults. Copy a transaction GraphQL ID from a Braintree API result and enter it as transactionId; blank is invalid. Legacy SDK IDs may differ from GraphQL IDs.
+  operations:
+    - name: getTransaction
+      goName: GetTransaction
+      inputType: GetTransactionInput
+      outputType: TransactionProfile
+      kind: query
+      description: Return one Braintree transaction's GraphQL ID and status.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braintree returned the transaction.}
+        - {id: notFound, goName: NotFound, description: The node is absent or is another object type., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braintree returned a definite GraphQL or HTTP rejection., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braintree returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample settled transaction is returned.
+          output: {id: txn-1, status: SETTLED}
