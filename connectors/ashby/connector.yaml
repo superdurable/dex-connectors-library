@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: ashby
+  displayName: Ashby
+  description: Read selected candidate profile fields from Ashby.
+  company: Ashby
+  version: v0.1.0
+spec:
+  provider: ashby
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-ashby
+      operations: [getCandidate]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-ashby"
+      operations: [getCandidate]
+      triggers: []
+  codegen:
+    go:
+      package: ashby
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Ashby API root as an absolute HTTPS URL. Blank uses the displayed endpoint; override only for a trusted local test gateway.
+        default: https://api.ashbyhq.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow candidate reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete candidate response in bytes as a positive integer. Blank uses the displayed default; increase for candidates with large metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: ashby-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Ashby API key from Admin > API Keys. Grant Candidates read permission; copy the complete opaque value once. Blank prevents calls. Dex uses it as the Basic username with an empty password.
+    guide:
+      startURL: https://app.ashbyhq.com
+      steps:
+        - In Ashby, open Admin > API Keys and create or select an API key with Candidates read permission. Copy the complete opaque secret into Dex Web api_key; blank is invalid. Revoke or rotate it on the same page. Confidential candidates require the separate confidential jobs and projects permission.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for displayed defaults. Find the non-secret candidate UUID in Ashby or from candidate.list and pass it as candidateId; blank is invalid. This operation does not return email, phone, or resume data.
+  operations:
+    - name: getCandidate
+      goName: GetCandidate
+      inputType: GetCandidateInput
+      outputType: CandidateProfile
+      kind: query
+      description: Read one candidate's ID, name, and creation/update timestamps.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Ashby returned the candidate.}
+        - {id: notFound, goName: NotFound, description: Ashby did not expose the candidate., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Ashby conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Ashby returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample candidate is returned.
+          output: {id: e9ed20fd-d45f-4aad-8a00-a19bfba0083e, name: Example Candidate, createdAt: '2024-01-15T10:30:00.000Z', updatedAt: '2024-01-16T10:30:00.000Z'}

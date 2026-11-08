@@ -9,6 +9,7 @@ directories:
   - connectors/amazon/s3
   - connectors/amazon/sqs
   - connectors/asana
+  - connectors/ashby
   - connectors/atlassian/bitbucket
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
