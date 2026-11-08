@@ -22,7 +22,8 @@
     "./hackernewsmock": {
       "types": "./dist/hackernewsmock.d.ts",
       "import": "./dist/hackernewsmock.js"
-    }
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": [
     "dist",

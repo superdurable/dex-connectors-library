@@ -34,7 +34,8 @@
         "types": "./dist/mock/index.d.cts",
         "default": "./dist/mock/index.cjs"
       }
-    }
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": [
     "dist",

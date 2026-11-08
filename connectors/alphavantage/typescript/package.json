@@ -22,7 +22,8 @@
     "./alphavantagemock": {
       "types": "./dist/alphavantagemock.d.ts",
       "import": "./dist/alphavantagemock.js"
-    }
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": [
     "dist",

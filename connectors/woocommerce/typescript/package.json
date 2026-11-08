@@ -10,7 +10,8 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"},
-    "./mock": {"types": "./dist/mock.d.ts", "import": "./dist/mock.js"}
+    "./mock": {"types": "./dist/mock.d.ts", "import": "./dist/mock.js"},
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": ["dist", "README.md", "LICENSE", "dex-connector.json"],
   "scripts": {

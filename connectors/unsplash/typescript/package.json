@@ -18,7 +18,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": [
     "dist",
