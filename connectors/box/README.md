@@ -1,0 +1,7 @@
+# Box connector
+
+The Go connector downloads one bounded Box file by numeric file ID through `downloadFile`. A successful result contains the ID, Base64 content, and decoded byte count. It does not persist provider tokens, redirect URLs, or response headers. The [file-download Flow](go/examples/file-download/README.md) is a runnable consumer.
+
+Create an OAuth 2.0 Platform App in the [Box Developer Console](https://app.box.com/developers/console). In Configuration, enable the `root_readwrite` application scope, register the exact Dex Web redirect URI, and copy the Client ID and secret into the Dex authorization form. Box may require enterprise administrator approval. The user completing consent must have access to the file. Dex stores the access token and each rotated refresh token. See [Box OAuth setup](https://developer.box.com/guides/authentication/oauth2/oauth2-setup/), [scopes](https://developer.box.com/guides/api-calls/permissions-and-errors/scopes/), and the [download endpoint](https://developer.box.com/reference/get-files-id-content/).
+
+The Query retries transport failures, HTTP 429, request timeout, and server failures. HTTP 404 selects the optional `notFound` branch; an oversized file selects `tooLarge`. Other definitive rejections select `providerRejected`. An unwired optional branch fails the Flow. Box file events and uploads are not yet implemented. Live Box authorization and Dex Web setup have not been exercised.

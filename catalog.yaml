@@ -14,6 +14,7 @@ directories:
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
   - connectors/bamboohr
+  - connectors/box
   - connectors/brevo
   - connectors/calendly
   - connectors/campaignmonitor

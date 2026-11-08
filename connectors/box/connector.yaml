@@ -1,0 +1,107 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: box
+  displayName: Box
+  description: Download bounded files from Box through typed Dex operations.
+  company: Box
+  version: v0.1.0
+spec:
+  provider: box
+  codegen:
+    go:
+      package: box
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Box API root. Blank uses the displayed public endpoint; override only for an approved compatible gateway or local provider test.
+        default: https://api.box.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one provider request in Go units such as 15s or 1m. Blank uses the displayed default; increase for slow network paths.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum provider error response size in bytes. Blank uses the displayed default; increase only for an approved gateway.
+        default: 2097152
+      - name: maxDownloadBytes
+        goName: MaxDownloadBytes
+        type: integer
+        description: Positive maximum downloaded file content in bytes. Blank uses the displayed default; increase only for bounded files the Flow can safely persist.
+        default: 1048576
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: box-user-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://app.box.com/developers/console > select the OAuth 2.0 Platform App > Configuration > OAuth 2.0 Credentials. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from https://app.box.com/developers/console > select the OAuth 2.0 Platform App > Configuration > OAuth 2.0 Credentials. Store only here; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret access token returned after Box consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret single-use refresh token returned after Box consent. Dex replaces it on every refresh; blank requires reauthorization.
+    guide:
+      startURL: https://app.box.com/developers/console
+      steps:
+        - Open https://app.box.com/developers/console > Create New App > Platform App > User Authentication (OAuth 2.0).
+        - Open Configuration > Application Scopes and enable Read and write all files and folders stored in Box (root_readwrite), which Box requires for download and the planned upload operation. Save changes; enterprise administrators may need to approve the app.
+        - Open Configuration > OAuth 2.0 Redirect URI, register the exact URI shown by Dex Web, then copy the Client ID and one-time Client Secret from OAuth 2.0 Credentials. The ID is not secret; the secret must stay in Dex credentials.
+        - Choose Authorize in Dex Web and complete consent as a user with access to the file. Dex stores and rotates the secret access and refresh tokens.
+    oauth2:
+      authorizationEndpoint: https://account.box.com/api/oauth2/authorize
+      tokenEndpoint: https://api.box.com/oauth2/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [root_readwrite]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
+        requiredScopes: [root_readwrite]
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: downloadFile
+      goName: DownloadFile
+      inputType: DownloadFileInput
+      outputType: DownloadedFile
+      kind: query
+      description: Download one bounded Box file by its ID and return Base64 content.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: downloaded, goName: Downloaded, description: Box returned the selected file content.}
+        - {id: notFound, goName: NotFound, description: Box did not find this file or the user lacks access., optional: true}
+        - {id: tooLarge, goName: TooLarge, description: The file exceeds the configured download limit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Box conclusively rejected the download., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Box returned an invalid or oversized response., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: downloadedDefault
+          branch: downloaded
+          default: true
+          description: One example text file is downloaded.
+          output: {fileId: '12345', contentBase64: SGVsbG8=, contentBytes: 5}
