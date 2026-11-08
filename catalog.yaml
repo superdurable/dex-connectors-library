@@ -20,6 +20,7 @@ directories:
   - connectors/atlassian/trello
   - connectors/aweber
   - connectors/bamboohr
+  - connectors/basecamp
   - connectors/box
   - connectors/braintree
   - connectors/braze
