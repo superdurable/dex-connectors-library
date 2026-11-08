@@ -1,0 +1,97 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: posthog
+  displayName: PostHog
+  description: Capture a deduplicated event and list saved insight identities.
+  company: PostHog
+  version: v0.1.0
+spec:
+  provider: posthog
+  codegen:
+    go:
+      package: posthog
+  configuration:
+    fields:
+      - name: captureUrl
+        goName: CaptureURL
+        type: url
+        description: Public capture API base URL. Blank uses the displayed US default; use https://eu.i.posthog.com for an EU Cloud project or your self-hosted HTTPS origin. Find your region in PostHog Project Settings > Project variables. Do not append /i/v0/e.
+        default: https://us.i.posthog.com
+      - name: appUrl
+        goName: AppURL
+        type: url
+        description: Private API base URL. Blank uses the displayed US default; use https://eu.posthog.com for EU Cloud or your self-hosted HTTPS origin. Find your region in PostHog Project Settings > Project variables. Do not append /api.
+        default: https://us.posthog.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for larger insight pages. Oversized responses select invalidResponse.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: posthog-project-keys
+    fields:
+      - name: project_token
+        goName: ProjectToken
+        type: secretString
+        required: true
+        description: PostHog project token (phc_ prefix) from your PostHog project URL > Settings > Project > Project variables > Project API key. Copy the exact value into this Dex secret field; blank prevents capture. It is sent only in the capture request body.
+      - name: personal_api_key
+        goName: PersonalAPIKey
+        type: secretString
+        required: false
+        description: Secret personal API key (phx_ prefix) from your PostHog instance > avatar > Account settings > Personal API Keys > Create personal API key. Select `insight:read` scope, copy the one-time value into Dex, and revoke it there when retired. Blank permits captureEvent but makes listInsights select defect.
+    guide:
+      startURL: https://us.posthog.com/
+      steps:
+        - Open your PostHog instance (https://us.posthog.com for US or https://eu.posthog.com for EU). In Settings > Project > Project variables, copy the Project API key into the secret project_token field. It begins phc_ and can only send events or evaluate flags.
+        - For listInsights, choose your avatar > Account settings > Personal API Keys > Create personal API key. Grant `insight:read` scope, copy the one-time phx_ key into personal_api_key, and revoke it on the same page when retired. Leave this field blank if you only capture events.
+        - Match captureUrl and appUrl to your project region; leave both blank for their displayed US defaults. For self-hosted PostHog set both to its HTTPS origin. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: captureEvent
+      goName: CaptureEvent
+      inputType: CaptureEventInput
+      outputType: CapturedEvent
+      kind: mutation
+      description: Submit one event with stable timestamp, distinct ID, and derived UUID; acknowledgment does not guarantee later ingestion.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: accepted, goName: Accepted, description: "PostHog accepted the event for processing, without confirming ingestion."}
+        - {id: quotaLimited, goName: QuotaLimited, description: PostHog reported a billing quota limit and may not ingest the event., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: PostHog conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: PostHog returned malformed or oversized confirmation JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local event input or project token is invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: acceptedSignup
+          branch: accepted
+          default: true
+          description: A sample signup event was accepted.
+          output: {eventId: "4b5d3f33-2e21-4c1c-b392-2dae2a74a2ed", accepted: true}
+    - name: listInsights
+      goName: ListInsights
+      inputType: ListInsightsInput
+      outputType: InsightsPage
+      kind: query
+      description: List one bounded page of saved insight IDs and names without query results or private metadata.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: listed, goName: Listed, description: "PostHog returned the insight page, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: PostHog denied the query or project access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: PostHog returned malformed or oversized page JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Local project ID, page input, or personal API key is invalid.", optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: listedSignupInsight
+          branch: listed
+          default: true
+          description: One sample saved insight is listed.
+          output: {insights: [{id: 42, name: "Signups by day"}], hasMore: false, offset: 0, limit: 20}

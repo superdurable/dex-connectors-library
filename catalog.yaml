@@ -76,6 +76,7 @@ directories:
   - connectors/pinecone
   - connectors/pipedrive
   - connectors/postgresql
+  - connectors/posthog
   - connectors/postmark
   - connectors/reamaze
   - connectors/resend
