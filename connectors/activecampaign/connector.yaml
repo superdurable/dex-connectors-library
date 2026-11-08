@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: activecampaign
+  displayName: ActiveCampaign
+  description: List and inspect contact metadata through the ActiveCampaign API.
+  company: ActiveCampaign
+  version: v0.1.0
+spec:
+  provider: activecampaign
+  codegen:
+    go:
+      package: activecampaign
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret account-specific API root copied from ActiveCampaign Settings > Developer at https://www.activecampaign.com/login. Enter the full HTTPS API URL ending in /api/3 without a trailing resource path, query, or token; blank prevents connection creation. It may have an account-specific domain and region.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for known larger contact pages. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: activecampaign-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret user-specific API Key from ActiveCampaign Settings > Developer at https://www.activecampaign.com/login. Copy the full key into this secret field; blank makes calls select defect. Dex sends it only in the Api-Token header. Reset it on the same page to revoke an exposed key.
+    guide:
+      startURL: https://www.activecampaign.com/login
+      steps:
+        - Sign in to the ActiveCampaign account at https://www.activecampaign.com/login, click Settings (gear), then Developer.
+        - Copy the account's full API URL into non-secret baseUrl; it ends in /api/3 and is unique to the account. Copy the current user's API Key into secret api_key and save the connection.
+        - Ensure this API user can view the intended contacts. Reset the API Key under Settings > Developer when rotating it, then update this Dex connection. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List one page of contact IDs, email addresses, and names without embedded relationships.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ActiveCampaign returned the selected contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact is listed.
+          output: {contacts: [{id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}], offset: 0, limit: 20, total: 1}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactMetadata
+      kind: query
+      description: Read one contact's ID, email address, and name without embedded relationships.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: ActiveCampaign returned contact metadata.}
+        - {id: notFound, goName: NotFound, description: No contact with this ID is visible to the API user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: ActiveCampaign conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ActiveCampaign returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one sample contact.
+          output: {id: '68', email: 'ada@example.com', firstName: Ada, lastName: Lovelace}
