@@ -7,6 +7,15 @@ metadata:
   company: Freshworks
   version: v0.1.0
 spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listContactViews, getContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listContactViews, getContact]
+      triggers: []
   provider: freshsales
   codegen:
     go:
