@@ -1,0 +1,122 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-cloud-storage
+  displayName: Google Cloud Storage
+  description: List and download objects from Google Cloud Storage buckets.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google-cloud-storage
+  codegen:
+    go:
+      package: cloudstorage
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Cloud Storage JSON API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://storage.googleapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive maximum duration of one Cloud Storage request in Go units such as 15s or 1m. Blank uses the displayed default; increase for slow downloads.
+        default: 30s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum downloaded response size in bytes. Blank uses the displayed default; increase only for known larger objects.
+        default: 2097152
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: google-cloud-storage-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://console.cloud.google.com/apis/credentials > OAuth 2.0 Client IDs > your Web application. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from the same Google Cloud Web application credentials page. Store only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Google consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned with offline consent. Dex rotates it on refresh; blank requires reauthorization.
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project. In APIs & Services > Library enable Cloud Storage JSON API; in Cloud Storage > Buckets confirm the account can view the target bucket and objects.
+        - In Google Auth Platform > Branding and Audience, configure consent and add test users while an External app remains in Testing. Under Data Access add the displayed devstorage.read_write scope, which also supports a future upload operation.
+        - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize with offline access.
+        - In Cloud Storage > Buckets open a bucket and copy its name; listObjects returns object names to use with downloadObject.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      authorizationParameters: {access_type: offline, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [https://www.googleapis.com/auth/devstorage.read_write]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listObjects
+      goName: ListObjects
+      inputType: ListObjectsInput
+      outputType: ObjectsPage
+      kind: query
+      description: List one page of object names and generations in a bucket.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned an object page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized object JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example object is visible.
+          output: {objects: [{name: example.txt, generation: '123'}], nextPageToken: ''}
+    - name: downloadObject
+      goName: DownloadObject
+      inputType: DownloadObjectInput
+      outputType: DownloadedObject
+      kind: query
+      description: Download one bounded object generation and return its content as Base64.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: downloaded, goName: Downloaded, description: Google returned the object content.}
+        - {id: notFound, goName: NotFound, description: The object does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned oversized content or an unsafe redirect., optional: true}
+        - {id: defect, goName: Defect, description: Local object input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: downloadedDefault
+          branch: downloaded
+          default: true
+          description: An example text object was downloaded.
+          output: {contentBase64: aGVsbG8=, contentType: text/plain}
