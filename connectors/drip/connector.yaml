@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: drip
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listAccounts, getSubscriber]
+      triggers: []
   codegen:
     go:
       package: drip
