@@ -1,0 +1,72 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: rabbitmq
+  displayName: RabbitMQ
+  description: Inspect one queue through the RabbitMQ Management HTTP API.
+  company: RabbitMQ
+  version: v0.1.0
+spec:
+  provider: rabbitmq
+  codegen:
+    go:
+      package: rabbitmq
+  configuration:
+    fields:
+      - name: managementUrl
+        goName: ManagementURL
+        type: url
+        required: true
+        description: Full non-secret RabbitMQ Management API origin from your cluster administrator, such as https://rabbitmq.example.com:15671. Enable rabbitmq_management and enter the URL without /api or a trailing path. Blank prevents connection creation. HTTPS is required except for loopback development.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Management API request as a positive Go duration. Blank uses the displayed default; increase only for a slow cluster.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete queue-metrics response in bytes as a positive integer. Blank uses the displayed default; increase only for a larger response.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: rabbitmq-basic-auth
+    fields:
+      - name: username
+        goName: Username
+        type: string
+        required: true
+        description: Non-secret RabbitMQ username from your Management UI at the managementUrl > Admin > Users. Select a user with permission to inspect the chosen virtual host; enter its exact username. Blank prevents requests.
+      - name: password
+        goName: Password
+        type: secretString
+        required: true
+        description: Secret password set by your administrator at the Management UI > Admin > Users when creating or updating that user. Enter the complete password; blank prevents requests. Dex stores it only as a credential.
+    guide:
+      startURL: https://www.rabbitmq.com/docs/management
+      steps:
+        - Ask your RabbitMQ administrator for the TLS Management UI URL and confirm the rabbitmq_management plugin is enabled. Enter the URL origin as managementUrl without /api; blank prevents connection creation.
+        - In that Management UI open Admin > Users. Create or select a user with read permission for the target virtual host, and enter its exact username and secret password. Blank credentials prevent requests; do not use the default guest account remotely.
+        - Leave timeout and maxResponseBytes blank for the displayed defaults. The same URL and credentials must reach the Management HTTP API from the Dex Worker.
+  operations:
+    - name: getQueueMetrics
+      goName: GetQueueMetrics
+      inputType: GetQueueMetricsInput
+      outputType: QueueMetrics
+      kind: query
+      description: Read the current message and consumer counts for one named queue in one virtual host.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: RabbitMQ returned the queue metrics.}
+        - {id: notFound, goName: NotFound, description: The queue or virtual host does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: RabbitMQ conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: RabbitMQ returned malformed or oversized queue data., optional: true}
+        - {id: defect, goName: Defect, description: Invalid queue input or unavailable credentials., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample work queue has pending messages and one consumer.
+          output: {virtualHost: /, name: work, messages: 3, consumers: 1, state: running}

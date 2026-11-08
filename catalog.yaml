@@ -120,6 +120,7 @@ directories:
   - connectors/posthog
   - connectors/postmark
   - connectors/productboard
+  - connectors/rabbitmq
   - connectors/razorpay
   - connectors/reamaze
   - connectors/recurly
