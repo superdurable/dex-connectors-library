@@ -7,6 +7,15 @@ metadata:
   company: Nimble
   version: v0.1.0
 spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listContactIDs, getContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listContactIDs, getContact]
+      triggers: []
   provider: nimble
   codegen:
     go:
@@ -36,11 +45,11 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret Nimble API token. At https://app.nimble.com/, open Settings > API Token, select Generate New Token, name it and choose contact-read scopes; copy the token into this secret field. Blank selects defect.
+        description: Secret Nimble API token. At https://app.nimble.com/, open Settings > API Token, select Generate New Token, name it and choose Contacts scope; copy the token into this secret field. Blank selects defect.
     guide:
       startURL: https://app.nimble.com/
       steps:
-        - Sign in to https://app.nimble.com/ as a Nimble Account Administrator. Open Settings > API Token > Generate New Token, give the token a name, choose the contact-read scopes, then select Generate and copy the token into Dex secret api_key.
+        - Sign in to https://app.nimble.com/ as a Nimble Account Administrator. Open Settings > API Token > Generate New Token, give the token a name, choose the Contacts scope, then select Generate and copy the token into Dex secret api_key.
         - If API access is not enabled, an administrator must grant it under Settings > Users. The connector sends the token only in the Authorization Bearer header; revoke it in Settings > API Token.
         - Keep baseUrl, timeout, and maxResponseBytes blank for their displayed defaults unless your provider endpoint or response size requires an override.
   operations:
