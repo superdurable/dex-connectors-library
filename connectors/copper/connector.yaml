@@ -12,6 +12,11 @@ spec:
       version: v0.1.0
       operations: [listLeadStatuses, getLead]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-copper'
+      operations: [listLeadStatuses, getLead]
+      triggers: []
   provider: copper
   codegen:
     go:
