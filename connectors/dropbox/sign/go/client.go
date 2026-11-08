@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -72,7 +73,7 @@ func (client *Client) get(call sdkgo.Call, path string) providerResponse {
 		return providerResponse{err: errCredential}
 	}
 	apiKey := credentials.APIKey.Reveal()
-	if !providerhttp.IsHeaderSafeCredential(apiKey) {
+	if !providerhttp.IsHeaderSafeCredential(apiKey) || strings.Contains(apiKey, ":") {
 		return providerResponse{err: errCredential}
 	}
 	request, err := http.NewRequestWithContext(call.Context, http.MethodGet, client.baseURL+path, nil)

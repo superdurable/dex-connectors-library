@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: dropbox-sign
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-dropbox-sign
+      operations: [getSignatureRequest]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-dropbox-sign"
+      operations: [getSignatureRequest]
+      triggers: []
   codegen:
     go:
       package: dropboxsign

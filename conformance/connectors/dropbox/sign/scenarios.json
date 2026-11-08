@@ -1,0 +1,294 @@
+{
+  "connector": "dropbox-sign",
+  "scenarios": [
+    {
+      "callId": "5a9eea00-f2cb-5667-a202-80424d8b0531",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Example agreement\",\"is_complete\":true,\"is_declined\":false,\"has_error\":false,\"signatures\":[{\"signer_email_address\":\"private@example.com\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "hasError": false,
+          "id": "fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "isComplete": true,
+          "isDeclined": false,
+          "title": "Example agreement"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "getSignatureRequest-found",
+      "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "1e3bf96b-0687-534b-81c1-d2dab5e2fd24",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "getSignatureRequest-notFound",
+      "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "4abed2af-b4f6-5850-b432-5e0f19c23c70",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "getSignatureRequest-providerRejected",
+      "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "73b88e58-4786-540d-9293-88c903aee895",
+      "exchanges": [
+        {
+          "body": "{\"signature_request\":{\"signature_request_id\":\"fa5c8a0b0f492d768749333ad6fcc214c111e967\",\"title\":\"Example agreement\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "getSignatureRequest-invalidResponse",
+      "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "57285b09-c920-5f9d-8759-a42a1618667b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasError": false,
+          "id": "",
+          "isComplete": false,
+          "isDeclined": false,
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": ""
+      },
+      "name": "getSignatureRequest-defect",
+      "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "7f8192bc-03ff-57af-bfa0-89d0baa17630",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "getSignatureRequest-rateLimit",
+      "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "fb4a153f-c3bb-52dc-982d-9efc30fbbd2f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "getSignatureRequest-serverUnavailable",
+      "operation": "getSignatureRequest"
+    },
+    {
+      "callId": "09bd6947-91dc-523b-a44a-409932e7d126",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/signature_request/fa5c8a0b0f492d768749333ad6fcc214c111e967",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWRyb3Bib3gtc2lnbi1hcGkta2V5Og=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "signatureRequestId": "fa5c8a0b0f492d768749333ad6fcc214c111e967"
+      },
+      "name": "getSignatureRequest-transportFailure",
+      "operation": "getSignatureRequest"
+    }
+  ],
+  "schemaVersion": 1
+}
