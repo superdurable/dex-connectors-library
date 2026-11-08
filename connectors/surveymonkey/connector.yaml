@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [listSurveys, getResponse]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-surveymonkey'
+      operations: [listSurveys, getResponse]
+      triggers: []
   codegen:
     go:
       package: surveymonkey
