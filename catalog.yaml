@@ -96,6 +96,7 @@ directories:
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
+  - connectors/surveymonkey
   - connectors/telegram
   - connectors/tmdb
   - connectors/twilio/messaging
