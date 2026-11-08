@@ -97,6 +97,7 @@ directories:
   - connectors/lever
   - connectors/linear
   - connectors/linkedin
+  - connectors/linkedin/ads
   - connectors/lucid
   - connectors/mailgun
   - connectors/meistertask

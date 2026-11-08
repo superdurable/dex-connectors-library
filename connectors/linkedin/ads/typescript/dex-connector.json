@@ -1,0 +1,44 @@
+{
+  "connectorId": "linkedin-ads",
+  "releaseTag": "connectors/linkedin/ads/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-linkedin-ads",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListAdAccountsStep",
+      "kind": "query",
+      "operationId": "listAdAccounts",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
