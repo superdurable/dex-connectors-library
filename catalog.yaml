@@ -29,6 +29,7 @@ directories:
   - connectors/contentful
   - connectors/copper
   - connectors/datadog
+  - connectors/deel
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
