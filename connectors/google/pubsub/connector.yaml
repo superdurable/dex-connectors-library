@@ -7,6 +7,16 @@ metadata:
   company: Google
   version: v0.1.0
 spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listTopics]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-google-pubsub'
+      operations: [listTopics]
+      triggers: []
   provider: google-pubsub
   codegen:
     go:

@@ -1,0 +1,44 @@
+{
+  "connectorId": "google-pubsub",
+  "releaseTag": "connectors/google/pubsub/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-google-pubsub",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListTopicsStep",
+      "kind": "query",
+      "operationId": "listTopics",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
