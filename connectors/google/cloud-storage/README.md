@@ -1,6 +1,6 @@
 # Google Cloud Storage connector
 
-The Go connector lists one page of object identities, downloads a bounded object body, and uploads an object through the [Cloud Storage JSON API](https://docs.cloud.google.com/storage/docs/json_api/v1). The runnable [object-list Flow](go/examples/objects/README.md) and [upload Flow](go/examples/upload/README.md) use the static `google-cloud-storage` Dex Web connection. Python, TypeScript, and object-created delivery are still to be implemented.
+The Go, [Python](python/README.md), and [TypeScript](typescript/README.md) connectors list one page of object identities, download a bounded object body, and upload an object through the [Cloud Storage JSON API](https://docs.cloud.google.com/storage/docs/json_api/v1). The runnable Go [object-list Flow](go/examples/objects/README.md), [download Flow](go/examples/download/README.md), and [upload Flow](go/examples/upload/README.md) use the static `google-cloud-storage` Dex Web connection. Object-created delivery remains to be implemented.
 
 ## Connection setup
 

@@ -8,6 +8,15 @@ metadata:
   version: v0.1.0
 spec:
   provider: google-cloud-storage
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listObjects, downloadObject, uploadObject]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listObjects, downloadObject, uploadObject]
+      triggers: []
   codegen:
     go:
       package: cloudstorage
