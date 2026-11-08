@@ -1,0 +1,87 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: getresponse
+  displayName: GetResponse
+  description: List and inspect contact metadata through the GetResponse API v3.
+  company: GetResponse
+  version: v0.1.0
+spec:
+  provider: getresponse
+  codegen:
+    go:
+      package: getresponse
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS GetResponse SMB API root. Blank uses the displayed default. This initial connector supports SMB accounts only; do not enter a MAX endpoint. Override only for a compatible private test endpoint.
+        default: https://api.getresponse.com/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for known larger contact pages. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: getresponse-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret GetResponse API Key from https://app.getresponse.com/api under Integrations and API > API. Generate or reveal the key there, copy the full value without an api-key prefix into this secret field; blank makes calls select defect. Revoke it on the same page when retired.
+    guide:
+      startURL: https://app.getresponse.com/api
+      steps:
+        - Sign in to a GetResponse SMB account at https://app.getresponse.com, open Integrations and API > API, and generate or copy an API Key.
+        - Save the full key without an api-key prefix in the secret api_key field. Dex sends it as X-Auth-Token with the required api-key prefix. Revoke or rotate it on that API page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. This initial release does not support GetResponse MAX because its X-Domain header and account endpoint need separate configuration.
+  operations:
+    - name: listContacts
+      goName: ListContacts
+      inputType: ListContactsInput
+      outputType: ContactsPage
+      kind: query
+      description: List one page of contact IDs, email addresses, and names without embedded fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: GetResponse returned the selected contact page.}
+        - {id: providerRejected, goName: ProviderRejected, description: GetResponse conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GetResponse returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact is listed.
+          output: {contacts: [{contactId: abc123, email: 'ada@example.com', name: Ada Lovelace}], page: 1, perPage: 20}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactMetadata
+      kind: query
+      description: Read one contact's ID, email address, and name without embedded fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: GetResponse returned contact metadata.}
+        - {id: notFound, goName: NotFound, description: No contact with this ID is visible to the API user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: GetResponse conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: GetResponse returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one sample contact.
+          output: {contactId: abc123, email: 'ada@example.com', name: Ada Lovelace}
