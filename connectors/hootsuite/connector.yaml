@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: hootsuite
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listSocialProfiles, listScheduledPosts, schedulePost]
+      triggers: []
   codegen:
     go:
       package: hootsuite

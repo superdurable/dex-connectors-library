@@ -1,0 +1,1023 @@
+{
+  "connector": "hootsuite",
+  "scenarios": [
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"115185509\",\"type\":\"FACEBOOK\",\"socialNetworkUsername\":\"Example Page\",\"ownerId\":\"private\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/socialProfiles",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "profiles": [
+            {
+              "id": "115185509",
+              "type": "FACEBOOK",
+              "username": "Example Page"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSocialProfiles-listed",
+      "operation": "listSocialProfiles"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/socialProfiles",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "profiles": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSocialProfiles-providerRejected",
+      "operation": "listSocialProfiles"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"115185509\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/socialProfiles",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "profiles": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSocialProfiles-invalidResponse",
+      "operation": "listSocialProfiles"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "profiles": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSocialProfiles-defect",
+      "operation": "listSocialProfiles"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/socialProfiles",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSocialProfiles-rateLimit",
+      "operation": "listSocialProfiles"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/socialProfiles",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSocialProfiles-serverUnavailable",
+      "operation": "listSocialProfiles"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/socialProfiles",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listSocialProfiles-transportFailure",
+      "operation": "listSocialProfiles"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"4138476039\",\"state\":\"SCHEDULED\",\"socialProfile\":{\"id\":\"115185509\"},\"scheduledSendTime\":\"2026-11-18T14:00:00Z\",\"text\":\"private draft\"}],\"metadata\":{\"cursor\":{\"next\":\"next:123\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages",
+          "query": {
+            "cursor": [
+              "cursor/+value"
+            ],
+            "endTime": [
+              "2026-11-20T14:00:00Z"
+            ],
+            "limit": [
+              "100"
+            ],
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "startTime": [
+              "2026-11-15T14:00:00Z"
+            ],
+            "state": [
+              "SCHEDULED"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "next:123",
+          "posts": [
+            {
+              "id": "4138476039",
+              "scheduledSendTime": "2026-11-18T14:00:00Z",
+              "socialProfileId": "115185509",
+              "state": "SCHEDULED"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor/+value",
+        "endTime": "2026-11-20T14:00:00Z",
+        "socialProfileId": "115185509",
+        "startTime": "2026-11-15T14:00:00Z"
+      },
+      "name": "listScheduledPosts-listed",
+      "operation": "listScheduledPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages",
+          "query": {
+            "cursor": [
+              "cursor/+value"
+            ],
+            "endTime": [
+              "2026-11-20T14:00:00Z"
+            ],
+            "limit": [
+              "100"
+            ],
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "startTime": [
+              "2026-11-15T14:00:00Z"
+            ],
+            "state": [
+              "SCHEDULED"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor/+value",
+        "endTime": "2026-11-20T14:00:00Z",
+        "socialProfileId": "115185509",
+        "startTime": "2026-11-15T14:00:00Z"
+      },
+      "name": "listScheduledPosts-providerRejected",
+      "operation": "listScheduledPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"4138476039\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages",
+          "query": {
+            "cursor": [
+              "cursor/+value"
+            ],
+            "endTime": [
+              "2026-11-20T14:00:00Z"
+            ],
+            "limit": [
+              "100"
+            ],
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "startTime": [
+              "2026-11-15T14:00:00Z"
+            ],
+            "state": [
+              "SCHEDULED"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor/+value",
+        "endTime": "2026-11-20T14:00:00Z",
+        "socialProfileId": "115185509",
+        "startTime": "2026-11-15T14:00:00Z"
+      },
+      "name": "listScheduledPosts-invalidResponse",
+      "operation": "listScheduledPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "posts": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor/+value",
+        "endTime": "2026-12-31T14:00:00Z",
+        "socialProfileId": "115185509",
+        "startTime": "2026-11-15T14:00:00Z"
+      },
+      "name": "listScheduledPosts-defect",
+      "operation": "listScheduledPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages",
+          "query": {
+            "cursor": [
+              "cursor/+value"
+            ],
+            "endTime": [
+              "2026-11-20T14:00:00Z"
+            ],
+            "limit": [
+              "100"
+            ],
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "startTime": [
+              "2026-11-15T14:00:00Z"
+            ],
+            "state": [
+              "SCHEDULED"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor/+value",
+        "endTime": "2026-11-20T14:00:00Z",
+        "socialProfileId": "115185509",
+        "startTime": "2026-11-15T14:00:00Z"
+      },
+      "name": "listScheduledPosts-rateLimit",
+      "operation": "listScheduledPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages",
+          "query": {
+            "cursor": [
+              "cursor/+value"
+            ],
+            "endTime": [
+              "2026-11-20T14:00:00Z"
+            ],
+            "limit": [
+              "100"
+            ],
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "startTime": [
+              "2026-11-15T14:00:00Z"
+            ],
+            "state": [
+              "SCHEDULED"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor/+value",
+        "endTime": "2026-11-20T14:00:00Z",
+        "socialProfileId": "115185509",
+        "startTime": "2026-11-15T14:00:00Z"
+      },
+      "name": "listScheduledPosts-serverUnavailable",
+      "operation": "listScheduledPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/messages",
+          "query": {
+            "cursor": [
+              "cursor/+value"
+            ],
+            "endTime": [
+              "2026-11-20T14:00:00Z"
+            ],
+            "limit": [
+              "100"
+            ],
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "startTime": [
+              "2026-11-15T14:00:00Z"
+            ],
+            "state": [
+              "SCHEDULED"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "cursor": "cursor/+value",
+        "endTime": "2026-11-20T14:00:00Z",
+        "socialProfileId": "115185509",
+        "startTime": "2026-11-15T14:00:00Z"
+      },
+      "name": "listScheduledPosts-transportFailure",
+      "operation": "listScheduledPosts"
+    },
+    {
+      "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"4138476039\",\"state\":\"SCHEDULED\",\"socialProfile\":{\"id\":\"115185509\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "scheduledSendTime": "2026-11-15T14:00:00Z",
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "text": "A useful update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "scheduled",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+          "providerId": "4138476039",
+          "state": "claimed"
+        },
+        "output": {
+          "id": "4138476039",
+          "socialProfileId": "115185509",
+          "state": "SCHEDULED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "input": {
+        "scheduledSendTime": "2026-11-15T14:00:00Z",
+        "socialProfileId": "115185509",
+        "text": "A useful update"
+      },
+      "name": "schedulePost-scheduled",
+      "operation": "schedulePost"
+    },
+    {
+      "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"denied\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "scheduledSendTime": "2026-11-15T14:00:00Z",
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "text": "A useful update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "socialProfileId": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "input": {
+        "scheduledSendTime": "2026-11-15T14:00:00Z",
+        "socialProfileId": "115185509",
+        "text": "A useful update"
+      },
+      "name": "schedulePost-providerRejected",
+      "operation": "schedulePost"
+    },
+    {
+      "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "scheduledSendTime": "2026-11-15T14:00:00Z",
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "text": "A useful update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+          "state": "claimed"
+        },
+        "output": {
+          "id": "",
+          "socialProfileId": "",
+          "state": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "input": {
+        "scheduledSendTime": "2026-11-15T14:00:00Z",
+        "socialProfileId": "115185509",
+        "text": "A useful update"
+      },
+      "name": "schedulePost-uncertain",
+      "operation": "schedulePost"
+    },
+    {
+      "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "socialProfileId": "",
+          "state": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "input": {
+        "scheduledSendTime": "2026-11-15T14:00:00Z",
+        "socialProfileId": "115185509",
+        "text": ""
+      },
+      "name": "schedulePost-defect",
+      "operation": "schedulePost"
+    },
+    {
+      "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "scheduledSendTime": "2026-11-15T14:00:00Z",
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "text": "A useful update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "idempotencyKey": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "input": {
+        "scheduledSendTime": "2026-11-15T14:00:00Z",
+        "socialProfileId": "115185509",
+        "text": "A useful update"
+      },
+      "name": "schedulePost-rateLimit",
+      "operation": "schedulePost"
+    },
+    {
+      "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "scheduledSendTime": "2026-11-15T14:00:00Z",
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "text": "A useful update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "input": {
+        "scheduledSendTime": "2026-11-15T14:00:00Z",
+        "socialProfileId": "115185509",
+        "text": "A useful update"
+      },
+      "name": "schedulePost-serverUnavailable",
+      "operation": "schedulePost"
+    },
+    {
+      "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/v1/messages",
+          "requestBody": {
+            "scheduledSendTime": "2026-11-15T14:00:00Z",
+            "socialProfileIds": [
+              "115185509"
+            ],
+            "text": "A useful update"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-hootsuite-token"
+            ],
+            "Content-Type": [
+              "application/json;charset=utf-8"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "58f21093-ca67-5b5a-b692-0443b2041e5f",
+      "input": {
+        "scheduledSendTime": "2026-11-15T14:00:00Z",
+        "socialProfileId": "115185509",
+        "text": "A useful update"
+      },
+      "name": "schedulePost-transportFailure",
+      "operation": "schedulePost"
+    }
+  ],
+  "schemaVersion": 1
+}

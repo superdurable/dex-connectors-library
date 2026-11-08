@@ -2,6 +2,8 @@
 
 The Go connector lists social profiles, reads scheduled posts, and schedules text posts. The [social profiles Flow](go/examples/social-profiles/README.md), [scheduled posts Flow](go/examples/scheduled-posts/README.md), and [post scheduling Flow](go/examples/post-scheduling/README.md) use the static `hootsuite` connection and operation-specific Step factories.
 
+The [Python package](python/README.md) implements the same three operations and includes a runnable [social profiles Flow](python/examples/social_profiles/README.md). Both languages are checked against the Go-recorded provider scenarios.
+
 ## Connection setup
 
 Create or select an app in the [Hootsuite Developer Portal](https://developer.hootsuite.com/) under **My Apps**. REST API access may require Hootsuite approval. Register the redirect URI displayed by Dex Web, then enter the app's Client ID and Client Secret in the Dex Web connection. Authorize with the `offline` scope so Dex can refresh the token. The authorizing Hootsuite user must be able to access the desired social profiles.
