@@ -66,6 +66,7 @@ directories:
   - connectors/kit
   - connectors/klaviyo
   - connectors/linear
+  - connectors/lucid
   - connectors/linkedin
   - connectors/mailgun
   - connectors/meta/facebook-lead-ads
