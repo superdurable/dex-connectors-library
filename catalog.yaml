@@ -18,6 +18,7 @@ directories:
   - connectors/atlassian/jira
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
+  - connectors/aweber
   - connectors/bamboohr
   - connectors/box
   - connectors/braintree
