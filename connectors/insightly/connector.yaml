@@ -7,6 +7,11 @@ metadata:
   company: Insightly
   version: v0.1.0
 spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listContacts, getContact]
+      triggers: []
   provider: insightly
   codegen:
     go:
