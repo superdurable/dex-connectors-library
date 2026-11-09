@@ -76,25 +76,38 @@ func (operation GetQueueMetricsOperation) Invoke(call sdkgo.Call, input GetQueue
 		return sdkgo.NewQueryRetry[QueueMetrics](queueFailure(sdkgo.FailureTransport, "RabbitMQ response was interrupted"), 0)
 	}
 	metrics, err := decodeQueueMetrics(response.body, input)
+	if errors.Is(err, errQueueStatisticsPending) {
+		return sdkgo.NewQueryRetry[QueueMetrics](queueFailure(sdkgo.FailureAvailability, "RabbitMQ has not collected queue statistics yet"), 0)
+	}
 	if err != nil {
 		return queueBranch(GetQueueMetricsBranchInvalidResponse, sdkgo.FailureProtocol, "RabbitMQ returned invalid queue metrics")
 	}
 	return sdkgo.NewQueryBranch(GetQueueMetricsBranchFound, metrics, nil, sdkgo.Receipt{})
 }
 
+// errQueueStatisticsPending reports a queue whose counters RabbitMQ has not
+// emitted yet, such as a freshly declared queue.
+var errQueueStatisticsPending = errors.New("queue statistics are not collected yet")
+
 func decodeQueueMetrics(body []byte, input GetQueueMetricsInput) (QueueMetrics, error) {
 	var wire struct {
-		VirtualHost string `json:"vhost"`
-		Name        string `json:"name"`
-		Messages    *int64 `json:"messages"`
-		Consumers   *int64 `json:"consumers"`
-		State       string `json:"state"`
+		VirtualHost string  `json:"vhost"`
+		Name        string  `json:"name"`
+		Messages    *int64  `json:"messages"`
+		Consumers   *int64  `json:"consumers"`
+		State       *string `json:"state"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
 		return QueueMetrics{}, err
 	}
-	if wire.VirtualHost != input.VirtualHost || wire.Name != input.Name || wire.Messages == nil || wire.Consumers == nil || *wire.Messages < 0 || *wire.Consumers < 0 || wire.State == "" {
-		return QueueMetrics{}, errors.New("queue metrics are missing or inconsistent")
+	if wire.VirtualHost != input.VirtualHost || wire.Name != input.Name {
+		return QueueMetrics{}, errors.New("queue identity is inconsistent")
 	}
-	return QueueMetrics{VirtualHost: wire.VirtualHost, Name: wire.Name, Messages: *wire.Messages, Consumers: *wire.Consumers, State: wire.State}, nil
+	if wire.Messages == nil || wire.Consumers == nil || wire.State == nil {
+		return QueueMetrics{}, errQueueStatisticsPending
+	}
+	if *wire.Messages < 0 || *wire.Consumers < 0 || *wire.State == "" {
+		return QueueMetrics{}, errors.New("queue metrics are inconsistent")
+	}
+	return QueueMetrics{VirtualHost: wire.VirtualHost, Name: wire.Name, Messages: *wire.Messages, Consumers: *wire.Consumers, State: *wire.State}, nil
 }

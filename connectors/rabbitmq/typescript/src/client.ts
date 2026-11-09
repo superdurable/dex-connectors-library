@@ -93,6 +93,7 @@ export class GetQueueMetricsOperation implements Query<GetQueueMetricsInput, Que
     if (exchange.status !== 200) return terminal('providerRejected', 'PROVIDER_REJECTION', `RabbitMQ rejected HTTP ${exchange.status}`);
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'RabbitMQ response exceeded the configured limit');
     const metrics = decodeQueue(exchange.body, input);
+    if (metrics === 'statisticsPending') return retry('AVAILABILITY', 'RabbitMQ has not collected queue statistics yet');
     if (!metrics) return terminal('invalidResponse', 'PROTOCOL', 'RabbitMQ returned invalid queue metrics');
     return newQueryBranch('found', metrics);
   }
@@ -112,11 +113,14 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decodeQueue(body: Uint8Array, input: GetQueueMetricsInput): QueueMetrics | undefined {
+/** Decode queue metrics; a freshly declared queue may omit its counters until RabbitMQ emits them. */
+function decodeQueue(body: Uint8Array, input: GetQueueMetricsInput): QueueMetrics | 'statisticsPending' | undefined {
   let raw: unknown;
   try { raw = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return undefined; }
-  if (!isObject(raw) || raw.vhost !== input.virtualHost || raw.name !== input.name ||
-    !Number.isSafeInteger(raw.messages) || !Number.isSafeInteger(raw.consumers) ||
+  if (!isObject(raw) || raw.vhost !== input.virtualHost || raw.name !== input.name) return undefined;
+  if (raw.messages === undefined || raw.messages === null || raw.consumers === undefined || raw.consumers === null ||
+    raw.state === undefined || raw.state === null) return 'statisticsPending';
+  if (!Number.isSafeInteger(raw.messages) || !Number.isSafeInteger(raw.consumers) ||
     (raw.messages as number) < 0 || (raw.consumers as number) < 0 || typeof raw.state !== 'string' || !raw.state) return undefined;
   return { virtualHost: input.virtualHost, name: input.name, messages: raw.messages as number, consumers: raw.consumers as number, state: raw.state };
 }

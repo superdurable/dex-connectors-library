@@ -75,16 +75,22 @@ def _valid_basic_credential(value: object) -> bool:
     return isinstance(value, str) and is_header_safe_credential(value)
 
 
+class _QueueStatisticsPendingError(Exception):
+    """RabbitMQ has not emitted counters for the queue yet, such as after declaration."""
+
+
 def _decode_queue(body: bytes, input: GetQueueMetricsInput) -> QueueMetrics:
     wire: Any = json.loads(body)
     if not isinstance(wire, dict):
         raise ValueError("queue metrics must be an object")
+    if wire.get("vhost") != input.virtual_host or wire.get("name") != input.name:
+        raise ValueError("queue identity is inconsistent")
     messages, consumers = wire.get("messages"), wire.get("consumers")
     state = wire.get("state")
+    if messages is None or consumers is None or state is None:
+        raise _QueueStatisticsPendingError
     if (
-        wire.get("vhost") != input.virtual_host
-        or wire.get("name") != input.name
-        or type(messages) is not int
+        type(messages) is not int
         or type(consumers) is not int
         or messages < 0
         or consumers < 0
@@ -217,6 +223,8 @@ class GetQueueMetricsOperation:
             return _retry(FailureKind.TRANSPORT, "RabbitMQ response was interrupted")
         try:
             metrics = _decode_queue(exchange.body, input)
+        except _QueueStatisticsPendingError:
+            return _retry(FailureKind.AVAILABILITY, "RabbitMQ has not collected queue statistics yet")
         except (ValueError, UnicodeDecodeError):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "RabbitMQ returned invalid queue metrics")
         return QueryAttempt.branch_result("found", metrics, Receipt())

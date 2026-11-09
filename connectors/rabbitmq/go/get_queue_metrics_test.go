@@ -65,7 +65,10 @@ func TestGetQueueMetricsClassifiesProviderOutcomes(t *testing.T) {
 		{name: "forbidden", status: 403, branch: GetQueueMetricsBranchProviderRejected},
 		{name: "rate limited", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},
-		{name: "missing count", status: 200, body: `{"vhost":"/","name":"work","consumers":1,"state":"running"}`, branch: GetQueueMetricsBranchInvalidResponse},
+		{name: "statistics not collected", status: 200, body: `{"vhost":"/","name":"work","durable":true,"arguments":{}}`, retry: true},
+		{name: "missing count", status: 200, body: `{"vhost":"/","name":"work","consumers":1,"state":"running"}`, retry: true},
+		{name: "negative count", status: 200, body: `{"vhost":"/","name":"work","messages":-1,"consumers":1,"state":"running"}`, branch: GetQueueMetricsBranchInvalidResponse},
+		{name: "empty state", status: 200, body: `{"vhost":"/","name":"work","messages":1,"consumers":1,"state":""}`, branch: GetQueueMetricsBranchInvalidResponse},
 		{name: "mismatched name", status: 200, body: `{"vhost":"/","name":"other","messages":1,"consumers":1,"state":"running"}`, branch: GetQueueMetricsBranchInvalidResponse},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

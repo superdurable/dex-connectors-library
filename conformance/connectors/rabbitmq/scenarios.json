@@ -131,7 +131,7 @@
       "callId": "2455c264-5829-546d-8627-6e3b322fde57",
       "exchanges": [
         {
-          "body": "{\"vhost\":\"/\",\"name\":\"work\",\"consumers\":1,\"state\":\"running\"}",
+          "body": "{\"vhost\":\"/\",\"name\":\"work\",\"messages\":-1,\"consumers\":1,\"state\":\"running\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -295,6 +295,43 @@
         "virtualHost": "/"
       },
       "name": "getQueueMetrics-transportFailure",
+      "operation": "getQueueMetrics"
+    },
+    {
+      "callId": "810f9c05-d1a3-52a6-afc4-ee391139097c",
+      "exchanges": [
+        {
+          "body": "{\"arguments\":{},\"auto_delete\":false,\"durable\":true,\"exclusive\":false,\"name\":\"work\",\"node\":\"rabbit@broker-1\",\"type\":\"classic\",\"vhost\":\"/\"}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/queues///work",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic b2JzZXJ2ZXI6c2FtcGxlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "name": "work",
+        "virtualHost": "/"
+      },
+      "name": "getQueueMetrics-statisticsPending",
       "operation": "getQueueMetrics"
     }
   ],
