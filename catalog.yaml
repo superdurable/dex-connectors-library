@@ -129,6 +129,7 @@ directories:
   - connectors/miro
   - connectors/mixpanel
   - connectors/monday
+  - connectors/mongodb
   - connectors/mysql
   - connectors/netlify
   - connectors/newsapi
