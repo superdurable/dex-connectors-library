@@ -62,6 +62,10 @@ func TestGetUserClassifiesProviderOutcomes(t *testing.T) {
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},
 		{name: "malformed", status: 200, body: `{"user":{"email":"different@example.com"}}`, branch: GetUserBranchInvalidResponse},
+		{name: "unknown user empty object", status: 200, body: `{}`, branch: GetUserBranchNotFound},
+		{name: "unknown user null", status: 200, body: `{"user":null}`, branch: GetUserBranchNotFound},
+		{name: "unknown user empty user", status: 200, body: `{"user":{}}`, branch: GetUserBranchNotFound},
+		{name: "user is not an object", status: 200, body: `{"user":"user@example.com"}`, branch: GetUserBranchInvalidResponse},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {

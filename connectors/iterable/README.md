@@ -1,6 +1,6 @@
 # Iterable connector
 
-The Go, Python, and TypeScript `getUser` Queries read one user's email and optional `userId` from an email-based or hybrid Iterable project. Arbitrary profile data fields are excluded from Dex Results.
+The Go, Python, and TypeScript `getUser` Queries read one user's email and optional `userId` from an email-based or hybrid Iterable project. Arbitrary profile data fields are excluded from Dex Results. HTTP 404 and a 200 response without a non-empty `user` object, such as `{}`, select optional `notFound`.
 
 ## Connect
 

@@ -90,6 +90,7 @@ export class GetUserOperation implements Query<GetUserInput, UserIdentity> {
     if (exchange.status !== 200) return terminal('providerRejected', 'PROVIDER_REJECTION', `Iterable rejected HTTP ${exchange.status}`);
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Iterable response exceeded the configured limit');
     const userIdentity = decodeUser(exchange.body, input.email);
+    if (userIdentity === null) return terminal('notFound', 'NOT_FOUND', 'Iterable did not expose the user');
     if (!userIdentity) return terminal('invalidResponse', 'PROTOCOL', 'Iterable returned invalid user JSON');
     return newQueryBranch('found', userIdentity);
   }
@@ -112,11 +113,15 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decodeUser(body: Uint8Array, email: string): UserIdentity | undefined {
+/** Treat an absent, null, or empty user as not found (null); Iterable may answer unknown emails with 200 {}. */
+function decodeUser(body: Uint8Array, email: string): UserIdentity | null | undefined {
   let raw: unknown;
   try { raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; }
-  if (!isObject(raw) || !isObject(raw.user)) return undefined;
+  if (raw === null) return null;
+  if (!isObject(raw)) return undefined;
   const user = raw.user;
+  if (user === undefined || user === null || (isObject(user) && Object.keys(user).length === 0)) return null;
+  if (!isObject(user)) return undefined;
   if (!isValidEmail(user.email) || user.email.toLowerCase() !== email.toLowerCase() ||
     (user.userId !== undefined && typeof user.userId !== 'string')) return undefined;
   return { email: user.email, userId: typeof user.userId === 'string' ? user.userId : '' };

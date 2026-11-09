@@ -71,9 +71,12 @@ func (operation GetUserOperation) Invoke(call sdkgo.Call, input GetUserInput) sd
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[UserIdentity](userFailure(sdkgo.FailureTransport, "Iterable response was interrupted"), 0)
 	}
-	identity, err := decodeUser(response.body, input.Email)
+	identity, isFound, err := decodeUser(response.body, input.Email)
 	if err != nil {
 		return userBranch(GetUserBranchInvalidResponse, sdkgo.FailureProtocol, "Iterable returned invalid user JSON")
+	}
+	if !isFound {
+		return userBranch(GetUserBranchNotFound, sdkgo.FailureNotFound, "Iterable did not expose the user")
 	}
 	return sdkgo.NewQueryBranch(GetUserBranchFound, identity, nil, sdkgo.Receipt{})
 }
@@ -90,20 +93,35 @@ func validEmail(email string) bool {
 	return true
 }
 
-func decodeUser(body []byte, requestedEmail string) (UserIdentity, error) {
+// decodeUser treats an absent, null, or empty user as not found; Iterable may answer unknown emails with 200 {}.
+func decodeUser(body []byte, requestedEmail string) (UserIdentity, bool, error) {
 	var wire struct {
-		User struct {
-			Email  string `json:"email"`
-			UserID string `json:"userId"`
-		} `json:"user"`
+		User json.RawMessage `json:"user"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
-		return UserIdentity{}, err
+		return UserIdentity{}, false, err
 	}
-	if !strings.EqualFold(wire.User.Email, requestedEmail) || !validEmail(wire.User.Email) {
-		return UserIdentity{}, fmt.Errorf("user email does not match requested email")
+	if len(wire.User) == 0 {
+		return UserIdentity{}, false, nil
 	}
-	return UserIdentity{Email: wire.User.Email, UserID: wire.User.UserID}, nil
+	var userFields map[string]json.RawMessage
+	if err := json.Unmarshal(wire.User, &userFields); err != nil {
+		return UserIdentity{}, false, err
+	}
+	if len(userFields) == 0 {
+		return UserIdentity{}, false, nil
+	}
+	var user struct {
+		Email  string `json:"email"`
+		UserID string `json:"userId"`
+	}
+	if err := json.Unmarshal(wire.User, &user); err != nil {
+		return UserIdentity{}, false, err
+	}
+	if !strings.EqualFold(user.Email, requestedEmail) || !validEmail(user.Email) {
+		return UserIdentity{}, false, fmt.Errorf("user email does not match requested email")
+	}
+	return UserIdentity{Email: user.Email, UserID: user.UserID}, true, nil
 }
 
 func userFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {

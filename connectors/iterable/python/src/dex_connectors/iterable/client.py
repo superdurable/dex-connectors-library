@@ -71,14 +71,26 @@ def _valid_email(email: object) -> bool:
     )
 
 
-def _decode_user(body: bytes, requested_email: str) -> UserIdentity:
+def _decode_user(body: bytes, requested_email: str) -> UserIdentity | None:
+    """Treat an absent, null, or empty user as not found; Iterable may answer unknown emails with 200 {}."""
     raw: Any = json.loads(body)
-    if not isinstance(raw, dict) or not isinstance(raw.get("user"), dict):
-        raise ValueError("user object missing")
-    user = raw["user"]
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValueError("user response is not an object")
+    user: Any = raw.get("user")
+    if user is None or user == {}:
+        return None
+    if not isinstance(user, dict):
+        raise ValueError("user object invalid")
     email = user.get("email")
     user_id = user.get("userId", "")
-    if not _valid_email(email) or email.lower() != requested_email.lower() or not isinstance(user_id, str):
+    if (
+        not isinstance(email, str)
+        or not _valid_email(email)
+        or email.lower() != requested_email.lower()
+        or not isinstance(user_id, str)
+    ):
         raise ValueError("user identity invalid")
     return UserIdentity(email, user_id)
 
@@ -194,4 +206,6 @@ class GetUserOperation:
             user_identity = _decode_user(exchange.body, input.email)
         except (ValueError, TypeError, UnicodeDecodeError):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "Iterable returned invalid user JSON")
+        if user_identity is None:
+            return _branch("notFound", FailureKind.NOT_FOUND, "Iterable did not expose the user")
         return QueryAttempt.branch_result("found", user_identity, Receipt())
