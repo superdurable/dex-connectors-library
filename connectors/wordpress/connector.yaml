@@ -8,6 +8,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: wordpress
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-wordpress
+      operations: [createPost, getPost, listPosts]
+      triggers: []
   codegen:
     go:
       package: wordpress

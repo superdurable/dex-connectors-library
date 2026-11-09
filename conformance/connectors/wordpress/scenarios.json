@@ -674,7 +674,7 @@
       "callId": "a318dd57-b998-59ad-a3a4-433e3e40bda6",
       "exchanges": [
         {
-          "body": "{}",
+          "body": "{\"id\":0,\"status\":\"publish\"}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -691,8 +691,8 @@
         }
       ],
       "expected": {
-        "branch": "notFound",
-        "failureKind": "NOT_FOUND",
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
         "output": {
           "content": {
             "rendered": ""
