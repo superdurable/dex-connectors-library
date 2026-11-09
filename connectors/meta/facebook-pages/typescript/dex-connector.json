@@ -11,6 +11,8 @@
       "name": "newListPostsStep",
       "kind": "query",
       "operationId": "listPosts",
+      "inputType": "ListPostsInput",
+      "description": "Read one page of Page feed post IDs, messages, timestamps, and permalinks.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPostsInput selects a Facebook Page and an optional feed cursor.",
+        "properties": {
+          "after": {
+            "description": "After is Meta's opaque cursor from a prior page; blank starts at the first page.",
+            "type": "string"
+          },
+          "pageId": {
+            "description": "PageID is the numeric Page ID from Meta Business Suite.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetPostStep",
       "kind": "query",
       "operationId": "getPost",
+      "inputType": "GetPostInput",
+      "description": "Read one Page post's ID, message, timestamp, and permalink.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +103,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPostInput selects one post ID from listPosts or a Page event.",
+        "properties": {
+          "postId": {
+            "description": "PostID is a numeric or PageID_PostID Graph API identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "postId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newPublishTextPostStep",
       "kind": "mutation",
       "operationId": "publishTextPost",
+      "inputType": "PublishTextPostInput",
+      "description": "Publish a plain-text post to a Facebook Page feed.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,7 +152,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "PublishTextPostInput selects the Page and text to publish.",
+        "properties": {
+          "message": {
+            "description": "Message is nonempty UTF-8 text for the public Page feed.",
+            "type": "string"
+          },
+          "pageId": {
+            "description": "PageID is the numeric Page ID from Meta Business Suite.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "pageId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

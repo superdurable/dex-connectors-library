@@ -11,6 +11,8 @@
       "name": "newFindDocumentsStep",
       "kind": "query",
       "operationId": "findDocuments",
+      "inputType": "FindDocumentsInput",
+      "description": "Find bounded documents in a named collection using a JSON filter.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindDocumentsInput names one collection and supplies a JSON query filter.",
+        "properties": {
+          "collection": {
+            "description": "Collection is a non-secret name in the configured database.",
+            "type": "string"
+          },
+          "filter": {
+            "additionalProperties": {},
+            "description": "Filter is a JSON object; MongoDB Extended JSON values preserve BSON types.",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "collection",
+          "filter"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

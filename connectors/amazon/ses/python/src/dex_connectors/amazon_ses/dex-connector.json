@@ -11,6 +11,8 @@
       "name": "new_get_email_identity_step",
       "kind": "query",
       "operationId": "getEmailIdentity",
+      "inputType": "GetEmailIdentityInput",
+      "description": "Read the verification status of an SES email identity.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEmailIdentityInput identifies one SES email identity in the configured Region.",
+        "properties": {
+          "emailIdentity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailIdentity"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "new_search_conversations_step",
       "kind": "query",
       "operationId": "searchConversations",
+      "inputType": "SearchConversationsInput",
+      "description": "List one page of up to 25 conversations filtered by inbox, Help Scout status, tag, customer email, and modification time, with the next page number.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,52 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchConversationsInput filters Help Scout conversations. Filters narrow each other, and a blank or zero filter applies no restriction, so an empty input lists active conversations in every inbox the app's Help Scout user can access.",
+        "properties": {
+          "customerEmail": {
+            "description": "CustomerEmail matches conversations where the address is in To, Cc, or Bcc or is one of a customer profile's emails, as Help Scout's email search documents, such as jane@example.com.",
+            "type": "string"
+          },
+          "mailboxId": {
+            "description": "MailboxID limits the search to one inbox, such as the mailboxPicker unit's mailboxId; zero searches every inbox.",
+            "type": "integer"
+          },
+          "modifiedSince": {
+            "description": "ModifiedSince matches conversations modified after this RFC 3339 instant with an explicit offset, such as 2026-01-21T00:00:00Z. Help Scout compares whole seconds. Blank applies no time filter.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is the 1-based page to read, at most MaxSearchPage; zero reads page 1. Pass a previous result's NextPage to continue.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status is active, pending, closed, spam, or all. Blank lists active conversations, Help Scout's default.",
+            "enum": [
+              "active",
+              "all",
+              "closed",
+              "pending",
+              "spam"
+            ],
+            "type": "string"
+          },
+          "tag": {
+            "description": "Tag limits the search to conversations carrying this tag name.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_get_conversation_step",
       "kind": "query",
       "operationId": "getConversation",
+      "inputType": "GetConversationInput",
+      "description": "Read one conversation by ID with a bounded list of its newest threads.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +123,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetConversationInput names one conversation and how many of its newest threads to return.",
+        "properties": {
+          "conversationId": {
+            "description": "ConversationID is the Help Scout conversation ID, not the conversation number shown to users.",
+            "type": "integer"
+          },
+          "threadLimit": {
+            "description": "ThreadLimit is 1 to MaxThreadLimit newest threads; zero returns DefaultThreadLimit.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_reply_to_conversation_step",
       "kind": "mutation",
       "operationId": "replyToConversation",
+      "inputType": "ReplyToConversationInput",
+      "description": "Add one customer reply, which Help Scout emails, or one internal note to a conversation. Help Scout has no idempotency key; the single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint before deciding whether to send.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,12 +181,52 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReplyToConversationInput is one customer reply or internal note to add to a conversation.",
+        "properties": {
+          "conversationId": {
+            "description": "ConversationID is the Help Scout conversation ID.",
+            "type": "integer"
+          },
+          "customerId": {
+            "description": "CustomerID is the customer a reply is sent to. Zero reads the conversation first and uses its primary customer; a note must leave it zero.",
+            "type": "integer"
+          },
+          "isInternalNote": {
+            "description": "IsInternalNote adds a note that only the team sees, through POST /v2/conversations/{id}/notes. False adds a reply that Help Scout emails to the customer, through POST /v2/conversations/{id}/reply.",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "Status sets the conversation's status with the thread: active, pending, closed, or spam. Blank keeps Help Scout's default, under which a reply reactivates the conversation.",
+            "enum": [
+              "active",
+              "all",
+              "closed",
+              "pending",
+              "spam"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the reply or note, sent unchanged as Help Scout's thread text; Help Scout stores thread bodies as HTML. It is required and at most MaxReplyTextBytes.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId",
+          "text"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_conversation_step",
       "kind": "mutation",
       "operationId": "updateConversation",
+      "inputType": "UpdateConversationInput",
+      "description": "Set the Help Scout status or assignee of one conversation and add or remove tags; a repeated attempt finds the values already applied and writes nothing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -157,12 +259,61 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateConversationInput is one change to an existing conversation. Blank and zero fields are left unchanged; at least one change is required.",
+        "properties": {
+          "addTags": {
+            "description": "AddTags adds tags and keeps the conversation's other tags; a tag that does not exist is created.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "assigneeId": {
+            "description": "AssigneeID assigns a Help Scout user or team, which share one ID space. Zero keeps the assignee.",
+            "type": "integer"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Help Scout conversation ID.",
+            "type": "integer"
+          },
+          "isUnassigned": {
+            "description": "IsUnassigned removes the assignee; it cannot be combined with AssigneeID.",
+            "type": "boolean"
+          },
+          "removeTags": {
+            "description": "RemoveTags removes tags and keeps the conversation's other tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status is the new status: active, pending, closed, or spam. Blank keeps the status.",
+            "enum": [
+              "active",
+              "all",
+              "closed",
+              "pending",
+              "spam"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_find_customer_by_email_step",
       "kind": "query",
       "operationId": "findCustomerByEmail",
+      "inputType": "FindCustomerByEmailInput",
+      "description": "Find the Help Scout customer profiles whose email matches one address, returning every match so the Flow decides between duplicates.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -195,7 +346,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindCustomerByEmailInput names one email address to look up.",
+        "properties": {
+          "email": {
+            "description": "Email is one bare address, such as jane@example.com.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "newListSitesStep",
       "kind": "query",
       "operationId": "listSites",
+      "inputType": "ListSitesInput",
+      "description": "Return Search Console property URLs and the connected user's permission level.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,7 +40,13 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSitesInput requests properties visible to the connected Google user.",
+        "properties": {},
+        "type": "object"
+      }
     }
   ]
 }

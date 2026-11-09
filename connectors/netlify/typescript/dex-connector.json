@@ -11,6 +11,8 @@
       "name": "newListSitesStep",
       "kind": "query",
       "operationId": "listSites",
+      "inputType": "ListSitesInput",
+      "description": "List sites visible to the Netlify token.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSitesInput requests the default Netlify sites page.",
+        "properties": {},
+        "type": "object"
+      }
     },
     {
       "name": "newListDeploysStep",
       "kind": "query",
       "operationId": "listDeploys",
+      "inputType": "ListDeploysInput",
+      "description": "List deploys for one Netlify site.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +86,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDeploysInput names the site whose deploys are listed.",
+        "properties": {
+          "siteId": {
+            "description": "SiteID is the API site ID or accepted site domain.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "siteId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

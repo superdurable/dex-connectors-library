@@ -11,6 +11,8 @@
       "name": "newListFormsStep",
       "kind": "query",
       "operationId": "listForms",
+      "inputType": "ListFormsInput",
+      "description": "List one page of form titles and IDs without submission answers.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListFormsInput selects a zero-based page of at most 100 forms.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the maximum form count; zero defaults to 20.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based form offset; zero starts the first page.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetSubmissionStep",
       "kind": "query",
       "operationId": "getSubmission",
+      "inputType": "GetSubmissionInput",
+      "description": "Read one submission's ID, form ID, status, and creation timestamp; answers are intentionally excluded.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +98,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSubmissionInput selects one numeric Jotform submission ID.",
+        "properties": {
+          "submissionId": {
+            "description": "SubmissionID is the numeric ID from Jotform's submission URL or API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submissionId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -7,6 +7,8 @@ from datetime import timedelta
 import dex
 import pytest
 
+import dex_connectors.sdk
+import dex_connectors.sdk.steps
 from dex_connectors.sdk import (
     BranchDefinition,
     Call,
@@ -30,8 +32,8 @@ from dex_connectors.sdk import (
     RetryError,
     StepAnnotations,
     StepDefaults,
+    raise_dex_retry,
 )
-from dex_connectors.sdk.steps import _raise_dex_retry
 
 OPERATION = OperationRef("sample", "createItem")
 CONNECTION = ConnectionRef("sample", "main")
@@ -158,10 +160,16 @@ def test_step_factory_truncates_retry_after_to_dex_seconds(
     retry = RetryError(failure, delay)
     if expected_whole_seconds == 0:
         with pytest.raises(RetryError) as raised_retry:
-            _raise_dex_retry(retry)
+            raise_dex_retry(retry)
         assert raised_retry.value is retry
     else:
         with pytest.raises(dex.RetryAfterError) as raised_after:
-            _raise_dex_retry(retry)
+            raise_dex_retry(retry)
         assert raised_after.value.after_seconds == expected_whole_seconds
         assert raised_after.value.cause is retry
+
+
+def test_retry_translation_is_public_and_shared_with_step_factories() -> None:
+    """A tool bridge and a Step factory reach the same translation."""
+    assert dex_connectors.sdk.raise_dex_retry is dex_connectors.sdk.steps.raise_dex_retry
+    assert "raise_dex_retry" in dex_connectors.sdk.__all__

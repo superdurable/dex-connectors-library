@@ -11,6 +11,8 @@
       "name": "new_send_message_step",
       "kind": "mutation",
       "operationId": "sendMessage",
+      "inputType": "SendMessageInput",
+      "description": "Send one SMS, MMS, or WhatsApp message from a Twilio number or Messaging Service to one recipient; synchronous durability makes the single-dispatch checkpoint visible to retries because Twilio provides no message idempotency key.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,43 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendMessageInput describes one message to one recipient.",
+        "properties": {
+          "body": {
+            "description": "Body is the message text, at most 1600 characters. It may be empty only when MediaURLs is set.",
+            "type": "string"
+          },
+          "mediaUrls": {
+            "description": "MediaURLs lists at most 10 public HTTPS URLs that Twilio fetches and attaches, which makes an SMS an MMS.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sender": {
+            "description": "Sender overrides the connection's defaultSender with an E.164 number, a whatsapp: address, or an MG Messaging Service SID. Blank uses defaultSender.",
+            "type": "string"
+          },
+          "to": {
+            "description": "To is the recipient: an E.164 number such as +14155550100, or whatsapp:+14155550100.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "to"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_message_step",
       "kind": "query",
       "operationId": "getMessage",
+      "inputType": "GetMessageInput",
+      "description": "Read one message by SID, including its delivery status and Twilio error code.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +109,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetMessageInput identifies one message.",
+        "properties": {
+          "messageSid": {
+            "description": "MessageSID is the SM or MM message SID returned by sendMessage.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageSid"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "newListDeploymentsStep",
       "kind": "query",
       "operationId": "listDeployments",
+      "inputType": "ListDeploymentsInput",
+      "description": "List deployments visible to a personal account or team.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDeploymentsInput optionally selects a Vercel team ID.",
+        "properties": {
+          "teamId": {
+            "description": "TeamID is the team ID; blank uses the personal account.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetDeploymentStep",
       "kind": "query",
       "operationId": "getDeployment",
+      "inputType": "GetDeploymentInput",
+      "description": "Read a deployment by Vercel deployment ID or hostname.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +91,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDeploymentInput identifies one deployment and an optional team.",
+        "properties": {
+          "idOrUrl": {
+            "description": "IDOrURL is a deployment ID or hostname.",
+            "type": "string"
+          },
+          "teamId": {
+            "description": "TeamID is the team ID; blank uses the personal account.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idOrUrl"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

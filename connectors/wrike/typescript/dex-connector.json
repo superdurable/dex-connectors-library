@@ -11,6 +11,8 @@
       "name": "newGetTaskStep",
       "kind": "query",
       "operationId": "getTask",
+      "inputType": "GetTaskInput",
+      "description": "Read one task's ID, title, and status without description, custom fields, or assignees.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskInput selects a task by its non-secret Wrike ID.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the ID shown in Wrike Tasks or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

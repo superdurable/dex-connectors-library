@@ -11,6 +11,8 @@
       "name": "newListDocumentsStep",
       "kind": "query",
       "operationId": "listDocuments",
+      "inputType": "ListDocumentsInput",
+      "description": "List one page of document resource names in a collection of the default Firestore database.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,7 +40,34 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDocumentsInput selects one bounded collection page in the default Firestore database.",
+        "properties": {
+          "collectionId": {
+            "description": "CollectionID is the top-level collection ID shown in Firestore Documents.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize limits this page to 1 through 100 documents; zero uses 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is returned by the previous page; blank selects the first page.",
+            "type": "string"
+          },
+          "projectId": {
+            "description": "ProjectID is the Google Cloud project ID shown in Firestore Databases.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collectionId",
+          "projectId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "newListLeadFormsStep",
       "kind": "query",
       "operationId": "listLeadForms",
+      "inputType": "ListLeadFormsInput",
+      "description": "Read one page of lead-form IDs, names, and statuses for a Facebook Page.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListLeadFormsInput selects a Facebook Page and an optional pagination cursor.",
+        "properties": {
+          "after": {
+            "description": "After is Meta's opaque cursor from a prior page; blank starts at the first page.",
+            "type": "string"
+          },
+          "pageId": {
+            "description": "PageID is the numeric Page ID from Meta Business Suite.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetLeadStep",
       "kind": "query",
       "operationId": "getLead",
+      "inputType": "GetLeadInput",
+      "description": "Read lead ID, creation time, form ID, and ad ID without answer fields.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,7 +103,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetLeadInput selects one Meta lead.",
+        "properties": {
+          "leadId": {
+            "description": "LeadID is the numeric ID from a leadgen webhook or Ads Manager.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "leadId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

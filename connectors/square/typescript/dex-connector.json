@@ -11,6 +11,8 @@
       "name": "newListPaymentsStep",
       "kind": "query",
       "operationId": "listPayments",
+      "inputType": "ListPaymentsInput",
+      "description": "List one page of Square payments.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPaymentsInput selects a Square payment page.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor continues a previous page; blank starts at the first page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetPaymentStep",
       "kind": "query",
       "operationId": "getPayment",
+      "inputType": "GetPaymentInput",
+      "description": "Read one Square payment.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,7 +96,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPaymentInput identifies one Square payment.",
+        "properties": {
+          "paymentId": {
+            "description": "PaymentID is the Square payment ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paymentId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

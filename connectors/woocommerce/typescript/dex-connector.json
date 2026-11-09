@@ -11,6 +11,8 @@
       "name": "newListOrdersStep",
       "kind": "query",
       "operationId": "listOrders",
+      "inputType": "ListOrdersInput",
+      "description": "List one page of WooCommerce orders.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListOrdersInput selects one WooCommerce order page.",
+        "properties": {
+          "page": {
+            "description": "Page is one-based; zero uses the provider default.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage bounds one page to 100; zero uses the provider default.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetOrderStep",
       "kind": "query",
       "operationId": "getOrder",
+      "inputType": "GetOrderInput",
+      "description": "Read one WooCommerce order.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,7 +100,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetOrderInput identifies one WooCommerce order.",
+        "properties": {
+          "orderId": {
+            "description": "OrderID is the numeric WooCommerce order ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "orderId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

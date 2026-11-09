@@ -11,6 +11,8 @@
       "name": "newListRowsStep",
       "kind": "query",
       "operationId": "listRows",
+      "inputType": "ListRowsInput",
+      "description": "List one page of rows in a Coda table.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,41 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListRowsInput selects a Coda table page.",
+        "properties": {
+          "docId": {
+            "description": "DocID is the ID from the document URL.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit caps rows at 500; zero uses Coda's default.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the opaque nextPageToken from a prior page.",
+            "type": "string"
+          },
+          "tableId": {
+            "description": "TableID is the stable table ID, such as grid-abc.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "docId",
+          "tableId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetRowStep",
       "kind": "query",
       "operationId": "getRow",
+      "inputType": "GetRowInput",
+      "description": "Get one row in a Coda table.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +107,31 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetRowInput selects one Coda row.",
+        "properties": {
+          "docId": {
+            "description": "DocID is the document ID.",
+            "type": "string"
+          },
+          "rowId": {
+            "description": "RowID is the stable row ID, such as i-abc.",
+            "type": "string"
+          },
+          "tableId": {
+            "description": "TableID is the stable table ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "docId",
+          "rowId",
+          "tableId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

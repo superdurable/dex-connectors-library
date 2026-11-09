@@ -11,6 +11,8 @@
       "name": "new_get_blob_step",
       "kind": "query",
       "operationId": "getBlob",
+      "inputType": "GetBlobInput",
+      "description": "Download one bounded blob and return its bytes as base64 with content type and ETag.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,24 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBlobInput names one blob within a lowercase Azure Storage container.",
+        "properties": {
+          "blobName": {
+            "type": "string"
+          },
+          "container": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "blobName",
+          "container"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

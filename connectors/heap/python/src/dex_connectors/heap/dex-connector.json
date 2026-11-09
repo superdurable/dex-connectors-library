@@ -11,6 +11,8 @@
       "name": "new_set_user_properties_step",
       "kind": "mutation",
       "operationId": "setUserProperties",
+      "inputType": "SetUserPropertiesInput",
+      "description": "Overwrite selected string properties for one stable Heap identity; repeated identical requests are safe.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,7 +40,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SetUserPropertiesInput identifies one user and a bounded set of non-secret string properties.",
+        "properties": {
+          "identity": {
+            "description": "Identity is a stable, unique identity already used by Heap; it is case-sensitive.",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Properties are absolute replacement values. Do not pass secrets.",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "identity",
+          "properties"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

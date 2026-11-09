@@ -11,6 +11,8 @@
       "name": "newListContactsStep",
       "kind": "query",
       "operationId": "listContacts",
+      "inputType": "ListContactsInput",
+      "description": "List contact IDs, names, and email addresses with a bounded page size and offset.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContactsInput selects a bounded Insightly contact page.",
+        "properties": {
+          "skip": {
+            "description": "Skip is the nonnegative number of contacts to omit before this page.",
+            "type": "integer"
+          },
+          "top": {
+            "description": "Top is the maximum page size, from 1 to 500 records.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "skip",
+          "top"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetContactStep",
       "kind": "query",
       "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Read a contact's ID, names, and email address by ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +99,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput selects one Insightly contact by its numeric ID.",
+        "properties": {
+          "contactId": {
+            "description": "ContactID is the decimal ID shown in Insightly and returned by its API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

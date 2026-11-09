@@ -11,6 +11,8 @@
       "name": "newCreateResponseStep",
       "kind": "mutation",
       "operationId": "createResponse",
+      "inputType": "CreateRequest",
+      "description": "Create an ordinary or structured model response.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,83 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "StructuredOutput": {
+            "additionalProperties": false,
+            "description": "StructuredOutput configures a JSON Schema response format for CreateRequest.",
+            "properties": {
+              "description": {
+                "description": "Description optionally explains the schema to the model.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name is the schema name sent to OpenAI.",
+                "type": "string"
+              },
+              "schema": {
+                "additionalProperties": {},
+                "description": "Schema is the JSON Schema sent to OpenAI.",
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "strict": {
+                "description": "Strict requests exact schema adherence when true.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "schema",
+              "strict"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateRequest contains the provider request fields for create.",
+        "properties": {
+          "Input": {
+            "description": "Input specifies input for create request."
+          },
+          "Instructions": {
+            "description": "Instructions specifies instructions for create request.",
+            "type": "string"
+          },
+          "Model": {
+            "description": "Model is the OpenAI model ID for this response. Empty uses the connection's model.",
+            "type": "string"
+          },
+          "StructuredOutput": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/StructuredOutput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "StructuredOutput specifies structured output for create request."
+          }
+        },
+        "required": [
+          "Input",
+          "Instructions",
+          "Model",
+          "StructuredOutput"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newRetrieveResponseStep",
       "kind": "query",
       "operationId": "retrieveResponse",
+      "inputType": "RetrieveRequest",
+      "description": "Retrieve a response by provider response ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,7 +154,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RetrieveRequest contains the provider request fields for retrieve.",
+        "properties": {
+          "ResponseID": {
+            "description": "ResponseID is the OpenAI response identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ResponseID"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

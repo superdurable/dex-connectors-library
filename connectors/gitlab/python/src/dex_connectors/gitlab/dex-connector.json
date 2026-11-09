@@ -11,6 +11,8 @@
       "name": "new_get_project_step",
       "kind": "query",
       "operationId": "getProject",
+      "inputType": "GetProjectInput",
+      "description": "Read one GitLab project by numeric ID or namespace path.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetProjectInput identifies a project by numeric ID or namespace path.",
+        "properties": {
+          "projectId": {
+            "description": "ProjectID is a numeric ID or namespace path, such as meridian/web.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_issues_step",
       "kind": "query",
       "operationId": "listIssues",
+      "inputType": "ListIssuesInput",
+      "description": "List the first page of issues for a GitLab project.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +99,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListIssuesInput identifies the project whose issues are listed.",
+        "properties": {
+          "projectId": {
+            "description": "ProjectID is a numeric ID or namespace path.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_issue_labels_step",
       "kind": "mutation",
       "operationId": "updateIssueLabels",
+      "inputType": "UpdateIssueLabelsInput",
+      "description": "Replace one GitLab issue's complete label set; repeating the request is safe.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,7 +153,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateIssueLabelsInput replaces every label on one issue; an empty list clears them.",
+        "properties": {
+          "issueIid": {
+            "description": "IssueIID is the positive project-local issue number.",
+            "type": "integer"
+          },
+          "labels": {
+            "description": "Labels is the desired complete label set; empty clears all labels.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "projectId": {
+            "description": "ProjectID is a numeric ID or namespace path.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueIid",
+          "labels",
+          "projectId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

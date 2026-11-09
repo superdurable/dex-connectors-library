@@ -11,6 +11,8 @@
       "name": "new_get_signature_request_step",
       "kind": "query",
       "operationId": "getSignatureRequest",
+      "inputType": "GetSignatureRequestInput",
+      "description": "Read one signature request's title, completion, declined, and error flags without signer or document data.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSignatureRequestInput selects a signature request by its non-secret ID.",
+        "properties": {
+          "signatureRequestId": {
+            "description": "SignatureRequestID is the identifier returned when Dropbox Sign creates the request.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signatureRequestId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

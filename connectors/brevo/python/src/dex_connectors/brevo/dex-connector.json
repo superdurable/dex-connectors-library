@@ -11,6 +11,8 @@
       "name": "new_create_or_update_contact_step",
       "kind": "mutation",
       "operationId": "createOrUpdateContact",
+      "inputType": "CreateOrUpdateContactInput",
+      "description": "Create a contact by email or set its specified attributes when it already exists.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,35 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateOrUpdateContactInput supplies an email and absolute attribute values.",
+        "properties": {
+          "attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Attributes sets existing Brevo contact attributes by their uppercase names.",
+            "type": "object"
+          },
+          "email": {
+            "description": "Email identifies the contact and must be a plain email address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_contact_step",
       "kind": "query",
       "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Get a Brevo contact by email address.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +101,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput identifies a contact by email.",
+        "properties": {
+          "email": {
+            "description": "Email is a plain email address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

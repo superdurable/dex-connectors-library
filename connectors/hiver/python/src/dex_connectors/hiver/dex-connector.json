@@ -11,6 +11,8 @@
       "name": "new_list_inboxes_step",
       "kind": "query",
       "operationId": "listInboxes",
+      "inputType": "ListInboxesInput",
+      "description": "List one page of the account's Hiver shared inboxes with their IDs, names, and email addresses, and the token of the next page.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInboxesInput selects one page of the account's shared inboxes.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize is the number of inboxes per page, from 10 to 100; zero uses DefaultPageSize.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is NextPageToken from the previous page, or empty for the first page.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_list_conversations_step",
       "kind": "query",
       "operationId": "listConversations",
+      "inputType": "ListConversationsInput",
+      "description": "List one page of up to 100 conversations of one shared inbox with their Hiver status, assignee, and tag IDs, and the token of the next page.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +95,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListConversationsInput selects one page of a shared inbox's conversations. Hiver documents no status, assignee, or date filter for this list, so a Flow filters the returned page.",
+        "properties": {
+          "inboxId": {
+            "description": "InboxID is the Hiver shared inbox ID, as listInboxes returns it.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of conversations per page, from 10 to 100; zero uses DefaultPageSize.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is NextPageToken from the previous page, or empty for the first page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "inboxId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_conversation_step",
       "kind": "query",
       "operationId": "getConversation",
+      "inputType": "GetConversationInput",
+      "description": "Read one conversation of a shared inbox by Hiver conversation ID or Gmail thread ID, with its status, assignee, tag IDs, and message IDs.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -114,12 +157,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetConversationInput identifies one conversation of a shared inbox.",
+        "properties": {
+          "conversationId": {
+            "description": "ConversationID is the Hiver conversation ID or the shared mailbox user's Gmail thread ID.",
+            "type": "string"
+          },
+          "inboxId": {
+            "description": "InboxID is the Hiver shared inbox ID, as listInboxes returns it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId",
+          "inboxId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_conversation_step",
       "kind": "mutation",
       "operationId": "updateConversation",
+      "inputType": "UpdateConversationInput",
+      "description": "Set the Hiver status or assignee of one conversation and apply or remove tags by name, then read the conversation back; a repeated attempt sends the same absolute change again.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,12 +216,60 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateConversationInput is one absolute change to a conversation. Empty fields are left unchanged; Hiver's API documents no way to unassign a conversation.",
+        "properties": {
+          "applyTagNames": {
+            "description": "ApplyTagNames are names of existing inbox tags to add; other tags stay. The connector matches a name exactly, then without regard to letter case; it never creates a tag.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "assigneeEmail": {
+            "description": "AssigneeEmail assigns the conversation to the inbox user with this email, or is empty to keep the assignee. The connector first finds the user with GET /users/search, so an email that is not a user of the inbox selects providerRejected before any change.",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Hiver conversation ID or the shared mailbox user's Gmail thread ID.",
+            "type": "string"
+          },
+          "inboxId": {
+            "description": "InboxID is the Hiver shared inbox ID, as listInboxes returns it.",
+            "type": "string"
+          },
+          "removeTagNames": {
+            "description": "RemoveTagNames are names of existing inbox tags to remove; other tags stay.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status is the new Hiver status, or empty to keep it.",
+            "enum": [
+              "closed",
+              "open",
+              "pending"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId",
+          "inboxId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_note_step",
       "kind": "mutation",
       "operationId": "addNote",
+      "inputType": "AddNoteInput",
+      "description": "Add one internal note, visible only to Hiver users, to a conversation. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or note read-back, so ambiguous sends remain uncertain.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -190,12 +302,38 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddNoteInput is one internal note to add to a conversation.",
+        "properties": {
+          "content": {
+            "description": "Content is the note body: plain text, emoji, or the safe subset of HTML Hiver renders. Only Hiver users see notes; the customer never receives them.",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Hiver conversation ID or the shared mailbox user's Gmail thread ID.",
+            "type": "string"
+          },
+          "inboxId": {
+            "description": "InboxID is the Hiver shared inbox ID, as listInboxes returns it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "conversationId",
+          "inboxId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_shared_draft_step",
       "kind": "mutation",
       "operationId": "createSharedDraft",
+      "inputType": "CreateSharedDraftInput",
+      "description": "Create one shared reply draft for a Hiver user to review and send. The shared single-dispatch fence requires sync durability so retry attempts can read its heartbeat checkpoint. Hiver documents no idempotency key or draft read-back, so ambiguous sends remain uncertain.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -228,7 +366,34 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateSharedDraftInput is one reply draft to one message of a conversation. Exactly one of HiverMessageID and GmailMessageID is required.",
+        "properties": {
+          "body": {
+            "description": "Body is the reply text Hiver places in the draft. Hiver's documentation does not say whether it renders markup, so send plain text unless a test in your account shows otherwise.",
+            "type": "string"
+          },
+          "gmailMessageId": {
+            "description": "GmailMessageID is the shared mailbox user's Gmail message ID to reply to, as getConversation returns it, or the message's SMTP Message-ID header such as <abc123@mail.gmail.com>, which Hiver accepts as a fallback.",
+            "type": "string"
+          },
+          "hiverMessageId": {
+            "description": "HiverMessageID is the Hiver message ID to reply to, as getConversation returns it.",
+            "type": "string"
+          },
+          "inboxId": {
+            "description": "InboxID is the Hiver shared inbox ID, as listInboxes returns it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "inboxId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

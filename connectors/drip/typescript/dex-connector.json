@@ -11,6 +11,8 @@
       "name": "newListAccountsStep",
       "kind": "query",
       "operationId": "listAccounts",
+      "inputType": "ListAccountsInput",
+      "description": "List IDs and names of Drip accounts accessible to the token.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAccountsInput selects accounts accessible to the connected Drip user.",
+        "properties": {},
+        "type": "object"
+      }
     },
     {
       "name": "newGetSubscriberStep",
       "kind": "query",
       "operationId": "getSubscriber",
+      "inputType": "GetSubscriberInput",
+      "description": "Read one subscriber's ID, email, first name, last name, and status from a Drip account.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +86,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSubscriberInput selects one subscriber by ID or email in an account.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is a numeric ID returned by ListAccounts.",
+            "type": "string"
+          },
+          "subscriberIdOrEmail": {
+            "description": "SubscriberIDOrEmail is the Drip subscriber ID or email address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId",
+          "subscriberIdOrEmail"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

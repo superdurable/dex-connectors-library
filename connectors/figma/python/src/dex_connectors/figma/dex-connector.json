@@ -11,6 +11,8 @@
       "name": "new_get_file_step",
       "kind": "query",
       "operationId": "getFile",
+      "inputType": "GetFileInput",
+      "description": "Read Figma data from the documented getFile endpoint.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFileInput identifies a Figma file or branch by key.",
+        "properties": {
+          "fileKey": {
+            "description": "FileKey is the file or branch key from a Figma URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_file_comments_step",
       "kind": "query",
       "operationId": "getFileComments",
+      "inputType": "GetFileCommentsInput",
+      "description": "Read Figma data from the documented getFileComments endpoint.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,7 +99,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFileCommentsInput identifies a Figma file or branch by key.",
+        "properties": {
+          "fileKey": {
+            "description": "FileKey is the file or branch key from a Figma URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileKey"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

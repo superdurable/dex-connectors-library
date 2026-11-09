@@ -11,6 +11,8 @@
       "name": "new_list_leads_step",
       "kind": "query",
       "operationId": "listLeads",
+      "inputType": "ListLeadsInput",
+      "description": "Read one bounded page of lead identities for migration or lookup.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListLeadsInput selects one bounded Zendesk Sell lead page.",
+        "properties": {
+          "page": {
+            "description": "Page is the one-based page number.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage is the number of leads to return, from 1 to 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "perPage"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_lead_step",
       "kind": "query",
       "operationId": "getLead",
+      "inputType": "GetLeadInput",
+      "description": "Read one lead's ID, name, email, and organization by numeric ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +99,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetLeadInput selects a lead by its positive numeric ID.",
+        "properties": {
+          "leadId": {
+            "description": "LeadID is the decimal ID shown in Zendesk Sell and its API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "leadId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

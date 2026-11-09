@@ -11,6 +11,8 @@
       "name": "newFindRecordsStep",
       "kind": "query",
       "operationId": "findRecords",
+      "inputType": "FindRecordsInput",
+      "description": "Find up to 200 records of one module whose fields match every condition, such as a contact by email or an account by name, through a COQL query with typed, escaped values; results are immediate, with no search-index delay, and an offset cursor reads the next page.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,156 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "COQLValue": {
+            "additionalProperties": false,
+            "description": "COQLValue is one typed value of a condition. Build it with COQLText, COQLTextList, COQLNumber, COQLBoolean, COQLDate, COQLDateTime, COQLRecordID, or COQLRecordIDList, so a value can never change the query around it.",
+            "properties": {
+              "boolean": {
+                "description": "Boolean holds the value of a boolean.",
+                "type": "boolean"
+              },
+              "kind": {
+                "description": "Kind selects the rendering.",
+                "enum": [
+                  "boolean",
+                  "date",
+                  "dateTime",
+                  "number",
+                  "recordId",
+                  "recordIdList",
+                  "text",
+                  "textList"
+                ],
+                "type": "string"
+              },
+              "text": {
+                "description": "Text holds the value for every kind except the lists and boolean.",
+                "type": "string"
+              },
+              "texts": {
+                "description": "Texts holds the entries of a list.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "RecordCondition": {
+            "additionalProperties": false,
+            "description": "RecordCondition is one COQL criterion: a field path, a comparator, and a typed value.",
+            "properties": {
+              "field": {
+                "description": "Field is a field API name, such as Email, or a lookup path with at most two joins, such as Account_Name.Account_Name.",
+                "type": "string"
+              },
+              "operator": {
+                "description": "Operator is the comparator.",
+                "enum": [
+                  "!=",
+                  "<",
+                  "<=",
+                  "=",
+                  ">",
+                  ">=",
+                  "in",
+                  "is not null",
+                  "is null",
+                  "not in"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/$defs/COQLValue",
+                "description": "Value is the typed value; it is nil for is null and is not null, and a list for in and not in."
+              }
+            },
+            "required": [
+              "field",
+              "operator"
+            ],
+            "type": "object"
+          },
+          "RecordSort": {
+            "additionalProperties": false,
+            "description": "RecordSort orders results by one field; record ID breaks ties in ascending order.",
+            "properties": {
+              "field": {
+                "description": "Field is the field API name to order by, such as Modified_Time.",
+                "type": "string"
+              },
+              "isDescending": {
+                "description": "IsDescending orders from the highest value instead of the lowest.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "field"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "FindRecordsInput finds records of one module whose fields match every condition.",
+        "properties": {
+          "conditions": {
+            "description": "Conditions are 1 to 10 criteria that every returned record matches, such as Email = jane@acme.example.com.",
+            "items": {
+              "$ref": "#/$defs/RecordCondition"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "fields": {
+            "description": "Fields are 1 to 50 field API names or lookup paths to return, such as Email and Account_Name; the record ID is always returned.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "Limit is the page size, 1 to 200; zero uses DefaultFindRecordsLimit.",
+            "type": "integer"
+          },
+          "module": {
+            "description": "Module is the module API name, such as Contacts.",
+            "type": "string"
+          },
+          "offset": {
+            "description": "Offset skips that many matches; pass the previous page's NextOffset to read the next page.",
+            "type": "integer"
+          },
+          "sort": {
+            "$ref": "#/$defs/RecordSort",
+            "description": "Sort orders the page by one field and then by record ID; nil orders by record ID."
+          }
+        },
+        "required": [
+          "conditions",
+          "fields",
+          "module"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetRecordStep",
       "kind": "query",
       "operationId": "getRecord",
+      "inputType": "GetRecordInput",
+      "description": "Read one record of a module by record ID, with every field or the chosen fields, including lookups such as a contact's account and a deal's owner.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +227,40 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetRecordInput reads one record by ID.",
+        "properties": {
+          "fields": {
+            "description": "Fields are up to 50 field API names to return; empty returns every field of the record.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "module": {
+            "description": "Module is the module API name, such as Deals.",
+            "type": "string"
+          },
+          "recordId": {
+            "description": "RecordID is the record ID, such as 4150868000000376008.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module",
+          "recordId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListModifiedRecordsStep",
       "kind": "query",
       "operationId": "listModifiedRecords",
+      "inputType": "ListModifiedRecordsInput",
+      "description": "List up to 200 records of one module modified at or after a time, oldest change first, and return a watermark cursor that reads the next page now or the next changes in a later poll.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +288,52 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListModifiedRecordsInput lists records of one module changed at or after a point, oldest change first. Set ModifiedSince for the first page of a new feed, or Cursor to continue one.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor continues a feed after the last record of a previous page. Leave it empty when ModifiedSince is set.",
+            "type": "string"
+          },
+          "fields": {
+            "description": "Fields are 1 to 49 field API names to return; Modified_Time is always added.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "Limit is the page size, 1 to 200; zero uses DefaultListModifiedRecordsLimit.",
+            "type": "integer"
+          },
+          "modifiedSince": {
+            "description": "ModifiedSince starts a feed at records modified at or after this instant, in whole seconds. Leave it zero when Cursor is set.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "module": {
+            "description": "Module is the module API name, such as Deals.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields",
+          "module"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpsertRecordStep",
       "kind": "mutation",
       "operationId": "upsertRecord",
+      "inputType": "UpsertRecordInput",
+      "description": "Create one record, or update the record whose duplicate-check field, such as a contact's Email or a unique external ID field, already holds the value, so a retried Step updates the record an earlier attempt created instead of creating a duplicate.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -157,12 +371,64 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpsertRecordInput creates one record, or updates the record whose duplicate-check field already holds the value Fields gives it.",
+        "properties": {
+          "duplicateCheckFields": {
+            "description": "DuplicateCheckFields are 1 to 3 field API names Zoho CRM checks in order, such as Email for Contacts, Account_Name for Accounts, or a custom field marked Do not allow duplicate values. Each must be set in Fields to a non-empty value, so a repeated attempt finds the record.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "fields": {
+            "additionalProperties": {},
+            "description": "Fields are 1 to 200 field values by API name, such as {\"Email\": \"\\\"jane@acme.example.com\\\"\"}; lookups are written as {\"id\": \"<record ID>\"} with LookupFieldValue. The record ID cannot be set.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "module": {
+            "description": "Module is the module API name, such as Contacts.",
+            "type": "string"
+          },
+          "shouldSkipAutomation": {
+            "description": "ShouldSkipAutomation runs no workflow rule, approval, or blueprint after the write.",
+            "type": "boolean"
+          },
+          "triggers": {
+            "description": "Triggers limits the automations Zoho CRM runs after the write; empty keeps Zoho CRM's default, which runs workflow rules, approvals, and blueprints.",
+            "items": {
+              "enum": [
+                "approval",
+                "blueprint",
+                "workflow"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "duplicateCheckFields",
+          "fields",
+          "module"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateRecordStep",
       "kind": "mutation",
       "operationId": "updateRecord",
+      "inputType": "UpdateRecordInput",
+      "description": "Set the named fields of one record by record ID, such as a deal's Stage or Owner, leaving every other field unchanged; repeating the update sets the same values again.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -205,12 +471,58 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateRecordInput sets named fields of one record; every other field keeps its value.",
+        "properties": {
+          "fields": {
+            "additionalProperties": {},
+            "description": "Fields are 1 to 200 field values by API name, such as Stage and Owner; JSON null clears a field, and lookups are written as {\"id\": \"<record ID>\"} with LookupFieldValue.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "module": {
+            "description": "Module is the module API name, such as Deals.",
+            "type": "string"
+          },
+          "recordId": {
+            "description": "RecordID is the record ID, such as 4150868000000376008.",
+            "type": "string"
+          },
+          "shouldSkipAutomation": {
+            "description": "ShouldSkipAutomation runs no workflow rule, approval, or blueprint after the write.",
+            "type": "boolean"
+          },
+          "triggers": {
+            "description": "Triggers limits the automations Zoho CRM runs after the write; empty keeps Zoho CRM's default, which runs workflow rules, approvals, and blueprints.",
+            "items": {
+              "enum": [
+                "approval",
+                "blueprint",
+                "workflow"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "fields",
+          "module",
+          "recordId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListModuleFieldsStep",
       "kind": "query",
       "operationId": "listModuleFields",
+      "inputType": "ListModuleFieldsInput",
+      "description": "List the fields of one module with their API names, data types, unique and custom flags, lookup modules, and picklist values, such as the stages a deal's Stage accepts.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -238,7 +550,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListModuleFieldsInput names the module whose fields to list.",
+        "properties": {
+          "module": {
+            "description": "Module is the module API name, such as Deals.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "module"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

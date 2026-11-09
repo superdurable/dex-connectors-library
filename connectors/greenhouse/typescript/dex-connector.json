@@ -11,6 +11,8 @@
       "name": "newGetCandidateStep",
       "kind": "query",
       "operationId": "getCandidate",
+      "inputType": "GetCandidateInput",
+      "description": "Read one candidate's ID and names through Harvest v3.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCandidateInput selects a non-secret Greenhouse candidate ID.",
+        "properties": {
+          "candidateId": {
+            "description": "CandidateID is the positive integer ID from a Greenhouse candidate page or API list.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "candidateId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

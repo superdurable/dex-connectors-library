@@ -11,6 +11,8 @@
       "name": "newListContactViewsStep",
       "kind": "query",
       "operationId": "listContactViews",
+      "inputType": "ListContactViewsInput",
+      "description": "List available contact views and their stable IDs.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContactViewsInput selects the visible Freshsales contact views.",
+        "properties": {},
+        "type": "object"
+      }
     },
     {
       "name": "newGetContactStep",
       "kind": "query",
       "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Read one contact's ID, name, and email address by numeric ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +86,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput selects one Freshsales contact by numeric ID.",
+        "properties": {
+          "contactId": {
+            "description": "ContactID is the decimal ID shown by Freshsales and its API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "newGetFunctionStep",
       "kind": "query",
       "operationId": "getFunction",
+      "inputType": "GetFunctionInput",
+      "description": "Read the function name and ARN from AWS Lambda GetFunction.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFunctionInput identifies one Lambda function in the configured Region.",
+        "properties": {
+          "functionName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "functionName"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

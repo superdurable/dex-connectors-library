@@ -11,6 +11,8 @@
       "name": "new_list_folder_step",
       "kind": "query",
       "operationId": "listFolder",
+      "inputType": "ListFolderInput",
+      "description": "List one bounded page of files and folders in a Dropbox folder.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListFolderInput selects one bounded page of a Dropbox folder.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the approximate number of entries per page, from 1 to 2000.",
+            "type": "integer"
+          },
+          "path": {
+            "description": "Path is an empty string for the root or a Dropbox folder path or ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "path"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_metadata_step",
       "kind": "query",
       "operationId": "getMetadata",
+      "inputType": "GetMetadataInput",
+      "description": "Read a Dropbox file or folder's stable ID, display path, and kind.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +104,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetMetadataInput selects one Dropbox file or folder.",
+        "properties": {
+          "path": {
+            "description": "Path is an absolute Dropbox path or a stable id: or rev: identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_continue_folder_step",
       "kind": "query",
       "operationId": "continueFolder",
+      "inputType": "ContinueFolderInput",
+      "description": "Continue one Dropbox folder page or read later changes from its cursor.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,12 +158,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ContinueFolderInput selects the page or changes after a Dropbox cursor.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is returned by a previous folder listing or continuation.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cursor"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_download_file_step",
       "kind": "query",
       "operationId": "downloadFile",
+      "inputType": "DownloadFileInput",
+      "description": "Download a bounded Dropbox file and return Base64 content with its file identity.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -162,12 +217,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DownloadFileInput selects one Dropbox file by path, ID, or revision.",
+        "properties": {
+          "path": {
+            "description": "Path is an absolute Dropbox path or a stable id: or rev: identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_upload_file_step",
       "kind": "mutation",
       "operationId": "uploadFile",
+      "inputType": "UploadFileInput",
+      "description": "Overwrite one Dropbox path with bounded Base64-decoded content.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -195,7 +266,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UploadFileInput replaces one Dropbox path with Base64-decoded content.",
+        "properties": {
+          "contentBase64": {
+            "description": "ContentBase64 contains the complete replacement file content.",
+            "type": "string"
+          },
+          "path": {
+            "description": "Path is the absolute destination path, including the file name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentBase64",
+          "path"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

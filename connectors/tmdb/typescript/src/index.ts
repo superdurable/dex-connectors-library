@@ -16,6 +16,7 @@ export { newSearchMoviesStep, newGetMovieStep } from './generated/steps.js';
 export { newConnection, Connection } from './generated/connection.js';
 export * from './generated/definitions.js';
 export type { Config, Credentials, SearchMoviesInput, GetMovieInput, Movie, MoviePage } from './generated/models.js';
+export { SearchMoviesInputSchema, GetMovieInputSchema } from './generated/models.js';
 
 /** Bind one configured Dex Web connection and resolve its secret for each call. */
 export function newProjectConnection(project: LoadedProject, connectionName: string): Connection {

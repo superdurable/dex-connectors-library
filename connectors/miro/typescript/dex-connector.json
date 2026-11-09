@@ -11,6 +11,8 @@
       "name": "newGetBoardStep",
       "kind": "query",
       "operationId": "getBoard",
+      "inputType": "GetBoardInput",
+      "description": "Read one board's ID and name without owner, members, policies, or description.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBoardInput selects a board by its non-secret ID.",
+        "properties": {
+          "boardId": {
+            "description": "BoardID is the ID after /board/ in a Miro board URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "boardId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

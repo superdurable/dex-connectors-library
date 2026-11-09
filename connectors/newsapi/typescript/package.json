@@ -22,7 +22,8 @@
     "./newsapimock": {
       "types": "./dist/newsapimock.d.ts",
       "import": "./dist/newsapimock.js"
-    }
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": [
     "dist",

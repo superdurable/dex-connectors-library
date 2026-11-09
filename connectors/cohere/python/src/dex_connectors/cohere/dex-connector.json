@@ -11,6 +11,8 @@
       "name": "new_embed_step",
       "kind": "query",
       "operationId": "embed",
+      "inputType": "EmbedInput",
+      "description": "Generate float embeddings for text with Cohere v2.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,44 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "EmbedInput asks Cohere to embed up to 96 texts as float vectors.",
+        "properties": {
+          "input_type": {
+            "description": "InputType is search_document, search_query, classification, or clustering.",
+            "type": "string"
+          },
+          "model": {
+            "description": "Model is a Cohere Embed model ID.",
+            "type": "string"
+          },
+          "texts": {
+            "description": "Texts are text inputs; the response has one vector per text.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "input_type",
+          "model",
+          "texts"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_rerank_step",
       "kind": "query",
       "operationId": "rerank",
+      "inputType": "RerankInput",
+      "description": "Rank text documents by relevance to one query through Cohere v2.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -71,7 +105,41 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RerankInput asks Cohere to rank documents for a text query.",
+        "properties": {
+          "documents": {
+            "description": "Documents are text passages to rank, in original order.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "model": {
+            "description": "Model is a Cohere Rerank model ID.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Query is the relevance question.",
+            "type": "string"
+          },
+          "top_n": {
+            "description": "TopN limits returned results; zero returns all.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documents",
+          "model",
+          "query"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

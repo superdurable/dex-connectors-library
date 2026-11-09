@@ -11,6 +11,8 @@
       "name": "newFindContactStep",
       "kind": "query",
       "operationId": "findContact",
+      "inputType": "FindContactInput",
+      "description": "Find exactly one contact by its primary email address.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -48,7 +50,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindContactInput selects one contact by its primary email address.",
+        "properties": {
+          "emailAddress": {
+            "description": "EmailAddress is the contact's exact primary email address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailAddress"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

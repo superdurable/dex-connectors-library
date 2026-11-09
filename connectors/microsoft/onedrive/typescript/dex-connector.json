@@ -11,6 +11,8 @@
       "name": "newSearchFilesStep",
       "kind": "query",
       "operationId": "searchFiles",
+      "inputType": "SearchFilesInput",
+      "description": "Find files and folders by exact or partial name in one folder or across one drive, one bounded page at a time.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,53 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchFilesInput selects one page of items. With ParentFolderID set, the operation reads that folder's direct children, which is strongly consistent; with it blank, it runs Microsoft Graph's drive-wide search, which uses an index that can lag recent changes and requires Name.",
+        "properties": {
+          "driveId": {
+            "description": "DriveID is the drive to search, such as a drivePicker result; blank means the signed-in user's OneDrive and is invalid for app-only connections.",
+            "type": "string"
+          },
+          "mimeType": {
+            "description": "MimeType restricts results to files of one media type, such as text/plain; blank matches files and folders.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name is the item name to match; blank lists every child of ParentFolderID.",
+            "type": "string"
+          },
+          "nameMatch": {
+            "description": "NameMatch selects exact or contains matching; blank means exact.",
+            "enum": [
+              "contains",
+              "exact"
+            ],
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the page size from 1 to 200; zero uses the connection's searchPageSize.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken continues a previous search with its NextPageToken; repeat the same filters with it. Blank starts at the first page.",
+            "type": "string"
+          },
+          "parentFolderId": {
+            "description": "ParentFolderID limits results to direct children of one folder item ID, or root for the drive root; blank searches the whole drive.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetFileStep",
       "kind": "query",
       "operationId": "getFile",
+      "inputType": "GetFileInput",
+      "description": "Read the metadata of one file or folder by its drive item ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +124,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFileInput identifies one drive item.",
+        "properties": {
+          "driveId": {
+            "description": "DriveID is the drive that holds the item; blank means the signed-in user's OneDrive and is invalid for app-only connections.",
+            "type": "string"
+          },
+          "itemId": {
+            "description": "ItemID is the drive item ID, such as a SearchFiles result ID, or root for the drive root.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newReadFileTextStep",
       "kind": "query",
       "operationId": "readFileText",
+      "inputType": "ReadFileTextInput",
+      "description": "Download one small text file as bounded UTF-8 text without exposing its pre-authenticated download URL.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -129,12 +192,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReadFileTextInput identifies the file whose text is read.",
+        "properties": {
+          "driveId": {
+            "description": "DriveID is the drive that holds the file; blank means the signed-in user's OneDrive and is invalid for app-only connections.",
+            "type": "string"
+          },
+          "itemId": {
+            "description": "ItemID is the file's drive item ID, such as a SearchFiles result ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUploadFileStep",
       "kind": "mutation",
       "operationId": "uploadFile",
+      "inputType": "UploadFileInput",
+      "description": "Write one file from text or bytes by parent folder and name with an explicit fail or replace conflict behavior, converging on one file when a Step is dispatched twice.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -167,12 +250,59 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UploadFileInput describes one file written by parent folder and name. Set at most one of TextContent and ByteContent; leaving both empty writes an empty file.",
+        "properties": {
+          "byteContent": {
+            "contentEncoding": "base64",
+            "description": "ByteContent is binary content, encoded as base64 in JSON.",
+            "type": "string"
+          },
+          "conflictBehavior": {
+            "description": "ConflictBehavior is fail or replace and is required. Graph's own rename behavior is not offered, because a repeated attempt would create a second file.",
+            "enum": [
+              "fail",
+              "replace"
+            ],
+            "type": "string"
+          },
+          "driveId": {
+            "description": "DriveID is the destination drive; blank means the signed-in user's OneDrive and is invalid for app-only connections.",
+            "type": "string"
+          },
+          "mimeType": {
+            "description": "MimeType is the content's lowercase media type, such as text/plain or text/csv.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name is the file name, including its extension; it must be a valid OneDrive and SharePoint name.",
+            "type": "string"
+          },
+          "parentFolderId": {
+            "description": "ParentFolderID is the destination folder's item ID, or root; blank means the drive root.",
+            "type": "string"
+          },
+          "textContent": {
+            "description": "TextContent is UTF-8 text content.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflictBehavior",
+          "mimeType",
+          "name"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateFolderStep",
       "kind": "mutation",
       "operationId": "createFolder",
+      "inputType": "CreateFolderInput",
+      "description": "Ensure one folder with a name exists in a parent folder, returning the folder an earlier attempt or another writer already created.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -205,7 +335,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateFolderInput names one folder to ensure in a parent folder.",
+        "properties": {
+          "driveId": {
+            "description": "DriveID is the drive that holds the parent folder; blank means the signed-in user's OneDrive and is invalid for app-only connections.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name is the folder name; it must be a valid OneDrive and SharePoint name and cannot end with a period.",
+            "type": "string"
+          },
+          "parentFolderId": {
+            "description": "ParentFolderID is the parent folder's item ID, or root; blank means the drive root.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

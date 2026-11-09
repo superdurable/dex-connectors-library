@@ -11,6 +11,8 @@
       "name": "newGetCustomerStep",
       "kind": "query",
       "operationId": "getCustomer",
+      "inputType": "GetCustomerInput",
+      "description": "Read one customer internal ID and entity name.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCustomerInput identifies a customer by its internal NetSuite ID.",
+        "properties": {
+          "customerId": {
+            "description": "CustomerID is the non-secret numeric internal ID shown on the customer record.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

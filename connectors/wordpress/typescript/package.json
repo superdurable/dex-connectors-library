@@ -9,15 +9,32 @@
     "directory": "connectors/wordpress/typescript"
   },
   "type": "module",
-  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
-  "engines": { "node": "^22.0.0 || ^24.0.0" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "engines": {
+    "node": "^22.0.0 || ^24.0.0"
+  },
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./mock": { "types": "./dist/mock.d.ts", "import": "./dist/mock.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./mock": {
+      "types": "./dist/mock.d.ts",
+      "import": "./dist/mock.js"
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
-  "files": ["dist", "README.md", "LICENSE", "dex-connector.json"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "dex-connector.json"
+  ],
   "scripts": {
     "prepack": "npm run build",
     "build": "tsup src/index.ts src/mock.ts --format esm --dts --clean",

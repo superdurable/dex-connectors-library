@@ -45,7 +45,7 @@ The `@superdurable/connectors-sdk/textgen/textgentest` entrypoint ports Go's cre
 
 ## Typed operations and credential resolution
 
-The [runnable operation example](examples/operations.mjs) validates a Query definition, binds a live Step context to stable call identity, resolves credentials at invocation time, and completes a Go-compatible zero receipt. `Mutation` adds an idempotency-key method and may return `newMutationUncertain` only for a dispatched write that cannot be repeated or confirmed by read-back. `runQuery` and `runMutation` throw `RetryError` for a safe retry; a Step factory turns that into Dex retry behavior. The example uses a test context; application Steps receive `AsyncContext` from Dex.
+The [runnable operation example](examples/operations.mjs) validates a Query definition, binds a live Step context to stable call identity, resolves credentials at invocation time, and completes a Go-compatible zero receipt. `Mutation` adds an idempotency-key method and may return `newMutationUncertain` only for a dispatched write that cannot be repeated or confirmed by read-back. `runQuery` and `runMutation` throw `RetryError` for a safe retry; a Step factory turns that into Dex retry behavior. A Step that calls them directly catches the error and calls `throwDexRetry`, the same translation. The example uses a test context; application Steps receive `AsyncContext` from Dex.
 
 ```js
 import { createCall, newQueryBranch, runQuery, StaticCredentialProvider, validateQueryDefinition, zeroReceipt } from '../dist/index.js';

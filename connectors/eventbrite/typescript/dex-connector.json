@@ -11,6 +11,8 @@
       "name": "newListOrganizationsStep",
       "kind": "query",
       "operationId": "listOrganizations",
+      "inputType": "ListOrganizationsInput",
+      "description": "List one page of organizations accessible to the connected user.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,24 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListOrganizationsInput selects a one-based page; zero defaults to the first page.",
+        "properties": {
+          "page": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newListEventsStep",
       "kind": "query",
       "operationId": "listEvents",
+      "inputType": "ListEventsInput",
+      "description": "List one page of event IDs, names, and statuses in an organization.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +90,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEventsInput selects one organization's one-based event page.",
+        "properties": {
+          "organizationId": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "organizationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetAttendeeStep",
       "kind": "query",
       "operationId": "getAttendee",
+      "inputType": "GetAttendeeInput",
+      "description": "Read one attendee's identity and status without profile or answers.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,7 +146,24 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAttendeeInput selects an attendee within an event.",
+        "properties": {
+          "attendeeId": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attendeeId",
+          "eventId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

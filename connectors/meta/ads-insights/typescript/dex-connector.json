@@ -11,6 +11,8 @@
       "name": "newGetAdStep",
       "kind": "query",
       "operationId": "getAd",
+      "inputType": "GetAdInput",
+      "description": "Read one ad's ID, name, configured status, and effective status.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAdInput identifies one Meta Marketing API ad.",
+        "properties": {
+          "adId": {
+            "description": "AdID is the numeric ad ID from Ads Manager.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "adId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

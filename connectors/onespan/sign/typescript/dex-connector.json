@@ -11,6 +11,8 @@
       "name": "newGetPackageStep",
       "kind": "query",
       "operationId": "getPackage",
+      "inputType": "GetPackageInput",
+      "description": "Read one transaction package's ID, name, and status without signer identities or document contents.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPackageInput selects a package by its non-secret ID.",
+        "properties": {
+          "packageId": {
+            "description": "PackageID is the ID returned by OneSpan Sign when a package is created.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "packageId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

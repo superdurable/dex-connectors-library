@@ -11,6 +11,8 @@
       "name": "newGetCustomerStep",
       "kind": "query",
       "operationId": "getCustomer",
+      "inputType": "GetCustomerInput",
+      "description": "Return one customer's ID and name within a Wave business.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCustomerInput selects a customer inside one Wave business.",
+        "properties": {
+          "businessId": {
+            "description": "BusinessID is the exact GraphQL ID of the Wave business.",
+            "type": "string"
+          },
+          "customerId": {
+            "description": "CustomerID is the exact GraphQL ID of the customer.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "businessId",
+          "customerId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

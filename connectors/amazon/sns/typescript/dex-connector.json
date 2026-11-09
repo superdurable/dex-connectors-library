@@ -11,6 +11,8 @@
       "name": "newListTopicsStep",
       "kind": "query",
       "operationId": "listTopics",
+      "inputType": "ListTopicsInput",
+      "description": "Read one page of SNS topic ARNs and its next-page token.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,7 +40,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTopicsInput requests the first page when NextToken is empty.",
+        "properties": {
+          "nextToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nextToken"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

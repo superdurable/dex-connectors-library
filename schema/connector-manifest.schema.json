@@ -850,10 +850,31 @@
         { "required": ["branch"], "anyOf": [{ "required": ["output"] }, { "required": ["pages"] }, { "required": ["failure"] }], "not": { "anyOf": [{ "required": ["retry"] }, { "required": ["uncertain"] }] } }
       ]
     },
+    "operationAgent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exposed"],
+      "properties": {
+        "exposed": { "type": "boolean" },
+        "approval": { "enum": ["recommended"] },
+        "retry": { "enum": ["safe"] },
+        "description": { "type": "string", "pattern": "\\S" },
+        "branches": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]+$" },
+          "additionalProperties": { "enum": ["rejected", "unknown"] }
+        }
+      },
+      "if": { "properties": { "exposed": { "const": false } } },
+      "then": { "properties": { "approval": false, "retry": false, "description": false, "branches": false } }
+    },
     "operation": {
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "goName", "inputType", "outputType", "kind", "description", "idempotency", "branches", "execution"],
+      "if": { "properties": { "kind": { "const": "query" } } },
+      "then": { "properties": { "agent": { "properties": { "retry": false, "branches": { "additionalProperties": { "const": "rejected" } } } } } },
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]+$" },
         "goName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
@@ -866,6 +887,7 @@
         "progress": { "type": "array", "uniqueItems": true, "items": { "enum": ["structured", "text"] } },
         "authorization": { "enum": ["none", "required"] },
         "execution": { "$ref": "#/$defs/execution" },
+        "agent": { "$ref": "#/$defs/operationAgent" },
         "pagination": {
           "type": "object",
           "additionalProperties": false,

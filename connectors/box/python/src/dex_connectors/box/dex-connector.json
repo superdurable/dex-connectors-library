@@ -11,6 +11,8 @@
       "name": "new_download_file_step",
       "kind": "query",
       "operationId": "downloadFile",
+      "inputType": "DownloadFileInput",
+      "description": "Download one bounded Box file by its ID and return Base64 content.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -48,12 +50,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DownloadFileInput selects one Box file by its numeric ID.",
+        "properties": {
+          "fileId": {
+            "description": "FileID appears in Box Web's /files/<ID> URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_upload_file_step",
       "kind": "mutation",
       "operationId": "uploadFile",
+      "inputType": "UploadFileInput",
+      "description": "Replace an existing Box file's current content with bounded Base64 bytes, skipping an already identical file.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -91,7 +109,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UploadFileInput replaces an existing Box file's current content.",
+        "properties": {
+          "contentBase64": {
+            "description": "ContentBase64 holds the complete replacement bytes.",
+            "type": "string"
+          },
+          "fileId": {
+            "description": "FileID appears in Box Web's /files/<ID> URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentBase64",
+          "fileId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

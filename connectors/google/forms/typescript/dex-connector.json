@@ -11,6 +11,8 @@
       "name": "newGetFormStep",
       "kind": "query",
       "operationId": "getForm",
+      "inputType": "GetFormInput",
+      "description": "Read one form's items in form order, with each question's ID, title, type, and choices.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFormInput identifies one form.",
+        "properties": {
+          "formId": {
+            "description": "FormID is the form ID, such as the formPicker unit's formId or the ID in https://docs.google.com/forms/d/FORM_ID/edit. It is also the form's Drive file ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListResponsesStep",
       "kind": "query",
       "operationId": "listResponses",
+      "inputType": "ListResponsesInput",
+      "description": "List one bounded page, 1 to 1000, of a form's responses, optionally only those submitted after a time, continued with Google's page token.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +99,46 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListResponsesInput selects one page of a form's responses. Google documents no order for the listing, so read every page before treating a time as complete.",
+        "properties": {
+          "formId": {
+            "description": "FormID is the form ID, such as the formPicker unit's formId.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 1000 responses; zero uses the connection's responsePageSize.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken continues a listing with its NextPageToken; blank reads the first page. Google requires the same form and filter as the request that returned the token.",
+            "type": "string"
+          },
+          "submittedAfter": {
+            "description": "SubmittedAfter keeps responses submitted after, but not at, this time with Google's \"timestamp > N\" filter; zero has no lower bound.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "submittedAtOrAfter": {
+            "description": "SubmittedAtOrAfter keeps responses submitted at or after this time with Google's \"timestamp >= N\" filter; zero has no lower bound. Set at most one of the two times.",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetResponseStep",
       "kind": "query",
       "operationId": "getResponse",
+      "inputType": "GetResponseInput",
+      "description": "Read one form response by its response ID, with every answer keyed by question ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -119,7 +171,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetResponseInput identifies one response of one form.",
+        "properties": {
+          "formId": {
+            "description": "FormID is the form ID, such as the formPicker unit's formId.",
+            "type": "string"
+          },
+          "responseId": {
+            "description": "ResponseID is the response ID, such as a FormResponse ResponseID from listResponses.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId",
+          "responseId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

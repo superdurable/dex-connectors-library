@@ -11,6 +11,8 @@
       "name": "new_get_user_step",
       "kind": "query",
       "operationId": "getUser",
+      "inputType": "GetUserInput",
+      "description": "Read one user's email and optional user ID without returning profile data fields.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserInput selects a user by a non-secret email address.",
+        "properties": {
+          "email": {
+            "description": "Email is the user's email in an Iterable email-based or hybrid project.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

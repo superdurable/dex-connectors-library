@@ -22,7 +22,8 @@
     "./mock": {
       "types": "./dist/mock.d.ts",
       "import": "./dist/mock.js"
-    }
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": [
     "dist",

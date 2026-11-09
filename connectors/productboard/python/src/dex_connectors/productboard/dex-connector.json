@@ -11,6 +11,8 @@
       "name": "new_list_features_step",
       "kind": "query",
       "operationId": "listFeatures",
+      "inputType": "ListFeaturesInput",
+      "description": "List one page of feature IDs and names, with an opaque next-page cursor.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,7 +40,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListFeaturesInput selects a page by its opaque, non-secret cursor.",
+        "properties": {
+          "pageCursor": {
+            "description": "PageCursor is blank for the first page or a previous NextCursor value.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageCursor"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

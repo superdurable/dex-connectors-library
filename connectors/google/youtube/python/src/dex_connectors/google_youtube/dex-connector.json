@@ -11,6 +11,8 @@
       "name": "new_search_videos_step",
       "kind": "query",
       "operationId": "searchVideos",
+      "inputType": "SearchVideosInput",
+      "description": "Search one page of up to 50 public videos by keywords, optionally within one channel, in relevance, date, view count, rating, or title order; each call costs 100 quota units.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,49 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchVideosInput selects one page of public video search results. Query or ChannelID must be set.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID limits results to one channel, such as UC followed by 22 characters.",
+            "type": "string"
+          },
+          "maxResults": {
+            "description": "MaxResults is the page size, 1 to 50; zero uses YouTube's default of 5.",
+            "type": "integer"
+          },
+          "order": {
+            "description": "Order is one of SearchOrders; blank uses YouTube's relevance order.",
+            "type": "string"
+          },
+          "pageToken": {
+            "description": "PageToken continues from the previous page's NextPageToken; blank starts at the first page.",
+            "type": "string"
+          },
+          "publishedAfter": {
+            "description": "PublishedAfter limits results to videos published after this time; nil applies no limit.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "query": {
+            "description": "Query is the keyword search, up to 500 characters; YouTube supports - to exclude and | to match either term.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_get_video_step",
       "kind": "query",
       "operationId": "getVideo",
+      "inputType": "GetVideoInput",
+      "description": "Read one video's details, duration, statistics, and privacy status by video ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -86,12 +125,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetVideoInput identifies one video.",
+        "properties": {
+          "videoId": {
+            "description": "VideoID is the 11-character video ID, such as dQw4w9WgXcQ from youtube.com/watch?v=dQw4w9WgXcQ.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "videoId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_channel_step",
       "kind": "query",
       "operationId": "getChannel",
+      "inputType": "GetChannelInput",
+      "description": "Read one channel by channel ID, by @handle, or as the authorized account's own channel, including its uploads playlist ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -129,12 +184,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetChannelInput selects one channel. Set exactly one field.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the channel ID, UC followed by 22 characters, from youtube.com/channel/<ID>.",
+            "type": "string"
+          },
+          "handle": {
+            "description": "Handle is the channel handle with or without @, such as @GoogleDevelopers.",
+            "type": "string"
+          },
+          "mine": {
+            "description": "Mine reads the authorized account's own channel.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_list_playlist_items_step",
       "kind": "query",
       "operationId": "listPlaylistItems",
+      "inputType": "ListPlaylistItemsInput",
+      "description": "List one page of up to 50 playlist items, such as a channel's uploads, optionally only the items of one video.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -172,12 +248,40 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPlaylistItemsInput selects one page of a playlist in playlist order.",
+        "properties": {
+          "maxResults": {
+            "description": "MaxResults is the page size, 1 to 50; zero uses YouTube's default of 5.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken continues from the previous page's NextPageToken; blank starts at the first page.",
+            "type": "string"
+          },
+          "playlistId": {
+            "description": "PlaylistID is the playlist ID from youtube.com/playlist?list=<ID>, or a channel's UploadsPlaylistID.",
+            "type": "string"
+          },
+          "videoId": {
+            "description": "VideoID returns only items for this 11-character video ID; blank returns every item.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "playlistId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_playlist_item_step",
       "kind": "mutation",
       "operationId": "addPlaylistItem",
+      "inputType": "AddPlaylistItemInput",
+      "description": "Add a video to a playlist the authorized account owns unless the playlist already holds it, so a repeated Step never adds a second copy.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -215,7 +319,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddPlaylistItemInput names the video to add to the end of a playlist the account manages.",
+        "properties": {
+          "playlistId": {
+            "description": "PlaylistID is the playlist ID from youtube.com/playlist?list=<ID>; the authorized account must own it.",
+            "type": "string"
+          },
+          "videoId": {
+            "description": "VideoID is the 11-character ID of the video to add.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "playlistId",
+          "videoId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

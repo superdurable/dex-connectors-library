@@ -11,6 +11,8 @@
       "name": "new_get_lead_step",
       "kind": "query",
       "operationId": "getLead",
+      "inputType": "GetLeadInput",
+      "description": "Read one lead's ID and names by Marketo lead ID without returning email or other profile fields.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetLeadInput selects one non-secret positive Marketo lead ID.",
+        "properties": {
+          "leadId": {
+            "description": "LeadID is the ID shown on a lead detail page or returned by a lead query.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "leadId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

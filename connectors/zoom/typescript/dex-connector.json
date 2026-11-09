@@ -11,6 +11,8 @@
       "name": "newListMeetingsStep",
       "kind": "query",
       "operationId": "listMeetings",
+      "inputType": "ListMeetingsInput",
+      "description": "List one page of the authorized user's scheduled, upcoming, live, or previous meetings, at most 300 per page.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,39 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListMeetingsInput selects one page of the authorized user's meetings.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize is the number of meetings per page, from 1 to 300; zero uses Zoom's default of 30.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page; Zoom expires it after 15 minutes.",
+            "type": "string"
+          },
+          "type": {
+            "description": "Type selects the meetings to list; blank lists upcoming meetings.",
+            "enum": [
+              "live",
+              "previous_meetings",
+              "scheduled",
+              "upcoming"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetMeetingStep",
       "kind": "query",
       "operationId": "getMeeting",
+      "inputType": "GetMeetingInput",
+      "description": "Read one meeting by its numeric meeting ID, including its start instant, time zone, join URL, and settings.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +105,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetMeetingInput identifies one meeting.",
+        "properties": {
+          "meetingId": {
+            "description": "MeetingID is Zoom's numeric meeting ID, such as the ID createMeeting returned.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "meetingId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateMeetingStep",
       "kind": "mutation",
       "operationId": "createMeeting",
+      "inputType": "CreateMeetingInput",
+      "description": "Schedule one meeting for the authorized user at an explicit start instant and IANA time zone; a synchronous dispatch fence makes the pre-send checkpoint visible across attempts and prevents a second send after an unknown outcome.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +154,89 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MeetingSettingsInput": {
+            "additionalProperties": false,
+            "description": "MeetingSettingsInput changes meeting settings. A nil field, or a blank AutoRecording, leaves Zoom's value, which defaults to the user's settings.",
+            "properties": {
+              "autoRecording": {
+                "description": "AutoRecording is none, local, or cloud.",
+                "enum": [
+                  "cloud",
+                  "local",
+                  "none"
+                ],
+                "type": "string"
+              },
+              "hostVideo": {
+                "description": "HostVideo starts the meeting with the host's video on.",
+                "type": "boolean"
+              },
+              "joinBeforeHost": {
+                "description": "JoinBeforeHost lets participants join before the host.",
+                "type": "boolean"
+              },
+              "muteUponEntry": {
+                "description": "MuteUponEntry mutes participants when they join.",
+                "type": "boolean"
+              },
+              "participantVideo": {
+                "description": "ParticipantVideo starts the meeting with participants' video on.",
+                "type": "boolean"
+              },
+              "waitingRoom": {
+                "description": "WaitingRoom holds participants in a waiting room; Zoom then disables JoinBeforeHost.",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateMeetingInput describes one scheduled meeting for the authorized user.",
+        "properties": {
+          "agenda": {
+            "description": "Agenda is the optional meeting description, at most 2000 characters.",
+            "type": "string"
+          },
+          "durationMinutes": {
+            "description": "DurationMinutes is the scheduled duration, from 1 to 1440 minutes.",
+            "type": "integer"
+          },
+          "settings": {
+            "$ref": "#/$defs/MeetingSettingsInput",
+            "description": "Settings optionally overrides the user's default meeting settings."
+          },
+          "startTime": {
+            "description": "StartTime is the start instant in RFC 3339 with an explicit Z or ±hh:mm offset, such as 2026-02-24T09:00:00-08:00. It must be in the future and a whole second; a value without an offset is rejected rather than guessed.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is the IANA time zone Zoom uses to display the meeting, such as America/Los_Angeles. It never moves the instant StartTime names.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "Topic is the meeting topic, 1 to 200 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "durationMinutes",
+          "startTime",
+          "timeZone",
+          "topic"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateMeetingStep",
       "kind": "mutation",
       "operationId": "updateMeeting",
+      "inputType": "UpdateMeetingInput",
+      "description": "Patch the topic, agenda, start instant and time zone, duration, or settings of one meeting; the patch sets absolute values, so repeating it is safe.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -142,12 +264,90 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MeetingSettingsInput": {
+            "additionalProperties": false,
+            "description": "MeetingSettingsInput changes meeting settings. A nil field, or a blank AutoRecording, leaves Zoom's value, which defaults to the user's settings.",
+            "properties": {
+              "autoRecording": {
+                "description": "AutoRecording is none, local, or cloud.",
+                "enum": [
+                  "cloud",
+                  "local",
+                  "none"
+                ],
+                "type": "string"
+              },
+              "hostVideo": {
+                "description": "HostVideo starts the meeting with the host's video on.",
+                "type": "boolean"
+              },
+              "joinBeforeHost": {
+                "description": "JoinBeforeHost lets participants join before the host.",
+                "type": "boolean"
+              },
+              "muteUponEntry": {
+                "description": "MuteUponEntry mutes participants when they join.",
+                "type": "boolean"
+              },
+              "participantVideo": {
+                "description": "ParticipantVideo starts the meeting with participants' video on.",
+                "type": "boolean"
+              },
+              "waitingRoom": {
+                "description": "WaitingRoom holds participants in a waiting room; Zoom then disables JoinBeforeHost.",
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdateMeetingInput patches one meeting. Every field other than MeetingID is optional, at least one must be set, and each set field replaces Zoom's value, so repeating the same patch leaves the same meeting.",
+        "properties": {
+          "agenda": {
+            "description": "Agenda replaces the agenda, at most 2000 characters; nil leaves it and an empty string clears it.",
+            "type": "string"
+          },
+          "durationMinutes": {
+            "description": "DurationMinutes replaces the duration, from 1 to 1440 minutes; zero leaves it.",
+            "type": "integer"
+          },
+          "meetingId": {
+            "description": "MeetingID is Zoom's numeric meeting ID.",
+            "type": "integer"
+          },
+          "settings": {
+            "$ref": "#/$defs/MeetingSettingsInput",
+            "description": "Settings changes the listed settings and leaves the others."
+          },
+          "startTime": {
+            "description": "StartTime moves the meeting to a future RFC 3339 instant with an explicit offset; blank leaves it. Zoom silently ignores a past start, so the connector rejects one.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is the IANA time zone Zoom uses to display the meeting. It is required with StartTime and must be blank without it.",
+            "type": "string"
+          },
+          "topic": {
+            "description": "Topic replaces the topic, 1 to 200 characters; blank leaves it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meetingId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListPastMeetingParticipantsStep",
       "kind": "query",
       "operationId": "listPastMeetingParticipants",
+      "inputType": "ListPastMeetingParticipantsInput",
+      "description": "List one page of the people who joined the latest ended instance of a meeting, at most 300 per page.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -180,7 +380,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPastMeetingParticipantsInput selects one page of a past meeting's participants.",
+        "properties": {
+          "meetingId": {
+            "description": "MeetingID is Zoom's numeric meeting ID; Zoom answers for its latest ended instance.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of participants per page, from 1 to 300; zero uses Zoom's default of 30.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page; Zoom expires it after 15 minutes.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meetingId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

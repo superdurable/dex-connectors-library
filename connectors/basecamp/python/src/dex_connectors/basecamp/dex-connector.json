@@ -11,6 +11,8 @@
       "name": "new_list_accounts_step",
       "kind": "query",
       "operationId": "listAccounts",
+      "inputType": "ListAccountsInput",
+      "description": "Return a locally bounded page of Basecamp account IDs and names.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,7 +40,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAccountsInput selects a locally bounded page of authorized accounts.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the maximum account count; zero uses 100.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based number of accounts to skip.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

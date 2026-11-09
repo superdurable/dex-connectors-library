@@ -11,6 +11,8 @@
       "name": "new_list_campaigns_step",
       "kind": "query",
       "operationId": "listCampaigns",
+      "inputType": "ListCampaignsInput",
+      "description": "Read one page of campaign IDs and names for an authorized advertiser.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,7 +40,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCampaignsInput selects one advertiser campaign page.",
+        "properties": {
+          "advertiserId": {
+            "description": "AdvertiserID is the decimal ad account ID from TikTok Ads Manager.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page starts at one; zero uses one.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize accepts 1 through 1000 campaigns; zero uses ten.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "advertiserId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

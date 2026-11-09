@@ -11,6 +11,8 @@
       "name": "new_get_post_step",
       "kind": "query",
       "operationId": "getPost",
+      "inputType": "GetPostInput",
+      "description": "Read a public Post's ID and text without author, metrics, or media.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPostInput selects one public X Post by its numeric URL ID.",
+        "properties": {
+          "postId": {
+            "description": "PostID is the decimal value after /status/ in an x.com Post URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "postId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

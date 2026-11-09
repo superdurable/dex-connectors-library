@@ -318,6 +318,92 @@ type Operation struct {
 	Mocks []OperationMock `yaml:"mocks,omitempty" json:"mocks,omitempty"`
 	// MockChecks name connector functions that validate mock requests and scripted answers.
 	MockChecks *MockChecks `yaml:"mockChecks,omitempty" json:"mockChecks,omitempty"`
+	// Agent records the review of this operation for agent use; nil means it is not offered to agents.
+	Agent *OperationAgent `yaml:"agent,omitempty" json:"agent,omitempty"`
+}
+
+// OperationAgentApprovalRecommended asks an agent host to stop for a person before the call runs.
+const OperationAgentApprovalRecommended = "recommended"
+
+// OperationAgentRetrySafe says a repeat with the same Call ID cannot make a second effect.
+const OperationAgentRetrySafe = "safe"
+
+// OperationAgent is an author's review of one operation for use as an agent tool.
+type OperationAgent struct {
+	// Exposed offers the operation to agents when true. False records a review that declined it.
+	Exposed *bool `yaml:"exposed" json:"exposed"`
+	// Approval is recommended for a high-risk operation. Empty leaves the decision to the agent host.
+	Approval string `yaml:"approval,omitempty" json:"approval,omitempty"`
+	// Retry is safe when repeating a Mutation with the same Call ID, inside the operation's own Execute
+	// retry policy, cannot make a second effect. Empty means a repeat may not be safe.
+	Retry string `yaml:"retry,omitempty" json:"retry,omitempty"`
+	// Description replaces the operation description for a model choosing a tool.
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+	// Branches classifies optional branches for an agent host by whether the operation's effect may
+	// have happened. An agent host treats an unlisted optional Mutation branch as unknown.
+	Branches map[string]string `yaml:"branches,omitempty" json:"branches,omitempty"`
+}
+
+// OperationAgentBranchRejected says the call changed nothing: the provider or connector refused it.
+const OperationAgentBranchRejected = "rejected"
+
+// OperationAgentBranchUnknown says the operation's effect may have happened.
+const OperationAgentBranchUnknown = "unknown"
+
+func validateOperationAgent(operation Operation) []string {
+	if operation.Agent == nil {
+		return nil
+	}
+	if operation.Agent.Exposed == nil {
+		return []string{operation.Name + ": agent.exposed is required"}
+	}
+	var problems []string
+	if operation.Agent.Approval != "" && operation.Agent.Approval != OperationAgentApprovalRecommended {
+		problems = append(problems, operation.Name+": agent.approval must be recommended")
+	}
+	if operation.Agent.Retry != "" && operation.Agent.Retry != OperationAgentRetrySafe {
+		problems = append(problems, operation.Name+": agent.retry must be safe")
+	}
+	if operation.Agent.Retry != "" && operation.Kind != "mutation" {
+		problems = append(problems, operation.Name+": agent.retry is only for mutations")
+	}
+	if operation.Agent.Description != "" && strings.TrimSpace(operation.Agent.Description) == "" {
+		problems = append(problems, operation.Name+": agent.description must not be blank")
+	}
+	if !*operation.Agent.Exposed && (operation.Agent.Approval != "" || operation.Agent.Retry != "" || operation.Agent.Description != "" || len(operation.Agent.Branches) > 0) {
+		problems = append(problems, operation.Name+": agent.approval, agent.retry, agent.description, and agent.branches require agent.exposed to be true")
+	}
+	return append(problems, validateOperationAgentBranches(operation)...)
+}
+
+// The happy-path branch is the success, so only optional branches carry a classification.
+func validateOperationAgentBranches(operation Operation) []string {
+	optionalBranches := make(map[string]bool, len(operation.Branches))
+	for _, branch := range operation.Branches {
+		optionalBranches[branch.ID] = branch.Optional
+	}
+	branchIDs := make([]string, 0, len(operation.Agent.Branches))
+	for branchID := range operation.Agent.Branches {
+		branchIDs = append(branchIDs, branchID)
+	}
+	sort.Strings(branchIDs)
+	var problems []string
+	for _, branchID := range branchIDs {
+		isOptional, exists := optionalBranches[branchID]
+		switch {
+		case !exists:
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" is not a branch of the operation")
+		case !isOptional:
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" is the happy-path branch; classify only optional branches")
+		}
+		switch classification := operation.Agent.Branches[branchID]; {
+		case classification == OperationAgentBranchUnknown && operation.Kind != "mutation":
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" unknown is only for mutations")
+		case classification != OperationAgentBranchRejected && classification != OperationAgentBranchUnknown:
+			problems = append(problems, operation.Name+": agent.branches."+branchID+" must be rejected or unknown")
+		}
+	}
+	return problems
 }
 
 // MockChecks names exported functions in the connector package for generated mock validation.
@@ -705,6 +791,7 @@ func (manifest Manifest) Validate() error {
 		if strings.TrimSpace(operation.Description) == "" {
 			problems = append(problems, operation.Name+": description is required")
 		}
+		problems = append(problems, validateOperationAgent(operation)...)
 		if operation.Idempotency != "none" && operation.Idempotency != "required" {
 			problems = append(problems, operation.Name+": invalid idempotency")
 		}

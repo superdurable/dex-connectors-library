@@ -11,6 +11,8 @@
       "name": "new_search_users_step",
       "kind": "query",
       "operationId": "searchUsers",
+      "inputType": "SearchUsersInput",
+      "description": "Search users and return their user IDs and match type.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,7 +40,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchUsersInput identifies a user by ID, device ID, Amplitude ID, or user ID prefix.",
+        "properties": {
+          "user": {
+            "description": "User is the non-secret search term accepted by Amplitude User Search.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

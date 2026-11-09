@@ -11,6 +11,8 @@
       "name": "new_get_statement_result_step",
       "kind": "query",
       "operationId": "getStatementResult",
+      "inputType": "GetStatementResultInput",
+      "description": "Fetch one JSON result page by Redshift Data API statement UUID and optional page token.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,24 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetStatementResultInput identifies a JSON result page by statement UUID and optional token.",
+        "properties": {
+          "nextToken": {
+            "type": "string"
+          },
+          "statementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nextToken",
+          "statementId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "newGenerateTextStep",
       "kind": "query",
       "operationId": "generateText",
+      "inputType": "GenerateTextRequest",
+      "description": "Generate text or JSON Schema structured output with a model of the connection's provider through that provider's stateless text generation API.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -48,7 +50,85 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "textgenMessage": {
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "text"
+            ],
+            "type": "object"
+          },
+          "textgenStructuredOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "schema": {
+                "additionalProperties": {},
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "schema"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "GenerateTextRequest is the provider-neutral generateText input. Its Model is the provider's own model ID, or blank for the connection's model.",
+        "properties": {
+          "instructions": {
+            "type": "string"
+          },
+          "maxOutputTokens": {
+            "type": "integer"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/$defs/textgenMessage"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "reasoningEffort": {
+            "type": "string"
+          },
+          "structuredOutput": {
+            "$ref": "#/$defs/textgenStructuredOutput"
+          },
+          "temperature": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

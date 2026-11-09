@@ -11,6 +11,8 @@
       "name": "newGetItemStep",
       "kind": "query",
       "operationId": "getItem",
+      "inputType": "GetItemInput",
+      "description": "Read one DynamoDB item by its complete primary key, with an optional strongly consistent read.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetItemInput identifies a table row by all of its S, N, or B key attributes.",
+        "properties": {
+          "consistentRead": {
+            "type": "boolean"
+          },
+          "key": {
+            "additionalProperties": {},
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "tableName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "consistentRead",
+          "key",
+          "tableName"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

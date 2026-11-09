@@ -11,6 +11,8 @@
       "name": "newGetStoryStep",
       "kind": "query",
       "operationId": "getStory",
+      "inputType": "GetStoryInput",
+      "description": "Read a story's ID, name, type, workflow state ID, and archived flag without its description or comments.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetStoryInput selects a Story by its positive decimal public ID.",
+        "properties": {
+          "storyId": {
+            "description": "StoryID is the non-secret decimal ID from a Shortcut Story URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storyId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

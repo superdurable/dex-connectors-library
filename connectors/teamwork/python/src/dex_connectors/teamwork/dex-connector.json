@@ -11,6 +11,8 @@
       "name": "new_get_task_step",
       "kind": "query",
       "operationId": "getTask",
+      "inputType": "GetTaskInput",
+      "description": "Read one task's ID, name, and status without descriptions or assignee details.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskInput selects a task by its non-secret Teamwork ID.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the ID shown in Teamwork Tasks or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

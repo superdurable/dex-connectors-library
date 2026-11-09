@@ -11,6 +11,8 @@
       "name": "newListAccountsStep",
       "kind": "query",
       "operationId": "listAccounts",
+      "inputType": "ListAccountsInput",
+      "description": "Return the authorized customer's account ID and company name.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,7 +40,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAccountsInput selects an offset-based page of authorized accounts.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the maximum account count; zero uses the provider default of 100.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based number of accounts to skip.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

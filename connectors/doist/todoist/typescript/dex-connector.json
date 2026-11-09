@@ -11,6 +11,8 @@
       "name": "newGetTaskStep",
       "kind": "query",
       "operationId": "getTask",
+      "inputType": "GetTaskInput",
+      "description": "Read one active, non-completed task by its opaque Todoist task ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskInput identifies an active, non-completed task.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is Todoist's opaque string task ID, not a task URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateTaskStep",
       "kind": "mutation",
       "operationId": "updateTaskContent",
+      "inputType": "UpdateTaskInput",
+      "description": "Update only specified content or description fields; omitted fields are unchanged. Empty description clears it. Project moves are not supported.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +94,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateTaskInput patches specified fields; nil preserves a field. At least one field must be specified.",
+        "properties": {
+          "content": {
+            "description": "Content is an optional non-blank replacement title. Nil leaves the title unchanged.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description replaces the description when non-nil. An empty string clears it.",
+            "type": "string"
+          },
+          "taskId": {
+            "description": "TaskID identifies the existing task.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListTasksStep",
       "kind": "query",
       "operationId": "listTasks",
+      "inputType": "ListTasksInput",
+      "description": "Read one cursor-paginated page of active tasks, optionally filtered by project.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +151,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTasksInput selects one page; retain identical filters when following NextCursor.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the previous page's opaque NextCursor. Empty starts the first page.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the page size, 1 through 200. Zero uses Todoist's default of 50.",
+            "type": "integer"
+          },
+          "projectId": {
+            "description": "ProjectID limits results to one project. Empty lists active tasks across projects.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newCreateTaskStep",
       "kind": "mutation",
       "operationId": "createTask",
+      "inputType": "CreateTaskInput",
+      "description": "Create a task with content and optional description or project; omitted project uses Inbox. Sends a stable X-Request-ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -142,12 +205,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateTaskInput creates a task; omitted fields use Todoist defaults.",
+        "properties": {
+          "content": {
+            "description": "Content is the complete non-blank UTF-8 task title.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description is optional UTF-8 description text.",
+            "type": "string"
+          },
+          "projectId": {
+            "description": "ProjectID chooses a project. Empty creates the task in Inbox.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newDeleteTaskStep",
       "kind": "mutation",
       "operationId": "deleteTask",
+      "inputType": "DeleteTaskInput",
+      "description": "Delete a task and its subtasks by immutable task ID. Retried deletion may observe that the task is already absent.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -175,7 +262,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DeleteTaskInput identifies the task to delete, including its subtasks.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the immutable task ID; never a title or search expression.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

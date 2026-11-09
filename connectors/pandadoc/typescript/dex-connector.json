@@ -11,6 +11,8 @@
       "name": "newGetDocumentStep",
       "kind": "query",
       "operationId": "getDocument",
+      "inputType": "GetDocumentInput",
+      "description": "Read one document's ID, name, and status without recipients, fields, tokens, or pricing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDocumentInput selects a document by its non-secret ID.",
+        "properties": {
+          "documentId": {
+            "description": "DocumentID is the ID returned by PandaDoc when a document is created.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "new_list_lead_statuses_step",
       "kind": "query",
       "operationId": "listLeadStatuses",
+      "inputType": "ListLeadStatusesInput",
+      "description": "List stable IDs and names of Copper lead statuses.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListLeadStatusesInput selects lead statuses visible to the connected Copper user.",
+        "properties": {},
+        "type": "object"
+      }
     },
     {
       "name": "new_get_lead_step",
       "kind": "query",
       "operationId": "getLead",
+      "inputType": "GetLeadInput",
+      "description": "Read a Copper lead's ID, name, status, and company name by ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +86,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetLeadInput selects a Copper lead by its numeric ID.",
+        "properties": {
+          "leadId": {
+            "description": "LeadID is the numeric ID shown on a Copper lead and returned by its API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "leadId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

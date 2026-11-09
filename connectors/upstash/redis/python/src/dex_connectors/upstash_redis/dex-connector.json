@@ -11,6 +11,8 @@
       "name": "new_get_key_step",
       "kind": "query",
       "operationId": "getKey",
+      "inputType": "GetKeyInput",
+      "description": "Read one Redis string value by key using Upstash REST.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetKeyInput identifies one Redis string key.",
+        "properties": {
+          "key": {
+            "description": "Key is the exact case-sensitive Redis key.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

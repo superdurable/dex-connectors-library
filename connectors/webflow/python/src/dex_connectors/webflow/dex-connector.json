@@ -11,6 +11,8 @@
       "name": "new_list_collection_items_step",
       "kind": "query",
       "operationId": "listCollectionItems",
+      "inputType": "ListCollectionItemsInput",
+      "description": "List a page of staged CMS collection items.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCollectionItemsInput selects one staged CMS page.",
+        "properties": {
+          "collectionId": {
+            "description": "CollectionID is the 24-character CMS collection ID.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit caps items at 100; zero uses the provider default.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based page offset.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "collectionId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_collection_item_step",
       "kind": "query",
       "operationId": "getCollectionItem",
+      "inputType": "GetCollectionItemInput",
+      "description": "Get one staged CMS collection item.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +102,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCollectionItemInput selects one staged CMS item.",
+        "properties": {
+          "collectionId": {
+            "description": "CollectionID is the 24-character CMS collection ID.",
+            "type": "string"
+          },
+          "itemId": {
+            "description": "ItemID is the 24-character CMS item ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collectionId",
+          "itemId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

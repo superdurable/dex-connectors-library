@@ -11,6 +11,8 @@
       "name": "newListThreadRepliesStep",
       "kind": "query",
       "operationId": "listThreadReplies",
+      "inputType": "ListThreadRepliesInput",
+      "description": "Read one bounded page of the replies to a channel message, with each reply's sender, time, and text converted from HTML, continuing with the returned cursor. Needs ChannelMessage.Read.All, which requires administrator consent.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,50 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListThreadRepliesInput selects one page of replies to a channel message.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the channel ID, such as 19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2.",
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Cursor is a previous page's NextCursor; empty reads the first page.",
+            "type": "string"
+          },
+          "maxTextCharacters": {
+            "description": "MaxTextCharacters bounds each reply's Text from 1 to 100000 characters; zero keeps 4000.",
+            "type": "integer"
+          },
+          "messageId": {
+            "description": "MessageID is the root message's ID, such as the MessageID a postChannelMessage Result returned.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 50 replies; zero reads 20. It is ignored with a Cursor, which keeps its own size.",
+            "type": "integer"
+          },
+          "teamId": {
+            "description": "TeamID is the team's GUID, such as fbe2bf47-16c8-47cf-b4a5-4b9b187c508b.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channelId",
+          "messageId",
+          "teamId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newPostChannelMessageStep",
       "kind": "mutation",
       "operationId": "postChannelMessage",
+      "inputType": "PostChannelMessageInput",
+      "description": "Post one top-level message, with an optional subject, to a channel as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed send is read back without another post.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +116,59 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "PostChannelMessageInput describes one top-level channel message.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the channel ID, such as 19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2; the channelPicker unit saves it.",
+            "type": "string"
+          },
+          "content": {
+            "description": "Content is the message body in ContentType.",
+            "type": "string"
+          },
+          "contentType": {
+            "description": "ContentType is text or html; blank means text.",
+            "enum": [
+              "html",
+              "text"
+            ],
+            "type": "string"
+          },
+          "importance": {
+            "description": "Importance is normal, high, or urgent; blank leaves Teams' default.",
+            "enum": [
+              "high",
+              "normal",
+              "urgent"
+            ],
+            "type": "string"
+          },
+          "subject": {
+            "description": "Subject is an optional one-line plain-text subject Teams shows above the message.",
+            "type": "string"
+          },
+          "teamId": {
+            "description": "TeamID is the team's GUID, such as fbe2bf47-16c8-47cf-b4a5-4b9b187c508b; the teamPicker unit saves it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channelId",
+          "content",
+          "teamId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newPostThreadReplyStep",
       "kind": "mutation",
       "operationId": "postThreadReply",
+      "inputType": "PostThreadReplyInput",
+      "description": "Reply once to an existing channel message's thread as the signed-in user. Graph has no idempotency key, so a sync single-dispatch fence checkpoints the send across retries; an unconfirmed reply is read back without another post.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +196,60 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "PostThreadReplyInput describes one reply to an existing channel message.",
+        "properties": {
+          "channelId": {
+            "description": "ChannelID is the channel ID, such as 19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2.",
+            "type": "string"
+          },
+          "content": {
+            "description": "Content is the reply body in ContentType.",
+            "type": "string"
+          },
+          "contentType": {
+            "description": "ContentType is text or html; blank means text.",
+            "enum": [
+              "html",
+              "text"
+            ],
+            "type": "string"
+          },
+          "importance": {
+            "description": "Importance is normal, high, or urgent; blank leaves Teams' default.",
+            "enum": [
+              "high",
+              "normal",
+              "urgent"
+            ],
+            "type": "string"
+          },
+          "messageId": {
+            "description": "MessageID is the root message's ID, such as the MessageID a postChannelMessage Result returned.",
+            "type": "string"
+          },
+          "teamId": {
+            "description": "TeamID is the team's GUID, such as fbe2bf47-16c8-47cf-b4a5-4b9b187c508b.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channelId",
+          "content",
+          "messageId",
+          "teamId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newPostChatMessageStep",
       "kind": "mutation",
       "operationId": "postChatMessage",
+      "inputType": "PostChatMessageInput",
+      "description": "Send one message to an existing one-on-one, group, or meeting chat as the signed-in user. A sync single-dispatch fence prevents a duplicate across retries; the connection cannot read chat messages, so an unconfirmed send selects uncertain.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -142,7 +277,43 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "PostChatMessageInput describes one message in an existing chat.",
+        "properties": {
+          "chatId": {
+            "description": "ChatID is the chat ID, such as 19:meeting_MjdhNjM4YzUtYzExZi00@thread.v2 or a one-on-one chat's 19:...@unq.gbl.spaces ID; the chatPicker unit saves it.",
+            "type": "string"
+          },
+          "content": {
+            "description": "Content is the message body in ContentType.",
+            "type": "string"
+          },
+          "contentType": {
+            "description": "ContentType is text or html; blank means text.",
+            "enum": [
+              "html",
+              "text"
+            ],
+            "type": "string"
+          },
+          "importance": {
+            "description": "Importance is normal, high, or urgent; blank leaves Teams' default.",
+            "enum": [
+              "high",
+              "normal",
+              "urgent"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "chatId",
+          "content"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

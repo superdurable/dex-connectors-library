@@ -102,7 +102,9 @@ instances of one generic class. A required branch needs a target; an unwired
 optional branch fails the Flow with a bounded, secret-safe reason. `StepOptions`
 overrides may change Execute settings but cannot add WaitFor behavior. The
 factory maps a connector `RetryError` to Dex retry, truncating RetryAfter to
-whole seconds; retry exhaustion remains a failed Flow. A configured result
+whole seconds; retry exhaustion remains a failed Flow. A Step that calls
+`run_query` or `run_mutation` directly catches `RetryError` and calls
+`raise_dex_retry`, the same translation. A configured result
 Attribute is written before routing and belongs in the Flow persistence schema.
 `ProgressUpdate` Stream messages include call ID, Dex attempt, and monotonic
 connector sequence. `Call.report_progress(Progress(...))` emits them when a

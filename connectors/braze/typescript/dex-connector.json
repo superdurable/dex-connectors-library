@@ -11,6 +11,8 @@
       "name": "newGetUserProfileStep",
       "kind": "query",
       "operationId": "getUserProfile",
+      "inputType": "GetUserProfileInput",
+      "description": "Read one user's external ID, Braze ID, name, and email if present.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserProfileInput selects a Braze user by the application's external ID.",
+        "properties": {
+          "externalId": {
+            "description": "ExternalID is a non-secret stable application user ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "externalId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

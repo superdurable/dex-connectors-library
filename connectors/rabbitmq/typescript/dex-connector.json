@@ -11,6 +11,8 @@
       "name": "newGetQueueMetricsStep",
       "kind": "query",
       "operationId": "getQueueMetrics",
+      "inputType": "GetQueueMetricsInput",
+      "description": "Read the current message and consumer counts for one named queue in one virtual host.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,7 +45,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetQueueMetricsInput identifies one queue within one virtual host.",
+        "properties": {
+          "name": {
+            "description": "Name is the exact queue name displayed in the Management UI.",
+            "type": "string"
+          },
+          "virtualHost": {
+            "description": "VirtualHost is the exact RabbitMQ virtual host, commonly /.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "virtualHost"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

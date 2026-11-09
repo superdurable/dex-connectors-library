@@ -11,6 +11,8 @@
       "name": "new_list_tables_step",
       "kind": "query",
       "operationId": "listTables",
+      "inputType": "ListTablesInput",
+      "description": "Return up to 100 sorted table names in one database and indicate whether more exist.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,7 +40,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTablesInput selects the non-secret ClickHouse database to inspect.",
+        "properties": {
+          "database": {
+            "description": "Database is the exact database name shown by SHOW DATABASES.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "database"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

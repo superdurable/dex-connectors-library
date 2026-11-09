@@ -11,6 +11,8 @@
       "name": "new_submit_statement_step",
       "kind": "mutation",
       "operationId": "submitStatement",
+      "inputType": "SubmitStatementInput",
+      "description": "Submit one parameterized SQL statement for asynchronous execution and return its statement handle without waiting for it to finish.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -33,12 +35,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SubmitStatementInput is one parameterized SQL statement.",
+        "properties": {
+          "parameters": {
+            "description": "Parameters binds each ? placeholder in order, outside string literals, quoted identifiers, and comments. Each value is nil for SQL NULL, a string (TEXT), bool (BOOLEAN), integer (FIXED), finite float (REAL), json.Number (FIXED for integers, otherwise TEXT), json.RawMessage (TEXT; wrap the placeholder in PARSE_JSON), []byte (BINARY), or time.Time (TIMESTAMP_TZ). Cast a placeholder when the type matters, such as ?::NUMBER(12,2).",
+            "items": {},
+            "type": "array"
+          },
+          "statement": {
+            "description": "Statement is one SQL statement written as a constant in application code, such as \"SELECT COUNT(*) AS EVENT_COUNT FROM USAGE_EVENTS WHERE ACCOUNT_ID = ?\". Values belong in Parameters: the connector never formats them into SQL text, and it cannot detect a statement built by concatenating untrusted input. Snowflake runs exactly one statement per request, so several statements, BEGIN, COMMIT, USE, and ALTER SESSION are rejected by Snowflake.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_statement_result_step",
       "kind": "query",
       "operationId": "getStatementResult",
+      "inputType": "GetStatementResultInput",
+      "description": "Read a submitted statement's status and, once it finished, its column metadata and the bounded rows of one result partition.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +99,77 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "Column": {
+            "additionalProperties": false,
+            "description": "Column describes one result column from Snowflake's resultSetMetaData.rowType.",
+            "properties": {
+              "length": {
+                "description": "Length is the maximum length of a text or binary column.",
+                "type": "integer"
+              },
+              "name": {
+                "description": "Name is the column name Snowflake reports, upper case unless the statement quoted an alias.",
+                "type": "string"
+              },
+              "nullable": {
+                "description": "Nullable reports whether the column can hold SQL NULL.",
+                "type": "boolean"
+              },
+              "precision": {
+                "description": "Precision is the number of digits of a fixed column, such as 38 for NUMBER.",
+                "type": "integer"
+              },
+              "scale": {
+                "description": "Scale is the number of fractional digits of a fixed column, or of a time or timestamp column.",
+                "type": "integer"
+              },
+              "type": {
+                "description": "Type is the lower-case SQL API type, such as fixed, real, decfloat, text, boolean, binary, date, time, timestamp_ntz, timestamp_ltz, timestamp_tz, variant, object, or array.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "nullable",
+              "type"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "GetStatementResultInput identifies a submitted statement and the result partition to read.",
+        "properties": {
+          "columns": {
+            "description": "Columns must hold the Columns of the partition-0 Result when Partition is greater than zero, because Snowflake sends no column metadata with later partitions. It is ignored for partition 0.",
+            "items": {
+              "$ref": "#/$defs/Column"
+            },
+            "type": "array"
+          },
+          "partition": {
+            "description": "Partition is the zero-based result partition to read. Partition 0 also carries the column metadata, the partition count, and the total row count; later partitions carry only rows.",
+            "type": "integer"
+          },
+          "statementHandle": {
+            "description": "StatementHandle is the handle submitStatement returned.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statementHandle"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_cancel_statement_step",
       "kind": "mutation",
       "operationId": "cancelStatement",
+      "inputType": "CancelStatementInput",
+      "description": "Ask Snowflake to cancel a submitted statement that is still queued or running.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -104,7 +192,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CancelStatementInput identifies the statement to cancel.",
+        "properties": {
+          "statementHandle": {
+            "description": "StatementHandle is the handle submitStatement returned.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statementHandle"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

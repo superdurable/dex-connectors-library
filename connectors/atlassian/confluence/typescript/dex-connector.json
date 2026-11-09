@@ -11,6 +11,8 @@
       "name": "newSearchPagesStep",
       "kind": "query",
       "operationId": "searchPages",
+      "inputType": "SearchPagesInput",
+      "description": "Search one bounded page of Confluence pages with a typed, connector-escaped CQL filter for space, title, label, and modification time plus an optional bounded CQL clause, continuing with the search cursor.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,84 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "PageSearchFilter": {
+            "additionalProperties": false,
+            "description": "PageSearchFilter is a typed page search that the connector turns into escaped CQL, so no caller text can change the query's structure. The query always starts with type = page, and every set field adds one clause joined with AND.",
+            "properties": {
+              "additionalCql": {
+                "description": "AdditionalCQL is one caller-built clause ANDed inside parentheses, such as ancestor = 123456 OR parent = 123456. It must balance its parentheses and quotes and cannot contain ORDER BY. Quote every value that came from outside the application with QuoteCQLString.",
+                "type": "string"
+              },
+              "labels": {
+                "description": "Labels matches pages that carry at least one of these labels, such as policy or in-force.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "modifiedSince": {
+                "description": "ModifiedSince keeps only pages last modified at or after this instant. CQL compares dates in the authorizing user's Confluence time zone, so the connector widens the CQL bound by half a day and removes earlier pages from each result page itself.",
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "order": {
+                "description": "Order selects the result order; blank uses PageSearchOrderLastModifiedDescending.",
+                "enum": [
+                  "createdDescending",
+                  "lastModifiedDescending",
+                  "titleAscending"
+                ],
+                "type": "string"
+              },
+              "spaceKeys": {
+                "description": "SpaceKeys limits the search to these space keys, such as OPS or ~5b10ac8d82e05b22cc7d4ef5.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "titlePhrase": {
+                "description": "TitlePhrase matches pages whose title contains this phrase as Confluence's text search tokenizes it. Text search ignores case and punctuation, so compare the returned titles for an exact match.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "SearchPagesInput selects one page of search results.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor continues a previous search with the same filter; blank reads the first page.",
+            "type": "string"
+          },
+          "filter": {
+            "$ref": "#/$defs/PageSearchFilter",
+            "description": "Filter is the typed search the connector escapes into CQL."
+          },
+          "pageSize": {
+            "description": "PageSize is the number of pages to request, 1 to 100; zero requests 25. Confluence may return fewer.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filter"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetPageStep",
       "kind": "query",
       "operationId": "getPage",
+      "inputType": "GetPageInput",
+      "description": "Read one page by ID with its current version number and its storage or Atlassian Document Format body converted to bounded Markdown or plain text.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +150,48 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPageInput identifies one page and how to return its body.",
+        "properties": {
+          "bodyFormat": {
+            "description": "BodyFormat selects the returned text; blank returns Markdown.",
+            "enum": [
+              "markdown",
+              "plainText"
+            ],
+            "type": "string"
+          },
+          "bodyRepresentation": {
+            "description": "BodyRepresentation selects the Confluence body to convert; blank reads storage format.",
+            "enum": [
+              "atlas_doc_format",
+              "storage"
+            ],
+            "type": "string"
+          },
+          "maxBodyCharacters": {
+            "description": "MaxBodyCharacters cuts Body after this many characters, 1 to 131072; zero keeps 32768.",
+            "type": "integer"
+          },
+          "pageId": {
+            "description": "PageID is the numeric page ID, such as 123456.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreatePageStep",
       "kind": "mutation",
       "operationId": "createPage",
+      "inputType": "CreatePageInput",
+      "description": "Publish one page in a space, optionally below a parent page, with a Markdown or plain-text body converted to storage format; Confluence allows one page per title in a space, so a repeated create finds the page instead of adding another.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +224,53 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreatePageInput describes one published page. Set exactly one of SpaceID and SpaceKey.",
+        "properties": {
+          "body": {
+            "description": "Body is the page content of at most 262144 characters in BodyFormat.",
+            "type": "string"
+          },
+          "bodyFormat": {
+            "description": "BodyFormat is the format of Body; blank reads Markdown.",
+            "enum": [
+              "markdown",
+              "plainText"
+            ],
+            "type": "string"
+          },
+          "parentPageId": {
+            "description": "ParentPageID places the page below this page in the same space; blank uses the space homepage.",
+            "type": "string"
+          },
+          "spaceId": {
+            "description": "SpaceID is the numeric space ID, as the space picker stores it.",
+            "type": "string"
+          },
+          "spaceKey": {
+            "description": "SpaceKey is the space key, such as OPS; the connector looks up its ID before creating.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title is the one-line page title, at most 255 characters. Confluence allows one page per title in a space.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "title"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdatePageStep",
       "kind": "mutation",
       "operationId": "updatePage",
+      "inputType": "UpdatePageInput",
+      "description": "Replace one page's title and body as the next version, which the caller names; a repeated update finds its own version instead of failing, and a version another editor made is reported as a conflict.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,12 +303,55 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdatePageInput replaces one page's title and body as the next version.",
+        "properties": {
+          "body": {
+            "description": "Body is the complete new page content of at most 262144 characters in BodyFormat.",
+            "type": "string"
+          },
+          "bodyFormat": {
+            "description": "BodyFormat is the format of Body; blank reads Markdown.",
+            "enum": [
+              "markdown",
+              "plainText"
+            ],
+            "type": "string"
+          },
+          "nextVersionNumber": {
+            "description": "NextVersionNumber is the version this update creates: the version number getPage returned plus one. Confluence refuses it when another edit saved that version first.",
+            "type": "integer"
+          },
+          "pageId": {
+            "description": "PageID is the numeric page ID, such as 123456.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title is the page title after the update, one line of at most 255 characters; repeat the current title to keep it.",
+            "type": "string"
+          },
+          "versionMessage": {
+            "description": "VersionMessage is an optional one-line change summary of at most 200 characters, shown in page history. The connector appends a marker such as [dex:3f9a2c1b7e04d5a6] to recognize its own update.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "nextVersionNumber",
+          "pageId",
+          "title"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddCommentStep",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one footer comment with a Markdown or plain-text body to a page, sending it at most once per Step execution and confirming an unconfirmed attempt by reading the page's comments.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -190,7 +384,34 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput describes one footer comment on one page.",
+        "properties": {
+          "body": {
+            "description": "Body is the comment of at most 262144 characters in BodyFormat.",
+            "type": "string"
+          },
+          "bodyFormat": {
+            "description": "BodyFormat is the format of Body; blank reads Markdown.",
+            "enum": [
+              "markdown",
+              "plainText"
+            ],
+            "type": "string"
+          },
+          "pageId": {
+            "description": "PageID is the numeric page ID, such as 123456.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "pageId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

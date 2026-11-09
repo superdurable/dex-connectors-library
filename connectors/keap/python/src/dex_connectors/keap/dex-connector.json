@@ -11,6 +11,8 @@
       "name": "new_get_contact_step",
       "kind": "query",
       "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Return the ID and names of one Keap CRM v2 contact.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,7 +45,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput identifies one Keap CRM contact.",
+        "properties": {
+          "contactId": {
+            "description": "ContactID is the exact Keap contact ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }
