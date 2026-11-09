@@ -64,6 +64,34 @@ func TestListPinsProjectsOneCursorPage(t *testing.T) {
 	require.NotContains(t, string(encoded), testAccessToken)
 }
 
+func TestListPinsRetriesOversizedRetryStatusBodies(t *testing.T) {
+	var responseStatus atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(int(responseStatus.Load()))
+		_, err := w.Write([]byte(`{"code":8,"message":"response body larger than the configured limit"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	credentials := Credentials{
+		OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),
+		AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token"),
+	}
+	client, err := New(Config{BaseURL: server.URL, MaxResponseBytes: 16}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials})
+	require.NoError(t, err)
+	for status, kind := range map[int]sdkgo.FailureKind{http.StatusTooManyRequests: sdkgo.FailureRateLimit, http.StatusServiceUnavailable: sdkgo.FailureAvailability} {
+		responseStatus.Store(int32(status))
+		_, err := sdkgo.RunQuery(queryContext{}, client.ListPins(), testConnection, ListPinsInput{})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry)
+		require.Equal(t, kind, retry.Failure.Kind)
+	}
+	responseStatus.Store(http.StatusOK)
+	result, err := sdkgo.RunQuery(queryContext{}, client.ListPins(), testConnection, ListPinsInput{})
+	require.NoError(t, err)
+	require.Equal(t, ListPinsBranchInvalidResponse, result.Branch)
+	require.Equal(t, sdkgo.FailureResponseTooLarge, result.Failure.Kind)
+}
+
 func TestListPinsClassifiesFailuresAndRejectsInvalidInputWithoutRequest(t *testing.T) {
 	var responseStatus atomic.Int32
 	var responseBody atomic.Value

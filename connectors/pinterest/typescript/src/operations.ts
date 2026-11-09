@@ -42,10 +42,10 @@ export class ListPinsOperation implements Query<ListPinsInput, PinsPage> {
 function classifyRead(exchange: PinterestExchange): QueryAttempt<PinsPage> | undefined {
   if (exchange.error === 'credential') return branch('defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
   if (exchange.error === 'refresh' || exchange.error === 'request') return retry('TRANSPORT', 'Pinterest request failed');
-  if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Pinterest response exceeded the configured limit');
   if (exchange.status === 429) return retry('RATE_LIMIT', 'Pinterest rate limited the request', exchange.retryAfterMs);
   if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'Pinterest is temporarily unavailable', exchange.retryAfterMs);
   if (exchange.status !== 200) return branch('providerRejected', 'PROVIDER_REJECTION', `Pinterest rejected HTTP ${exchange.status}`);
+  if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Pinterest response exceeded the configured limit');
   return undefined;
 }
 function numericID(value: unknown): value is string { return typeof value === 'string' && /^[0-9]{1,32}$/.test(value); }

@@ -43,14 +43,6 @@ def _read_failure(exchange: Exchange) -> QueryAttempt[PinsPage] | None:
         )
     if exchange.error in ("request", "refresh"):
         return _retry(FailureKind.TRANSPORT, "Pinterest request failed")
-    if exchange.error == "too_large":
-        return _branch(
-            "invalidResponse",
-            FailureKind.RESPONSE_TOO_LARGE,
-            "Pinterest response exceeded the configured limit",
-        )
-    if exchange.error:
-        return _retry(FailureKind.TRANSPORT, "Pinterest response was interrupted")
     if exchange.status == 429:
         return _retry(FailureKind.RATE_LIMIT, "Pinterest rate limited the request", exchange.retry_after)
     if exchange.status == 408 or exchange.status >= 500:
@@ -59,6 +51,14 @@ def _read_failure(exchange: Exchange) -> QueryAttempt[PinsPage] | None:
         return _branch(
             "providerRejected", FailureKind.PROVIDER_REJECTION, f"Pinterest rejected HTTP {exchange.status}"
         )
+    if exchange.error == "too_large":
+        return _branch(
+            "invalidResponse",
+            FailureKind.RESPONSE_TOO_LARGE,
+            "Pinterest response exceeded the configured limit",
+        )
+    if exchange.error:
+        return _retry(FailureKind.TRANSPORT, "Pinterest response was interrupted")
     return None
 
 

@@ -72,12 +72,6 @@ func (operation ListPinsOperation) Invoke(call sdkgo.Call, input ListPinsInput) 
 	if errors.Is(response.err, errRequest) {
 		return pinRetry(sdkgo.FailureTransport, "Pinterest request failed", 0)
 	}
-	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return pinBranch(ListPinsBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Pinterest response exceeded the configured limit")
-	}
-	if response.err != nil {
-		return pinRetry(sdkgo.FailureTransport, "Pinterest response was interrupted", 0)
-	}
 	if response.status == http.StatusTooManyRequests {
 		return pinRetry(sdkgo.FailureRateLimit, "Pinterest rate limited the request", response.retryAfter)
 	}
@@ -86,6 +80,12 @@ func (operation ListPinsOperation) Invoke(call sdkgo.Call, input ListPinsInput) 
 	}
 	if response.status != http.StatusOK {
 		return pinBranch(ListPinsBranchProviderRejected, sdkgo.FailureProviderRejection, "Pinterest rejected HTTP "+strconv.Itoa(response.status))
+	}
+	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
+		return pinBranch(ListPinsBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Pinterest response exceeded the configured limit")
+	}
+	if response.err != nil {
+		return pinRetry(sdkgo.FailureTransport, "Pinterest response was interrupted", 0)
 	}
 	page, err := decodePinsPage(response.body, input.PageSize)
 	if err != nil {
