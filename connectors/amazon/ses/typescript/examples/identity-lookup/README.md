@@ -1,0 +1,3 @@
+# TypeScript identity lookup example
+
+The Worker runs `AmazonSESIdentityLookupTypeScript` through the static `amazon-ses` connection and stores the identity details. Configure `region`, `access_key_id`, and `secret_access_key` as described in the [connector README](../../../README.md). From `connectors/amazon/ses/typescript`, run `npm run example:worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Run `npm run example:start -- example.com` to read that identity. Optional branches are unwired. The integration test runs the same Flow against real Dex and a local provider fixture.

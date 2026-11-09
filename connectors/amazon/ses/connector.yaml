@@ -1,0 +1,92 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: amazon-ses
+  displayName: Amazon SES
+  description: Read SES email identity verification status with AWS Signature Version 4.
+  company: Amazon
+  version: v0.1.0
+spec:
+  provider: amazon-ses
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-amazon-ses
+      operations: [getEmailIdentity]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-amazon-ses'
+      operations: [getEmailIdentity]
+      triggers: []
+  codegen:
+    go:
+      package: ses
+  configuration:
+    fields:
+      - name: region
+        goName: Region
+        type: string
+        default: us-east-1
+        description: AWS Region code for the email identity, such as eu-west-1. In https://console.aws.amazon.com/ses > Verified identities, use the Region selector; blank uses the displayed default.
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Optional SES-compatible API root. Blank derives the regional AWS endpoint from region. Override only for a trusted compatible endpoint; local tests may use loopback HTTP.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one GetEmailIdentity request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 2097152
+        description: Maximum complete identity metadata response in bytes. Blank uses the displayed default; increase only for unusually large responses.
+  auth:
+    type: apiKey
+    connectionKind: amazon-ses-access-key
+    fields:
+      - name: access_key_id
+        goName: AccessKeyID
+        type: secretString
+        required: true
+        description: Secret-stored AWS access key ID from https://console.aws.amazon.com/iam > Users > selected user > Security credentials > Access keys > Create access key. Long-term IDs start AKIA and temporary IDs start ASIA. Blank prevents signing.
+      - name: secret_access_key
+        goName: SecretAccessKey
+        type: secretString
+        required: true
+        description: Secret access key paired with access_key_id, shown once on the IAM Retrieve access keys page. Copy the Value, never the key ID. Blank prevents signing; rotate through IAM.
+      - name: session_token
+        goName: SessionToken
+        type: secretString
+        description: Secret session token for temporary ASIA credentials, from AWS STS. Blank means long-term IAM user credentials. Temporary credentials expire; replace all three fields before expiry.
+    guide:
+      startURL: https://console.aws.amazon.com/iam
+      steps:
+        - Open IAM > Users > Create user for Dex. Grant ses:GetEmailIdentity for the identity ARN; do not use the root user. The identity is visible at https://console.aws.amazon.com/ses > Verified identities > selected identity.
+        - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
+        - Open https://console.aws.amazon.com/ses > Verified identities, choose the Region in the console selector, and set region to that Region code. Leave endpoint blank for AWS. Supply the selected domain or email address to getEmailIdentity; blank is invalid.
+        - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
+  operations:
+    - name: getEmailIdentity
+      goName: GetEmailIdentity
+      inputType: GetEmailIdentityInput
+      outputType: EmailIdentityDetails
+      kind: query
+      description: Read the verification status of an SES email identity.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: AWS returned the identity verification status.}
+        - {id: missing, goName: Missing, description: The identity does not exist in the selected Region., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: AWS conclusively rejected the request or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: AWS returned malformed or oversized identity metadata., optional: true}
+        - {id: defect, goName: Defect, description: "The identity, endpoint, Region, or credentials are invalid.", optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example identity is verified.
+          output: {name: example.com, verificationStatus: SUCCESS}

@@ -10,6 +10,7 @@ directories:
   - connectors/alphavantage
   - connectors/amazon/lambda
   - connectors/amazon/s3
+  - connectors/amazon/ses
   - connectors/amazon/sqs
   - connectors/amplitude
   - connectors/asana
