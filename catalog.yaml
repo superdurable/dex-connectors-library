@@ -113,6 +113,7 @@ directories:
   - connectors/meta/whatsapp-business
   - connectors/microsoft/azure-blob
   - connectors/microsoft/azure-devops
+  - connectors/microsoft/dynamics-365-sales
   - connectors/microsoft/entra-id
   - connectors/microsoft/excel
   - connectors/microsoft/onedrive

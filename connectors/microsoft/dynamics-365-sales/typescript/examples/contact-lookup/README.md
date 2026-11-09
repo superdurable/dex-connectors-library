@@ -1,0 +1,3 @@
+# TypeScript Dynamics 365 Sales contact lookup Flow
+
+The Worker runs `MicrosoftDynamics365SalesContactLookupTypeScript` through the static `microsoft-dynamics-365-sales` connection and stores the contact in an Attribute. From this package, run `npm run example:worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Run `npm run example:start -- ada@example.com`, replacing the email with your contact's primary address. Optional branches are unwired. The integration test runs the same Flow against real Dex with a local Entra and Dataverse fixture. Configure the connection with the [connector guide](../../../README.md).

@@ -1,0 +1,54 @@
+{
+  "connectorId": "microsoft-dynamics-365-sales",
+  "releaseTag": "connectors/microsoft/dynamics-365-sales/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-microsoft-dynamics-365-sales",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newFindContactStep",
+      "kind": "query",
+      "operationId": "findContact",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "multipleMatches",
+          "field": "multipleMatches",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

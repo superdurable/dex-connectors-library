@@ -1,0 +1,54 @@
+{
+  "connectorId": "microsoft-dynamics-365-sales",
+  "releaseTag": "connectors/microsoft/dynamics-365-sales/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-microsoft-dynamics-365-sales",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_find_contact_step",
+      "kind": "query",
+      "operationId": "findContact",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "multipleMatches",
+          "field": "multiple_matches",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

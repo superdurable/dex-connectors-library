@@ -1,0 +1,90 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-dynamics-365-sales
+  displayName: Microsoft Dynamics 365 Sales
+  description: Find a Dataverse contact by email in a Dynamics 365 Sales environment.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft-dynamics-365-sales
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-dynamics-365-sales
+      operations: [findContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-microsoft-dynamics-365-sales'
+      operations: [findContact]
+      triggers: []
+  codegen:
+    go:
+      package: dynamics365sales
+  configuration:
+    fields:
+      - name: environmentUrl
+        goName: EnvironmentURL
+        type: url
+        required: true
+        description: Non-secret Dataverse environment URL from https://admin.powerplatform.microsoft.com > Environments > selected environment > Environment URL, such as https://example.crm.dynamics.com. Copy the origin without /api/data; blank prevents a query.
+      - name: tenantId
+        goName: TenantID
+        type: string
+        required: true
+        description: Non-secret Microsoft Entra Directory (tenant) ID UUID from https://entra.microsoft.com > Identity > Overview > Properties. Blank prevents token acquisition.
+      - name: clientId
+        goName: ClientID
+        type: string
+        required: true
+        description: Non-secret Application (client) ID UUID from https://entra.microsoft.com > Identity > Applications > App registrations > selected app > Overview. Blank prevents token acquisition.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum time for each token or Dataverse request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for slow network links.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete token or Dataverse response body in bytes. Blank uses the displayed default; increase only for unusually large provider metadata.
+  auth:
+    type: apiKey
+    connectionKind: microsoft-dynamics-365-sales-client-credentials
+    fields:
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret client-secret Value (not its ID) from https://entra.microsoft.com > Identity > Applications > App registrations > selected app > Certificates & secrets > Client secrets > New client secret. Copy the Value once; blank prevents authentication. Dex sends it only to Microsoft's token endpoint.
+    guide:
+      startURL: https://entra.microsoft.com
+      steps:
+        - In https://entra.microsoft.com open Identity > Applications > App registrations > New registration, create a single-tenant confidential application, then copy its Application (client) ID and Directory (tenant) ID from Overview. This client-credentials connection needs no redirect URI or interactive consent screen.
+        - In that app open Certificates & secrets > Client secrets > New client secret, choose a lifetime, create it, and copy the secret Value once into client_secret. Rotate it here before expiry and delete the old secret in Entra after verification.
+        - In https://admin.powerplatform.microsoft.com open Environments > selected environment, copy its Environment URL, then open Settings > Users + permissions > Application users > New app user. Select the app and grant a security role with read access to the Contact table. An environment administrator must approve that access.
+        - In Dynamics 365 Sales open Contacts and choose the email address to find. The Flow input email is non-secret. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: findContact
+      goName: FindContact
+      inputType: FindContactInput
+      outputType: Contact
+      kind: query
+      description: Find exactly one contact by its primary email address.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Exactly one contact matched the email.}
+        - {id: missing, goName: Missing, description: No contact matched the email., optional: true}
+        - {id: multipleMatches, goName: MultipleMatches, description: More than one contact matched the email., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Entra or Dataverse conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Entra or Dataverse returned invalid or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The configuration, credentials, or email is invalid.", optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example contact was found.
+          output: {contactId: 00000000-0000-0000-0000-000000000001, fullName: Ada Example, emailAddress: ada@example.com}

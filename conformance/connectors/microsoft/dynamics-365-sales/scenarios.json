@@ -1,0 +1,756 @@
+{
+  "connector": "microsoft-dynamics-365-sales",
+  "scenarios": [
+    {
+      "callId": "eb444d71-dedb-53de-baa4-b6750e40f8f5",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"value\":[{\"contactid\":\"33333333-3333-4333-8333-333333333333\",\"fullname\":\"Ada Example\",\"emailaddress1\":\"ada@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/contacts",
+          "query": {
+            "$filter": [
+              "emailaddress1 eq 'ada@example.com'"
+            ],
+            "$select": [
+              "contactid,fullname,emailaddress1"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "contactId": "33333333-3333-4333-8333-333333333333",
+          "emailAddress": "ada@example.com",
+          "fullName": "Ada Example"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-found",
+      "operation": "findContact"
+    },
+    {
+      "callId": "1ffb60d6-455c-5cb8-b49c-fff35876c9d4",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/contacts",
+          "query": {
+            "$filter": [
+              "emailaddress1 eq 'ada@example.com'"
+            ],
+            "$select": [
+              "contactid,fullname,emailaddress1"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "contactId": "",
+          "emailAddress": "",
+          "fullName": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-missing",
+      "operation": "findContact"
+    },
+    {
+      "callId": "22bb14a0-c2b6-562c-bc12-5ab153a07d05",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"value\":[{\"contactid\":\"33333333-3333-4333-8333-333333333333\"},{\"contactid\":\"33333333-3333-4333-8333-333333333333\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/contacts",
+          "query": {
+            "$filter": [
+              "emailaddress1 eq 'ada@example.com'"
+            ],
+            "$select": [
+              "contactid,fullname,emailaddress1"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "multipleMatches",
+        "failureKind": "",
+        "output": {
+          "contactId": "",
+          "emailAddress": "",
+          "fullName": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-multipleMatches",
+      "operation": "findContact"
+    },
+    {
+      "callId": "5a099061-acb8-5672-8f23-f432aaa170e1",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/contacts",
+          "query": {
+            "$filter": [
+              "emailaddress1 eq 'ada@example.com'"
+            ],
+            "$select": [
+              "contactid,fullname,emailaddress1"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "emailAddress": "",
+          "fullName": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-providerRejected",
+      "operation": "findContact"
+    },
+    {
+      "callId": "6ec35912-35a8-5b52-b6a2-62dea1a58d32",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"value\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/contacts",
+          "query": {
+            "$filter": [
+              "emailaddress1 eq 'ada@example.com'"
+            ],
+            "$select": [
+              "contactid,fullname,emailaddress1"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "emailAddress": "",
+          "fullName": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-invalidResponse",
+      "operation": "findContact"
+    },
+    {
+      "callId": "ec941daa-b39a-55fb-a62c-d75c92570ee9",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "contactId": "",
+          "emailAddress": "",
+          "fullName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "invalid-email"
+      },
+      "name": "findContact-defect",
+      "operation": "findContact"
+    },
+    {
+      "callId": "fcc8e5ac-d5ae-5ed4-88a9-53b8102b8292",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-rateLimit429",
+      "operation": "findContact"
+    },
+    {
+      "callId": "c387abb9-5f2e-56c7-be24-e06ac915f71f",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-unavailable503",
+      "operation": "findContact"
+    },
+    {
+      "callId": "39b872d2-a161-5026-94a8-cdef3b2984c3",
+      "exchanges": [
+        {
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-transportFailure",
+      "operation": "findContact"
+    },
+    {
+      "callId": "d4ecb541-08f5-5a4a-85a4-f0c9a87f7f03",
+      "exchanges": [
+        {
+          "body": "",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "contactId": "",
+          "emailAddress": "",
+          "fullName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-tokenRejected",
+      "operation": "findContact"
+    },
+    {
+      "callId": "d139026d-e621-572d-95c6-27b024dd853e",
+      "exchanges": [
+        {
+          "body": "{\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contactId": "",
+          "emailAddress": "",
+          "fullName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-invalidToken",
+      "operation": "findContact"
+    },
+    {
+      "callId": "e3dff57b-33ad-5335-9e29-c6e03551dc8b",
+      "exchanges": [
+        {
+          "body": "{\"access_token\":\"test-access-token\",\"token_type\":\"Bearer\"}",
+          "form": {
+            "client_id": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "client_secret": [
+              "test-client-secret"
+            ],
+            "grant_type": [
+              "client_credentials"
+            ],
+            "scope": [
+              "http://127.0.0.1:12345/.default"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/token",
+          "requestHeaders": {
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/data/v9.2/contacts",
+          "query": {
+            "$filter": [
+              "emailaddress1 eq 'ada@example.com'"
+            ],
+            "$select": [
+              "contactid,fullname,emailaddress1"
+            ],
+            "$top": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-access-token"
+            ],
+            "Odata-Maxversion": [
+              "4.0"
+            ],
+            "Odata-Version": [
+              "4.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 2,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "emailAddress": "ada@example.com"
+      },
+      "name": "findContact-queryUnavailable",
+      "operation": "findContact"
+    }
+  ],
+  "schemaVersion": 1
+}

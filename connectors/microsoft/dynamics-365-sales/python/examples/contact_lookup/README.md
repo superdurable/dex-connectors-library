@@ -1,0 +1,3 @@
+# Python Dynamics 365 Sales contact lookup Flow
+
+The Worker runs `MicrosoftDynamics365SalesContactLookupPython` through the static `microsoft-dynamics-365-sales` connection and stores the contact in an Attribute. From this package, run `uv run python -m examples.contact_lookup.worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start a Flow with a unique ID and `FindContactInput(email_address="ada@example.com")`. Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex with a local Entra and Dataverse fixture. Configure the connection with the [connector guide](../../../README.md).
