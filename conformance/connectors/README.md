@@ -26,16 +26,19 @@ Run `make test-connector-conformance CONNECTOR_DIRECTORY=connectors/<directory>`
 ## Native wire protocol exemptions
 
 The reviewed list in [`conformance/exemptions.yaml`](../exemptions.yaml) exempts
-PostgreSQL, MySQL, SQL Server, and Email. Their native database, SMTP, and IMAP
-protocols cannot be recorded by the HTTP replay runner. The conformance gate
-reports `exempt (reason)` and rejects exemptions for HTTP connectors. Changing
-the list requires a tooling PR.
+PostgreSQL, MySQL, MongoDB, SQL Server, and Email. Their native database, SMTP,
+and IMAP protocols cannot be recorded by the HTTP replay runner. The conformance
+gate reports `exempt (reason)` and rejects exemptions for HTTP connectors.
+Changing the list requires a tooling PR. That PR may precede the connector: an
+entry whose connector directory does not exist yet takes effect when the
+connector lands.
 
 Each exempt Python or TypeScript package needs unit tests for every Go-tested
 branch, Retry, uncertain decision, and protocol-error classification. It also
 needs real protocol integration tests in CI service containers. Database ports
 follow the Go connector's live-test scenarios and connection variables when
-available. Email ports mirror the Go connector's in-process `internal/mailtest`
+available. MongoDB ports use the CI `mongo:8.0` service through
+`MONGODB_CONNECTOR_TEST_URI`. Email ports mirror the Go connector's in-process `internal/mailtest`
 tests, including `send_message_test.go` and `search_messages_test.go`.
 The GreenMail CI job exports `EMAIL_CONNECTOR_TEST_*` variables for SMTPS,
 IMAPS, and a test mailbox, with a CA certificate that verifies localhost and

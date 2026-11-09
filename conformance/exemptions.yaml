@@ -3,6 +3,7 @@
   "exemptions": [
     {"connector": "connectors/postgresql", "reason": "PostgreSQL wire protocol cannot be recorded by the HTTP replay runner"},
     {"connector": "connectors/mysql", "reason": "MySQL wire protocol cannot be recorded by the HTTP replay runner"},
+    {"connector": "connectors/mongodb", "reason": "MongoDB wire protocol cannot be recorded by the HTTP replay runner"},
     {"connector": "connectors/microsoft/sql-server", "reason": "SQL Server wire protocol cannot be recorded by the HTTP replay runner"},
     {"connector": "connectors/superdurable/email", "reason": "SMTP and IMAP wire protocols cannot be recorded by the HTTP replay runner"}
   ]

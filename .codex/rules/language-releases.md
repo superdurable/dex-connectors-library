@@ -24,13 +24,14 @@ outputs, and exact Go recordings. Pending scenarios are rejected; other recovery
 remain a review requirement.
 
 The reviewed `conformance/exemptions.yaml` exempts only `connectors/postgresql`,
-`connectors/mysql`, `connectors/microsoft/sql-server`, and
+`connectors/mysql`, `connectors/mongodb`, `connectors/microsoft/sql-server`, and
 `connectors/superdurable/email`: their native wire protocols cannot be recorded
 by the HTTP replay runner. Adding an exemption requires a tooling PR. For each
 exempt Python and TypeScript package, replace replay with unit tests for every
 Go-tested branch, retry, uncertain decision, and protocol-error classification,
 plus real protocol integration tests in CI service containers. Database ports
 use Go connector live-test scenarios and connection variables when available.
+MongoDB ports use the CI `mongo:8.0` service through `MONGODB_CONNECTOR_TEST_URI`.
 Email ports mirror the Go connector's in-process `internal/mailtest` tests,
 including `send_message_test.go` and `search_messages_test.go`; their CI
 integration tests use the `EMAIL_CONNECTOR_TEST_*` GreenMail variables.
@@ -44,7 +45,9 @@ package is a first `v0.1.0` release and passes conformance. The coordinator
 merges one batch at a time and confirms its Release run created every package's
 GitHub release, and published each new npm project, before merging the next
 batch. Python first uploads to PyPI may lag behind their GitHub releases because
-PyPI limits new-project creation rates. Other PRs follow the one released module
+PyPI limits new-project creation rates. Each Release run starts at most
+`GO_RELEASE_LIMIT` (default 15) Go connector releases and defers the rest, with
+their language packages, to later runs. Other PRs follow the one released module
 rule in `AGENTS.md`. Use `connectors(python):` or `connectors(typescript):`
 subjects for batch ports.
 

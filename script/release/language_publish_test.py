@@ -18,8 +18,18 @@ from script.release import language_publish
 
 
 def item(name: str, language: str = "python") -> dict[str, str]:
-    return {"tag_prefix": f"connectors/{name}/{language}/", "version": "v0.1.0",
+    return {"directory": f"connectors/{name}", "tag_prefix": f"connectors/{name}/{language}/", "version": "v0.1.0",
             "package": f"dex-connector-{name}", "language": language}
+
+
+def go_item(name: str, release_state: str, version: str = "v0.1.0") -> dict[str, str]:
+    return {"directory": f"connectors/{name}", "manifest_path": f"connectors/{name}/connector.yaml",
+            "tag_prefix": f"connectors/{name}/go/", "version": version, "display_name": name,
+            "release_state": release_state}
+
+
+def go_tags(entries: list[dict[str, str]]) -> list[str]:
+    return [entry["tag_prefix"] + entry["version"] for entry in entries]
 
 
 def names(entries: list[dict[str, str]]) -> list[str]:
@@ -249,7 +259,7 @@ class SelectReleaseMatricesTests(unittest.TestCase):
             project_exists=lambda _language, _package: False, pypi_release_exists=never_on_pypi)
         with tempfile.TemporaryDirectory() as temporary:
             output_path = Path(temporary) / "output"
-            language_publish.write_selection_outputs(output_path, selection, '{"include":[]}', "0")
+            language_publish.write_selection_outputs(output_path, selection, {"selected": [], "deferred": []})
             outputs = dict(line.split("=", 1) for line in output_path.read_text(encoding="utf-8").splitlines())
         self.assertEqual("1", outputs["github_first_count"])
         self.assertEqual("1", outputs["pypi_pending_count"])
@@ -258,6 +268,122 @@ class SelectReleaseMatricesTests(unittest.TestCase):
                          [entry["package"] for entry in json.loads(outputs["language_matrix"])["include"]])
         self.assertEqual(["dex-connector-pending"],
                          [entry["package"] for entry in json.loads(outputs["pypi_pending_matrix"])["include"]])
+
+
+class SelectGoReleasesTests(unittest.TestCase):
+    def test_caps_pending_releases_with_updates_before_first_releases_in_catalog_order(self) -> None:
+        items = [go_item("alpha", "first_release"), go_item("bravo", "update", "v0.2.0"),
+                 go_item("charlie", "first_release"), go_item("delta", "update", "v1.1.0"),
+                 go_item("echo", "first_release")]
+        selection = language_publish.select_go_releases(items, 3, set())
+        self.assertEqual(["connectors/bravo/go/v0.2.0", "connectors/delta/go/v1.1.0", "connectors/alpha/go/v0.1.0"],
+                         go_tags(selection["selected"]))
+        self.assertEqual(["connectors/charlie/go/v0.1.0", "connectors/echo/go/v0.1.0"], go_tags(selection["deferred"]))
+        self.assertEqual({"go_release_cap"}, {entry["defer_reason"] for entry in selection["deferred"]})
+        self.assertTrue(all("release_state" not in entry for entry in selection["selected"] + selection["deferred"]))
+        self.assertTrue(all("defer_reason" not in entry for entry in selection["selected"]))
+
+    def test_selection_is_stable_across_runs(self) -> None:
+        def items() -> list[dict[str, str]]:
+            return [go_item(f"connector-{index:03}", "first_release") for index in range(100)]
+
+        first_run = language_publish.select_go_releases(items(), language_publish.GO_RELEASE_LIMIT, set())
+        second_run = language_publish.select_go_releases(items(), language_publish.GO_RELEASE_LIMIT, set())
+        self.assertEqual(go_tags(first_run["selected"]), go_tags(second_run["selected"]))
+        self.assertEqual(15, len(first_run["selected"]))
+        self.assertEqual(85, len(first_run["deferred"]))
+        self.assertEqual("connectors/connector-000/go/v0.1.0", go_tags(first_run["selected"])[0])
+
+    def test_tagged_versions_are_never_deferred_and_only_incomplete_ones_take_slots(self) -> None:
+        items = [go_item("complete", "tagged"), go_item("incomplete", "tagged"), go_item("update", "update", "v0.2.0"),
+                 go_item("new", "first_release")]
+        selection = language_publish.select_go_releases(items, 2, {"connectors/complete/go/v0.1.0"})
+        self.assertEqual(["connectors/complete/go/v0.1.0", "connectors/incomplete/go/v0.1.0",
+                          "connectors/update/go/v0.2.0"], go_tags(selection["selected"]))
+        self.assertEqual(["connectors/new/go/v0.1.0"], go_tags(selection["deferred"]))
+
+        tagged = [go_item(f"tagged-{index}", "tagged") for index in range(4)]
+        selection = language_publish.select_go_releases(tagged + [go_item("new", "first_release")], 2, None)
+        self.assertEqual(4, len(selection["selected"]), "a tagged version beyond the limit still runs")
+        self.assertEqual(["connectors/new/go/v0.1.0"], go_tags(selection["deferred"]))
+
+    def test_rejects_more_mandatory_tagged_jobs_than_one_matrix_holds(self) -> None:
+        limit = language_publish.MAXIMUM_GITHUB_MATRIX_JOBS
+        completed = {f"connectors/tagged-{index:03}/go/v0.1.0" for index in range(limit)}
+        tagged = [go_item(f"tagged-{index:03}", "tagged") for index in range(limit)]
+        selection = language_publish.select_go_releases(tagged + [go_item("new", "first_release")], 15, completed)
+        self.assertEqual((limit, 1), (len(selection["selected"]), len(selection["deferred"])))
+        tagged = [go_item(f"tagged-{index:03}", "tagged") for index in range(limit + 1)]
+        with self.assertRaisesRegex(ValueError, "tagged versions"):
+            language_publish.select_go_releases(tagged, 15, completed)
+
+    def test_rejects_invalid_limits_and_unknown_states(self) -> None:
+        for limit in (0, language_publish.MAXIMUM_GITHUB_MATRIX_JOBS + 1):
+            with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "Go release limit"):
+                language_publish.select_go_releases([], limit, set())
+        with self.assertRaisesRegex(ValueError, "unknown release_state"):
+            language_publish.select_go_releases([{"directory": "connectors/acme"}], 1, set())
+
+    def test_language_packages_wait_for_their_deferred_go_release(self) -> None:
+        lookups = []
+
+        def project_exists(language: str, package: str) -> bool:
+            lookups.append(package)
+            return False
+
+        selection = select(
+            [item("released"), item("deferred"), item("deferred", "typescript"), item("released", "typescript")], 3,
+            github_release_limit=1, deferred_go_directories=frozenset({"connectors/deferred"}),
+            project_exists=project_exists, pypi_release_exists=never_on_pypi)
+        self.assertEqual(["released"], names(selection["github_first"]))
+        self.assertEqual(["released"], names(selection["first"]))
+        self.assertEqual([("connectors/deferred/python/", "go_release_deferred"),
+                          ("connectors/deferred/typescript/", "go_release_deferred")],
+                         [(entry["tag_prefix"], entry["defer_reason"]) for entry in selection["deferred"]])
+        self.assertNotIn("dex-connector-deferred", lookups)
+        self.assertEqual(4, selection["pending_count"])
+
+    def test_select_command_writes_capped_go_matrix_and_defers_its_languages(self) -> None:
+        go_items = [go_item(f"connector-{index:03}", "first_release") for index in range(100)]
+        language_items = [item(f"connector-{index:03}", language)
+                          for index in range(100) for language in ("python", "typescript")]
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            matrix_output = directory / "matrix"
+            github_output = directory / "output"
+            summary_path = directory / "summary.md"
+            matrix_output.write_text(f"matrix={json.dumps({'include': go_items})}\ncount=100\n"
+                                     f"language_matrix={json.dumps({'include': language_items})}\n"
+                                     "language_count=200\n", encoding="utf-8")
+            arguments = ["language_publish.py", "select", "--matrix-output", str(matrix_output),
+                         "--github-output", str(github_output), "--go-release-limit", "15",
+                         "--first-publish-limit", "3", "--github-release-limit", "15"]
+            with patch.object(language_publish, "list_completed_go_tags", return_value=set()), \
+                 patch.object(language_publish, "list_completed_language_tags", return_value=set()), \
+                 patch.object(language_publish, "has_registry_url", return_value=False) as registry_lookup, \
+                 patch.object(language_publish, "select_pending_pypi_uploads", return_value=[]), \
+                 patch.object(language_publish.sys, "argv", arguments), \
+                 patch.dict(os.environ, {"LANGUAGE_SELECTION_PATH": str(directory / "selection.json"),
+                                         "GITHUB_STEP_SUMMARY": str(summary_path)}):
+                self.assertEqual(0, language_publish.main())
+            self.assertEqual(30, registry_lookup.call_count, "deferred packages skip registry lookups")
+            outputs = dict(line.split("=", 1) for line in github_output.read_text(encoding="utf-8").splitlines())
+            selection = json.loads((directory / "selection.json").read_text(encoding="utf-8"))
+            summary = summary_path.read_text(encoding="utf-8")
+        go_matrix = json.loads(outputs["matrix"])["include"]
+        self.assertEqual(("15", "85"), (outputs["count"], outputs["go_deferred_count"]))
+        self.assertEqual([f"connectors/connector-{index:03}" for index in range(15)],
+                         [entry["directory"] for entry in go_matrix])
+        self.assertTrue(all("release_state" not in entry for entry in go_matrix))
+        self.assertEqual(("15", "15", "30"), (outputs["github_first_count"], outputs["first_count"],
+                                              outputs["language_count"]))
+        released_directories = {entry["directory"] for entry in go_matrix}
+        self.assertTrue(all(entry["directory"] in released_directories
+                            for entry in json.loads(outputs["language_matrix"])["include"]))
+        self.assertEqual("170", outputs["deferred_count"])
+        self.assertEqual({"go_release_deferred"}, {entry["defer_reason"] for entry in selection["deferred"]})
+        self.assertEqual(85, len(selection["go_deferred"]))
+        self.assertIn("- deferred (go_release_cap): 85", summary)
 
 
 class PyPIReleaseLookupTests(unittest.TestCase):
@@ -474,11 +600,13 @@ class RegistryLookupTests(unittest.TestCase):
             directory = Path(temporary)
             matrix_output = directory / "matrix"
             github_output = directory / "output"
-            matrix_output.write_text("matrix={\"include\":[{\"directory\":\"connectors/acme\"}]}\ncount=1\n"
+            matrix_output.write_text("matrix=" + json.dumps({"include": [go_item("acme", "first_release")]})
+                                     + "\ncount=1\n"
                                      + "language_matrix=" + json.dumps({"include": [item("acme")]}) + "\n", encoding="utf-8")
             arguments = ["language_publish.py", "select", "--matrix-output", str(matrix_output),
                          "--github-output", str(github_output), "--first-publish-limit", "3"]
             with patch.object(language_publish, "list_completed_language_tags", side_effect=RuntimeError("rate limited")), \
+                 patch.object(language_publish, "list_completed_go_tags", side_effect=RuntimeError("rate limited")), \
                  patch.object(language_publish.sys, "argv", arguments), \
                  patch.dict(os.environ, {"LANGUAGE_SELECTION_PATH": str(directory / "selection.json")}):
                 self.assertEqual(0, language_publish.main())
@@ -673,9 +801,10 @@ class WorkflowTests(unittest.TestCase):
                     os.environ, PATH=f"{bin_directory}:{os.environ['PATH']}", LOG_DIRECTORY=temporary,
                     EVENT_NAME=event_name, REPAIR_DIRECTORY=repair_directory, DRAIN_FIRST_PUBLISHES=drain,
                     SOURCE_SHA="a" * 40, RUNNER_TEMP=temporary, GITHUB_OUTPUT=str(directory / "output"),
-                    FIRST_PUBLISH_LIMIT="3", PYTHON_GITHUB_FIRST_RELEASE_LIMIT="15"))
+                    FIRST_PUBLISH_LIMIT="3", PYTHON_GITHUB_FIRST_RELEASE_LIMIT="15", GO_RELEASE_LIMIT="15"))
                 select_arguments = (directory / "python3").read_text().splitlines()
                 self.assertEqual("select", select_arguments[1])
+                self.assertEqual("15", select_arguments[select_arguments.index("--go-release-limit") + 1])
                 scope = select_arguments[select_arguments.index("--github-release-limit") + 2:]
                 self.assertEqual(expected_scope, scope)
 

@@ -95,6 +95,11 @@ class AgentRulesTest(unittest.TestCase):
                 self.assertIn("Pending scenarios are rejected", contents)
                 self.assertIn("conformance/exemptions.yaml", contents)
                 self.assertIn("connectors/superdurable/email", contents)
+                self.assertIn("`connectors/mongodb`", contents)
+                self.assertIn("MongoDB ports use the CI `mongo:8.0` service through `MONGODB_CONNECTOR_TEST_URI`",
+                              contents)
+                self.assertIn("Each Release run starts at most `GO_RELEASE_LIMIT` (default 15) Go connector releases "
+                              "and defers the rest, with their language packages, to later runs.", contents)
                 self.assertIn("native wire protocols cannot be recorded", contents)
                 self.assertIn("unit tests for every Go-tested branch, retry, uncertain decision, and protocol-error classification", contents)
                 self.assertIn("protocol integration tests in CI service containers", contents)
