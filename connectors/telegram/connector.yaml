@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: telegram
+  languages:
+    python:
+      version: v0.1.0
+      operations: [sendMessage, getChat]
+      triggers: []
   codegen:
     go:
       package: telegram

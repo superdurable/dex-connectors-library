@@ -1,0 +1,54 @@
+# Copyright (c) 2026 Super Durable
+# SPDX-License-Identifier: MIT
+"""Worker entrypoint for Telegram send and chat lookup Flows."""
+
+import asyncio
+import os
+import tempfile
+from pathlib import Path
+
+import dex
+from dex_connectors.sdk.projectconfig import load_from_environment
+
+from dex_connectors.telegram import new_project_connection
+
+from .chat_lookup.flow import ChatLookupFlow
+from .message_send.flow import MessageSendFlow
+
+
+async def run_worker() -> None:
+    """Load the named Dex Web connection and register both Telegram Flows."""
+    project = await load_from_environment()
+    connection = None
+    cache = None
+    try:
+        connection = new_project_connection(project, "telegram")
+        registry = dex.Registry(
+            [MessageSendFlow(connection), ChatLookupFlow(connection)], allow_async_handlers=True
+        )
+        cache_directory = os.environ.get(
+            "DEX_BLOB_CACHE_DIR", str(Path(tempfile.gettempdir()) / "dex-telegram-python-blobs")
+        )
+        cache = dex.open_blob_cache(dex.BlobCacheConfig(cache_directory, 1 << 30))
+        worker = dex.AsyncWorker(
+            registry,
+            cache,
+            dex.WorkerOptions(server_address=os.environ.get("DEX_FLOW_SERVICE_ADDRESS", "localhost:8801")),
+        )
+        async with worker:
+            await worker.start()
+    finally:
+        if connection is not None:
+            await connection.aclose()
+        if cache is not None:
+            cache.close()
+        await project.close()
+
+
+def main() -> None:
+    """Run until the Worker stops or the process receives an interrupt."""
+    asyncio.run(run_worker())
+
+
+if __name__ == "__main__":
+    main()
