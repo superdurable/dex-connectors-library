@@ -3,8 +3,8 @@
 """Register the runnable Greenhouse Python Flow with its generated connection."""
 
 import dex
-from dex_connectors.greenhouse.greenhousemock import Mock
 
+from dex_connectors.greenhouse.greenhousemock import Mock
 from examples.candidate_inspection.flow import FLOW_TYPE, CandidateInspectionFlow
 
 
