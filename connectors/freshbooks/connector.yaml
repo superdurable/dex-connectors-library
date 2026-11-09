@@ -1,0 +1,119 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: freshbooks
+  displayName: FreshBooks
+  description: Read one invoice from a FreshBooks accounting account.
+  company: FreshBooks
+  version: v0.1.0
+spec:
+  provider: freshbooks
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-freshbooks
+      operations: [getInvoice]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-freshbooks'
+      operations: [getInvoice]
+      triggers: []
+  codegen:
+    go:
+      package: freshbooks
+  configuration:
+    fields:
+      - name: redirectUri
+        goName: RedirectURI
+        type: url
+        required: true
+        description: Non-secret HTTPS callback URI displayed by Dex Web when creating this connection. Register the identical URI at https://my.freshbooks.com/#/developer > Apps > the app > Redirect URIs, then copy it here; no query string is allowed. Blank prevents refresh.
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        default: https://api.freshbooks.com
+        description: FreshBooks API origin. Blank uses the displayed public endpoint; override only for a trusted compatible gateway or local test.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one FreshBooks request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete FreshBooks JSON response in bytes. Blank uses the displayed default; increase only for an unusually large invoice.
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: freshbooks-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret client ID from https://my.freshbooks.com/#/developer > Apps > the app's settings. Blank prevents authorization and token refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret client secret from https://my.freshbooks.com/#/developer > Apps > the app's settings. Dex stores it only in credentials; blank prevents authorization.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret access token returned after FreshBooks consent and refreshed by Dex. Never paste it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret one-time-use refresh token returned after consent and atomically replaced on each refresh. Never paste it manually; blank requires reauthorization.
+    guide:
+      startURL: https://my.freshbooks.com/#/developer
+      steps:
+        - Sign in to FreshBooks, open Developer hub > Apps > Create New App, or open an existing app. Add the user:profile:read and user:invoices:read scopes under Add Scope before authorizing.
+        - In the app's Redirect URIs, register the exact HTTPS redirect URI shown by Dex Web, without query parameters. Copy Client ID and Client Secret from the app settings into the fields below. Enter the same callback URI as redirectUri so FreshBooks receives it again on every token refresh.
+        - Choose Authorize in Dex Web and grant access to the intended account. FreshBooks rotates its refresh token after every exchange; do not use the same refresh token in another tool.
+        - Supply the target accountId and invoiceId in the Flow input. To find an accountId, call https://api.freshbooks.com/auth/api/v1/users/me with the authorized Bearer token and Api-Version alpha; choose business_memberships[].business.account_id, not the business ID. Account IDs are non-secret opaque strings and invoice IDs are positive decimal integers.
+    oauth2:
+      authorizationEndpoint: https://auth.freshbooks.com/oauth/authorize/
+      tokenEndpoint: https://api.freshbooks.com/auth/oauth/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [user:profile:read, user:invoices:read]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      tokenRequestEncoding: json
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
+        requiredScopes: [user:profile:read, user:invoices:read]
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: Invoice
+      kind: query
+      description: Read one invoice by accounting account ID and numeric invoice ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: FreshBooks returned the selected invoice.}
+        - {id: missing, goName: Missing, description: FreshBooks returned no invoice for this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: FreshBooks conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: FreshBooks returned malformed or oversized invoice JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The account ID, invoice ID, or OAuth credentials are invalid.", optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample invoice is returned.
+          output: {accountId: KAG77, invoiceId: 2201278, invoiceNumber: '0000003', amount: '800.00', currencyCode: USD, paymentStatus: unpaid}

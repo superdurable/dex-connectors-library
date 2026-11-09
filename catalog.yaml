@@ -57,6 +57,7 @@ directories:
   - connectors/elevenlabs
   - connectors/eventbrite
   - connectors/figma
+  - connectors/freshbooks
   - connectors/freshworks/freshdesk
   - connectors/freshworks/freshsales
   - connectors/front
