@@ -59,6 +59,23 @@ func TestIndexDocumentReplacesSameStableIDAcrossRetry(t *testing.T) {
 	require.Equal(t, 4, requests)
 }
 
+func TestDocumentMutationsTreatUnresolvedCredentialsAsDefect(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { requests++ }))
+	defer server.Close()
+	client, err := New(Config{ClusterURL: server.URL}, sdkgo.StaticCredentialProvider[Credentials]{})
+	require.NoError(t, err)
+	indexed, err := sdkgo.RunMutation(queryContext{}, client.IndexDocument(), testConnection, IndexDocumentInput{Index: "products", DocumentID: "sku-42", Source: []byte(`{"title":"Meridian"}`)})
+	require.NoError(t, err)
+	require.Equal(t, IndexDocumentBranchDefect, indexed.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, indexed.Failure.Kind)
+	deleted, err := sdkgo.RunMutation(queryContext{}, client.DeleteDocument(), testConnection, DeleteDocumentInput{Index: "products", DocumentID: "sku-42"})
+	require.NoError(t, err)
+	require.Equal(t, DeleteDocumentBranchDefect, deleted.Branch)
+	require.Equal(t, sdkgo.FailureAuthentication, deleted.Failure.Kind)
+	require.Zero(t, requests)
+}
+
 func TestDeleteDocumentTreatsRepeatedDeleteAsSuccess(t *testing.T) {
 	status, requests, isIndexMissing := http.StatusOK, 0, false
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
