@@ -80,6 +80,14 @@ func (operation ListPhoneNumbersOperation) Invoke(call sdkgo.Call, input ListPho
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewQueryRetry[PhoneNumbersPage](queryFailure(sdkgo.FailureAvailability, "Meta is temporarily unavailable"), response.retryAfter)
 	}
+	if graphErr, ok := decodeGraphError(response.body); response.status >= 400 && response.err == nil && ok {
+		if graphErr.isThrottled() {
+			return sdkgo.NewQueryRetry[PhoneNumbersPage](queryFailure(sdkgo.FailureRateLimit, "Meta rate limited the request"), response.retryAfter)
+		}
+		if graphErr.isTransient {
+			return sdkgo.NewQueryRetry[PhoneNumbersPage](queryFailure(sdkgo.FailureAvailability, "Meta reported a transient error"), response.retryAfter)
+		}
+	}
 	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
 		return queryBranch(ListPhoneNumbersBranchInvalidResponse, PhoneNumbersPage{}, sdkgo.FailureResponseTooLarge, "Meta response exceeded the configured limit")
 	}

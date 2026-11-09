@@ -114,10 +114,12 @@ export class WhatsAppBusinessClient {
         response = { status: error.status, headers: error.headers ?? {}, body: new Uint8Array() };
       } else return newMutationUncertain(zero, failure(operation, 'TRANSPORT', 'Meta message outcome is unknown'));
     }
-    if (response.status === 429 || response.status === 503) {
+    // A Graph or Cloud API throttling code means Meta refused the send before processing it.
+    const isRateLimited = response.status === 429 || (response.status >= 400 && response.status < 500 && decodeGraphError(response.body)?.isThrottled === true);
+    if (isRateLimited || response.status === 503) {
       try { await fence.recordCanResend(); }
       catch { return newMutationRetry(failure(operation, 'AVAILABILITY', 'Meta retry checkpoint is unavailable')); }
-      const kind = response.status === 429 ? 'RATE_LIMIT' : 'AVAILABILITY';
+      const kind = isRateLimited ? 'RATE_LIMIT' : 'AVAILABILITY';
       return newMutationRetry(failure(operation, kind, 'Meta did not process the send'), parseRetryAfter(headerValue(response.headers['retry-after'])));
     }
     if (response.status >= 500 || response.status === 408 || response.status === 409) return newMutationUncertain(zero, failure(operation, 'AVAILABILITY', 'Meta message outcome is unknown'));
@@ -169,6 +171,9 @@ export class WhatsAppBusinessClient {
     if (Buffer.from(response.body).includes(token)) return { branch: 'defect', failure: failure(operation, 'AUTHENTICATION', 'connection credentials are unavailable or invalid') };
     if (status === 429) return { retry: true, retryAfterMs: retryAfter, failure: failure(operation, 'RATE_LIMIT', 'Meta rate limited the request') };
     if (status === 408 || status >= 500) return { retry: true, retryAfterMs: retryAfter, failure: failure(operation, 'AVAILABILITY', 'Meta is temporarily unavailable') };
+    const graphError = status >= 400 ? decodeGraphError(response.body) : undefined;
+    if (graphError?.isThrottled) return { retry: true, retryAfterMs: retryAfter, failure: failure(operation, 'RATE_LIMIT', 'Meta rate limited the request') };
+    if (graphError?.isTransient) return { retry: true, retryAfterMs: retryAfter, failure: failure(operation, 'AVAILABILITY', 'Meta reported a transient error') };
     if (status === 404) return { branch: 'notFound', failure: failure(operation, 'NOT_FOUND', 'Meta did not find the WhatsApp Business Account') };
     if (status !== 200) return { branch: 'providerRejected', failure: failure(operation, 'PROVIDER_REJECTION', `Meta rejected HTTP ${status}`) };
     if (response.body.length > this.maxResponseBytes) return { branch: 'invalidResponse', failure: failure(operation, 'RESPONSE_TOO_LARGE', 'Meta response exceeded the configured limit') };
@@ -229,6 +234,18 @@ function validAddress(input: { phoneNumberId: unknown; recipient: unknown } | nu
 function validUTF8(value: string): boolean { return Buffer.from(value, 'utf8').toString('utf8') === value; }
 function failure(operation: string, kind: Failure['kind'], message: string): Failure { return { provider: 'whatsapp-business', operation, kind, message }; }
 function invalidPage(): QueryAttempt<PhoneNumbersPage> { return newQueryBranch('invalidResponse', emptyPage(), {}, failure('listPhoneNumbers', 'PROTOCOL', 'Meta returned invalid phone-number JSON')); }
+/** Decode Meta's Graph API error envelope; undefined means the body is not one. */
+function decodeGraphError(body: Uint8Array): { isThrottled: boolean; isTransient: boolean } | undefined {
+  const document = parseJSON(body);
+  if (!isObject(document) || !isObject(document.error)) return undefined;
+  const code = document.error.code ?? 0;
+  const isTransient = document.error.is_transient ?? false;
+  if (!Number.isSafeInteger(code) || typeof isTransient !== 'boolean') return undefined;
+  const numericCode = code as number;
+  // Meta documents these Graph and Cloud API rate-limit codes, which it returns with HTTP 4xx.
+  const isThrottled = [4, 17, 32, 341, 613, 130429, 131056].includes(numericCode) || (numericCode >= 80_000 && numericCode <= 80_014);
+  return { isThrottled, isTransient };
+}
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; } }
 function headerValue(value: string | string[] | undefined): string { return Array.isArray(value) ? value[0] ?? '' : value ?? ''; }

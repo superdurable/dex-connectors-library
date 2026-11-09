@@ -5,6 +5,7 @@ package whatsappbusiness
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -93,6 +94,22 @@ func TestSendTextMessageAmbiguousServerFailure(t *testing.T) {
 		ctx.AdvanceAttempt()
 	}
 	require.Equal(t, 1, requests)
+}
+
+func TestSendTextMessageLostProviderIDCheckpointIsUncertain(t *testing.T) {
+	ctx := singledispatchtest.NewContext("whatsapp-lost-checkpoint", "send-text")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		ctx.SetWriteError(errors.New("heartbeat lost"))
+		_, err := fmt.Fprint(w, `{"messaging_product":"whatsapp","messages":[{"id":"wamid.example-text"}]}`)
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client := newTestClient(t, server.URL, 0)
+	input := SendTextMessageInput{PhoneNumberID: "1906385232743451", Recipient: "16315551234", Text: "Hello"}
+	result, err := sdkgo.RunMutation(ctx, client.SendTextMessage(), testConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, SendTextMessageBranchUncertain, result.Branch)
+	require.Equal(t, sdkgo.FailureLocalDefect, result.Failure.Kind)
 }
 
 func TestSendTextMessageDefinitiveRejection(t *testing.T) {

@@ -35,6 +35,7 @@ from dex_connectors.sdk.singledispatch import (
 )
 
 from ._generated.definitions import SEND_TEMPLATE_MESSAGE_DEFINITION, SEND_TEXT_MESSAGE_DEFINITION
+from ._graph_error import decode_graph_error
 from .models import SendTemplateMessageInput, SendTextMessageInput, SentMessage
 
 if TYPE_CHECKING:
@@ -69,6 +70,16 @@ def _valid_address(phone_number_id: object, recipient: object) -> bool:
         and isinstance(recipient, str)
         and _RECIPIENT.fullmatch(recipient) is not None
     )
+
+
+async def _is_graph_throttle_response(response: httpx.Response, max_response_bytes: int) -> bool:
+    """Read a bounded error body; unreadable bodies keep status-based handling."""
+    try:
+        body = await read_bounded_body(response, max_response_bytes)
+    except Exception:
+        return False
+    graph_error = decode_graph_error(body)
+    return graph_error is not None and graph_error.is_throttled
 
 
 @dataclass(slots=True)
@@ -143,12 +154,16 @@ async def _send_message(
         return _uncertain(operation, FailureKind.TRANSPORT, "Meta message outcome is unknown")
     try:
         status = response.status_code
-        if status in (429, 503):
+        is_rate_limited = status == 429
+        if not is_rate_limited and 400 <= status < 500:
+            # A Graph or Cloud API throttling code means Meta refused the send before processing it.
+            is_rate_limited = await _is_graph_throttle_response(response, client.max_response_bytes)
+        if is_rate_limited or status == 503:
             try:
                 await fence.record_can_resend()
             except Exception:
                 return _retry(operation, FailureKind.AVAILABILITY, "Meta retry checkpoint is unavailable")
-            kind = FailureKind.RATE_LIMIT if status == 429 else FailureKind.AVAILABILITY
+            kind = FailureKind.RATE_LIMIT if is_rate_limited else FailureKind.AVAILABILITY
             delay = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
             return _retry(operation, kind, "Meta did not process the send", delay)
         if status >= 500 or status in (408, 409):

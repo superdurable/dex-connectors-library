@@ -31,6 +31,7 @@ from dex_connectors.sdk.providerhttp import (
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from ._generated.definitions import LIST_PHONE_NUMBERS_DEFINITION
+from ._graph_error import decode_graph_error
 from .models import BusinessPhoneNumber, ListPhoneNumbersInput, PhoneNumbersPage
 from .send import SendTemplateMessageOperation, SendTextMessageOperation
 
@@ -150,6 +151,11 @@ class ListPhoneNumbersOperation:
                 return _retry(FailureKind.RATE_LIMIT, "Meta rate limited the request", retry_after)
             if status == 408 or status >= 500:
                 return _retry(FailureKind.AVAILABILITY, "Meta is temporarily unavailable", retry_after)
+            graph_error = decode_graph_error(body) if status >= 400 and body_error is None else None
+            if graph_error is not None and graph_error.is_throttled:
+                return _retry(FailureKind.RATE_LIMIT, "Meta rate limited the request", retry_after)
+            if graph_error is not None and graph_error.is_transient:
+                return _retry(FailureKind.AVAILABILITY, "Meta reported a transient error", retry_after)
             if isinstance(body_error, BodyTooLargeError):
                 return _branch(
                     "invalidResponse",

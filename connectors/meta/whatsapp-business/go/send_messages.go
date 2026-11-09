@@ -185,12 +185,17 @@ func (client *Client) sendMessage(call sdkgo.Call, operationName, phoneNumberID 
 	}
 	response := dispatch.response
 	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
+	isRateLimited := response.StatusCode == http.StatusTooManyRequests
+	if !isRateLimited && response.StatusCode >= 400 && response.StatusCode < 500 {
+		// A Graph or Cloud API throttling code means Meta refused the send before processing it.
+		isRateLimited = isGraphThrottleResponse(response, client.maxResponseBytes)
+	}
+	if isRateLimited || response.StatusCode == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
 			return retryMessage(operationName, sdkgo.FailureAvailability, "Meta retry checkpoint is unavailable", 0)
 		}
 		kind := sdkgo.FailureAvailability
-		if response.StatusCode == http.StatusTooManyRequests {
+		if isRateLimited {
 			kind = sdkgo.FailureRateLimit
 		}
 		return retryMessage(operationName, kind, "Meta did not process the send", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
@@ -222,7 +227,9 @@ func (client *Client) sendMessage(call sdkgo.Call, operationName, phoneNumberID 
 		return uncertainMessage(operationName, sdkgo.FailureProtocol, "Meta send response is incomplete")
 	}
 	message := SentMessage{MessageID: envelope.Messages[0].ID}
-	_ = fence.RecordProviderID(message.MessageID)
+	if err := fence.RecordProviderID(message.MessageID); err != nil {
+		return uncertainMessage(operationName, sdkgo.FailureLocalDefect, "Meta message ID could not be checkpointed")
+	}
 	return sdkgo.NewMutationBranch(sdkgo.BranchID("sent"), message, nil, sdkgo.Receipt{})
 }
 
