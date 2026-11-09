@@ -1,0 +1,115 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: workday
+  displayName: Workday
+  description: Read a worker profile from a Workday tenant REST API.
+  company: Workday
+  version: v0.1.0
+spec:
+  provider: workday
+  codegen:
+    go:
+      package: workday
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret Workday Common REST tenant base URL from Workday > View API Client, in the form https://TENANT-HOST/api/common/v1/TENANT. Blank prevents worker reads; use the tenant where the worker exists.
+      - name: authorizationEndpoint
+        goName: AuthorizationEndpoint
+        type: url
+        required: true
+        description: Non-secret Workday authorization URL from Workday > View API Client > Authorization Endpoint. Copy the complete HTTPS URL for the same tenant; blank prevents OAuth connection.
+      - name: tokenEndpoint
+        goName: TokenEndpoint
+        type: url
+        required: true
+        description: Non-secret Workday token URL from Workday > View API Client > Token Endpoint. Copy the complete HTTPS URL for the same tenant; blank prevents authorization and refresh.
+      - name: scopes
+        goName: Scopes
+        type: stringList
+        required: true
+        description: Workday OAuth scope names from View API Client > Scopes, including the scope granting worker profile read access. Enter each exact non-secret scope as one list item; blank prevents authorization.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one Workday request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow tenant.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete Workday worker JSON response in bytes. Blank uses the displayed default; increase only for unusually large worker profiles.
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: workday-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from Workday > Register API Client for Integrations > your client. Blank prevents authorization and refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret from Workday > Register API Client for Integrations > your client. Save only in Dex; blank prevents authorization and refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Workday consent and rotated by Dex. Never enter manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned by Workday consent and rotated by Dex. Never enter manually; blank requires reauthorization.
+    guide:
+      startURL: https://developer.workday.com/documentation/GUID-6c547385-848b-4005-ab2c-632f1d6b5688
+      steps:
+        - In your Workday tenant, run Register API Client for Integrations. Enable the Common REST API worker profile scope, grant the integration user Worker Data Public Worker Reports security, and register the exact redirect URI shown by Dex Web. An administrator may need to approve the security policy and consent.
+        - Open Workday > View API Client for that client. Copy its authorization endpoint, token endpoint, scope names, Client ID and Client Secret into Dex Web. Keep the client secret private and use endpoints from the same tenant.
+        - In Workday > View API Client, copy the Common REST base URL through /api/common/v1/TENANT into baseUrl. Connect in Dex Web. Dex stores tokens outside Flow state; leave access_token and refresh_token blank.
+        - Find a worker WID using Workday REST API Explorer > Common > Workers or GET /workers. Pass the 32-character WID as workerId to the example Flow; it is a non-secret identifier, and blank is invalid.
+    oauth2:
+      authorizationEndpoint: {fromSetting: authorizationEndpoint}
+      tokenEndpoint: {fromSetting: tokenEndpoint}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: {fromSetting: scopes}
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_basic
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: getWorker
+      goName: GetWorker
+      inputType: GetWorkerInput
+      outputType: WorkerSummary
+      kind: query
+      description: Read one Workday worker's WID and display name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Workday returned the requested worker.}
+        - {id: notFound, goName: NotFound, description: No accessible worker has this WID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Workday conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Workday returned malformed or oversized worker JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample worker profile is returned.
+          output: {id: 0123456789abcdef0123456789abcdef, descriptor: Ada Lovelace}

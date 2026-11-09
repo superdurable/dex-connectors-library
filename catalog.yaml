@@ -191,6 +191,7 @@ directories:
   - connectors/wise
   - connectors/woocommerce
   - connectors/wordpress
+  - connectors/workday
   - connectors/wrike
   - connectors/x/twitter
   - connectors/xero
