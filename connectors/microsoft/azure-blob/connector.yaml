@@ -1,0 +1,83 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-azure-blob
+  displayName: Azure Blob Storage
+  description: Download a bounded blob from an Azure Storage container with Shared Key authorization.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft-azure-blob
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-azure-blob
+      operations: [getBlob]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-microsoft-azure-blob'
+      operations: [getBlob]
+      triggers: []
+  codegen:
+    go:
+      package: azureblob
+  configuration:
+    fields:
+      - name: accountName
+        goName: AccountName
+        type: string
+        required: true
+        description: Non-secret lowercase storage account name of 3 to 24 letters or digits. At https://portal.azure.com > Storage accounts > selected account > Overview, copy the Storage account name. Blank prevents signing.
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Optional Blob service URL. Blank derives https://<accountName>.blob.core.windows.net from accountName. Override only for a trusted compatible endpoint; local tests may use loopback HTTP.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one blob download as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete blob body in bytes. Blank uses the displayed default; increase only for a known larger blob that the Flow can safely store.
+  auth:
+    type: apiKey
+    connectionKind: microsoft-azure-blob-shared-key
+    fields:
+      - name: account_key
+        goName: AccountKey
+        type: secretString
+        required: true
+        description: Secret base64 storage account key from https://portal.azure.com > Storage accounts > selected account > Security + networking > Access keys > Show keys. Copy a key value, not the connection string. Blank prevents signing; rotate through the other key.
+    guide:
+      startURL: https://portal.azure.com
+      steps:
+        - Open Storage accounts > selected account > Overview and copy its lowercase account name into accountName. The account must allow Shared Key access; accounts configured to disallow Shared Key need a different authorization method and cannot use this connector release.
+        - Open Security + networking > Access keys > Show keys. Copy one base64 key value into the secret account_key field. Grant the connection only to trusted Workers; this key authorizes the storage account. Never put the key in Flow input.
+        - Open Data storage > Containers > selected container and note its lowercase name and blob path. Use those values as getBlob Flow input. Leave endpoint, timeout, and maxResponseBytes blank for their displayed defaults.
+        - Rotate by selecting the other access key, updating this connection, verifying a Flow, then regenerating the old key under Access keys. Remove the connection when access should end.
+  operations:
+    - name: getBlob
+      goName: GetBlob
+      inputType: GetBlobInput
+      outputType: BlobDownload
+      kind: query
+      description: Download one bounded blob and return its bytes as base64 with content type and ETag.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: downloaded, goName: Downloaded, description: Azure returned the complete blob.}
+        - {id: missing, goName: Missing, description: The container or blob does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure conclusively rejected the download or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure returned an oversized body or invalid response metadata., optional: true}
+        - {id: defect, goName: Defect, description: "The account, container, blob path, endpoint, or key is invalid.", optional: true}
+      mocks:
+        - name: downloadedDefault
+          branch: downloaded
+          default: true
+          description: One example text blob was downloaded.
+          output: {dataBase64: aGVsbG8=, contentType: text/plain, etag: '"0x1"'}

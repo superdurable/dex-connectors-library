@@ -111,6 +111,7 @@ directories:
   - connectors/meta/facebook-pages
   - connectors/meta/instagram-business
   - connectors/meta/whatsapp-business
+  - connectors/microsoft/azure-blob
   - connectors/microsoft/azure-devops
   - connectors/microsoft/entra-id
   - connectors/microsoft/excel

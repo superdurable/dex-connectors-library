@@ -1,0 +1,49 @@
+{
+  "connectorId": "microsoft-azure-blob",
+  "releaseTag": "connectors/microsoft/azure-blob/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-microsoft-azure-blob",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_blob_step",
+      "kind": "query",
+      "operationId": "getBlob",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "downloaded",
+          "field": "downloaded",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
