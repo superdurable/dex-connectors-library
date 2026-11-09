@@ -11,6 +11,8 @@
       "name": "new_search_tickets_step",
       "kind": "query",
       "operationId": "searchTickets",
+      "inputType": "SearchTicketsInput",
+      "description": "Search tickets by status, requester email, tag, update time, and keywords, returning one bounded page and a cursor for the next.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,63 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchTicketsInput selects tickets with typed filters that the connector turns into one Zendesk search query. Different filters narrow each other; several statuses or several tags match any of them. At least one filter is required.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is a previous page's NextCursor. Zendesk expires it one hour after that page was returned.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to MaxSearchPageSize tickets; zero uses DefaultSearchPageSize.",
+            "type": "integer"
+          },
+          "requesterEmail": {
+            "description": "RequesterEmail matches tickets whose requester has this email address, such as jane@example.com.",
+            "type": "string"
+          },
+          "statuses": {
+            "description": "Statuses matches tickets in any of these Zendesk statuses. Empty matches every status.",
+            "items": {
+              "enum": [
+                "closed",
+                "hold",
+                "new",
+                "open",
+                "pending",
+                "solved"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "description": "Tags matches tickets carrying any of these lowercase tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "text": {
+            "description": "Text holds up to 32 plain keywords that must all appear in the ticket's subject, description, or comments. Search operators such as : < > = \" * and a leading - or + are rejected, so the text cannot change the other filters. Blank matches any text.",
+            "type": "string"
+          },
+          "updatedSince": {
+            "description": "UpdatedSince matches tickets updated at or after this RFC 3339 instant with an explicit offset, such as 2026-01-21T00:00:00Z. Blank applies no time filter.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_get_ticket_step",
       "kind": "query",
       "operationId": "getTicket",
+      "inputType": "GetTicketInput",
+      "description": "Read one ticket by ID with its requester and a bounded list of its latest comments.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +129,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTicketInput names one ticket and how many of its latest comments to return.",
+        "properties": {
+          "latestCommentLimit": {
+            "description": "LatestCommentLimit is 1 to MaxLatestCommentLimit; zero uses DefaultLatestCommentLimit.",
+            "type": "integer"
+          },
+          "ticketId": {
+            "description": "TicketID is the Zendesk ticket ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticketId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_ticket_step",
       "kind": "mutation",
       "operationId": "createTicket",
+      "inputType": "CreateTicketInput",
+      "description": "Create one ticket with its first comment under a Zendesk Idempotency-Key derived from the Step, so a retried or re-dispatched Step returns the same ticket.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -109,12 +182,118 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "TicketCommentInput": {
+            "additionalProperties": false,
+            "description": "TicketCommentInput is one comment to add to a ticket.",
+            "properties": {
+              "body": {
+                "description": "Body is the plain-text comment. It is required and is sent as Zendesk's body, so HTML is not rendered.",
+                "type": "string"
+              },
+              "isInternalNote": {
+                "description": "IsInternalNote adds the comment as an internal note that only agents can see; false adds a public reply that Zendesk may email to the requester.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "body"
+            ],
+            "type": "object"
+          },
+          "TicketRequesterInput": {
+            "additionalProperties": false,
+            "description": "TicketRequesterInput identifies the requester by email. Zendesk uses an existing user with that address or, when the account allows it, creates one named Name.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare address such as jane@example.com.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name is used only when Zendesk creates a new user; blank lets Zendesk derive one.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateTicketInput is one new ticket and its first comment. Zero IDs and empty enums leave the field to Zendesk's defaults and the account's triggers.",
+        "properties": {
+          "assigneeId": {
+            "description": "AssigneeID assigns the ticket to an agent, or zero for none.",
+            "type": "integer"
+          },
+          "brandId": {
+            "description": "BrandID places the ticket in a brand, or zero for the account's default brand.",
+            "type": "integer"
+          },
+          "comment": {
+            "$ref": "#/$defs/TicketCommentInput",
+            "description": "Comment is the first comment, which also becomes the ticket description."
+          },
+          "externalId": {
+            "description": "ExternalID stores an application correlation ID; Zendesk does not enforce uniqueness.",
+            "type": "string"
+          },
+          "groupId": {
+            "description": "GroupID assigns the ticket to a group, or zero for none.",
+            "type": "integer"
+          },
+          "priority": {
+            "description": "Priority is a Zendesk priority, or empty for none.",
+            "enum": [
+              "high",
+              "low",
+              "normal",
+              "urgent"
+            ],
+            "type": "string"
+          },
+          "requester": {
+            "$ref": "#/$defs/TicketRequesterInput",
+            "description": "Requester is the customer asking for help. Nil makes the connection's agent the requester."
+          },
+          "subject": {
+            "description": "Subject is the ticket subject. It is required.",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Tags are lowercase tags set on the new ticket; account triggers may add more.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Type is a Zendesk ticket type, or empty for none.",
+            "enum": [
+              "incident",
+              "problem",
+              "question",
+              "task"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment",
+          "subject"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_ticket_step",
       "kind": "mutation",
       "operationId": "updateTicket",
+      "inputType": "UpdateTicketInput",
+      "description": "Change the status, priority, assignee, group, or tags of one ticket and optionally add one public reply or internal note, applied at most once per Step.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,7 +331,93 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "TicketCommentInput": {
+            "additionalProperties": false,
+            "description": "TicketCommentInput is one comment to add to a ticket.",
+            "properties": {
+              "body": {
+                "description": "Body is the plain-text comment. It is required and is sent as Zendesk's body, so HTML is not rendered.",
+                "type": "string"
+              },
+              "isInternalNote": {
+                "description": "IsInternalNote adds the comment as an internal note that only agents can see; false adds a public reply that Zendesk may email to the requester.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "body"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdateTicketInput is one change to an existing ticket. Empty and zero fields are left unchanged; this release cannot clear an assignee or group.",
+        "properties": {
+          "addTags": {
+            "description": "AddTags adds lowercase tags and keeps the ticket's other tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "assigneeId": {
+            "description": "AssigneeID assigns an agent, or zero to keep the assignee.",
+            "type": "integer"
+          },
+          "comment": {
+            "$ref": "#/$defs/TicketCommentInput",
+            "description": "Comment adds one public reply or internal note, or nil for none."
+          },
+          "expectedUpdatedAt": {
+            "description": "ExpectedUpdatedAt is the ticket's UpdatedAt as the application last read it, an RFC 3339 instant such as 2026-01-28T08:45:00Z. A later change selects conflict; blank writes regardless.",
+            "type": "string"
+          },
+          "groupId": {
+            "description": "GroupID assigns a group, or zero to keep the group.",
+            "type": "integer"
+          },
+          "priority": {
+            "description": "Priority is the new Zendesk priority, or empty to keep it.",
+            "enum": [
+              "high",
+              "low",
+              "normal",
+              "urgent"
+            ],
+            "type": "string"
+          },
+          "removeTags": {
+            "description": "RemoveTags removes lowercase tags and keeps the ticket's other tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status is the new Zendesk status, or empty to keep it.",
+            "enum": [
+              "closed",
+              "hold",
+              "new",
+              "open",
+              "pending",
+              "solved"
+            ],
+            "type": "string"
+          },
+          "ticketId": {
+            "description": "TicketID is the Zendesk ticket ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticketId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

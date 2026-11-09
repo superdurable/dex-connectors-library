@@ -11,6 +11,8 @@
       "name": "new_query_step",
       "kind": "query",
       "operationId": "query",
+      "inputType": "QueryRowsInput",
+      "description": "Run one parameterized statement in a read-only transaction and return its bounded rows.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryRowsInput is one parameterized read statement.",
+        "properties": {
+          "parameters": {
+            "description": "Parameters binds $1 through $n in order. Each value is nil for SQL NULL, a string, bool, integer, float, json.Number, json.RawMessage, []byte for bytea, or time.Time, and is sent as text that PostgreSQL parses for the type it infers for that placeholder. Pass exact decimals and integers beyond 2^53 as strings or json.Number.",
+            "items": {},
+            "type": "array"
+          },
+          "statement": {
+            "description": "Statement is one SQL statement written as a constant in application code, such as \"SELECT id, plan FROM subscriptions WHERE account_email = $1\". Values belong in Parameters: the connector never formats them into SQL text, and it cannot detect a statement built by concatenating untrusted input. Transaction control and COPY are rejected before any request.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_execute_step",
       "kind": "mutation",
       "operationId": "execute",
+      "inputType": "ExecuteStatementInput",
+      "description": "Run one parameterized write statement in its own transaction and return its rows affected and bounded RETURNING rows.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -86,7 +109,34 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ExecuteStatementInput is one parameterized write statement.",
+        "properties": {
+          "idempotencyKeyPlaceholder": {
+            "description": "IdempotencyKeyPlaceholder, when non-zero, is the number n of the $n placeholder that receives this Step execution's idempotency key. It must equal len(Parameters)+1, so the key is always the last placeholder. The key is a UUID that stays the same across every retry and Worker replacement of one Step execution, and it is also returned in the Result's Receipt.",
+            "type": "integer"
+          },
+          "maxRowsAffected": {
+            "description": "MaxRowsAffected, when set, is the most rows the statement may affect. A statement that affects more is rolled back and selects limitExceeded, which guards against a missing WHERE clause. Nil applies no limit; zero allows only a statement that changes nothing.",
+            "type": "integer"
+          },
+          "parameters": {
+            "description": "Parameters binds $1 through $n in order, with the same value rules as QueryRowsInput.",
+            "items": {},
+            "type": "array"
+          },
+          "statement": {
+            "description": "Statement is one SQL statement written as a constant in application code, such as \"INSERT INTO refunds (order_id, amount) VALUES ($1, $2::numeric)\". Values belong in Parameters: the connector never formats them into SQL text, and it cannot detect a statement built by concatenating untrusted input. Transaction control and COPY are rejected before any request. A RETURNING clause returns rows in the Result.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "statement"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

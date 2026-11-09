@@ -11,6 +11,8 @@
       "name": "newSearchConversationsStep",
       "kind": "query",
       "operationId": "searchConversations",
+      "inputType": "SearchConversationsInput",
+      "description": "List one page of up to 30 conversations of the brand, filtered by Re:amaze view, requester email, tags, channel, and latest customer message time, with the next page number.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,68 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchConversationsInput selects one page of the brand's conversations with Re:amaze's list filters, GET /conversations. Different filters narrow each other.",
+        "properties": {
+          "channel": {
+            "description": "Channel keeps conversations in the channel with this slug, Re:amaze's category, such as support.",
+            "type": "string"
+          },
+          "customerMessageSince": {
+            "description": "CustomerMessageSince keeps conversations whose latest customer message is at or after this RFC 3339 instant, Re:amaze's start_date. Blank applies no lower bound.",
+            "type": "string"
+          },
+          "customerMessageUntil": {
+            "description": "CustomerMessageUntil keeps conversations whose latest customer message is at or before this RFC 3339 instant, Re:amaze's end_date. Blank applies no upper bound.",
+            "type": "string"
+          },
+          "filter": {
+            "description": "Filter is Re:amaze's view: blank for every unarchived conversation, open, unassigned, archived, or all.",
+            "enum": [
+              "",
+              "all",
+              "archived",
+              "open",
+              "unassigned"
+            ],
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is 1 to MaxSearchPage; zero reads the first page.",
+            "type": "integer"
+          },
+          "requesterEmail": {
+            "description": "RequesterEmail keeps conversations relevant to the user with this email, Re:amaze's for parameter; for a customer, the conversations that customer can see, which can include conversations the customer was copied on. Blank keeps every user.",
+            "type": "string"
+          },
+          "sort": {
+            "description": "Sort orders the page: blank by creation, updated by the latest customer update, or changed by any update or status change.",
+            "enum": [
+              "",
+              "changed",
+              "updated"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "description": "Tags keeps conversations matching these tags, sent comma-separated as Re:amaze's tag parameter.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetConversationStep",
       "kind": "query",
       "operationId": "getConversation",
+      "inputType": "GetConversationInput",
+      "description": "Read one conversation by its slug with its first message and a bounded list of its newest messages and internal notes.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +134,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetConversationInput names one conversation and how many of its newest messages to return.",
+        "properties": {
+          "conversationId": {
+            "description": "ConversationID is the conversation's slug, such as knock-knock, as Conversation.ID reports it.",
+            "type": "string"
+          },
+          "messageLimit": {
+            "description": "MessageLimit is 1 to MaxMessageLimit; zero uses DefaultMessageLimit.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateConversationStep",
       "kind": "mutation",
       "operationId": "createConversation",
+      "inputType": "CreateConversationInput",
+      "description": "Create one conversation on behalf of a customer in one channel. Re:amaze has no idempotency key, so the Step runs with sync durability, resends only after a confirmed 429, 503, or provably unsent request, and reconciles an unconfirmed attempt by finding the conversation whose data attribute holds the Step's key. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +187,98 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "ConversationRequesterInput": {
+            "additionalProperties": false,
+            "description": "ConversationRequesterInput identifies the customer by email. Re:amaze uses the contact with that address or adds one named Name.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare address such as jane@example.com.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name names a contact Re:amaze adds; blank sends no name.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateConversationInput is one new conversation on behalf of a customer. Zero values leave a field to Re:amaze's defaults and the channel's automations.",
+        "properties": {
+          "assigneeEmail": {
+            "description": "AssigneeEmail assigns the staff user with this email, or blank for Re:amaze's routing.",
+            "type": "string"
+          },
+          "channel": {
+            "description": "Channel is the slug of the channel to create the conversation in, Re:amaze's category, such as support. It is required; Settings > Channels lists each channel and its slug.",
+            "type": "string"
+          },
+          "holdUntil": {
+            "description": "HoldUntil is when an On Hold (5) conversation's reminder fires, an RFC 3339 instant. It requires Status 5; blank sets no reminder time.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Message is the customer's first message, at most MaxTextBytes. It is required and sent unchanged as Re:amaze's message body.",
+            "type": "string"
+          },
+          "requester": {
+            "$ref": "#/$defs/ConversationRequesterInput",
+            "description": "Requester is the customer the conversation is created for. It is required."
+          },
+          "shouldSuppressNotifications": {
+            "description": "ShouldSuppressNotifications asks Re:amaze to send no email or integration notification for the first message, Re:amaze's message suppress_notifications.",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "Status is a Re:amaze status, or nil for Re:amaze's default.",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            "type": "integer"
+          },
+          "subject": {
+            "description": "Subject is the conversation subject. It is required.",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Tags are set on the new conversation; channel automations may add more.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "channel",
+          "message",
+          "requester",
+          "subject"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateConversationStep",
       "kind": "mutation",
       "operationId": "updateConversation",
+      "inputType": "UpdateConversationInput",
+      "description": "Set the Re:amaze status or assignee of one conversation and add or remove tags; a repeated attempt finds the values already applied and writes nothing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -147,12 +311,66 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateConversationInput is one change to an existing conversation. Nil and empty fields are left unchanged; this release cannot unassign a conversation.",
+        "properties": {
+          "addTags": {
+            "description": "AddTags adds tags and keeps the conversation's other tags. A tag already present in any letter case is kept as is.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "assigneeEmail": {
+            "description": "AssigneeEmail assigns the staff user with this email, or blank to keep the assignee.",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "ConversationID is the conversation's slug, such as knock-knock.",
+            "type": "string"
+          },
+          "holdUntil": {
+            "description": "HoldUntil is when an On Hold (5) conversation's reminder fires, an RFC 3339 instant. It requires Status 5 and is always written, because Re:amaze does not return it to compare.",
+            "type": "string"
+          },
+          "removeTags": {
+            "description": "RemoveTags removes tags in any letter case and keeps the conversation's other tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "Status is the new Re:amaze status, or nil to keep it. Status 0 (Open) is a real value, so this field is a pointer.",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9
+            ],
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newReplyToConversationStep",
       "kind": "mutation",
       "operationId": "replyToConversation",
+      "inputType": "ReplyToConversationInput",
+      "description": "Add one public reply, which Re:amaze sends to the customer, or one internal note to a conversation. The message carries an origin_id derived from the Step, the Step runs with sync durability, and an unconfirmed attempt is reconciled by finding that origin_id instead of sending again. A shared single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoint and do not resend a possibly accepted write.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -185,12 +403,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReplyToConversationInput is one public reply or internal note on a conversation, attributed to the connection's staff user.",
+        "properties": {
+          "conversationId": {
+            "description": "ConversationID is the conversation's slug, such as knock-knock.",
+            "type": "string"
+          },
+          "isInternalNote": {
+            "description": "IsInternalNote adds a note only staff see, Re:amaze visibility 1. False adds a public reply, visibility 0, which Re:amaze sends to the customer through the conversation's channel.",
+            "type": "boolean"
+          },
+          "shouldSuppressAutoResolve": {
+            "description": "ShouldSuppressAutoResolve asks Re:amaze not to mark the conversation Done because a staff user wrote, Re:amaze's suppress_autoresolve.",
+            "type": "boolean"
+          },
+          "shouldSuppressNotifications": {
+            "description": "ShouldSuppressNotifications asks Re:amaze to send no email or integration notification for the message, Re:amaze's suppress_notifications.",
+            "type": "boolean"
+          },
+          "text": {
+            "description": "Text is the reply or note, at most MaxTextBytes. It is required and sent unchanged as Re:amaze's message body, which Re:amaze formats as Markdown.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId",
+          "text"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newFindContactByEmailStep",
       "kind": "query",
       "operationId": "findContactByEmail",
+      "inputType": "FindContactByEmailInput",
+      "description": "Find the Re:amaze contacts whose email equals one address, from the first page of Re:amaze's name-or-email contact search; contacts belong to the account, not one brand.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -223,7 +474,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindContactByEmailInput names the email address to resolve.",
+        "properties": {
+          "email": {
+            "description": "Email is one bare address such as jane@example.com. It matches without regard to letter case.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

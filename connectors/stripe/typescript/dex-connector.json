@@ -11,6 +11,8 @@
       "name": "newCreateCardCheckoutSessionStep",
       "kind": "mutation",
       "operationId": "createCardCheckoutSession",
+      "inputType": "CreateCardCheckoutSessionInput",
+      "description": "Create one Stripe-hosted Checkout Session for a card payment; keep any overridden retry window at most 23 hours, below the 24 hours that Stripe keeps idempotency keys.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,70 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateCardCheckoutSessionInput is one hosted card Checkout request. Its fields have the same meanings and validation as CreateACHCheckoutSessionInput.",
+        "properties": {
+          "cancelUrl": {
+            "description": "CancelURL is the HTTPS location Stripe uses when the customer cancels Checkout.",
+            "type": "string"
+          },
+          "clientReferenceId": {
+            "description": "ClientReferenceID correlates the session with one non-sensitive application record.",
+            "type": "string"
+          },
+          "currency": {
+            "description": "Currency is the lowercase three-letter currency code.",
+            "type": "string"
+          },
+          "customerEmail": {
+            "description": "CustomerEmail is the plain email address Stripe pre-fills in hosted Checkout.",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "ExpiresAt optionally requests a provider expiration timestamp.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Metadata is bounded non-sensitive application metadata copied to the session and PaymentIntent.",
+            "type": "object"
+          },
+          "productName": {
+            "description": "ProductName is the ticket or event label displayed by hosted Checkout.",
+            "type": "string"
+          },
+          "successUrl": {
+            "description": "SuccessURL is the HTTPS location Stripe uses after Checkout succeeds.",
+            "type": "string"
+          },
+          "unitAmount": {
+            "description": "UnitAmount is the positive ticket price in the currency's minor unit.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cancelUrl",
+          "clientReferenceId",
+          "currency",
+          "customerEmail",
+          "productName",
+          "successUrl",
+          "unitAmount"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateACHCheckoutSessionStep",
       "kind": "mutation",
       "operationId": "createACHCheckoutSession",
+      "inputType": "CreateACHCheckoutSessionInput",
+      "description": "Create one Stripe-hosted Checkout Session for a US bank account payment; keep any overridden retry window at most 23 hours, below the 24 hours that Stripe keeps idempotency keys.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +141,70 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateACHCheckoutSessionInput contains one Stripe-hosted ACH Checkout request.",
+        "properties": {
+          "cancelUrl": {
+            "description": "CancelURL is the HTTPS location Stripe uses when the customer cancels Checkout.",
+            "type": "string"
+          },
+          "clientReferenceId": {
+            "description": "ClientReferenceID correlates the session with one non-sensitive application record.",
+            "type": "string"
+          },
+          "currency": {
+            "description": "Currency is the lowercase three-letter currency code.",
+            "type": "string"
+          },
+          "customerEmail": {
+            "description": "CustomerEmail is the plain email address Stripe pre-fills in hosted Checkout.",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "ExpiresAt optionally requests a provider expiration timestamp.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Metadata is bounded non-sensitive application metadata copied to the session and PaymentIntent.",
+            "type": "object"
+          },
+          "productName": {
+            "description": "ProductName is the ticket or event label displayed by hosted Checkout.",
+            "type": "string"
+          },
+          "successUrl": {
+            "description": "SuccessURL is the HTTPS location Stripe uses after Checkout succeeds.",
+            "type": "string"
+          },
+          "unitAmount": {
+            "description": "UnitAmount is the positive ticket price in the currency's minor unit.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cancelUrl",
+          "clientReferenceId",
+          "currency",
+          "customerEmail",
+          "productName",
+          "successUrl",
+          "unitAmount"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetCheckoutSessionStep",
       "kind": "query",
       "operationId": "getCheckoutSession",
+      "inputType": "GetCheckoutSessionInput",
+      "description": "Retrieve one Checkout Session by Stripe ID.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -119,12 +237,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCheckoutSessionInput identifies one Stripe Checkout Session.",
+        "properties": {
+          "sessionId": {
+            "description": "SessionID is Stripe's Checkout Session identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetPaymentIntentStep",
       "kind": "query",
       "operationId": "getPaymentIntent",
+      "inputType": "GetPaymentIntentInput",
+      "description": "Retrieve one PaymentIntent with its refunded amount and customer email.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -157,12 +291,39 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPaymentIntentInput identifies one Stripe PaymentIntent.",
+        "properties": {
+          "paymentIntentId": {
+            "description": "PaymentIntentID is Stripe's PaymentIntent identifier, beginning with pi_.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paymentIntentId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateRefundStep",
       "kind": "mutation",
       "operationId": "createRefund",
+      "inputType": "CreateRefundInput",
+      "description": "Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.",
+      "agent": {
+        "exposed": true,
+        "approval": "recommended",
+        "retry": "safe",
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "unknown",
+          "providerRejected": "rejected",
+          "uncertain": "unknown"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -195,7 +356,42 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateRefundInput contains one Stripe refund request.",
+        "properties": {
+          "amount": {
+            "description": "Amount is the positive refund amount in the currency's minor unit.",
+            "type": "integer"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Metadata is bounded non-sensitive application metadata stored on the refund.",
+            "type": "object"
+          },
+          "paymentIntentId": {
+            "description": "PaymentIntentID is the Stripe PaymentIntent to refund, beginning with pi_.",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Reason optionally classifies the refund as duplicate, fraudulent, or requested_by_customer.",
+            "enum": [
+              "duplicate",
+              "fraudulent",
+              "requested_by_customer"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "paymentIntentId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

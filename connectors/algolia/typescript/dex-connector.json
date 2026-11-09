@@ -11,6 +11,8 @@
       "name": "newSearchStep",
       "kind": "query",
       "operationId": "search",
+      "inputType": "SearchInput",
+      "description": "Search one Algolia index by query phrase.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchInput selects an index and search phrase.",
+        "properties": {
+          "hitsPerPage": {
+            "description": "HitsPerPage bounds the returned hits; zero uses Algolia's default.",
+            "type": "integer"
+          },
+          "indexName": {
+            "description": "IndexName names the Algolia index.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Query is the search phrase; blank matches all records.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "indexName",
+          "query"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSaveObjectStep",
       "kind": "mutation",
       "operationId": "saveObject",
+      "inputType": "SaveObjectInput",
+      "description": "Replace one record by stable objectID; Algolia queues indexing asynchronously.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -71,7 +98,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SaveObjectInput replaces a record's complete set of string attributes.",
+        "properties": {
+          "attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Attributes are absolute non-secret record values; omitted old attributes are removed.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "indexName": {
+            "description": "IndexName names the target index.",
+            "type": "string"
+          },
+          "objectID": {
+            "description": "ObjectID identifies the record to replace on retries.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attributes",
+          "indexName",
+          "objectID"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

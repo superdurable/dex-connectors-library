@@ -11,6 +11,8 @@
       "name": "new_search_objects_step",
       "kind": "query",
       "operationId": "searchObjects",
+      "inputType": "SearchObjectsInput",
+      "description": "Search one bounded page of HubSpot contacts, companies, or deals with typed property filters, one sort, and an after cursor.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,157 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "SearchFilter": {
+            "additionalProperties": false,
+            "description": "SearchFilter is one typed CRM search condition.",
+            "properties": {
+              "highValue": {
+                "description": "HighValue is the inclusive upper bound for BETWEEN.",
+                "type": "string"
+              },
+              "operator": {
+                "description": "Operator selects the comparison.",
+                "enum": [
+                  "BETWEEN",
+                  "CONTAINS_TOKEN",
+                  "EQ",
+                  "GT",
+                  "GTE",
+                  "HAS_PROPERTY",
+                  "IN",
+                  "LT",
+                  "LTE",
+                  "NEQ",
+                  "NOT_CONTAINS_TOKEN",
+                  "NOT_HAS_PROPERTY",
+                  "NOT_IN"
+                ],
+                "type": "string"
+              },
+              "propertyName": {
+                "description": "PropertyName is an internal property name such as email, or an association pseudo-property such as associations.contact.",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value is the comparison value for EQ, NEQ, LT, LTE, GT, GTE, BETWEEN, CONTAINS_TOKEN, and NOT_CONTAINS_TOKEN. Dates are Unix milliseconds.",
+                "type": "string"
+              },
+              "values": {
+                "description": "Values lists the candidates for IN and NOT_IN. HubSpot requires lowercase values when the property is a string property.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "operator",
+              "propertyName"
+            ],
+            "type": "object"
+          },
+          "SearchFilterGroup": {
+            "additionalProperties": false,
+            "description": "SearchFilterGroup AND-s its filters. A search OR-s its groups.",
+            "properties": {
+              "filters": {
+                "description": "Filters are the conditions that must all match.",
+                "items": {
+                  "$ref": "#/$defs/SearchFilter"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "filters"
+            ],
+            "type": "object"
+          },
+          "SearchSort": {
+            "additionalProperties": false,
+            "description": "SearchSort orders search results by one property.",
+            "properties": {
+              "direction": {
+                "description": "Direction is ascending or descending.",
+                "enum": [
+                  "ASCENDING",
+                  "DESCENDING"
+                ],
+                "type": "string"
+              },
+              "propertyName": {
+                "description": "PropertyName is the internal property name to sort by.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "direction",
+              "propertyName"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "SearchObjectsInput selects one bounded page of matching records.",
+        "properties": {
+          "after": {
+            "description": "After is the NextAfter cursor of the previous page; empty starts at the first result. Paging cannot pass HubSpot's 10,000th result.",
+            "type": "string"
+          },
+          "filterGroups": {
+            "description": "FilterGroups are OR-ed; empty matches every record. HubSpot allows five groups, six filters per group, and eighteen filters in total.",
+            "items": {
+              "$ref": "#/$defs/SearchFilterGroup"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "description": "Limit is the page size from 1 through 200; zero uses 10.",
+            "type": "integer"
+          },
+          "objectType": {
+            "description": "ObjectType is the object type to search.",
+            "enum": [
+              "companies",
+              "contacts",
+              "deals"
+            ],
+            "type": "string"
+          },
+          "properties": {
+            "description": "Properties lists the property values to return; empty returns HubSpot's default properties for the object type.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "query": {
+            "description": "Query optionally searches the object's default text properties.",
+            "type": "string"
+          },
+          "sort": {
+            "$ref": "#/$defs/SearchSort",
+            "description": "Sort optionally orders results; without it HubSpot returns oldest records first."
+          }
+        },
+        "required": [
+          "objectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_object_step",
       "kind": "query",
       "operationId": "getObject",
+      "inputType": "GetObjectInput",
+      "description": "Read one HubSpot contact, company, or deal by record ID with the requested properties.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +223,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetObjectInput identifies one record.",
+        "properties": {
+          "objectId": {
+            "description": "ObjectID is HubSpot's decimal record ID.",
+            "type": "string"
+          },
+          "objectType": {
+            "description": "ObjectType is the record's object type.",
+            "enum": [
+              "companies",
+              "contacts",
+              "deals"
+            ],
+            "type": "string"
+          },
+          "properties": {
+            "description": "Properties lists the property values to return; empty returns HubSpot's default properties for the object type.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "objectId",
+          "objectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_upsert_object_step",
       "kind": "mutation",
       "operationId": "upsertObject",
+      "inputType": "UpsertObjectInput",
+      "description": "Create or update one HubSpot contact, company, or deal identified by a unique property, such as email for contacts.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -114,12 +294,50 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpsertObjectInput creates or updates one record identified by a unique property value.",
+        "properties": {
+          "idProperty": {
+            "description": "IDProperty is a unique identifier property: email for contacts, or a custom property created with unique values for any object type.",
+            "type": "string"
+          },
+          "idValue": {
+            "description": "IDValue is the unique value that identifies the record, such as the email address.",
+            "type": "string"
+          },
+          "objectType": {
+            "description": "ObjectType is the record's object type.",
+            "enum": [
+              "companies",
+              "contacts",
+              "deals"
+            ],
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Properties are the values to set, keyed by internal property name. An empty string clears a value.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "idProperty",
+          "idValue",
+          "objectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_object_step",
       "kind": "mutation",
       "operationId": "updateObject",
+      "inputType": "UpdateObjectInput",
+      "description": "Update properties of one HubSpot contact, company, or deal by record ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -157,7 +375,42 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateObjectInput replaces property values on one record.",
+        "properties": {
+          "objectId": {
+            "description": "ObjectID is HubSpot's decimal record ID.",
+            "type": "string"
+          },
+          "objectType": {
+            "description": "ObjectType is the record's object type.",
+            "enum": [
+              "companies",
+              "contacts",
+              "deals"
+            ],
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Properties are the values to set, keyed by internal property name. At least one is required, and an empty string clears a value.",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "objectId",
+          "objectType",
+          "properties"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

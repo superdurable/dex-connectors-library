@@ -11,6 +11,8 @@
       "name": "newSearchConversationsStep",
       "kind": "query",
       "operationId": "searchConversations",
+      "inputType": "SearchConversationsInput",
+      "description": "Search conversations by state, contact email, contact ID, tag, and update time, returning one bounded page and a cursor for the next.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,63 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchConversationsInput selects conversations with typed filters that the connector turns into one Intercom search query. Different filters narrow each other; several states, contact IDs, or tag IDs match any of them. At least one filter is required.",
+        "properties": {
+          "contactEmail": {
+            "description": "ContactEmail matches conversations whose first message came from this email address, Intercom's source.author.email, such as jane@example.com. An admin-initiated conversation's source author is the admin, so use ContactIDs to find every conversation with a contact.",
+            "type": "string"
+          },
+          "contactIds": {
+            "description": "ContactIDs matches conversations with any of up to 15 Intercom contact IDs, as findContactByEmail returns.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "cursor": {
+            "description": "Cursor is a previous page's NextCursor.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to MaxSearchPageSize conversations; zero uses DefaultSearchPageSize.",
+            "type": "integer"
+          },
+          "states": {
+            "description": "States matches conversations in any of these Intercom states. Empty matches every state.",
+            "items": {
+              "enum": [
+                "closed",
+                "open",
+                "snoozed"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tagIds": {
+            "description": "TagIDs matches conversations carrying any of up to 15 Intercom tag IDs; Intercom searches tags by ID, not name.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedSince": {
+            "description": "UpdatedSince matches conversations updated at or after this RFC 3339 instant with an explicit offset, such as 2026-01-21T00:00:00Z. Blank applies no time filter.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetConversationStep",
       "kind": "query",
       "operationId": "getConversation",
+      "inputType": "GetConversationInput",
+      "description": "Read one conversation by ID with its first message and a bounded list of its latest parts as plain text.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +129,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetConversationInput names one conversation and how many of its latest parts to return.",
+        "properties": {
+          "conversationId": {
+            "description": "ConversationID is the Intercom conversation ID, a string of digits.",
+            "type": "string"
+          },
+          "latestPartLimit": {
+            "description": "LatestPartLimit is 1 to MaxLatestPartLimit; zero uses DefaultLatestPartLimit.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversationId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newReplyToConversationStep",
       "kind": "mutation",
       "operationId": "replyToConversation",
+      "inputType": "ReplyToConversationInput",
+      "description": "Add one admin reply or internal note to a conversation. Intercom has no idempotency key, so the Step runs with sync durability, sends the reply at most once per Step execution, and reconciles an unconfirmed attempt by reading the conversation back.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -119,12 +192,47 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReplyToConversationInput is one admin reply or internal note to add to a conversation.",
+        "properties": {
+          "adminId": {
+            "description": "AdminID is the Intercom admin the reply is authored by, chosen with the adminPicker unit.",
+            "type": "string"
+          },
+          "body": {
+            "description": "Body is the plain-text message, at most MaxTextBytes. The connector escapes it into Intercom's HTML body, so markup is shown literally, blank lines separate paragraphs, and line breaks are kept.",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Intercom conversation ID, a string of digits.",
+            "type": "string"
+          },
+          "messageType": {
+            "description": "MessageType is comment for a reply the customer sees or note for an internal note. It is required, so a customer-visible message is never sent by default.",
+            "enum": [
+              "comment",
+              "note"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "adminId",
+          "body",
+          "conversationId",
+          "messageType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateConversationStateStep",
       "kind": "mutation",
       "operationId": "updateConversationState",
+      "inputType": "UpdateConversationStateInput",
+      "description": "Close, reopen, or snooze one conversation as an admin. Every attempt reads the conversation first and writes only when its state differs, so a repeated Step is safe.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -157,12 +265,47 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateConversationStateInput moves one conversation to an Intercom state as an admin.",
+        "properties": {
+          "adminId": {
+            "description": "AdminID is the Intercom admin performing the change, chosen with the adminPicker unit.",
+            "type": "string"
+          },
+          "conversationId": {
+            "description": "ConversationID is the Intercom conversation ID, a string of digits.",
+            "type": "string"
+          },
+          "snoozedUntil": {
+            "description": "SnoozedUntil is required for snoozed and blank otherwise: an RFC 3339 instant with an explicit offset, such as 2026-02-01T09:00:00Z, when Intercom reopens the conversation. Intercom stores whole seconds.",
+            "type": "string"
+          },
+          "state": {
+            "description": "State is the requested Intercom state: closed closes, open reopens a closed or snoozed conversation, and snoozed hides it until SnoozedUntil.",
+            "enum": [
+              "closed",
+              "open",
+              "snoozed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "adminId",
+          "conversationId",
+          "state"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newFindContactByEmailStep",
       "kind": "query",
       "operationId": "findContactByEmail",
+      "inputType": "FindContactByEmailInput",
+      "description": "Find the users and leads whose email equals one address, returning a bounded list; Intercom can hold several contacts with one email.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -195,7 +338,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindContactByEmailInput names one email address to look up.",
+        "properties": {
+          "contactLimit": {
+            "description": "ContactLimit is 1 to MaxContactLimit contacts; zero uses DefaultContactLimit.",
+            "type": "integer"
+          },
+          "email": {
+            "description": "Email is one bare email address, such as jane@example.com, matched with Intercom's = operator.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

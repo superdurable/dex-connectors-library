@@ -11,6 +11,8 @@
       "name": "newGetMemberStep",
       "kind": "query",
       "operationId": "getMember",
+      "inputType": "GetMemberInput",
+      "description": "Read one audience contact by email address, addressed by the MD5 hash of the lowercased address, with its status, merge fields, and up to 50 tags.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetMemberInput identifies one audience contact.",
+        "properties": {
+          "emailAddress": {
+            "description": "EmailAddress is the contact's bare email address. The connector requests the MD5 hash of its lowercased form, so letter case does not matter.",
+            "type": "string"
+          },
+          "listId": {
+            "description": "ListID is the audience ID, Mailchimp's list_id, such as 57afe96172.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailAddress",
+          "listId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListMembersStep",
       "kind": "query",
       "operationId": "listMembers",
+      "inputType": "ListMembersInput",
+      "description": "List one bounded page of an audience's contacts, oldest change first, optionally only one status or contacts changed or opted in since a time, continuing at the returned offset.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +104,64 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListMembersInput selects one page of an audience's contacts. Pages are ordered by last change, oldest first, and continue with Offset.",
+        "properties": {
+          "changedSince": {
+            "description": "ChangedSince keeps only contacts whose information changed after this time; nil applies no bound.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "listId": {
+            "description": "ListID is the audience ID, Mailchimp's list_id.",
+            "type": "string"
+          },
+          "offset": {
+            "description": "Offset is the number of matching contacts to skip; use the previous page's NextOffset.",
+            "type": "integer"
+          },
+          "optedInSince": {
+            "description": "OptedInSince keeps only contacts who opted in after this time; nil applies no bound.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pageSize": {
+            "description": "PageSize is the number of contacts to read, 1 to 1000; zero reads 100.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status keeps only contacts in one status, including cleaned or archived; empty lists every status.",
+            "enum": [
+              "archived",
+              "cleaned",
+              "pending",
+              "subscribed",
+              "transactional",
+              "unsubscribed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "listId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpsertMemberStep",
       "kind": "mutation",
       "operationId": "upsertMember",
+      "inputType": "UpsertMemberInput",
+      "description": "Add a contact or update an existing one with PUT, which Mailchimp keys by the contact's address, so a repeated attempt writes the same values. statusIfNew applies only to a new contact; changing an existing contact to subscribed or pending requires isResubscribeAllowed.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +189,99 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "MarketingPermissionInput": {
+            "additionalProperties": false,
+            "description": "MarketingPermissionInput is one GDPR marketing permission the contact opted in to or out of.",
+            "properties": {
+              "isEnabled": {
+                "description": "IsEnabled reports that the contact opted in.",
+                "type": "boolean"
+              },
+              "marketingPermissionId": {
+                "description": "MarketingPermissionID is the audience's marketing_permission_id, listed on a contact read with marketing permissions enabled.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "isEnabled",
+              "marketingPermissionId"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpsertMemberInput adds a contact to an audience or updates the existing contact with the same address. Mailchimp applies StatusIfNew only when it creates the contact, and Status to an existing contact too, so an unsubscribed contact keeps its status unless Status says otherwise.",
+        "properties": {
+          "emailAddress": {
+            "description": "EmailAddress is the contact's bare email address; letter case does not change which contact is written.",
+            "type": "string"
+          },
+          "isResubscribeAllowed": {
+            "description": "IsResubscribeAllowed must be true when Status is subscribed or pending, because Mailchimp then resubscribes, or emails a confirmation to, a contact who unsubscribed or was cleaned. Set it only when the contact asked to subscribe again.",
+            "type": "boolean"
+          },
+          "listId": {
+            "description": "ListID is the audience ID, Mailchimp's list_id.",
+            "type": "string"
+          },
+          "marketingPermissions": {
+            "description": "MarketingPermissions records the contact's consent to the audience's GDPR marketing permissions.",
+            "items": {
+              "$ref": "#/$defs/MarketingPermissionInput"
+            },
+            "type": "array"
+          },
+          "mergeFields": {
+            "additionalProperties": {},
+            "description": "MergeFields maps merge tags such as FNAME to values: a string, a number, or an address object with addr1, city, state, and zip. Tags that are omitted keep their stored values.",
+            "type": "object"
+          },
+          "shouldSkipMergeValidation": {
+            "description": "ShouldSkipMergeValidation sends skip_merge_validation=true, so Mailchimp accepts the contact without the audience's required merge fields.",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "Status, when set, also changes an existing contact's status: subscribed, pending, unsubscribed, or transactional. Empty keeps the existing contact's status. Unsubscribed records an opt-out.",
+            "enum": [
+              "archived",
+              "cleaned",
+              "pending",
+              "subscribed",
+              "transactional",
+              "unsubscribed"
+            ],
+            "type": "string"
+          },
+          "statusIfNew": {
+            "description": "StatusIfNew is the status of a contact Mailchimp creates: subscribed for a contact who gave permission, pending to send Mailchimp's confirmation email first, unsubscribed, or transactional. It is required and ignored for an existing contact.",
+            "enum": [
+              "archived",
+              "cleaned",
+              "pending",
+              "subscribed",
+              "transactional",
+              "unsubscribed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailAddress",
+          "listId",
+          "statusIfNew"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateMemberTagsStep",
       "kind": "mutation",
       "operationId": "updateMemberTags",
+      "inputType": "UpdateMemberTagsInput",
+      "description": "Add and remove tags on one audience contact by declaring each tag active or inactive, so a repeated attempt leaves the same tags.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,12 +314,51 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateMemberTagsInput adds and removes tags on one existing audience contact.",
+        "properties": {
+          "addTags": {
+            "description": "AddTags are declared active. Mailchimp creates a tag that does not exist yet, and a tag the contact already has stays as it is.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "emailAddress": {
+            "description": "EmailAddress is the contact's bare email address.",
+            "type": "string"
+          },
+          "listId": {
+            "description": "ListID is the audience ID, Mailchimp's list_id.",
+            "type": "string"
+          },
+          "removeTags": {
+            "description": "RemoveTags are declared inactive; a tag the contact does not have is ignored.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "shouldSuppressAutomations": {
+            "description": "ShouldSuppressAutomations sends is_syncing=true, so Mailchimp does not start automations triggered by these tag changes.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "emailAddress",
+          "listId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSendCampaignStep",
       "kind": "mutation",
       "operationId": "sendCampaign",
+      "inputType": "SendCampaignInput",
+      "description": "Send one existing draft campaign now. The connector reads the campaign first and sends only a draft; a send is irreversible and Mailchimp has no idempotency key, so the Step runs with sync durability and sends at most once per Step execution.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -205,7 +406,25 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendCampaignInput identifies one existing campaign to send now. Create and review the campaign in Mailchimp first; the connector never edits campaign content or recipients.",
+        "properties": {
+          "campaignId": {
+            "description": "CampaignID is Mailchimp's campaign ID, such as 42694e9e57.",
+            "type": "string"
+          },
+          "expectedListId": {
+            "description": "ExpectedListID, when set, sends only when the campaign targets this audience; a campaign whose audience was changed after it was approved selects notSendable. Empty skips the check.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "campaignId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

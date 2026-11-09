@@ -11,6 +11,8 @@
       "name": "newSendEventStep",
       "kind": "mutation",
       "operationId": "sendEvent",
+      "inputType": "SendEventInput",
+      "description": "POST one JSON event to the connection's HTTPS delivery URL, signed with the Standard Webhooks scheme. Delivery is at least once: after a 408, 409, 425, 429, or 5xx answer, a timeout, or a lost response the same webhook-id is sent again with a fresh timestamp and signature, so the receiver must deduplicate by webhook-id and answer 2xx for an id it already applied.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -33,7 +35,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendEventInput is one JSON event that sendEvent POSTs to the connection's deliveryUrl.",
+        "properties": {
+          "payload": {
+            "description": "Payload is the complete JSON request body, such as {\"type\":\"form.submitted\",\"data\":{...}}. It must be one valid JSON value of at most maxBodyBytes bytes; an empty or invalid payload selects defect."
+          }
+        },
+        "required": [
+          "payload"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

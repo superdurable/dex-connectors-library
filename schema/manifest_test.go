@@ -300,6 +300,64 @@ func TestDispatchFenceRequiresSyncDurability(t *testing.T) {
 	require.NoError(t, manifest.Validate())
 }
 
+func TestOperationAgentReviewValidation(t *testing.T) {
+	exposed, declined := true, false
+	for name, testCase := range map[string]struct {
+		agent   *schema.OperationAgent
+		problem string
+	}{
+		"absent":             {nil, ""},
+		"exposed":            {&schema.OperationAgent{Exposed: &exposed}, ""},
+		"approval":           {&schema.OperationAgent{Exposed: &exposed, Approval: "recommended", Description: "Refund a charge."}, ""},
+		"blank description":  {&schema.OperationAgent{Exposed: &exposed, Description: "  "}, "agent.description must not be blank"},
+		"retry on mutation":  {&schema.OperationAgent{Exposed: &exposed, Retry: "safe"}, ""},
+		"unknown retry":      {&schema.OperationAgent{Exposed: &exposed, Retry: "always"}, "agent.retry must be safe"},
+		"declined retry":     {&schema.OperationAgent{Exposed: &declined, Retry: "safe"}, "require agent.exposed to be true"},
+		"declined":           {&schema.OperationAgent{Exposed: &declined}, ""},
+		"no exposed":         {&schema.OperationAgent{Approval: "recommended"}, "agent.exposed is required"},
+		"unknown approval":   {&schema.OperationAgent{Exposed: &exposed, Approval: "always"}, "agent.approval must be recommended"},
+		"declined approval":  {&schema.OperationAgent{Exposed: &declined, Approval: "recommended"}, "require agent.exposed to be true"},
+		"declined narrative": {&schema.OperationAgent{Exposed: &declined, Description: "Unused."}, "require agent.exposed to be true"},
+		"branches":           {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "rejected"}}, ""},
+		"unknown branch":     {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "unknown"}}, ""},
+		"missing branch":     {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"lost": "unknown"}}, "agent.branches.lost is not a branch of the operation"},
+		"happy-path branch":  {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"found": "rejected"}}, "agent.branches.found is the happy-path branch"},
+		"bad classification": {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "failed"}}, "agent.branches.defect must be rejected or unknown"},
+		"declined branches":  {&schema.OperationAgent{Exposed: &declined, Branches: map[string]string{"defect": "rejected"}}, "require agent.exposed to be true"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			file, err := os.Open("testdata/api-key-methods.yaml")
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, file.Close()) })
+			manifest, err := schema.Decode(file)
+			require.NoError(t, err)
+			manifest.Spec.Operations[0].Kind, manifest.Spec.Operations[0].Idempotency = "mutation", "required"
+			manifest.Spec.Operations[0].Agent = testCase.agent
+			if testCase.problem == "" {
+				require.NoError(t, manifest.Validate())
+				return
+			}
+			require.ErrorContains(t, manifest.Validate(), testCase.problem)
+		})
+	}
+}
+
+func TestOperationAgentRetryIsOnlyForMutations(t *testing.T) {
+	file, err := os.Open("testdata/api-key-methods.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, file.Close()) })
+	manifest, err := schema.Decode(file)
+	require.NoError(t, err)
+	exposed := true
+	manifest.Spec.Operations[0].Kind, manifest.Spec.Operations[0].Idempotency = "query", "none"
+	manifest.Spec.Operations[0].Agent = &schema.OperationAgent{Exposed: &exposed, Retry: "safe"}
+	require.ErrorContains(t, manifest.Validate(), "agent.retry is only for mutations")
+	manifest.Spec.Operations[0].Agent = &schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "unknown"}}
+	require.ErrorContains(t, manifest.Validate(), "agent.branches.defect unknown is only for mutations")
+	manifest.Spec.Operations[0].Agent.Branches["defect"] = "rejected"
+	require.NoError(t, manifest.Validate())
+}
+
 func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1

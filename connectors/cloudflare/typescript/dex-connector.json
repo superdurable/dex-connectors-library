@@ -11,6 +11,8 @@
       "name": "newListZonesStep",
       "kind": "query",
       "operationId": "listZones",
+      "inputType": "ListZonesInput",
+      "description": "List the first page of Cloudflare zones.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,20 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListZonesInput requests the default Cloudflare zone page.",
+        "properties": {},
+        "type": "object"
+      }
     },
     {
       "name": "newPurgeCacheByURLsStep",
       "kind": "mutation",
       "operationId": "purgeCacheByURLs",
+      "inputType": "PurgeCacheByURLsInput",
+      "description": "Purge specific URLs from a Cloudflare zone; repeating the same purge has the same cache-removal effect.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +86,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "PurgeCacheByURLsInput names one zone and up to 30 absolute URLs.",
+        "properties": {
+          "urls": {
+            "description": "URLs lists absolute HTTP or HTTPS URLs to purge.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "zoneId": {
+            "description": "ZoneID identifies the zone whose cache is purged.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "urls",
+          "zoneId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

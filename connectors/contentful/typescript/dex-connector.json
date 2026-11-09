@@ -11,6 +11,8 @@
       "name": "newGetEntryStep",
       "kind": "query",
       "operationId": "getEntry",
+      "inputType": "GetEntryInput",
+      "description": "Get one published Contentful entry.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,38 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEntryInput identifies one published entry.",
+        "properties": {
+          "entryId": {
+            "description": "EntryID is the published entry ID.",
+            "type": "string"
+          },
+          "environmentId": {
+            "description": "EnvironmentID is the environment ID, usually master.",
+            "type": "string"
+          },
+          "spaceId": {
+            "description": "SpaceID is the Contentful space ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId",
+          "environmentId",
+          "spaceId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newListEntriesStep",
       "kind": "query",
       "operationId": "listEntries",
+      "inputType": "ListEntriesInput",
+      "description": "List one page of published entries in a space and environment.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,7 +104,34 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEntriesInput selects one page of published entries.",
+        "properties": {
+          "environmentId": {
+            "description": "EnvironmentID is the environment ID.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit caps entries, from 1 through 1000; zero uses the provider default.",
+            "type": "integer"
+          },
+          "skip": {
+            "description": "Skip is the zero-based offset.",
+            "type": "integer"
+          },
+          "spaceId": {
+            "description": "SpaceID is the Contentful space ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentId",
+          "spaceId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

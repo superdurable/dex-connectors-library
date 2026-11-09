@@ -225,7 +225,15 @@ function boundedFailureMessage(message: string): string {
   return `${bytes.subarray(0, end).toString('utf8')} (truncated)`;
 }
 
-function throwDexRetry(error: unknown): never {
+/**
+ * Throws the Dex retry signal for a connector `RetryError`.
+ *
+ * A Step that calls `runQuery` or `runMutation` directly uses this in place of a Step factory.
+ * A `RetryAfter` delay of at least one second, truncated to whole seconds, becomes `retryAfter`.
+ * Any other error is thrown unchanged for the Step's retry policy, so a shorter delay uses that
+ * policy's backoff.
+ */
+export function throwDexRetry(error: unknown): never {
   if (error instanceof RetryError && error.retryAfterMs >= 1000) throw retryAfter(Math.floor(error.retryAfterMs / 1000), error);
   throw error;
 }

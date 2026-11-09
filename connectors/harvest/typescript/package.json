@@ -8,7 +8,7 @@
   "engines": { "node": "^22.0.0 || ^24.0.0" },
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }, "./dex-connector.json": "./dex-connector.json" },
   "files": ["dist", "README.md", "LICENSE", "dex-connector.json"],
   "scripts": {
     "prepack": "npm run build",

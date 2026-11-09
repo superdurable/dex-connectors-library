@@ -11,6 +11,8 @@
       "name": "new_track_event_step",
       "kind": "mutation",
       "operationId": "trackEvent",
+      "inputType": "TrackEventInput",
+      "description": "Import one event with stable time, distinct_id, and a derived $insert_id.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "TrackEventInput identifies one stable event across Dex retries.",
+        "properties": {
+          "distinctID": {
+            "description": "DistinctID identifies the associated user and must remain stable across retries.",
+            "type": "string"
+          },
+          "event": {
+            "description": "Event is the Mixpanel event name.",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Properties contains optional non-secret string properties.",
+            "type": "object"
+          },
+          "time": {
+            "description": "Time is the event's Unix timestamp in seconds and must remain stable across retries.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "distinctID",
+          "event",
+          "time"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_export_events_step",
       "kind": "query",
       "operationId": "exportEvents",
+      "inputType": "ExportEventsInput",
+      "description": "Export a bounded date range of raw events without arbitrary properties.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -71,7 +106,31 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ExportEventsInput selects a bounded raw event export.",
+        "properties": {
+          "fromDate": {
+            "description": "FromDate is the inclusive YYYY-MM-DD start date.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the maximum number of raw events, from 1 through 100.",
+            "type": "integer"
+          },
+          "toDate": {
+            "description": "ToDate is the inclusive YYYY-MM-DD end date.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fromDate",
+          "limit",
+          "toDate"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

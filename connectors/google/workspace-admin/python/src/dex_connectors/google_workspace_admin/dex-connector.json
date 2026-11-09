@@ -11,6 +11,8 @@
       "name": "new_get_user_step",
       "kind": "query",
       "operationId": "getUser",
+      "inputType": "GetUserInput",
+      "description": "Read one user account by primary email address, alias, or unique user ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserInput identifies one account to read.",
+        "properties": {
+          "userKey": {
+            "description": "UserKey is the account's primary email address, an alias address, or its numeric unique user ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_users_step",
       "kind": "query",
       "operationId": "listUsers",
+      "inputType": "ListUsersInput",
+      "description": "List one bounded page of accounts in the administrator's customer account or one domain, optionally filtered with Google's user search syntax.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +94,45 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListUsersInput selects one page of accounts. Leave both Domain and Customer blank to list every account in the administrator's own customer account.",
+        "properties": {
+          "customer": {
+            "description": "Customer is a customer ID such as C03az79cb, for a reseller administrator; blank uses the administrator's own account.",
+            "type": "string"
+          },
+          "domain": {
+            "description": "Domain limits the page to one of the account's domains, such as example.com; it cannot be combined with Customer.",
+            "type": "string"
+          },
+          "orderBy": {
+            "description": "OrderBy is email, givenName, or familyName; blank sorts by primary address.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to 500 accounts; zero uses the connection's listUsersPageSize.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page; Google keeps it valid for three days.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Query is Google's user search syntax, such as orgUnitPath='/Sales' isSuspended=false; blank lists every account. Google documents that new data can take up to 36 hours to appear in search results.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_create_user_step",
       "kind": "mutation",
       "operationId": "createUser",
+      "inputType": "CreateUserInput",
+      "description": "Create one account with a generated password nobody receives, tagged with a stable key, so a repeated Step returns the account it created instead of a duplicate.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -114,12 +165,54 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateUserInput describes one account to create. The connector generates the initial password itself: no password is accepted, returned, stored, or logged.",
+        "properties": {
+          "familyName": {
+            "description": "FamilyName is the required last name, at most 60 characters.",
+            "type": "string"
+          },
+          "givenName": {
+            "description": "GivenName is the required first name, at most 60 characters.",
+            "type": "string"
+          },
+          "orgUnitPath": {
+            "description": "OrgUnitPath places the account in an organizational unit, such as /Engineering; blank uses the top-level unit /.",
+            "type": "string"
+          },
+          "primaryEmail": {
+            "description": "PrimaryEmail is the new sign-in address in one of the account's verified domains, such as ada@example.com.",
+            "type": "string"
+          },
+          "provisioningKey": {
+            "description": "ProvisioningKey optionally identifies one logical account across Step executions, such as an HR hire ID. It is 1 to 128 letters, digits, and . _ : - characters; blank uses the Step's Call ID.",
+            "type": "string"
+          },
+          "recoveryEmail": {
+            "description": "RecoveryEmail is an optional personal address Google can use for account recovery.",
+            "type": "string"
+          },
+          "recoveryPhone": {
+            "description": "RecoveryPhone is an optional E.164 recovery phone number, such as +16506661212.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "familyName",
+          "givenName",
+          "primaryEmail"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_suspend_user_step",
       "kind": "mutation",
       "operationId": "suspendUser",
+      "inputType": "SuspendUserInput",
+      "description": "Suspend one account so it cannot sign in, keeping its data; suspending a suspended account changes nothing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,12 +245,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SuspendUserInput identifies one account to suspend.",
+        "properties": {
+          "userKey": {
+            "description": "UserKey is the account's primary email address, an alias address, or its numeric unique user ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_unsuspend_user_step",
       "kind": "mutation",
       "operationId": "unsuspendUser",
+      "inputType": "UnsuspendUserInput",
+      "description": "Restore sign-in for one suspended account; restoring an active account changes nothing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -190,12 +299,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UnsuspendUserInput identifies one account whose sign-in to restore.",
+        "properties": {
+          "userKey": {
+            "description": "UserKey is the account's primary email address, an alias address, or its numeric unique user ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_add_user_to_group_step",
       "kind": "mutation",
       "operationId": "addUserToGroup",
+      "inputType": "AddUserToGroupInput",
+      "description": "Add one account to a group with a role; an existing membership is read back and returned instead of failing.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -228,12 +353,42 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddUserToGroupInput adds one account to one group.",
+        "properties": {
+          "groupKey": {
+            "description": "GroupKey is the group's email address, an alias, or its unique group ID.",
+            "type": "string"
+          },
+          "memberEmail": {
+            "description": "MemberEmail is the account's primary or alias email address.",
+            "type": "string"
+          },
+          "role": {
+            "description": "Role is MEMBER, MANAGER, or OWNER; blank adds the account as MEMBER.",
+            "enum": [
+              "MANAGER",
+              "MEMBER",
+              "OWNER"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupKey",
+          "memberEmail"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_remove_user_from_group_step",
       "kind": "mutation",
       "operationId": "removeUserFromGroup",
+      "inputType": "RemoveUserFromGroupInput",
+      "description": "Remove one account's direct membership from a group; a membership that is already gone is reported as removed.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -266,7 +421,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RemoveUserFromGroupInput removes one account's direct membership from one group.",
+        "properties": {
+          "groupKey": {
+            "description": "GroupKey is the group's email address, an alias, or its unique group ID.",
+            "type": "string"
+          },
+          "memberKey": {
+            "description": "MemberKey is the account's primary or alias email address or its numeric unique user ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "groupKey",
+          "memberKey"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

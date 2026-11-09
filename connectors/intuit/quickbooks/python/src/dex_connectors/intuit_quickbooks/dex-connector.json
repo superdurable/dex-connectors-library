@@ -11,6 +11,8 @@
       "name": "new_find_customer_step",
       "kind": "query",
       "operationId": "findCustomer",
+      "inputType": "FindCustomerInput",
+      "description": "Resolve one customer by exact primary email address or exact display name with a QuickBooks query, distinguishing one match, none, and several.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -48,12 +50,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindCustomerInput identifies a customer by exactly one of its primary email address or display name.",
+        "properties": {
+          "displayName": {
+            "description": "DisplayName is the customer's exact display name, which QuickBooks keeps unique.",
+            "type": "string"
+          },
+          "emailAddress": {
+            "description": "EmailAddress is one bare address such as jane@example.com, matched against PrimaryEmailAddr. QuickBooks does not require email addresses to be unique, so several customers can match.",
+            "type": "string"
+          },
+          "includesInactive": {
+            "description": "IncludesInactive also matches customers made inactive, which QuickBooks treats as deleted; false matches only active customers.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_create_customer_step",
       "kind": "mutation",
       "operationId": "createCustomer",
+      "inputType": "CreateCustomerInput",
+      "description": "Create one customer with a unique display name, email address, names, company, phone, and currency; every attempt of the Step sends the same QuickBooks requestid to request replay of an earlier result.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -86,12 +109,52 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateCustomerInput describes one new customer.",
+        "properties": {
+          "companyName": {
+            "description": "CompanyName is the customer's company, at most 100 characters.",
+            "type": "string"
+          },
+          "currencyCode": {
+            "description": "CurrencyCode is the customer's ISO 4217 currency when the company uses multicurrency; blank uses the company's home currency. QuickBooks cannot change it later.",
+            "type": "string"
+          },
+          "displayName": {
+            "description": "DisplayName is required and must be unique across QuickBooks customers, vendors, and employees; a name in use selects nameConflict.",
+            "type": "string"
+          },
+          "emailAddress": {
+            "description": "EmailAddress is the primary email address, such as accounts@example.com; blank leaves it unset.",
+            "type": "string"
+          },
+          "familyName": {
+            "description": "FamilyName is the contact's last name, at most 100 characters.",
+            "type": "string"
+          },
+          "givenName": {
+            "description": "GivenName is the contact's first name, at most 100 characters.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Phone is the primary phone number exactly as it should appear, at most 30 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "displayName"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_invoice_step",
       "kind": "mutation",
       "operationId": "createInvoice",
+      "inputType": "CreateInvoiceInput",
+      "description": "Create one invoice for a customer with exact decimal item lines, dates, an optional document number, and a billing email; every attempt sends the same QuickBooks requestid to request replay of an earlier result.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,12 +182,107 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "InvoiceLineInput": {
+            "additionalProperties": false,
+            "description": "InvoiceLineInput is one item line of a new invoice.",
+            "properties": {
+              "amount": {
+                "description": "Amount is the line amount with at most two decimal places. Blank computes Quantity times UnitPrice exactly, rounded half away from zero to two places; both are then required.",
+                "type": "string"
+              },
+              "description": {
+                "description": "Description is the line text, at most 4000 characters; blank uses the item's description.",
+                "type": "string"
+              },
+              "itemId": {
+                "description": "ItemID is the product or service item's Id, which supplies the income account.",
+                "type": "string"
+              },
+              "quantity": {
+                "description": "Quantity is the item quantity, up to five decimal places.",
+                "type": "string"
+              },
+              "serviceDate": {
+                "description": "ServiceDate is the date of service, YYYY-MM-DD; blank leaves it unset.",
+                "type": "string"
+              },
+              "taxCodeId": {
+                "description": "TaxCodeID is the line's tax code, such as TAX or NON in a US company; blank uses the item's.",
+                "type": "string"
+              },
+              "unitPrice": {
+                "description": "UnitPrice is the unit price, up to five decimal places.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "itemId"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateInvoiceInput describes one new invoice. Amounts are exact Decimals in the customer's currency.",
+        "properties": {
+          "billEmail": {
+            "description": "BillEmail is the address sendInvoice uses by default; blank uses none.",
+            "type": "string"
+          },
+          "currencyCode": {
+            "description": "CurrencyCode is the invoice's ISO 4217 currency, which must be the customer's; blank uses the customer's currency.",
+            "type": "string"
+          },
+          "customerId": {
+            "description": "CustomerID is the invoiced customer's Id, such as from findCustomer or createCustomer.",
+            "type": "string"
+          },
+          "customerMemo": {
+            "description": "CustomerMemo is the message shown to the customer on the invoice, at most 1000 characters.",
+            "type": "string"
+          },
+          "docNumber": {
+            "description": "DocNumber is the invoice number, at most 21 characters without a backslash, such as an order ID, so listInvoices can search for it; blank lets QuickBooks assign the next number when the company numbers invoices automatically.",
+            "type": "string"
+          },
+          "dueDate": {
+            "description": "DueDate is the payment due date, YYYY-MM-DD; blank applies the customer's or company's terms.",
+            "type": "string"
+          },
+          "lines": {
+            "description": "Lines are 1 to 100 item lines.",
+            "items": {
+              "$ref": "#/$defs/InvoiceLineInput"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "privateNote": {
+            "description": "PrivateNote is an internal memo, at most 4000 characters, such as the application's order ID.",
+            "type": "string"
+          },
+          "txnDate": {
+            "description": "TxnDate is the invoice date, YYYY-MM-DD; blank uses today in the company's time zone.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerId",
+          "lines"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_invoice_step",
       "kind": "query",
       "operationId": "getInvoice",
+      "inputType": "GetInvoiceInput",
+      "description": "Read one invoice by Id with its lines, exact decimal total and balance, email status, and linked payments.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -157,12 +315,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetInvoiceInput identifies one invoice.",
+        "properties": {
+          "invoiceId": {
+            "description": "InvoiceID is the invoice's QuickBooks Id, such as 130.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invoiceId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_invoices_step",
       "kind": "query",
       "operationId": "listInvoices",
+      "inputType": "ListInvoicesInput",
+      "description": "List one bounded page of invoices, at most 100, filtered by customer, document number, open balance, invoice date, and last update, in a stable order with the next start position.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -190,12 +364,57 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInvoicesInput filters one page of invoices. Every filter is optional, and filters combine with AND.",
+        "properties": {
+          "customerId": {
+            "description": "CustomerID keeps invoices of one customer, by Id.",
+            "type": "string"
+          },
+          "docNumber": {
+            "description": "DocNumber keeps invoices whose invoice number equals this value.",
+            "type": "string"
+          },
+          "isOpenOnly": {
+            "description": "IsOpenOnly keeps invoices whose Balance is above zero, that is, not fully paid.",
+            "type": "boolean"
+          },
+          "maxResults": {
+            "description": "MaxResults is 1 to 100 invoices; zero uses DefaultInvoicesPerPage.",
+            "type": "integer"
+          },
+          "startPosition": {
+            "description": "StartPosition is the 1-based position of the first invoice to read, such as the previous page's NextStartPosition; zero reads from the first invoice.",
+            "type": "integer"
+          },
+          "txnDateFrom": {
+            "description": "TxnDateFrom keeps invoices dated on or after this date, YYYY-MM-DD.",
+            "type": "string"
+          },
+          "txnDateTo": {
+            "description": "TxnDateTo keeps invoices dated on or before this date, YYYY-MM-DD.",
+            "type": "string"
+          },
+          "updatedSince": {
+            "description": "UpdatedSince keeps invoices created or changed at or after this instant, to the second.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_send_invoice_step",
       "kind": "mutation",
       "operationId": "sendInvoice",
+      "inputType": "SendInvoiceInput",
+      "description": "Email one invoice to its billing address or a given address; every attempt sends the same QuickBooks requestid, though replay support on /send is unverified.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -223,12 +442,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendInvoiceInput identifies the invoice to email and, optionally, its recipient.",
+        "properties": {
+          "invoiceId": {
+            "description": "InvoiceID is the invoice's QuickBooks Id, such as 130.",
+            "type": "string"
+          },
+          "sendTo": {
+            "description": "SendTo is the recipient address; QuickBooks also stores it as the invoice's BillEmail. Blank sends to the invoice's BillEmail, and QuickBooks rejects an invoice without one.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invoiceId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_record_payment_step",
       "kind": "mutation",
       "operationId": "recordPayment",
+      "inputType": "RecordPaymentInput",
+      "description": "Record one received payment of an exact decimal amount and apply it to an invoice; every attempt sends the same QuickBooks requestid to request replay of an earlier result.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -256,7 +495,55 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RecordPaymentInput describes one received payment applied in full to one invoice.",
+        "properties": {
+          "amount": {
+            "description": "Amount is the exact amount received and applied to the invoice, with at most two decimal places, such as the invoice's Balance.",
+            "type": "string"
+          },
+          "currencyCode": {
+            "description": "CurrencyCode is the payment's ISO 4217 currency, which must be the customer's; blank uses the customer's currency.",
+            "type": "string"
+          },
+          "customerId": {
+            "description": "CustomerID is the paying customer's Id; it must be the invoice's customer.",
+            "type": "string"
+          },
+          "depositAccountId": {
+            "description": "DepositAccountID is the bank or other current asset account's Id; blank deposits to QuickBooks's Undeposited Funds account.",
+            "type": "string"
+          },
+          "invoiceId": {
+            "description": "InvoiceID is the paid invoice's Id.",
+            "type": "string"
+          },
+          "paymentMethodId": {
+            "description": "PaymentMethodID is the payment method's Id, such as for Credit Card; blank leaves it unset.",
+            "type": "string"
+          },
+          "paymentReferenceNumber": {
+            "description": "PaymentReferenceNumber is QuickBooks's PaymentRefNum, such as a check or charge number, at most 21 characters.",
+            "type": "string"
+          },
+          "privateNote": {
+            "description": "PrivateNote is an internal memo, at most 4000 characters.",
+            "type": "string"
+          },
+          "txnDate": {
+            "description": "TxnDate is the payment date, YYYY-MM-DD; blank uses today in the company's time zone.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "customerId",
+          "invoiceId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

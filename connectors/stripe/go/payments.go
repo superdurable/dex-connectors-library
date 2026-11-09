@@ -55,7 +55,7 @@ type CreateRefundInput struct {
 	// Amount is the positive refund amount in the currency's minor unit.
 	Amount int64 `json:"amount"`
 	// Reason optionally classifies the refund as duplicate, fraudulent, or requested_by_customer.
-	Reason string `json:"reason,omitempty"`
+	Reason string `json:"reason,omitempty" connectorEnum:"duplicate,fraudulent,requested_by_customer"`
 	// Metadata is bounded non-sensitive application metadata stored on the refund.
 	Metadata map[string]string `json:"metadata,omitempty"`
 }

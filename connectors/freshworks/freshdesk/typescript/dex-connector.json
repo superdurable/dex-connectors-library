@@ -11,6 +11,8 @@
       "name": "newSearchTicketsStep",
       "kind": "query",
       "operationId": "searchTickets",
+      "inputType": "SearchTicketsInput",
+      "description": "Filter tickets by Freshdesk status, priority, tag, update date, and requester email with Freshdesk's filter query, returning one page of at most 30 tickets.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,68 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchTicketsInput selects tickets with typed filters that the connector turns into one Freshdesk filter query. Different filters narrow each other; several statuses, priorities, or tags match any of them. At least one of Statuses, Priorities, Tags, or UpdatedSinceDate is required, because Freshdesk's filter query needs a condition and has no requester field.",
+        "properties": {
+          "page": {
+            "description": "Page is 1 to MaxSearchPage; zero reads the first page.",
+            "type": "integer"
+          },
+          "priorities": {
+            "description": "Priorities matches tickets with any of these Freshdesk priorities. Empty matches every priority.",
+            "items": {
+              "enum": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "requesterEmail": {
+            "description": "RequesterEmail keeps only tickets requested by the contact with this email address, such as jane@example.com. The connector looks the contact up first and filters each page itself, so a page can hold fewer than SearchPageSize tickets, even none, while NextPage is set. Blank keeps every requester.",
+            "type": "string"
+          },
+          "statuses": {
+            "description": "Statuses matches tickets in any of these Freshdesk statuses, including custom ones. Empty matches every status.",
+            "items": {
+              "enum": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ],
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "description": "Tags matches tickets carrying any of these tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedSinceDate": {
+            "description": "UpdatedSinceDate matches tickets updated on or after this UTC calendar date, written YYYY-MM-DD. Freshdesk's filter query compares dates, not instants. Blank applies no time filter.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetTicketStep",
       "kind": "query",
       "operationId": "getTicket",
+      "inputType": "GetTicketInput",
+      "description": "Read one ticket by ID with its requester and a bounded list of its first conversations.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +134,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTicketInput names one ticket and how many of its first conversations to return.",
+        "properties": {
+          "conversationLimit": {
+            "description": "ConversationLimit is 1 to MaxConversationLimit; zero uses DefaultConversationLimit.",
+            "type": "integer"
+          },
+          "ticketId": {
+            "description": "TicketID is the Freshdesk ticket ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticketId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateTicketStep",
       "kind": "mutation",
       "operationId": "createTicket",
+      "inputType": "CreateTicketInput",
+      "description": "Create one ticket for a requester email. The Step runs with sync durability; 429, 503, and traced pre-connection failures permit one next-attempt resend, while other dispatched outcomes are never resent.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +187,99 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "TicketRequesterInput": {
+            "additionalProperties": false,
+            "description": "TicketRequesterInput identifies the requester by email. Freshdesk uses the contact with that address or, when none exists, adds a contact named Name.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare address such as jane@example.com.",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name names a contact Freshdesk adds; blank lets Freshdesk derive one.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateTicketInput is one new ticket. Zero values leave a field to Freshdesk's defaults, the account's ticket form, and its automations.",
+        "properties": {
+          "description": {
+            "description": "Description is the ticket's plain-text content. It is required. The connector escapes it into Freshdesk's HTML description, so markup is shown literally and line breaks are kept.",
+            "type": "string"
+          },
+          "groupId": {
+            "description": "GroupID assigns the ticket to a group, or zero for Freshdesk's default routing.",
+            "type": "integer"
+          },
+          "priority": {
+            "description": "Priority is a Freshdesk priority, or zero for Freshdesk's default, Low (1).",
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "type": "integer"
+          },
+          "requester": {
+            "$ref": "#/$defs/TicketRequesterInput",
+            "description": "Requester is the customer asking for help. It is required."
+          },
+          "responderId": {
+            "description": "ResponderID assigns the ticket to an agent, Freshdesk's responder_id, or zero for none.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status is a Freshdesk status, or zero for Freshdesk's default, Open (2).",
+            "enum": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "type": "integer"
+          },
+          "subject": {
+            "description": "Subject is the ticket subject. It is required.",
+            "type": "string"
+          },
+          "tags": {
+            "description": "Tags are set on the new ticket; account automations may add more.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "description": "Type is one of the account's ticket type labels, such as Question, or empty for none.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "requester",
+          "subject"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateTicketStep",
       "kind": "mutation",
       "operationId": "updateTicket",
+      "inputType": "UpdateTicketInput",
+      "description": "Set the status, priority, group, or agent of one ticket and add or remove tags; a repeated attempt finds the change already applied and writes nothing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -147,12 +312,72 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateTicketInput is one change to an existing ticket. Zero and empty fields are left unchanged; this release cannot clear an agent or group.",
+        "properties": {
+          "addTags": {
+            "description": "AddTags adds tags and keeps the ticket's other tags. A tag already present in any letter case is kept as is.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "groupId": {
+            "description": "GroupID assigns a group, or zero to keep the group.",
+            "type": "integer"
+          },
+          "priority": {
+            "description": "Priority is the new Freshdesk priority, or zero to keep it.",
+            "enum": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "type": "integer"
+          },
+          "removeTags": {
+            "description": "RemoveTags removes tags in any letter case and keeps the ticket's other tags.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "responderId": {
+            "description": "ResponderID assigns an agent, Freshdesk's responder_id, or zero to keep the agent.",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Status is the new Freshdesk status, including a custom one, or zero to keep it.",
+            "enum": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "type": "integer"
+          },
+          "ticketId": {
+            "description": "TicketID is the Freshdesk ticket ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticketId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddNoteStep",
       "kind": "mutation",
       "operationId": "addNote",
+      "inputType": "AddNoteInput",
+      "description": "Add one private note or one public reply to a ticket. The Step runs with sync durability; 429, 503, and traced pre-connection failures permit one next-attempt resend, while other dispatched outcomes are never resent.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -185,7 +410,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddNoteInput is one private note or one public reply to add to a ticket.",
+        "properties": {
+          "body": {
+            "description": "Body is the plain-text note or reply. It is required. The connector escapes it into Freshdesk's HTML body, so markup is shown literally and line breaks are kept.",
+            "type": "string"
+          },
+          "isPublicReply": {
+            "description": "IsPublicReply sends the body as a reply that Freshdesk emails to the requester, through POST /api/v2/tickets/{id}/reply. False adds a private note that only agents can see.",
+            "type": "boolean"
+          },
+          "ticketId": {
+            "description": "TicketID is the Freshdesk ticket ID.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "body",
+          "ticketId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

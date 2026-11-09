@@ -11,6 +11,8 @@
       "name": "new_query_records_step",
       "kind": "query",
       "operationId": "queryRecords",
+      "inputType": "QueryRecordsInput",
+      "description": "Run one SOQL statement whose values are typed, escaped bind values, returning one bounded page of records and the nextRecordsUrl cursor for the next page.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -48,12 +50,83 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "SOQLValue": {
+            "additionalProperties": false,
+            "description": "SOQLValue is one typed value bound to a :name placeholder in a QueryRecordsInput SOQL statement. The connector renders it as an escaped literal, so bound text can never change the statement's structure. Build it with a constructor such as SOQLString; the exported fields exist so a value can travel in durable Step input.",
+            "properties": {
+              "boolean": {
+                "description": "Boolean holds the value of a boolean.",
+                "type": "boolean"
+              },
+              "kind": {
+                "description": "Kind selects the rendering.",
+                "enum": [
+                  "boolean",
+                  "date",
+                  "dateTime",
+                  "identifier",
+                  "likeContains",
+                  "likeStartsWith",
+                  "null",
+                  "number",
+                  "string",
+                  "stringList"
+                ],
+                "type": "string"
+              },
+              "text": {
+                "description": "Text holds the value for every kind except stringList, boolean, and null.",
+                "type": "string"
+              },
+              "texts": {
+                "description": "Texts holds the values of a stringList.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "QueryRecordsInput selects one page of a SOQL query. Set exactly one of SOQL and NextRecordsCursor. SOQL values are never concatenated into the statement: write a :name placeholder, as in Apex, and bind a typed value such as SOQLString(email) under that name. Placeholders inside string literals are left untouched, and every binding must be used exactly by name.",
+        "properties": {
+          "batchSize": {
+            "description": "BatchSize requests from 200 to 2000 records per page; zero uses the connection's queryBatchSize. Salesforce treats it as a hint.",
+            "type": "integer"
+          },
+          "bindings": {
+            "additionalProperties": {
+              "$ref": "#/$defs/SOQLValue"
+            },
+            "description": "Bindings maps each placeholder name, without its colon, to a typed value.",
+            "type": "object"
+          },
+          "nextRecordsCursor": {
+            "description": "NextRecordsCursor continues a query with the cursor a previous page returned.",
+            "type": "string"
+          },
+          "soql": {
+            "description": "SOQL is one SOQL statement with :name placeholders, such as SELECT Id, Name FROM Contact WHERE Email = :email LIMIT 10.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_get_record_step",
       "kind": "query",
       "operationId": "getRecord",
+      "inputType": "GetRecordInput",
+      "description": "Read the chosen fields of one record by sObject type and record ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -86,12 +159,44 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetRecordInput identifies one record and the fields to read.",
+        "properties": {
+          "fields": {
+            "description": "Fields lists from 1 to 200 field API names to read, such as Name and Email. Relationship paths are not accepted; query them with queryRecords.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "recordId": {
+            "description": "RecordID is the 15- or 18-character Salesforce record ID.",
+            "type": "string"
+          },
+          "sObjectType": {
+            "description": "SObjectType is the record's object API name, such as Contact or Invoice__c.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields",
+          "recordId",
+          "sObjectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_upsert_record_by_external_id_step",
       "kind": "mutation",
       "operationId": "upsertRecordByExternalId",
+      "inputType": "UpsertRecordByExternalIDInput",
+      "description": "Create or update one record keyed by an External ID field value, so a retried Step updates the record an earlier attempt created instead of creating a duplicate.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -124,12 +229,47 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpsertRecordByExternalIDInput identifies one record by an External ID field value and the fields to write to it. Salesforce creates the record when no record carries ExternalIDValue in ExternalIDField and updates it when exactly one does. Repeating the same input therefore converges on one record, which is what makes a retried Step safe; mark the field Unique as well as External ID so that concurrent attempts cannot create two records.",
+        "properties": {
+          "externalIdField": {
+            "description": "ExternalIDField is the API name of a field marked External ID, such as ERP_Id__c.",
+            "type": "string"
+          },
+          "externalIdValue": {
+            "description": "ExternalIDValue is the correlation key from the other system, at most 255 characters.",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {},
+            "description": "Fields maps field API names to exact JSON values, such as \"LastName\": \"Raman\". It must not set Id or ExternalIDField, which the request path names.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "sObjectType": {
+            "description": "SObjectType is the object API name, such as Contact or Invoice__c.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "externalIdField",
+          "externalIdValue",
+          "fields",
+          "sObjectType"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_record_step",
       "kind": "mutation",
       "operationId": "updateRecord",
+      "inputType": "UpdateRecordInput",
+      "description": "Update the named fields of one record by sObject type and record ID, leaving every other field unchanged.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -162,7 +302,35 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateRecordInput identifies one record and the fields to change.",
+        "properties": {
+          "fields": {
+            "additionalProperties": {},
+            "description": "Fields maps at least one field API name to its exact JSON value, such as \"StageName\": \"Closed Won\"; JSON null clears a field. Fields that are not listed keep their values.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "recordId": {
+            "description": "RecordID is the 15- or 18-character Salesforce record ID.",
+            "type": "string"
+          },
+          "sObjectType": {
+            "description": "SObjectType is the record's object API name, such as Opportunity.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields",
+          "recordId",
+          "sObjectType"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "newSearchTicketsStep",
       "kind": "query",
       "operationId": "searchTickets",
+      "inputType": "SearchTicketsInput",
+      "description": "Search one page of Zoho Desk tickets by status, status type, priority, contact email, department, and modified time, with from and limit paging of at most 100 tickets.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -38,12 +40,78 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchTicketsInput selects tickets with typed filters that the connector turns into Zoho Desk search parameters. Different filters narrow each other; several statuses, status types, or priorities match any of them. At least one filter is required.",
+        "properties": {
+          "contactEmail": {
+            "description": "ContactEmail keeps only tickets whose email or contact email is this address, compared without regard to letter case, such as jane@example.com. Zoho Desk's email filter also matches look-alike addresses, so the connector checks each ticket itself; a page can then hold fewer tickets than Limit, even none, while NextFrom is set. Blank keeps every contact.",
+            "type": "string"
+          },
+          "departmentId": {
+            "description": "DepartmentID matches tickets in this department. Blank searches every department the agent can see.",
+            "type": "string"
+          },
+          "from": {
+            "description": "From is the zero-based index of the first result, 0 to 4999.",
+            "type": "integer"
+          },
+          "limit": {
+            "description": "Limit is 1 to MaxSearchLimit; zero uses DefaultSearchLimit. A page that would pass result MaxSearchResults is shortened to end there.",
+            "type": "integer"
+          },
+          "modifiedSince": {
+            "description": "ModifiedSince matches tickets modified at or after this RFC 3339 instant with an explicit offset, such as 2026-01-21T00:00:00Z, until the time of the request. Blank applies no time filter.",
+            "type": "string"
+          },
+          "priorities": {
+            "description": "Priorities matches tickets with any of these Zoho Desk priority names, such as High.",
+            "items": {
+              "enum": [
+                "High",
+                "Low",
+                "Medium"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "statusTypes": {
+            "description": "StatusTypes matches tickets whose status falls under any of these types, so custom statuses match without listing them. Set Statuses or StatusTypes, not both.",
+            "items": {
+              "enum": [
+                "Closed",
+                "On Hold",
+                "Open"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "statuses": {
+            "description": "Statuses matches tickets in any of these Zoho Desk status names, including custom statuses, such as Open or Waiting for Customer. Set Statuses or StatusTypes, not both.",
+            "items": {
+              "enum": [
+                "Closed",
+                "Escalated",
+                "On Hold",
+                "Open"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetTicketStep",
       "kind": "query",
       "operationId": "getTicket",
+      "inputType": "GetTicketInput",
+      "description": "Read one ticket by ID with its contact and bounded lists of its newest threads and newest comments.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +144,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTicketInput names one ticket and how many of its newest threads and comments to return.",
+        "properties": {
+          "commentLimit": {
+            "description": "CommentLimit is 1 to MaxCommentLimit; zero uses DefaultCommentLimit.",
+            "type": "integer"
+          },
+          "threadLimit": {
+            "description": "ThreadLimit is 1 to MaxThreadLimit; zero uses DefaultThreadLimit.",
+            "type": "integer"
+          },
+          "ticketId": {
+            "description": "TicketID is the Zoho Desk ticket ID, a decimal string such as 1892000000042034.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticketId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateTicketStep",
       "kind": "mutation",
       "operationId": "createTicket",
+      "inputType": "CreateTicketInput",
+      "description": "Create one ticket in a department for a contact. Zoho Desk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,12 +201,90 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "TicketContactInput": {
+            "additionalProperties": false,
+            "description": "TicketContactInput identifies a ticket's contact by email for createTicket.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare address such as jane@example.com.",
+                "type": "string"
+              },
+              "firstName": {
+                "description": "FirstName names a contact Zoho Desk adds; blank sends none.",
+                "type": "string"
+              },
+              "lastName": {
+                "description": "LastName names a contact Zoho Desk adds; blank sends none.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateTicketInput is one new ticket in a department. Zero values leave a field to Zoho Desk's defaults, the department's layout, and its automations.",
+        "properties": {
+          "assigneeId": {
+            "description": "AssigneeID assigns the ticket to an agent, or empty for Zoho Desk's routing.",
+            "type": "string"
+          },
+          "contact": {
+            "$ref": "#/$defs/TicketContactInput",
+            "description": "Contact identifies the customer by email. Zoho Desk uses the contact with that address or, when none exists, adds one with the given names."
+          },
+          "contactId": {
+            "description": "ContactID names an existing contact. Set ContactID or Contact.Email, not both.",
+            "type": "string"
+          },
+          "departmentId": {
+            "description": "DepartmentID is the department that owns the ticket. Zoho Desk requires it; GET /api/v1/departments lists the organization's departments.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description is the ticket's plain-text content, at most 65,535 characters. It is required. The connector escapes it into Zoho Desk's HTML description, so markup is shown literally and line breaks are kept.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority is a Zoho Desk priority name, or empty for the department's default.",
+            "enum": [
+              "High",
+              "Low",
+              "Medium"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "description": "Status is a Zoho Desk status name, including custom statuses, or empty for the department's default.",
+            "enum": [
+              "Closed",
+              "Escalated",
+              "On Hold",
+              "Open"
+            ],
+            "type": "string"
+          },
+          "subject": {
+            "description": "Subject is the ticket subject, at most 255 characters. It is required.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "departmentId",
+          "description",
+          "subject"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateTicketStep",
       "kind": "mutation",
       "operationId": "updateTicket",
+      "inputType": "UpdateTicketInput",
+      "description": "Set the status, priority, assignee, or department of one ticket; a repeated attempt finds the change already applied and writes nothing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -147,12 +317,55 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateTicketInput is one change to an existing ticket. Empty fields are left unchanged; this release cannot clear an assignee.",
+        "properties": {
+          "assigneeId": {
+            "description": "AssigneeID assigns an agent of the ticket's department, or empty to keep the assignee.",
+            "type": "string"
+          },
+          "departmentId": {
+            "description": "DepartmentID moves the ticket to another department, or empty to keep it. Zoho Desk applies the new department's rules, so set AssigneeID too when the agent must stay assigned.",
+            "type": "string"
+          },
+          "priority": {
+            "description": "Priority is the new Zoho Desk priority name, or empty to keep it.",
+            "enum": [
+              "High",
+              "Low",
+              "Medium"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "description": "Status is the new Zoho Desk status name, including a custom one, or empty to keep it.",
+            "enum": [
+              "Closed",
+              "Escalated",
+              "On Hold",
+              "Open"
+            ],
+            "type": "string"
+          },
+          "ticketId": {
+            "description": "TicketID is the Zoho Desk ticket ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticketId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddCommentStep",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one public or private plain-text comment to a ticket. Zoho Desk has no idempotency key, so the Step runs with sync durability and sends the request at most once per Step execution.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -185,7 +398,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput is one plain-text comment to add to a ticket.",
+        "properties": {
+          "content": {
+            "description": "Content is the plain-text comment, at most MaxCommentRunes characters. It is required. The connector sends it as plainText, so markup is shown literally.",
+            "type": "string"
+          },
+          "isPublic": {
+            "description": "IsPublic adds a public comment, which the customer can see in the help center. False adds a private comment that only agents see. Zoho Desk fixes visibility when the comment is added.",
+            "type": "boolean"
+          },
+          "ticketId": {
+            "description": "TicketID is the Zoho Desk ticket ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "ticketId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

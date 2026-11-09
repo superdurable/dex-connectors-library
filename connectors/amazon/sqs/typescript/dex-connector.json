@@ -11,6 +11,8 @@
       "name": "newReceiveMessagesStep",
       "kind": "mutation",
       "operationId": "receiveMessages",
+      "inputType": "ReceiveMessagesInput",
+      "description": "Long-poll one queue for up to ten messages with their bodies, receipt handles, receive counts, and message attributes, hiding each received message from other consumers for its visibility timeout.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ReceiveMessagesInput selects one queue and how long and how many messages to wait for.",
+        "properties": {
+          "maxMessages": {
+            "description": "MaxMessages is the most messages to receive, from 1 to 10; zero uses the connection's maxMessagesPerReceive.",
+            "type": "integer"
+          },
+          "queueUrl": {
+            "description": "QueueURL is the queue URL, such as https://sqs.eu-west-1.amazonaws.com/123456789012/orders; blank uses the connection's defaultQueueUrl.",
+            "type": "string"
+          },
+          "visibilityTimeoutSeconds": {
+            "description": "VisibilityTimeoutSeconds hides each received message from other consumers for this many seconds, from 0 to 43200; nil uses the queue's own visibility timeout.",
+            "type": "integer"
+          },
+          "waitTimeSeconds": {
+            "description": "WaitTimeSeconds is how long to wait for a message to arrive, from 0 to 20 seconds; nil uses the connection's receiveWaitSeconds, and 0 returns at once.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newDeleteMessageStep",
       "kind": "mutation",
       "operationId": "deleteMessage",
+      "inputType": "DeleteMessageInput",
+      "description": "Acknowledge one received message by deleting it from its queue with the receipt handle of its latest delivery, so SQS does not deliver it again; repeating an attempt is safe.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +103,36 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DeleteMessageInput acknowledges one received message.",
+        "properties": {
+          "messageId": {
+            "description": "MessageID optionally names the message in the Result and receipt; it is not sent to SQS.",
+            "type": "string"
+          },
+          "queueUrl": {
+            "description": "QueueURL is the queue the message came from; blank uses the connection's defaultQueueUrl.",
+            "type": "string"
+          },
+          "receiptHandle": {
+            "description": "ReceiptHandle is the handle of the message's latest delivery, from receiveMessages.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "receiptHandle"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newChangeMessageVisibilityStep",
       "kind": "mutation",
       "operationId": "changeMessageVisibility",
+      "inputType": "ChangeMessageVisibilityInput",
+      "description": "Release one received message back to the queue at once with a zero timeout, or hide it for longer while the Flow keeps processing it, by setting its visibility timeout from now.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -109,7 +160,34 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ChangeMessageVisibilityInput releases one received message or hides it for longer.",
+        "properties": {
+          "messageId": {
+            "description": "MessageID optionally names the message in the Result and receipt; it is not sent to SQS.",
+            "type": "string"
+          },
+          "queueUrl": {
+            "description": "QueueURL is the queue the message came from; blank uses the connection's defaultQueueUrl.",
+            "type": "string"
+          },
+          "receiptHandle": {
+            "description": "ReceiptHandle is the handle of the message's latest delivery, from receiveMessages.",
+            "type": "string"
+          },
+          "visibilityTimeoutSeconds": {
+            "description": "VisibilityTimeoutSeconds hides the message for this many seconds from now, from 0 to 43200. Zero releases it to other consumers at once. SQS caps a message's total in-flight time at 12 hours from its first receive.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "receiptHandle",
+          "visibilityTimeoutSeconds"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

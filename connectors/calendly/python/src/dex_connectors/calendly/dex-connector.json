@@ -11,6 +11,8 @@
       "name": "new_list_scheduled_events_step",
       "kind": "query",
       "operationId": "listScheduledEvents",
+      "inputType": "ListScheduledEventsInput",
+      "description": "List one page of scheduled events that start inside a required time window, for a user, an organization, or the connected user.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,63 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListScheduledEventsInput selects one page of scheduled events.",
+        "properties": {
+          "inviteeEmail": {
+            "description": "InviteeEmail limits the list to events with this invitee; blank lists every invitee's events.",
+            "type": "string"
+          },
+          "maxStartTime": {
+            "description": "MaxStartTime is the required upper bound of the start-time window; it must be after MinStartTime.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "minStartTime": {
+            "description": "MinStartTime is the required inclusive lower bound of the start-time window.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "organizationUri": {
+            "description": "OrganizationURI lists every event of an organization, which needs an owner or admin token. When both URIs are blank the connector lists the connected user's own events.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 100 events per page; zero uses Calendly's default of 20.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page; blank reads the first page.",
+            "type": "string"
+          },
+          "sort": {
+            "description": "Sort is start_time:asc or start_time:desc; blank uses start_time:asc so pages are stable.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status is active or canceled; blank lists both.",
+            "type": "string"
+          },
+          "userUri": {
+            "description": "UserURI limits the list to one user's events, such as https://api.calendly.com/users/<id>. With OrganizationURI it selects one member of an organization the token administers.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "maxStartTime",
+          "minStartTime"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_scheduled_event_step",
       "kind": "query",
       "operationId": "getScheduledEvent",
+      "inputType": "GetScheduledEventInput",
+      "description": "Read one scheduled event by its Calendly URI.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,12 +129,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetScheduledEventInput identifies one scheduled event.",
+        "properties": {
+          "scheduledEventUri": {
+            "description": "ScheduledEventURI is the event's Calendly URI, such as the scheduledEvent.uri of an InviteeEvent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduledEventUri"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_event_invitees_step",
       "kind": "query",
       "operationId": "listEventInvitees",
+      "inputType": "ListEventInviteesInput",
+      "description": "List one bounded page of a scheduled event's invitees.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -114,12 +183,44 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEventInviteesInput selects one page of a scheduled event's invitees.",
+        "properties": {
+          "email": {
+            "description": "Email limits the page to one invitee email address; blank lists every invitee.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 100 invitees per page; zero uses Calendly's default of 20.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page; blank reads the first page.",
+            "type": "string"
+          },
+          "scheduledEventUri": {
+            "description": "ScheduledEventURI is the event's Calendly URI.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status is active or canceled; blank lists both.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduledEventUri"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_cancel_scheduled_event_step",
       "kind": "mutation",
       "operationId": "cancelScheduledEvent",
+      "inputType": "CancelScheduledEventInput",
+      "description": "Cancel one scheduled event; an event that is already canceled also selects canceled, so a repeated call is safe.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -152,12 +253,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CancelScheduledEventInput identifies the scheduled event to cancel.",
+        "properties": {
+          "reason": {
+            "description": "Reason is shown to the invitees in Calendly's cancellation notice; blank sends none. At most 10,000 characters.",
+            "type": "string"
+          },
+          "scheduledEventUri": {
+            "description": "ScheduledEventURI is the event's Calendly URI.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduledEventUri"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_scheduling_link_step",
       "kind": "mutation",
       "operationId": "createSchedulingLink",
+      "inputType": "CreateSchedulingLinkInput",
+      "description": "Create one single-use scheduling link for an event type. Calendly has no idempotency key or link lookup. A single-dispatch fence requires sync durability so retry attempts see its heartbeat checkpoints; an unconfirmed accepted write selects uncertain.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -185,12 +306,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateSchedulingLinkInput names the event type a single-use scheduling link books.",
+        "properties": {
+          "eventTypeUri": {
+            "description": "EventTypeURI is the event type's Calendly URI, such as the eventTypePicker unit's eventTypeUri.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventTypeUri"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_webhook_subscription_step",
       "kind": "mutation",
       "operationId": "createWebhookSubscription",
+      "inputType": "CreateWebhookSubscriptionInput",
+      "description": "Subscribe a callback URL to invitee webhooks. The connector lists the scope's subscriptions first and reuses one with the same URL, so a repeated call creates at most one subscription.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -223,7 +360,40 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateWebhookSubscriptionInput registers one callback URL for invitee webhooks.",
+        "properties": {
+          "callbackUrl": {
+            "description": "CallbackURL is the public HTTPS URL where the application mounts the inviteeEventReceived endpoint, such as https://example.com/webhooks/calendly.",
+            "type": "string"
+          },
+          "events": {
+            "description": "Events lists invitee.created and invitee.canceled; blank subscribes to both.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "organizationUri": {
+            "description": "OrganizationURI owns the subscription; blank uses the connected user's current organization.",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Scope is user or organization; blank uses user. An organization subscription needs an owner or admin.",
+            "type": "string"
+          },
+          "userUri": {
+            "description": "UserURI is the user of a user subscription; blank uses the connected user.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "callbackUrl"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

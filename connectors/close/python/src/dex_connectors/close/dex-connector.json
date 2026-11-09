@@ -11,6 +11,8 @@
       "name": "new_list_leads_step",
       "kind": "query",
       "operationId": "listLeads",
+      "inputType": "ListLeadsInput",
+      "description": "Read Close data from the documented listLeads endpoint.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,29 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListLeadsInput selects one Close lead page.",
+        "properties": {
+          "limit": {
+            "description": "Limit caps leads returned; zero uses 100.",
+            "type": "integer"
+          },
+          "skip": {
+            "description": "Skip is the zero-based offset into the lead list.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "new_get_lead_step",
       "kind": "query",
       "operationId": "getLead",
+      "inputType": "GetLeadInput",
+      "description": "Read Close data from the documented getLead endpoint.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -76,7 +95,21 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetLeadInput identifies one Close lead.",
+        "properties": {
+          "leadId": {
+            "description": "LeadID is the Close lead_ identifier.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "leadId"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

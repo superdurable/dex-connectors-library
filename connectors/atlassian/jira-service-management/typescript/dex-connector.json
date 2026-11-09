@@ -11,6 +11,8 @@
       "name": "newFindCustomerByEmailStep",
       "kind": "query",
       "operationId": "findCustomerByEmail",
+      "inputType": "FindCustomerByEmailInput",
+      "description": "Find the customers of one service desk whose email address equals the given address, for raising a request on a customer's behalf.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,33 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindCustomerByEmailInput names a service desk and the email address to look up among its customers.",
+        "properties": {
+          "email": {
+            "description": "Email is one bare address, such as jane@example.com, compared without case.",
+            "type": "string"
+          },
+          "serviceDeskId": {
+            "description": "ServiceDeskID is the numeric service desk ID, as the service desk picker stores it.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "serviceDeskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newSearchTicketsStep",
       "kind": "query",
       "operationId": "searchTickets",
+      "inputType": "SearchTicketsInput",
+      "description": "Search one bounded page of a service desk's requests with typed filters that the connector escapes into JQL, continuing with Jira's enhanced search nextPageToken.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -76,12 +99,86 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchTicketsInput selects one page of one service desk's requests. ProjectKey is required; every other set filter narrows the search.",
+        "properties": {
+          "labels": {
+            "description": "Labels matches requests that carry at least one of these labels.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "nextPageToken": {
+            "description": "NextPageToken continues a previous search with the same filters; blank reads the first page. Jira expires a token after seven days.",
+            "type": "string"
+          },
+          "order": {
+            "description": "Order selects the result order; blank uses TicketSearchOrderCreatedDescending.",
+            "enum": [
+              "createdAscending",
+              "createdDescending",
+              "updatedDescending"
+            ],
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 to MaxSearchPageSize requests; zero uses DefaultSearchPageSize. Jira may return fewer.",
+            "type": "integer"
+          },
+          "projectKey": {
+            "description": "ProjectKey is the key of the service desk's Jira project, such as ITH, as the service desk picker stores it.",
+            "type": "string"
+          },
+          "reporterAccountIds": {
+            "description": "ReporterAccountIDs matches requests raised for any of these customers, by Atlassian account ID.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "statusCategories": {
+            "description": "StatusCategories matches requests in any of these status categories: new, indeterminate, or done.",
+            "items": {
+              "enum": [
+                "done",
+                "indeterminate",
+                "new"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "statusNames": {
+            "description": "StatusNames matches requests in any of these workflow statuses, such as Waiting for support.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "summaryPhrase": {
+            "description": "SummaryPhrase matches requests whose summary contains this phrase as Jira's text search tokenizes it. Text search ignores case and punctuation, so compare the returned summaries for an exact match.",
+            "type": "string"
+          },
+          "updatedSinceDate": {
+            "description": "UpdatedSinceDate matches requests updated on or after this calendar date, written YYYY-MM-DD, in the connected account's Jira time zone. Blank applies no time filter.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newGetTicketStep",
       "kind": "query",
       "operationId": "getTicket",
+      "inputType": "GetTicketInput",
+      "description": "Read one customer request with its plain-text description, labels, priority, and status, its first public replies and internal notes, and its SLA cycles.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +211,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTicketInput identifies one request and how many of its comments to read.",
+        "properties": {
+          "commentLimit": {
+            "description": "CommentLimit is 1 to MaxCommentLimit comments to read from the start of the request's comments; zero reads DefaultCommentLimit.",
+            "type": "integer"
+          },
+          "issueIdOrKey": {
+            "description": "IssueIDOrKey is a request key such as ITH-12 or a numeric issue ID. Jira also finds a moved request by its old key and returns its current key.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateTicketStep",
       "kind": "mutation",
       "operationId": "createTicket",
+      "inputType": "CreateTicketInput",
+      "description": "Raise one customer request of a request type, optionally on a customer's behalf. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted request.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -147,12 +264,51 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateTicketInput is one new customer request. The request type decides which fields Jira Service Management requires; GET /rest/servicedeskapi/servicedesk/{serviceDeskId}/requesttype/{requestTypeId}/field lists them.",
+        "properties": {
+          "additionalFieldValues": {
+            "additionalProperties": {},
+            "description": "AdditionalFieldValues sets up to MaxAdditionalFieldValues more request-type fields by Jira field ID, such as customfield_10050, each as the JSON value Jira's field input format expects. It cannot set summary or description.",
+            "type": "object"
+          },
+          "description": {
+            "description": "Description is the request's text, at most 32767 characters; blank sends none. Jira Service Management stores it as text in which it renders wiki markup, so characters such as * and _ can format the text; the connector sends it unchanged.",
+            "type": "string"
+          },
+          "raiseOnBehalfOfAccountId": {
+            "description": "RaiseOnBehalfOfAccountID raises the request for this customer, by Atlassian account ID such as one findCustomerByEmail returned; blank raises it as the connected agent.",
+            "type": "string"
+          },
+          "requestTypeId": {
+            "description": "RequestTypeID is the numeric request type ID, as the request type picker stores it.",
+            "type": "string"
+          },
+          "serviceDeskId": {
+            "description": "ServiceDeskID is the numeric service desk ID, as the request type picker stores it.",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Summary is the one-line request title, at most 255 characters.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestTypeId",
+          "serviceDeskId",
+          "summary"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateTicketStep",
       "kind": "mutation",
       "operationId": "updateTicket",
+      "inputType": "UpdateTicketInput",
+      "description": "Add or remove labels on one request and set its priority; a repeated attempt finds the change already applied and writes nothing.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -185,12 +341,46 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UpdateTicketInput adds or removes labels on one request and sets its priority. Set at least one change.",
+        "properties": {
+          "addLabels": {
+            "description": "AddLabels adds these labels, without whitespace, and keeps the request's other labels.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "issueIdOrKey": {
+            "description": "IssueIDOrKey is a request key such as ITH-12 or a numeric issue ID.",
+            "type": "string"
+          },
+          "priorityName": {
+            "description": "PriorityName sets the priority by the site's name, such as High, compared without case; blank keeps it.",
+            "type": "string"
+          },
+          "removeLabels": {
+            "description": "RemoveLabels removes these labels and keeps the request's other labels. Labels compare exactly.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newTransitionTicketStep",
       "kind": "mutation",
       "operationId": "transitionTicket",
+      "inputType": "TransitionTicketInput",
+      "description": "Move one request through its Jira workflow by transition ID, transition name, or destination status, reading the available transitions first and skipping a transition the request has already made.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -228,12 +418,44 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "TransitionTicketInput selects one Jira workflow transition of a request. Set at least one of TransitionID, TransitionName, and DestinationStatusName; every one that is set must match the same available transition.",
+        "properties": {
+          "destinationStatusName": {
+            "description": "DestinationStatusName is the status the transition leads to, such as In Progress, compared without case. When the issue is already in it, no transition is performed. Set it whenever the destination is known: a retried Step then recognizes a transition Jira already made.",
+            "type": "string"
+          },
+          "issueIdOrKey": {
+            "description": "IssueIDOrKey is a request key such as ITH-12 or a numeric issue ID.",
+            "type": "string"
+          },
+          "resolutionName": {
+            "description": "ResolutionName sets the resolution, such as Done, for a transition whose screen requires one; blank sends no fields. Jira rejects it for a transition without a resolution field.",
+            "type": "string"
+          },
+          "transitionId": {
+            "description": "TransitionID is the workflow transition ID, such as 31.",
+            "type": "string"
+          },
+          "transitionName": {
+            "description": "TransitionName is the transition's name as Jira shows it on the issue, such as Start Progress, compared without case.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueIdOrKey"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddCommentStep",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one public reply, which Jira Service Management shares with the customer, or one internal note that only agents see. The sync Step retries definite 429 and 503 responses but never repeats a possibly accepted comment.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -266,7 +488,30 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput is one public reply or internal note on a request.",
+        "properties": {
+          "body": {
+            "description": "Body is the comment's text, at most 32767 characters. Jira Service Management renders wiki markup in it, so characters such as * and _ can format the text; the connector sends it unchanged.",
+            "type": "string"
+          },
+          "isPublic": {
+            "description": "IsPublic adds a public reply that Jira Service Management shares with the customer and notifies them of. False adds an internal note that only agents see. Visibility is fixed when it is added.",
+            "type": "boolean"
+          },
+          "issueIdOrKey": {
+            "description": "IssueIDOrKey is a request key such as ITH-12 or a numeric issue ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "issueIdOrKey"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "new_list_events_step",
       "kind": "query",
       "operationId": "listEvents",
+      "inputType": "ListEventsInput",
+      "description": "List one page of events on one calendar that overlap a bounded time window, with recurring events expanded and ordered by start.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -43,12 +45,54 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListEventsInput selects one page of events on one calendar that overlap a bounded window. Google returns an event when its end is after TimeMin and its start is before TimeMax. Recurring events are expanded into their instances and the page is ordered by start.",
+        "properties": {
+          "calendarId": {
+            "description": "CalendarID is a calendar ID from the calendar picker, or primary for the authorized user's calendar.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the maximum events in the page, from 1 to 250; zero requests 50. Google may return fewer events, even none, before the last page.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the NextPageToken of the previous page. Keep every other field unchanged when paging.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Query is optional free text Google matches against summary, description, location, and guests.",
+            "type": "string"
+          },
+          "timeMax": {
+            "description": "TimeMax is the required window end as RFC 3339 with an explicit offset. The window is at most 366 days.",
+            "type": "string"
+          },
+          "timeMin": {
+            "description": "TimeMin is the required window start as RFC 3339 with an explicit offset.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is an optional IANA zone for the offsets of returned dateTime values; blank uses the calendar's zone.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "calendarId",
+          "timeMax",
+          "timeMin"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_get_event_step",
       "kind": "query",
       "operationId": "getEvent",
+      "inputType": "GetEventInput",
+      "description": "Read one event by calendar and event ID.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -81,12 +125,37 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEventInput identifies one event to read.",
+        "properties": {
+          "calendarId": {
+            "description": "CalendarID is the calendar that holds the event, or primary for the authorized user's calendar.",
+            "type": "string"
+          },
+          "eventId": {
+            "description": "EventID is the Google event ID, including an expanded recurring instance ID.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is an optional IANA zone for the offsets of returned dateTime values; blank uses the calendar's zone.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "calendarId",
+          "eventId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_create_event_step",
       "kind": "mutation",
       "operationId": "createEvent",
+      "inputType": "CreateEventInput",
+      "description": "Create one timed or all-day event under a stable client-supplied event ID, so a retried Step returns the existing event instead of a duplicate.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -119,12 +188,105 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "EventAttendeeInput": {
+            "additionalProperties": false,
+            "description": "EventAttendeeInput is one guest supplied to createEvent or updateEvent.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare address such as person@example.com, without a display name.",
+                "type": "string"
+              },
+              "isOptional": {
+                "description": "IsOptional marks the guest as optional.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "type": "object"
+          },
+          "EventDateTime": {
+            "additionalProperties": false,
+            "description": "EventDateTime is one event boundary in Google Calendar's native shape. Exactly one of Date and DateTime is set, so a boundary is unambiguously all-day or timed. A timed boundary sets DateTime to an RFC 3339 instant with an explicit Z or ±hh:mm offset, such as 2026-02-24T09:00:00-08:00, and TimeZone to an IANA name such as America/Los_Angeles. The offset fixes the instant; TimeZone is the zone Google uses to display the event. A value without an offset, such as 2026-02-24T09:00:00, is rejected rather than guessed. An all-day boundary sets Date to YYYY-MM-DD and leaves TimeZone blank: an all-day date has no instant until it is read in a calendar's time zone. An all-day end date is exclusive, so a one-day event on 24 February ends on 2026-02-25.",
+            "properties": {
+              "date": {
+                "description": "Date is the YYYY-MM-DD calendar date of an all-day boundary.",
+                "type": "string"
+              },
+              "dateTime": {
+                "description": "DateTime is the RFC 3339 instant, with an explicit offset, of a timed boundary.",
+                "type": "string"
+              },
+              "timeZone": {
+                "description": "TimeZone is the IANA time zone of a timed boundary. Google may also report one on output.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateEventInput describes one event to create. The event is written under a stable client-supplied ID: EventID when set, otherwise one derived from the Step's Call ID. A retried Step therefore finds and returns its own event instead of creating another.",
+        "properties": {
+          "attendees": {
+            "description": "Attendees lists unique bare guest addresses; empty creates an event without guests.",
+            "items": {
+              "$ref": "#/$defs/EventAttendeeInput"
+            },
+            "type": "array"
+          },
+          "calendarId": {
+            "description": "CalendarID is a writable calendar ID from the calendar picker, or primary for the authorized user's calendar.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description is the optional event description.",
+            "type": "string"
+          },
+          "end": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "End is the exclusive end; see EventDateTime and ValidateEventTimes."
+          },
+          "eventId": {
+            "description": "EventID optionally fixes the event ID for business-level deduplication across Step executions. It must be 5 to 1024 lowercase base32hex characters (a-v and 0-9); blank derives the ID from the Call ID.",
+            "type": "string"
+          },
+          "requestConference": {
+            "description": "RequestConference asks Google to attach a new Google Meet conference to the event.",
+            "type": "boolean"
+          },
+          "sendUpdates": {
+            "description": "SendUpdates is none, all, or externalOnly; blank sends no guest notifications.",
+            "type": "string"
+          },
+          "start": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "Start is the inclusive start; see EventDateTime and ValidateEventTimes."
+          },
+          "summary": {
+            "description": "Summary is the required event title.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "calendarId",
+          "end",
+          "start",
+          "summary"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_update_event_step",
       "kind": "mutation",
       "operationId": "updateEvent",
+      "inputType": "UpdateEventInput",
+      "description": "Patch the summary, description, start and end, or attendees of one existing event, guarded by its ETag.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -157,12 +319,102 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "EventAttendeeInput": {
+            "additionalProperties": false,
+            "description": "EventAttendeeInput is one guest supplied to createEvent or updateEvent.",
+            "properties": {
+              "email": {
+                "description": "Email is one bare address such as person@example.com, without a display name.",
+                "type": "string"
+              },
+              "isOptional": {
+                "description": "IsOptional marks the guest as optional.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "type": "object"
+          },
+          "EventDateTime": {
+            "additionalProperties": false,
+            "description": "EventDateTime is one event boundary in Google Calendar's native shape. Exactly one of Date and DateTime is set, so a boundary is unambiguously all-day or timed. A timed boundary sets DateTime to an RFC 3339 instant with an explicit Z or ±hh:mm offset, such as 2026-02-24T09:00:00-08:00, and TimeZone to an IANA name such as America/Los_Angeles. The offset fixes the instant; TimeZone is the zone Google uses to display the event. A value without an offset, such as 2026-02-24T09:00:00, is rejected rather than guessed. An all-day boundary sets Date to YYYY-MM-DD and leaves TimeZone blank: an all-day date has no instant until it is read in a calendar's time zone. An all-day end date is exclusive, so a one-day event on 24 February ends on 2026-02-25.",
+            "properties": {
+              "date": {
+                "description": "Date is the YYYY-MM-DD calendar date of an all-day boundary.",
+                "type": "string"
+              },
+              "dateTime": {
+                "description": "DateTime is the RFC 3339 instant, with an explicit offset, of a timed boundary.",
+                "type": "string"
+              },
+              "timeZone": {
+                "description": "TimeZone is the IANA time zone of a timed boundary. Google may also report one on output.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdateEventInput patches named fields of one existing event. A nil field is left unchanged. Start and End are set together, and follow the same rules as createEvent, so an event can move between timed and all-day without keeping a stale boundary.",
+        "properties": {
+          "attendees": {
+            "description": "Attendees replaces the complete guest list when set; an empty list removes every guest.",
+            "items": {
+              "$ref": "#/$defs/EventAttendeeInput"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "calendarId": {
+            "description": "CalendarID is the calendar that holds the event, or primary for the authorized user's calendar.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description replaces the description when set; an empty string clears it.",
+            "type": "string"
+          },
+          "end": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "End replaces the exclusive end when set, together with Start."
+          },
+          "eventId": {
+            "description": "EventID is the Google event ID, including an expanded recurring instance ID.",
+            "type": "string"
+          },
+          "sendUpdates": {
+            "description": "SendUpdates is none, all, or externalOnly; blank sends no guest notifications.",
+            "type": "string"
+          },
+          "start": {
+            "$ref": "#/$defs/EventDateTime",
+            "description": "Start replaces the inclusive start when set, together with End."
+          },
+          "summary": {
+            "description": "Summary replaces the title when set; it cannot be blank.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "calendarId",
+          "eventId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_query_free_busy_step",
       "kind": "query",
       "operationId": "queryFreeBusy",
+      "inputType": "QueryFreeBusyInput",
+      "description": "Return the busy intervals of one or more calendars in a bounded time window.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -195,7 +447,41 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "QueryFreeBusyInput asks for the busy intervals of calendars in a bounded window. Google counts only events that block time: transparent and cancelled events are free.",
+        "properties": {
+          "calendarIds": {
+            "description": "CalendarIDs lists 1 to 50 unique calendar IDs, such as primary or colleague@example.com. Group IDs are not supported.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "timeMax": {
+            "description": "TimeMax is the required window end as RFC 3339 with an explicit offset. The window is at most 366 days.",
+            "type": "string"
+          },
+          "timeMin": {
+            "description": "TimeMin is the required window start as RFC 3339 with an explicit offset.",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "TimeZone is an optional IANA zone for the offsets of returned intervals; blank uses UTC.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "calendarIds",
+          "timeMax",
+          "timeMin"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

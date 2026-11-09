@@ -22,7 +22,8 @@
     "./sqsmock": {
       "types": "./dist/sqsmock.d.ts",
       "import": "./dist/sqsmock.js"
-    }
+    },
+    "./dex-connector.json": "./dex-connector.json"
   },
   "files": [
     "dist",

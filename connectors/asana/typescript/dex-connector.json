@@ -11,6 +11,8 @@
       "name": "newListTasksStep",
       "kind": "query",
       "operationId": "listTasks",
+      "inputType": "ListTasksInput",
+      "description": "List one bounded page of a project's or a section's tasks, optionally only incomplete tasks or tasks changed since a time, continuing with Asana's offset token.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -43,12 +45,57 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTasksInput selects one page of tasks. Set exactly one of ProjectID and SectionID, and at most one of IsIncompleteOnly and CompletedSince.",
+        "properties": {
+          "completedSince": {
+            "description": "CompletedSince lists incomplete tasks plus tasks completed at or after this time.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "isIncompleteOnly": {
+            "description": "IsIncompleteOnly lists only incomplete tasks.",
+            "type": "boolean"
+          },
+          "modifiedSince": {
+            "description": "ModifiedSince lists only tasks that changed at or after this time. Asana counts assigning, renaming, completing, commenting on, or adding the task to a project as a change.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "description": "Offset continues a previous list with the same filters; blank reads the first page. Asana expires offset tokens after some time.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the number of tasks to request, 1 to 100; zero requests 50.",
+            "type": "integer"
+          },
+          "projectId": {
+            "description": "ProjectID lists the tasks of this project gid.",
+            "type": "string"
+          },
+          "sectionId": {
+            "description": "SectionID lists the tasks of this section gid.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
     {
       "name": "newGetTaskStep",
       "kind": "query",
       "operationId": "getTask",
+      "inputType": "GetTaskInput",
+      "description": "Read one task by ID with its completion, assignee, dates, project and section memberships, plain-text notes, and custom field values.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -81,12 +128,28 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskInput identifies one task.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the task's gid, the number in its Asana URL, such as 1204567890123456.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newCreateTaskStep",
       "kind": "mutation",
       "operationId": "createTask",
+      "inputType": "CreateTaskInput",
+      "description": "Create one task in a project, optionally in a section, or in a workspace, with a name, plain-text notes, an assignee, a due date, and text, number, or enum custom field values.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -114,12 +177,94 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "CustomFieldValueInput": {
+            "additionalProperties": false,
+            "description": "CustomFieldValueInput sets one custom field. Set exactly one of Text, Number, EnumOptionID, and MultiEnumOptionIDs, matching the field's type; other custom field types are not supported.",
+            "properties": {
+              "customFieldId": {
+                "description": "CustomFieldID is the custom field's gid.",
+                "type": "string"
+              },
+              "enumOptionId": {
+                "description": "EnumOptionID selects an enum field's option by its gid, not its name.",
+                "type": "string"
+              },
+              "multiEnumOptionIds": {
+                "description": "MultiEnumOptionIDs selects a multi-enum field's options by gid, replacing the current selection.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "number": {
+                "description": "Number sets a number field.",
+                "type": "number"
+              },
+              "text": {
+                "description": "Text sets a text field.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "customFieldId"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "CreateTaskInput describes one task. Set exactly one of ProjectID and WorkspaceID; SectionID requires ProjectID.",
+        "properties": {
+          "assigneeId": {
+            "description": "AssigneeID assigns the task to me, a user gid, or the email address of a workspace member; blank leaves it unassigned.",
+            "type": "string"
+          },
+          "customFields": {
+            "description": "CustomFields sets up to 20 text, number, enum, or multi-enum custom field values.",
+            "items": {
+              "$ref": "#/$defs/CustomFieldValueInput"
+            },
+            "type": "array"
+          },
+          "dueOn": {
+            "description": "DueOn is the due date as YYYY-MM-DD; blank sends none.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name is the one-line task name, at most 1024 characters.",
+            "type": "string"
+          },
+          "notes": {
+            "description": "Notes is the plain-text description, at most 65536 characters; blank sends none.",
+            "type": "string"
+          },
+          "projectId": {
+            "description": "ProjectID adds the task to this project gid; its workspace becomes the task's workspace.",
+            "type": "string"
+          },
+          "sectionId": {
+            "description": "SectionID places the task in this section of ProjectID; blank uses the project's default section.",
+            "type": "string"
+          },
+          "workspaceId": {
+            "description": "WorkspaceID creates the task in this workspace gid without a project.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newUpdateTaskStep",
       "kind": "mutation",
       "operationId": "updateTask",
+      "inputType": "UpdateTaskInput",
+      "description": "Complete or reopen, assign or unassign, reschedule, or set custom field values on one task, and move it to a section; every change is an absolute value, so a repeated update leaves the same task.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -152,12 +297,86 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "$defs": {
+          "CustomFieldValueInput": {
+            "additionalProperties": false,
+            "description": "CustomFieldValueInput sets one custom field. Set exactly one of Text, Number, EnumOptionID, and MultiEnumOptionIDs, matching the field's type; other custom field types are not supported.",
+            "properties": {
+              "customFieldId": {
+                "description": "CustomFieldID is the custom field's gid.",
+                "type": "string"
+              },
+              "enumOptionId": {
+                "description": "EnumOptionID selects an enum field's option by its gid, not its name.",
+                "type": "string"
+              },
+              "multiEnumOptionIds": {
+                "description": "MultiEnumOptionIDs selects a multi-enum field's options by gid, replacing the current selection.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "number": {
+                "description": "Number sets a number field.",
+                "type": "number"
+              },
+              "text": {
+                "description": "Text sets a text field.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "customFieldId"
+            ],
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "UpdateTaskInput changes one task. Every set field is an absolute value, so sending the same update twice leaves the same task. Set at least one change.",
+        "properties": {
+          "assigneeId": {
+            "description": "AssigneeID assigns the task to me, a user gid, or a workspace member's email address; a pointer to \"\" unassigns it, and nil leaves the assignee.",
+            "type": "string"
+          },
+          "customFields": {
+            "description": "CustomFields sets up to 20 text, number, enum, or multi-enum custom field values.",
+            "items": {
+              "$ref": "#/$defs/CustomFieldValueInput"
+            },
+            "type": "array"
+          },
+          "dueOn": {
+            "description": "DueOn sets the due date as YYYY-MM-DD; a pointer to \"\" clears it, and nil leaves it.",
+            "type": "string"
+          },
+          "isCompleted": {
+            "description": "IsCompleted completes the task when true and reopens it when false; nil leaves it.",
+            "type": "boolean"
+          },
+          "sectionId": {
+            "description": "SectionID moves the task to this section, removing it from the project's other sections; blank leaves its sections. Asana places a moved task at the top of the section.",
+            "type": "string"
+          },
+          "taskId": {
+            "description": "TaskID is the task's gid.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "newAddCommentStep",
       "kind": "mutation",
       "operationId": "addComment",
+      "inputType": "AddCommentInput",
+      "description": "Add one plain-text comment, a comment story authored by the connection's user, to a task.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -190,7 +409,26 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "AddCommentInput describes one comment on one task.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the task's gid.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the plain-text comment, at most 65536 characters; line breaks are kept and the text is never read as markup.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId",
+          "text"
+        ],
+        "type": "object"
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@
       "name": "newGetAuthenticatedProfileStep",
       "kind": "query",
       "operationId": "getAuthenticatedProfile",
+      "inputType": "GetAuthenticatedProfileInput",
+      "description": "Read bounded signup identity claims from LinkedIn OpenID Connect UserInfo.",
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -58,7 +60,13 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAuthenticatedProfileInput contains the provider request fields for get authenticated profile.",
+        "properties": {},
+        "type": "object"
+      }
     }
   ]
 }

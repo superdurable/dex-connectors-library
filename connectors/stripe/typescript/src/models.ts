@@ -19,14 +19,20 @@ export interface CreateACHCheckoutSessionInput {
 }
 
 /** Runtime validation for one hosted Checkout input before provider dispatch. */
-export const CreateCheckoutSessionInputSchema = z.object({
+export const CreateCheckoutSessionInputSchema = z.strictObject({
   clientReferenceId: z.string(), customerEmail: z.string(), successUrl: z.string(), cancelUrl: z.string(),
   currency: z.string(), unitAmount: z.number().int(), productName: z.string(),
   metadata: z.record(z.string(), z.string()).optional(), expiresAt: z.iso.datetime({ offset: true }).optional(),
 });
 
+/** Runtime validation for one hosted ACH Checkout input. */
+export const CreateACHCheckoutSessionInputSchema = CreateCheckoutSessionInputSchema;
+
 /** One hosted card Checkout request with the same validation as ACH. */
 export type CreateCardCheckoutSessionInput = CreateACHCheckoutSessionInput;
+
+/** Runtime validation for one hosted card Checkout input. */
+export const CreateCardCheckoutSessionInputSchema = CreateCheckoutSessionInputSchema;
 
 /** Stripe Checkout Session lookup input. */
 export interface GetCheckoutSessionInput {
@@ -34,7 +40,7 @@ export interface GetCheckoutSessionInput {
 }
 
 /** Runtime validation for a Checkout Session lookup. */
-export const GetCheckoutSessionInputSchema = z.object({ sessionId: z.string() });
+export const GetCheckoutSessionInputSchema = z.strictObject({ sessionId: z.string() });
 
 /** Stripe PaymentIntent lookup input. */
 export interface GetPaymentIntentInput {
@@ -42,7 +48,7 @@ export interface GetPaymentIntentInput {
 }
 
 /** Runtime validation for a PaymentIntent lookup. */
-export const GetPaymentIntentInputSchema = z.object({ paymentIntentId: z.string() });
+export const GetPaymentIntentInputSchema = z.strictObject({ paymentIntentId: z.string() });
 
 /** One keyed Stripe refund request; money uses minor currency units. */
 export interface CreateRefundInput {
@@ -53,7 +59,7 @@ export interface CreateRefundInput {
 }
 
 /** Runtime validation for one refund input before provider dispatch. */
-export const CreateRefundInputSchema = z.object({
+export const CreateRefundInputSchema = z.strictObject({
   paymentIntentId: z.string(), amount: z.number().int(),
   reason: z.enum(['duplicate', 'fraudulent', 'requested_by_customer']).optional(),
   metadata: z.record(z.string(), z.string()).optional(),

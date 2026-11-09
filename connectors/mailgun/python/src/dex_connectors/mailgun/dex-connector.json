@@ -11,6 +11,8 @@
       "name": "new_get_events_step",
       "kind": "query",
       "operationId": "getEvents",
+      "inputType": "GetEventsInput",
+      "description": "Read a bounded page of delivery events for one sending domain.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -38,12 +40,32 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEventsInput selects one sending domain and a bounded events page.",
+        "properties": {
+          "domain": {
+            "description": "Domain is a Mailgun sending domain such as example.test.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is at most 300 events; zero uses Mailgun's default.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      }
     },
     {
       "name": "new_list_domains_step",
       "kind": "query",
       "operationId": "listDomains",
+      "inputType": "ListDomainsInput",
+      "description": "List sending domains and the account's reported domain count.",
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -71,7 +93,22 @@
           "field": "defect",
           "optional": true
         }
-      ]
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDomainsInput selects one account domains page.",
+        "properties": {
+          "limit": {
+            "description": "Limit is at most 1000 domains; zero uses Mailgun's default.",
+            "type": "integer"
+          },
+          "skip": {
+            "description": "Skip is the zero-based offset into the account domain list.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
     }
   ]
 }
