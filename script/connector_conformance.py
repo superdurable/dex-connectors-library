@@ -75,7 +75,7 @@ def database_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
     images = {
         "connectors/postgresql": ("postgres:17", "5432"),
         "connectors/mysql": ("mysql:8.4", "3306"),
-        "connectors/mongodb": ("mongo:8.0", "27017"),
+        "connectors/mongodb": ("mongo:7.0", "27017"),
         "connectors/microsoft/sql-server": ("mcr.microsoft.com/mssql/server:2022-latest", "1433"),
     }
     shared_change = any(path in {"conformance/exemptions.yaml", "script/connector_conformance.py",

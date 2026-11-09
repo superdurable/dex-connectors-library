@@ -312,6 +312,7 @@ class ConnectorSelectionTest(unittest.TestCase):
             for directory in ("connectors/acme/chat", "connectors/acme/mail"):
                 flow = root / directory / "go" / "examples" / "example" / "flow"
                 flow.mkdir(parents=True)
+                (root / directory / "connector.yaml").write_text("kind: Connector\n")
                 (flow / "flow.go").write_text("package flow\n\nfunc GetSteps() {}\n")
 
             self.assertEqual(
@@ -319,6 +320,25 @@ class ConnectorSelectionTest(unittest.TestCase):
                 flow_examples(root, ["connectors/acme/mail"]),
             )
             self.assertEqual([], flow_examples(root, []))
+
+    def test_flow_examples_assign_nested_connector_examples_to_the_nested_connector(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for directory in ("connectors/acme", "connectors/acme/sign"):
+                (root / directory).mkdir(parents=True, exist_ok=True)
+                (root / directory / "connector.yaml").write_text("kind: Connector\n")
+                flow = root / directory / "go" / "examples" / "example" / "flow"
+                flow.mkdir(parents=True)
+                (flow / "flow.go").write_text("package flow\n\nfunc GetSteps() {}\n")
+
+            self.assertEqual(
+                [root / "connectors/acme/go/examples/example/flow"],
+                flow_examples(root, ["connectors/acme"]),
+            )
+            self.assertEqual(
+                [root / "connectors/acme/sign/go/examples/example/flow"],
+                flow_examples(root, ["connectors/acme/sign"]),
+            )
 
     def test_released_compatibility_only_includes_selected_connectors(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
