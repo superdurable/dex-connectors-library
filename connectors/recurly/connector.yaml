@@ -52,7 +52,7 @@ spec:
       startURL: https://app.recurly.com
       steps:
         - Sign in to the Recurly site with Integration permission. Open Integrations > API Credentials, scroll to Add Private API Key, name the integration and click Save Changes. Copy the complete unencoded secret key into Dex Web secret api_key; blank is invalid. Regenerate or revoke it later under Developers > API Keys. Do not paste the Base64 example shown under Need help using the API Key.
-        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret account ID in Recurly account details or the API account response and enter it as accountId; blank is invalid. Account codes require a code- prefix, for example code-acme.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Find the non-secret account ID in Recurly account details or the API account response and enter it as accountId; blank is invalid. Account codes require a code- prefix, for example code-acme. IDs and codes each have at most 50 characters.
   operations:
     - name: getAccount
       goName: GetAccount

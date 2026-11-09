@@ -7,6 +7,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -85,8 +86,10 @@ func TestGetAccountClassifiesProviderOutcomes(t *testing.T) {
 }
 
 func TestGetAccountRejectsInvalidIDAndBoundsResponse(t *testing.T) {
+	require.True(t, validAccountID(strings.Repeat("a", 50)))
+	require.True(t, validAccountID("code-"+strings.Repeat("a", 50)))
 	client := newTestClient(t, "https://v3.recurly.com", 0)
-	for _, accountID := range []string{"", "../other", "bad\naccount", string([]byte{0xff})} {
+	for _, accountID := range []string{"", "code-", "../other", "bad\naccount", string([]byte{0xff}), strings.Repeat("a", 51), "code-" + strings.Repeat("a", 51)} {
 		result, err := sdkgo.RunQuery(queryContext{}, client.GetAccount(), testConnection, GetAccountInput{AccountID: accountID})
 		require.NoError(t, err)
 		require.Equal(t, GetAccountBranchDefect, result.Branch)

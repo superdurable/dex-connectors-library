@@ -61,10 +61,10 @@ def _retry(kind: FailureKind, message: str, delay: float = 0) -> QueryAttempt[Ac
 
 
 def _valid_account_id(account_id: object) -> bool:
+    """Accept an account ID or code- prefixed account code, each at most 50 characters."""
     return (
         isinstance(account_id, str)
-        and 0 < len(account_id) <= 55
-        and account_id != "code-"
+        and 0 < len(account_id.removeprefix("code-")) <= 50
         and all(
             character in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
             for character in account_id
@@ -171,7 +171,7 @@ class GetAccountOperation:
             return _branch(
                 "defect",
                 FailureKind.VALIDATION,
-                "account ID must be 1–55 URL-safe characters",
+                "account ID or code- prefixed code must have 1–50 URL-safe characters",
             )
         exchange = await self.client._get(call, input.account_id)
         if exchange.error == "credential":

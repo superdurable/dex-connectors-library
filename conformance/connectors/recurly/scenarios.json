@@ -273,6 +273,27 @@
       },
       "name": "getAccount-transportFailure",
       "operation": "getAccount"
+    },
+    {
+      "callId": "a5dc1ca7-ea9d-5372-b35e-f83d6cc4f9cd",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "code": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "code-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "name": "getAccount-accountCodeTooLong",
+      "operation": "getAccount"
     }
   ],
   "schemaVersion": 1

@@ -80,7 +80,7 @@ export class GetAccountOperation implements Query<GetAccountInput, AccountIdenti
   /** Classify provider outcomes consistently with the Go implementation. */
   async invoke(call: Call, input: GetAccountInput): Promise<QueryAttempt<AccountIdentity>> {
     if (!isValidAccountID(input?.accountId))
-      return terminal('defect', 'VALIDATION', 'account ID must be 1–55 URL-safe characters');
+      return terminal('defect', 'VALIDATION', 'account ID or code- prefixed code must have 1–50 URL-safe characters');
     const exchange = await this.client.get(call, input.accountId);
     if (exchange.error === 'credential') return terminal('defect', 'AUTHENTICATION', 'Recurly credentials are unavailable or invalid');
     if (exchange.error === 'request') return retry('TRANSPORT', 'Recurly request failed');
@@ -95,8 +95,11 @@ export class GetAccountOperation implements Query<GetAccountInput, AccountIdenti
   }
 }
 
+/** Accept an account ID or code- prefixed account code, each at most 50 characters. */
 function isValidAccountID(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= 55 && value !== 'code-' && /^[A-Za-z0-9_-]+$/.test(value);
+  if (typeof value !== 'string') return false;
+  const identifier = value.startsWith('code-') ? value.slice(5) : value;
+  return identifier.length > 0 && identifier.length <= 50 && /^[A-Za-z0-9_-]+$/.test(value);
 }
 function emptyExchange(error: NonNullable<Exchange['error']>): Exchange { return { status: 0, body: new Uint8Array(), retryAfterMs: 0, error }; }
 function failure(kind: Failure['kind'], message: string): Failure { return { provider: 'recurly', operation: 'getAccount', kind, message }; }

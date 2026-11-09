@@ -44,7 +44,7 @@ func (GetAccountOperation) Definition() sdkgo.QueryDefinition { return GetAccoun
 // Invoke reads one account and classifies retryable and definitive outcomes.
 func (operation GetAccountOperation) Invoke(call sdkgo.Call, input GetAccountInput) sdkgo.QueryAttempt[AccountIdentity] {
 	if !validAccountID(input.AccountID) {
-		return accountBranch(GetAccountBranchDefect, sdkgo.FailureValidation, "account ID must be 1–50 URL-safe characters")
+		return accountBranch(GetAccountBranchDefect, sdkgo.FailureValidation, "account ID or code- prefixed code must have 1–50 URL-safe characters")
 	}
 	response := operation.client.get(call, "/accounts/"+url.PathEscape(input.AccountID))
 	if errors.Is(response.err, errCredential) {
@@ -78,8 +78,11 @@ func (operation GetAccountOperation) Invoke(call sdkgo.Call, input GetAccountInp
 	return sdkgo.NewQueryBranch(GetAccountBranchFound, accountIdentity, nil, sdkgo.Receipt{})
 }
 
+// validAccountID accepts an account ID or a code- prefixed account code; Recurly
+// limits each value to 50 characters.
 func validAccountID(accountID string) bool {
-	if len(accountID) == 0 || len(accountID) > 55 || accountID == "code-" {
+	value := strings.TrimPrefix(accountID, "code-")
+	if len(value) == 0 || len(value) > 50 {
 		return false
 	}
 	for _, character := range accountID {
