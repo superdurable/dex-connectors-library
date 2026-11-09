@@ -1,0 +1,317 @@
+{
+  "connector": "gusto",
+  "scenarios": [
+    {
+      "callId": "8793bbf4-f089-5041-ba1a-ed66c0364a7c",
+      "exchanges": [
+        {
+          "body": "{\"uuid\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"company_uuid\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"compensations\":[{\"rate\":\"99999\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "companyId": "7d61f73e-a18c-46a5-88e2-2bfa894657d7",
+          "email": "ada@example.com",
+          "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "firstName": "Ada",
+          "lastName": "Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getEmployee-found",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "2722784f-7c93-506e-9e3e-e63808c0a8f7",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "companyId": "",
+          "email": "",
+          "employeeId": "",
+          "firstName": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getEmployee-missing",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "019453e7-dfc6-57cb-bd05-ad06021b1ad0",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "companyId": "",
+          "email": "",
+          "employeeId": "",
+          "firstName": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getEmployee-providerRejected",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "48b1534c-0417-5fdd-a0b7-c3b1277634c8",
+      "exchanges": [
+        {
+          "body": "{\"uuid\":",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "companyId": "",
+          "email": "",
+          "employeeId": "",
+          "firstName": "",
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getEmployee-invalidResponse",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "182bf0ff-bf03-543a-bc7b-486411b4ddea",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "companyId": "",
+          "email": "",
+          "employeeId": "",
+          "firstName": "",
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "invalid/id"
+      },
+      "name": "getEmployee-defect",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "4478dd17-a7b8-5680-9312-787f97325cec",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getEmployee-rateLimit429",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "fe6c63fe-a7ff-5870-9476-198af0e4ca6a",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getEmployee-unavailable503",
+      "operation": "getEmployee"
+    },
+    {
+      "callId": "d66105c9-c7e4-5bb5-9a76-92d9b2bfe7c1",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/employees/90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-gusto-token"
+            ],
+            "X-Gusto-Api-Version": [
+              "2026-06-15"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "employeeId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getEmployee-transportFailure",
+      "operation": "getEmployee"
+    }
+  ],
+  "schemaVersion": 1
+}

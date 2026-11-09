@@ -84,6 +84,7 @@ directories:
   - connectors/google/youtube
   - connectors/gorgias
   - connectors/greenhouse
+  - connectors/gusto
   - connectors/hackernews
   - connectors/harvest
   - connectors/heap
