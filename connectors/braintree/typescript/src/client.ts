@@ -98,6 +98,9 @@ export class GetTransactionOperation implements Query<GetTransactionInput, Trans
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Braintree response exceeded the configured limit');
     const transaction = decodeTransaction(exchange.body, input.transactionId);
     if (transaction === 'rejected') return terminal('providerRejected', 'PROVIDER_REJECTION', 'Braintree rejected the GraphQL query');
+    if (transaction === 'unavailable') return retry('AVAILABILITY', 'Braintree reported a temporary GraphQL failure', exchange.retryAfterMs);
+    if (transaction === 'rateLimited') return retry('RATE_LIMIT', 'Braintree reported a resource limit', exchange.retryAfterMs);
+    if (transaction === 'graphQLNotFound') return terminal('notFound', 'NOT_FOUND', 'Braintree did not find the transaction');
     if (transaction === undefined) return terminal('invalidResponse', 'PROTOCOL', 'Braintree returned invalid transaction JSON');
     if (transaction === null) return terminal('notFound', 'NOT_FOUND', 'Braintree did not expose the transaction');
     return newQueryBranch('found', transaction);
@@ -118,12 +121,30 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decodeTransaction(body: Uint8Array, transactionID: string): TransactionProfile | null | 'rejected' | undefined {
+type GraphQLErrorOutcome = 'graphQLNotFound' | 'rateLimited' | 'unavailable' | 'rejected';
+
+/** Let any definite rejection win, then retryable classes, then NOT_FOUND. */
+function classifyGraphQLErrors(errors: unknown[]): GraphQLErrorOutcome {
+  const precedence: GraphQLErrorOutcome[] = ['graphQLNotFound', 'rateLimited', 'unavailable'];
+  let outcome = 0;
+  for (const error of errors) {
+    const extensions = isObject(error) ? error.extensions : undefined;
+    if (extensions !== undefined && extensions !== null && !isObject(extensions)) return 'rejected';
+    const errorClass = isObject(extensions) ? extensions.errorClass : undefined;
+    if (errorClass === 'NOT_FOUND') continue;
+    if (errorClass === 'RESOURCE_LIMIT') outcome = Math.max(outcome, 1);
+    else if (errorClass === 'INTERNAL' || errorClass === 'SERVICE_AVAILABILITY') outcome = Math.max(outcome, 2);
+    else return 'rejected';
+  }
+  return precedence[outcome]!;
+}
+
+function decodeTransaction(body: Uint8Array, transactionID: string): TransactionProfile | null | GraphQLErrorOutcome | undefined {
   let raw: unknown;
   try { raw = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return undefined; }
   if (!isObject(raw)) return undefined;
   if (raw.errors !== undefined && raw.errors !== null && !Array.isArray(raw.errors)) return undefined;
-  if (Array.isArray(raw.errors) && raw.errors.length > 0) return 'rejected';
+  if (Array.isArray(raw.errors) && raw.errors.length > 0) return classifyGraphQLErrors(raw.errors as unknown[]);
   if (!isObject(raw.data)) return undefined;
   const node = raw.data.node;
   if (node === null) return null;

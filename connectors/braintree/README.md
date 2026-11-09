@@ -1,6 +1,6 @@
 # Braintree connector
 
-The Go, Python, and TypeScript `getTransaction` Query reads one transaction's GraphQL ID and status using Braintree's [node query](https://developer.paypal.com/braintree/graphql/guides/node_query/). A null node or a node of another type selects optional `notFound`; definite GraphQL errors select `providerRejected`. HTTP 429, server failures, and transport failures retry. The operation only reads a transaction and never moves money.
+The Go, Python, and TypeScript `getTransaction` Query reads one transaction's GraphQL ID and status using Braintree's [node query](https://developer.paypal.com/braintree/graphql/guides/node_query/). A null node, a node of another type, or only `NOT_FOUND` GraphQL errors select optional `notFound`. GraphQL errors with [`errorClass`](https://developer.paypal.com/braintree/graphql/guides/making_api_calls/) `INTERNAL`, `SERVICE_AVAILABILITY`, or `RESOURCE_LIMIT` retry; any other GraphQL error class selects `providerRejected`. HTTP 429, server failures, and transport failures retry. The operation only reads a transaction and never moves money.
 
 ## Connection and configuration
 

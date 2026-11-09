@@ -252,6 +252,246 @@
       "operation": "getTransaction"
     },
     {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"An object with this ID was not found.\",\"path\":[\"node\"],\"extensions\":{\"errorClass\":\"NOT_FOUND\"}}],\"data\":{\"node\":null},\"extensions\":{\"requestId\":\"req-1\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetTransaction($id: ID!) { node(id: $id) { __typename ... on Transaction { id status } } }",
+            "variables": {
+              "id": "txn-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "getTransaction-graphqlNotFound",
+      "operation": "getTransaction"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"An internal error occurred.\",\"extensions\":{\"errorClass\":\"INTERNAL\"}}],\"data\":null,\"extensions\":{\"requestId\":\"req-2\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetTransaction($id: ID!) { node(id: $id) { __typename ... on Transaction { id status } } }",
+            "variables": {
+              "id": "txn-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "getTransaction-graphqlInternal",
+      "operation": "getTransaction"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Service unavailable.\",\"extensions\":{\"errorClass\":\"SERVICE_AVAILABILITY\"}}],\"data\":null,\"extensions\":{\"requestId\":\"req-3\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetTransaction($id: ID!) { node(id: $id) { __typename ... on Transaction { id status } } }",
+            "variables": {
+              "id": "txn-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "getTransaction-graphqlServiceAvailability",
+      "operation": "getTransaction"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Resource limit exceeded.\",\"extensions\":{\"errorClass\":\"RESOURCE_LIMIT\"}}],\"data\":null,\"extensions\":{\"requestId\":\"req-4\"}}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetTransaction($id: ID!) { node(id: $id) { __typename ... on Transaction { id status } } }",
+            "variables": {
+              "id": "txn-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "getTransaction-graphqlResourceLimit",
+      "operation": "getTransaction"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Not authorized.\",\"extensions\":{\"errorClass\":\"INTERNAL\"}},{\"message\":\"Not authorized.\",\"extensions\":{\"errorClass\":\"AUTHORIZATION\"}}],\"data\":null,\"extensions\":{\"requestId\":\"req-5\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql",
+          "requestBody": {
+            "query": "query GetTransaction($id: ID!) { node(id: $id) { __typename ... on Transaction { id status } } }",
+            "variables": {
+              "id": "txn-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLXB1YmxpYy1rZXk6c2FtcGxlLXByaXZhdGUta2V5"
+            ],
+            "Braintree-Version": [
+              "2019-01-01"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "transactionId": "txn-1"
+      },
+      "name": "getTransaction-graphqlAuthorization",
+      "operation": "getTransaction"
+    },
+    {
       "callId": "70e762e3-11d6-5d97-af52-c9a551737c8f",
       "exchanges": [
         {

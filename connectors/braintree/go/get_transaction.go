@@ -67,12 +67,19 @@ func (operation GetTransactionOperation) Invoke(call sdkgo.Call, input GetTransa
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[TransactionProfile](transactionFailure(sdkgo.FailureTransport, "Braintree response was interrupted"), 0)
 	}
-	profile, isNotFound, isRejected, err := decodeTransaction(response.body, input.TransactionID)
+	profile, isNotFound, graphQLErrors, err := decodeTransaction(response.body, input.TransactionID)
 	if err != nil {
 		return transactionBranch(GetTransactionBranchInvalidResponse, sdkgo.FailureProtocol, "Braintree returned invalid transaction JSON")
 	}
-	if isRejected {
+	switch graphQLErrors {
+	case graphQLErrorRejected:
 		return transactionBranch(GetTransactionBranchProviderRejected, sdkgo.FailureProviderRejection, "Braintree rejected the GraphQL query")
+	case graphQLErrorRateLimited:
+		return sdkgo.NewQueryRetry[TransactionProfile](transactionFailure(sdkgo.FailureRateLimit, "Braintree reported a resource limit"), response.retryAfter)
+	case graphQLErrorUnavailable:
+		return sdkgo.NewQueryRetry[TransactionProfile](transactionFailure(sdkgo.FailureAvailability, "Braintree reported a temporary GraphQL failure"), response.retryAfter)
+	case graphQLErrorNotFound:
+		return transactionBranch(GetTransactionBranchNotFound, sdkgo.FailureNotFound, "Braintree did not find the transaction")
 	}
 	if isNotFound {
 		return transactionBranch(GetTransactionBranchNotFound, sdkgo.FailureNotFound, "Braintree did not expose the transaction")
@@ -92,7 +99,18 @@ func validGraphQLID(value string) bool {
 	return true
 }
 
-func decodeTransaction(body []byte, transactionID string) (TransactionProfile, bool, bool, error) {
+// graphQLErrorOutcome classifies a GraphQL errors array by Braintree extensions.errorClass.
+type graphQLErrorOutcome int
+
+const (
+	graphQLErrorNone graphQLErrorOutcome = iota
+	graphQLErrorNotFound
+	graphQLErrorRateLimited
+	graphQLErrorUnavailable
+	graphQLErrorRejected
+)
+
+func decodeTransaction(body []byte, transactionID string) (TransactionProfile, bool, graphQLErrorOutcome, error) {
 	var wire struct {
 		Data *struct {
 			Node *struct {
@@ -104,27 +122,52 @@ func decodeTransaction(body []byte, transactionID string) (TransactionProfile, b
 		Errors []json.RawMessage `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
-		return TransactionProfile{}, false, false, err
+		return TransactionProfile{}, false, graphQLErrorNone, err
 	}
 	if len(wire.Errors) > 0 {
-		return TransactionProfile{}, false, true, nil
+		return TransactionProfile{}, false, classifyGraphQLErrors(wire.Errors), nil
 	}
 	if wire.Data == nil {
-		return TransactionProfile{}, false, false, errors.New("GraphQL data is missing")
+		return TransactionProfile{}, false, graphQLErrorNone, errors.New("GraphQL data is missing")
 	}
 	if wire.Data.Node == nil {
-		return TransactionProfile{}, true, false, nil
+		return TransactionProfile{}, true, graphQLErrorNone, nil
 	}
 	if wire.Data.Node.Typename == "" {
-		return TransactionProfile{}, false, false, errors.New("GraphQL node type is missing")
+		return TransactionProfile{}, false, graphQLErrorNone, errors.New("GraphQL node type is missing")
 	}
 	if wire.Data.Node.Typename != "Transaction" {
-		return TransactionProfile{}, true, false, nil
+		return TransactionProfile{}, true, graphQLErrorNone, nil
 	}
 	if wire.Data.Node.ID != transactionID || wire.Data.Node.Status == "" {
-		return TransactionProfile{}, false, false, errors.New("transaction identity or status is invalid")
+		return TransactionProfile{}, false, graphQLErrorNone, errors.New("transaction identity or status is invalid")
 	}
-	return TransactionProfile{ID: wire.Data.Node.ID, Status: wire.Data.Node.Status}, false, false, nil
+	return TransactionProfile{ID: wire.Data.Node.ID, Status: wire.Data.Node.Status}, false, graphQLErrorNone, nil
+}
+
+// classifyGraphQLErrors lets any definite rejection win, then retryable classes, then NOT_FOUND.
+func classifyGraphQLErrors(rawErrors []json.RawMessage) graphQLErrorOutcome {
+	outcome := graphQLErrorNotFound
+	for _, rawError := range rawErrors {
+		var graphQLError struct {
+			Extensions struct {
+				ErrorClass string `json:"errorClass"`
+			} `json:"extensions"`
+		}
+		if json.Unmarshal(rawError, &graphQLError) != nil {
+			return graphQLErrorRejected
+		}
+		switch graphQLError.Extensions.ErrorClass {
+		case "NOT_FOUND":
+		case "RESOURCE_LIMIT":
+			outcome = max(outcome, graphQLErrorRateLimited)
+		case "INTERNAL", "SERVICE_AVAILABILITY":
+			outcome = max(outcome, graphQLErrorUnavailable)
+		default:
+			return graphQLErrorRejected
+		}
+	}
+	return outcome
 }
 
 func transactionFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {

@@ -47,6 +47,47 @@ class _GraphQLRejection(Exception):
     """Braintree rejected the GraphQL query."""
 
 
+class _GraphQLNotFound(Exception):
+    """Braintree reported only NOT_FOUND GraphQL errors."""
+
+
+class _GraphQLRetry(Exception):
+    """Braintree reported a temporary GraphQL error class."""
+
+    def __init__(self, kind: FailureKind, message: str) -> None:
+        super().__init__(message)
+        self.kind = kind
+        self.message = message
+
+
+_GRAPHQL_ERROR_NOT_FOUND = 1
+_GRAPHQL_ERROR_RATE_LIMITED = 2
+_GRAPHQL_ERROR_UNAVAILABLE = 3
+
+
+def _raise_graphql_errors(errors: list[Any]) -> None:
+    """Let any definite rejection win, then retryable classes, then NOT_FOUND."""
+    outcome = _GRAPHQL_ERROR_NOT_FOUND
+    for error in errors:
+        extensions = error.get("extensions") if isinstance(error, dict) else None
+        if extensions is not None and not isinstance(extensions, dict):
+            raise _GraphQLRejection()
+        error_class = extensions.get("errorClass") if isinstance(extensions, dict) else None
+        if error_class == "NOT_FOUND":
+            continue
+        if error_class == "RESOURCE_LIMIT":
+            outcome = max(outcome, _GRAPHQL_ERROR_RATE_LIMITED)
+        elif error_class in ("INTERNAL", "SERVICE_AVAILABILITY"):
+            outcome = max(outcome, _GRAPHQL_ERROR_UNAVAILABLE)
+        else:
+            raise _GraphQLRejection()
+    if outcome == _GRAPHQL_ERROR_UNAVAILABLE:
+        raise _GraphQLRetry(FailureKind.AVAILABILITY, "Braintree reported a temporary GraphQL failure")
+    if outcome == _GRAPHQL_ERROR_RATE_LIMITED:
+        raise _GraphQLRetry(FailureKind.RATE_LIMIT, "Braintree reported a resource limit")
+    raise _GraphQLNotFound()
+
+
 @dataclass(frozen=True, slots=True)
 class _Exchange:
     """One bounded provider response or request failure."""
@@ -88,7 +129,7 @@ def _decode_transaction(body: bytes, transaction_id: str) -> TransactionProfile 
     if errors is not None and not isinstance(errors, list):
         raise ValueError("GraphQL errors are invalid")
     if isinstance(errors, list) and errors:
-        raise _GraphQLRejection()
+        _raise_graphql_errors(errors)
     data = raw.get("data")
     if not isinstance(data, dict):
         raise ValueError("GraphQL data is missing")
@@ -236,6 +277,10 @@ class GetTransactionOperation:
             return _branch(
                 "providerRejected", FailureKind.PROVIDER_REJECTION, "Braintree rejected the GraphQL query"
             )
+        except _GraphQLRetry as retry:
+            return _retry(retry.kind, retry.message, exchange.retry_after)
+        except _GraphQLNotFound:
+            return _branch("notFound", FailureKind.NOT_FOUND, "Braintree did not find the transaction")
         except (ValueError, TypeError, UnicodeDecodeError):
             return _branch(
                 "invalidResponse", FailureKind.PROTOCOL, "Braintree returned invalid transaction JSON"
