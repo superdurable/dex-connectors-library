@@ -90,6 +90,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
       branches:
         - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the message., optional: true}
@@ -112,6 +113,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
       branches:
         - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the template send., optional: true}
