@@ -8,6 +8,12 @@ metadata:
   version: v0.1.0
 spec:
   provider: mongodb
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-mongodb
+      operations: [findDocuments]
+      triggers: []
   codegen:
     go:
       package: mongodb
@@ -46,7 +52,7 @@ spec:
       startURL: https://cloud.mongodb.com/
       steps:
         - At https://cloud.mongodb.com > Database > Database Access, create a dedicated database user with read permission only on the chosen database. Store its generated password securely. For self-hosted MongoDB, ask the administrator for an equivalent read-only user.
-        - In Atlas Database > Network Access, allow the Dex Worker egress address. Under Database > Connect > Drivers, select the Go driver and copy the mongodb+srv:// connection string; replace the password placeholder with the percent-encoded password. For self-hosted deployments, obtain the mongodb:// URI and TLS requirements from the administrator.
+        - In Atlas Database > Network Access, allow the Dex Worker egress address. Under Database > Connect > Drivers, copy the mongodb+srv:// connection string for the chosen language; replace the password placeholder with the percent-encoded password. For self-hosted deployments, obtain the mongodb:// URI and TLS requirements from the administrator.
         - In Database > Browse Collections, select the database and copy its name into database. Paste the complete URI into Dex Web as a secret. Do not place it in Flow input, logs, or Results. Revoke or rotate it in Database Access and update Dex Web.
         - In the same Browse Collections page, select a collection and pass its non-secret name as collection in Flow input. Supply a JSON filter object such as {"status":"active"}; an empty object matches all documents. Blank collection is invalid; maxDocuments limits returned documents.
   operations:

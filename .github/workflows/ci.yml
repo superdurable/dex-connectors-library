@@ -320,6 +320,9 @@ jobs:
               docker cp '${{ job.services.database.id }}:/var/lib/mysql/ca.pem' "$RUNNER_TEMP/mysql-ca.pem"
               export MYSQL_TLS_CA_FILE="$RUNNER_TEMP/mysql-ca.pem" MYSQL_SSL_CA="$RUNNER_TEMP/mysql-ca.pem"
               ;;
+            connectors/mongodb)
+              export MONGODB_CONNECTOR_TEST_URI=mongodb://127.0.0.1:27017
+              ;;
             connectors/microsoft/sql-server)
               export SQLSERVER_CONNECTOR_TEST_HOST=127.0.0.1 SQLSERVER_CONNECTOR_TEST_PORT=1433
               export SQLSERVER_CONNECTOR_TEST_DATABASE=master SQLSERVER_CONNECTOR_TEST_USER=sa

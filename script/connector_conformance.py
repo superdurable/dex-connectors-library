@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NATIVE_WIRE_CONNECTORS = frozenset({
-    "connectors/postgresql", "connectors/mysql", "connectors/microsoft/sql-server",
+    "connectors/postgresql", "connectors/mysql", "connectors/mongodb", "connectors/microsoft/sql-server",
     "connectors/superdurable/email",
 })
 _CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
@@ -70,6 +70,7 @@ def database_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
     images = {
         "connectors/postgresql": ("postgres:17", "5432"),
         "connectors/mysql": ("mysql:8.4", "3306"),
+        "connectors/mongodb": ("mongo:8.0", "27017"),
         "connectors/microsoft/sql-server": ("mcr.microsoft.com/mssql/server:2022-latest", "1433"),
     }
     shared_change = any(path in {"conformance/exemptions.yaml", "script/connector_conformance.py",
