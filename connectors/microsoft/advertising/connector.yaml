@@ -1,0 +1,111 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: microsoft-advertising
+  displayName: Microsoft Advertising
+  description: List campaigns in a Microsoft Advertising account through the v13 REST API.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  provider: microsoft-advertising
+  codegen:
+    go:
+      package: microsoftadvertising
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        default: https://campaign.api.bingads.microsoft.com
+        description: Microsoft Advertising Campaign Management v13 HTTPS origin. Blank uses the displayed production origin; override only for the documented sandbox or a trusted local fixture.
+      - name: customerId
+        goName: CustomerID
+        type: string
+        required: true
+        description: Non-secret numeric manager customer ID from https://ui.ads.microsoft.com > Campaigns; copy the cid URL parameter, not the account number. Blank prevents campaign queries.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one campaign request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for slow accounts.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 4194304
+        description: Maximum complete campaign JSON response in bytes. Blank uses the displayed default; increase only for unusually large accounts.
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: microsoft-advertising-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Application (client) ID from https://entra.microsoft.com > Entra ID > App registrations > your app > Overview. Blank prevents authorization and refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Value from https://entra.microsoft.com > Entra ID > App registrations > your app > Certificates & secrets > Client secrets. Save only in Dex; blank prevents authorization and refresh.
+      - name: developer_token
+        goName: DeveloperToken
+        type: secretString
+        required: true
+        description: Secret API developer token from https://developers.ads.microsoft.com > Account tab > Developer Token. Save only in Dex; blank prevents campaign queries.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret OAuth access token returned by Microsoft consent and rotated by Dex. Never enter manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret OAuth refresh token returned by Microsoft consent and rotated by Dex. Never enter manually; blank requires reauthorization.
+    guide:
+      startURL: https://entra.microsoft.com/
+      steps:
+        - At https://entra.microsoft.com > Entra ID > App registrations > New registration, create a Web application supporting organizational and personal Microsoft accounts. Register the exact redirect URI displayed by Dex Web under Authentication > Web.
+        - Under API permissions add Microsoft Advertising delegated msads.manage; offline_access is requested for renewable access. Configure consent for the intended audience; an administrator may need to approve the application.
+        - Under Certificates & secrets > Client secrets, copy the secret Value once and copy the Application (client) ID from Overview. Enter both in Dex Web; keep the Value secret.
+        - At https://developers.ads.microsoft.com > Account tab > Developer Token, obtain the production token and enter it in Dex Web. A sandbox token must be paired with the sandbox API origin and sandbox account.
+        - At https://ui.ads.microsoft.com > Campaigns, copy cid from the URL as customerId and aid as the numeric accountId for Flow input. Neither is a secret. Connect in Dex Web; Dex derives access_token and refresh_token automatically.
+    oauth2:
+      authorizationEndpoint: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+      tokenEndpoint: https://login.microsoftonline.com/common/oauth2/v2.0/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [offline_access, https://ads.microsoft.com/msads.manage]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        caseInsensitiveScopes: true
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, interaction_required, consent_required]
+  operations:
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignsPage
+      kind: query
+      description: List campaign IDs, names, types, and statuses in one account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Microsoft Advertising returned the account's campaigns.}
+        - {id: providerRejected, goName: ProviderRejected, description: Microsoft Advertising conclusively rejected the query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Microsoft Advertising returned malformed or oversized campaign JSON., optional: true}
+        - {id: defect, goName: Defect, description: The account ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example search campaign is returned.
+          output: {campaigns: [{id: '123456789', name: Sample Search, campaignType: Search, status: Active}]}

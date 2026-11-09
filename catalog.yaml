@@ -114,6 +114,7 @@ directories:
   - connectors/meta/facebook-pages
   - connectors/meta/instagram-business
   - connectors/meta/whatsapp-business
+  - connectors/microsoft/advertising
   - connectors/microsoft/azure-blob
   - connectors/microsoft/azure-devops
   - connectors/microsoft/dynamics-365-sales
