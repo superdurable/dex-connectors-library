@@ -8,6 +8,11 @@ metadata:
   version: v0.1.0
 spec:
   provider: posthog
+  languages:
+    python:
+      version: v0.1.0
+      operations: [captureEvent, listInsights]
+      triggers: []
   codegen:
     go:
       package: posthog
