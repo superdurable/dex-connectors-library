@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: oracle-netsuite
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-oracle-netsuite
+      operations: [getCustomer]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-oracle-netsuite'
+      operations: [getCustomer]
+      triggers: []
   codegen:
     go:
       package: oraclenetsuite
