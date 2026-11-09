@@ -48,6 +48,52 @@
       "operation": "getCandidate"
     },
     {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"success\":true,\"results\":{\"id\":\"e9ed20fd-d45f-4aad-8a00-a19bfba0083e\",\"name\":\"Example Candidate\",\"createdAt\":\"2024-01-15T10:30:00.000Z\",\"updatedAt\":\"2024-01-16T10:30:00.000Z\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/candidate.info",
+          "requestBody": {
+            "id": "E9ED20FD-D45F-4AAD-8A00-A19BFBA0083E"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json; version=1"
+            ],
+            "Authorization": [
+              "Basic c2FtcGxlLWFzaGJ5LWFwaS1rZXk6"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2024-01-15T10:30:00.000Z",
+          "id": "e9ed20fd-d45f-4aad-8a00-a19bfba0083e",
+          "name": "Example Candidate",
+          "updatedAt": "2024-01-16T10:30:00.000Z"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "candidateId": "E9ED20FD-D45F-4AAD-8A00-A19BFBA0083E"
+      },
+      "name": "getCandidate-foundUppercaseRequest",
+      "operation": "getCandidate"
+    },
+    {
       "callId": "a1361226-b65b-52cd-81c9-423cc323222b",
       "exchanges": [
         {

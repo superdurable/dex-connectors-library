@@ -117,7 +117,7 @@ func decodeCandidate(body []byte, requestedCandidateID string) (CandidateProfile
 		}
 		return CandidateProfile{}, wire.ErrorInfo.Code, nil
 	}
-	if wire.Results.ID != requestedCandidateID || strings.TrimSpace(wire.Results.Name) == "" || strings.TrimSpace(wire.Results.CreatedAt) == "" || strings.TrimSpace(wire.Results.UpdatedAt) == "" {
+	if !strings.EqualFold(wire.Results.ID, requestedCandidateID) || strings.TrimSpace(wire.Results.Name) == "" || strings.TrimSpace(wire.Results.CreatedAt) == "" || strings.TrimSpace(wire.Results.UpdatedAt) == "" {
 		return CandidateProfile{}, "", fmt.Errorf("candidate identity or required profile fields missing")
 	}
 	return CandidateProfile{ID: wire.Results.ID, Name: wire.Results.Name, CreatedAt: wire.Results.CreatedAt, UpdatedAt: wire.Results.UpdatedAt}, "", nil

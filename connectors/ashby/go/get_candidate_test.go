@@ -49,6 +49,18 @@ func TestGetCandidateReadsSelectedFields(t *testing.T) {
 	require.Equal(t, CandidateProfile{ID: "e9ed20fd-d45f-4aad-8a00-a19bfba0083e", Name: "Example Candidate", CreatedAt: "2024-01-15T10:30:00.000Z", UpdatedAt: "2024-01-16T10:30:00.000Z"}, result.Value)
 }
 
+func TestGetCandidateMatchesIDWithoutCase(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, err := writer.Write([]byte(`{"success":true,"results":{"id":"e9ed20fd-d45f-4aad-8a00-a19bfba0083e","name":"Example Candidate","createdAt":"2024-01-15T10:30:00.000Z","updatedAt":"2024-01-16T10:30:00.000Z"}}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	result, err := sdkgo.RunQuery(queryContext{}, newTestClient(t, server.URL+"/api", 0).GetCandidate(), testConnection, GetCandidateInput{CandidateID: "E9ED20FD-D45F-4AAD-8A00-A19BFBA0083E"})
+	require.NoError(t, err)
+	require.Equal(t, GetCandidateBranchFound, result.Branch)
+	require.Equal(t, "e9ed20fd-d45f-4aad-8a00-a19bfba0083e", result.Value.ID)
+}
+
 func TestGetCandidateClassifiesProviderOutcomes(t *testing.T) {
 	for _, testCase := range []struct {
 		name   string

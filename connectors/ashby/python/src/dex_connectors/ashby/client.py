@@ -81,7 +81,12 @@ def _decode_candidate(body: bytes, requested_candidate_id: str) -> tuple[Candida
             raise ValueError("error code missing")
         return CandidateProfile(), error_info["code"]
     data = raw.get("results")
-    if not isinstance(data, dict) or data.get("id") != requested_candidate_id or any(
+    # UUID hex digits compare without case, matching Go strings.EqualFold.
+    if (
+        not isinstance(data, dict)
+        or not isinstance(data.get("id"), str)
+        or data["id"].lower() != requested_candidate_id.lower()
+    ) or any(
         not isinstance(data.get(field), str) or not data[field].strip()
         for field in ("name", "createdAt", "updatedAt")
     ):

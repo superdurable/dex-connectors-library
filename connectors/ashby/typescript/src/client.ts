@@ -119,8 +119,10 @@ function decodeCandidate(body: Uint8Array, candidateID: string): CandidateProfil
     ? { errorCode: raw.errorInfo.code } : undefined;
   if (!isObject(raw.results)) return undefined;
   const data = raw.results;
-  if (data.id !== candidateID || typeof data.name !== 'string' || !data.name.trim() ||
+  // UUID hex digits compare without case, matching Go strings.EqualFold.
+  if (typeof data.id !== 'string' || data.id.toLowerCase() !== candidateID.toLowerCase() ||
+    typeof data.name !== 'string' || !data.name.trim() ||
     typeof data.createdAt !== 'string' || !data.createdAt.trim() ||
     typeof data.updatedAt !== 'string' || !data.updatedAt.trim()) return undefined;
-  return { id: candidateID, name: data.name, createdAt: data.createdAt, updatedAt: data.updatedAt };
+  return { id: data.id, name: data.name, createdAt: data.createdAt, updatedAt: data.updatedAt };
 }
