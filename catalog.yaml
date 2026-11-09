@@ -8,6 +8,7 @@ directories:
   - connectors/airtable
   - connectors/algolia
   - connectors/alphavantage
+  - connectors/amazon/dynamodb
   - connectors/amazon/lambda
   - connectors/amazon/s3
   - connectors/amazon/ses
