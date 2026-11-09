@@ -42,6 +42,47 @@ class _GraphQLRejection(Exception):
     """Buffer rejected the GraphQL query."""
 
 
+class _GraphQLNotFound(Exception):
+    """Buffer reported only NOT_FOUND GraphQL errors."""
+
+
+class _GraphQLRetry(Exception):
+    """Buffer reported a temporary GraphQL error code."""
+
+    def __init__(self, kind: FailureKind, message: str) -> None:
+        super().__init__(message)
+        self.kind = kind
+        self.message = message
+
+
+_GRAPHQL_ERROR_NOT_FOUND = 1
+_GRAPHQL_ERROR_RATE_LIMITED = 2
+_GRAPHQL_ERROR_UNAVAILABLE = 3
+
+
+def _raise_graphql_errors(errors: list[Any]) -> None:
+    """Let any definite rejection win, then retryable codes, then NOT_FOUND."""
+    outcome = _GRAPHQL_ERROR_NOT_FOUND
+    for error in errors:
+        extensions = error.get("extensions") if isinstance(error, dict) else None
+        if extensions is not None and not isinstance(extensions, dict):
+            raise _GraphQLRejection()
+        code = extensions.get("code") if isinstance(extensions, dict) else None
+        if code == "NOT_FOUND":
+            continue
+        if code == "RATE_LIMIT_EXCEEDED":
+            outcome = max(outcome, _GRAPHQL_ERROR_RATE_LIMITED)
+        elif code == "UNEXPECTED":
+            outcome = max(outcome, _GRAPHQL_ERROR_UNAVAILABLE)
+        else:
+            raise _GraphQLRejection()
+    if outcome == _GRAPHQL_ERROR_UNAVAILABLE:
+        raise _GraphQLRetry(FailureKind.AVAILABILITY, "Buffer reported an unexpected server error")
+    if outcome == _GRAPHQL_ERROR_RATE_LIMITED:
+        raise _GraphQLRetry(FailureKind.RATE_LIMIT, "Buffer rate limited the request")
+    raise _GraphQLNotFound()
+
+
 @dataclass(frozen=True, slots=True)
 class _Exchange:
     """One bounded provider response or request failure."""
@@ -83,7 +124,7 @@ def _decode_channel(body: bytes, channel_id: str) -> ChannelProfile | None:
     if errors is not None and not isinstance(errors, list):
         raise ValueError("GraphQL errors are invalid")
     if isinstance(errors, list) and errors:
-        raise _GraphQLRejection()
+        _raise_graphql_errors(errors)
     data = raw.get("data")
     if not isinstance(data, dict):
         raise ValueError("GraphQL data is missing")
@@ -219,6 +260,10 @@ class GetChannelOperation:
             return _branch(
                 "providerRejected", FailureKind.PROVIDER_REJECTION, "Buffer rejected the GraphQL query"
             )
+        except _GraphQLRetry as retry:
+            return _retry(retry.kind, retry.message, exchange.retry_after)
+        except _GraphQLNotFound:
+            return _branch("notFound", FailureKind.NOT_FOUND, "Buffer did not find the channel")
         except (ValueError, TypeError, UnicodeDecodeError):
             return _branch(
                 "invalidResponse", FailureKind.PROTOCOL, "Buffer returned invalid channel JSON"

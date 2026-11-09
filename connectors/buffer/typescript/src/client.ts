@@ -91,6 +91,9 @@ export class GetChannelOperation implements Query<GetChannelInput, ChannelProfil
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Buffer response exceeded the configured limit');
     const channel = decodeChannel(exchange.body, input.channelId);
     if (channel === 'rejected') return terminal('providerRejected', 'PROVIDER_REJECTION', 'Buffer rejected the GraphQL query');
+    if (channel === 'unavailable') return retry('AVAILABILITY', 'Buffer reported an unexpected server error', exchange.retryAfterMs);
+    if (channel === 'rateLimited') return retry('RATE_LIMIT', 'Buffer rate limited the request', exchange.retryAfterMs);
+    if (channel === 'graphQLNotFound') return terminal('notFound', 'NOT_FOUND', 'Buffer did not find the channel');
     if (channel === undefined) return terminal('invalidResponse', 'PROTOCOL', 'Buffer returned invalid channel JSON');
     if (channel === null) return terminal('notFound', 'NOT_FOUND', 'Buffer did not expose the channel');
     return newQueryBranch('found', channel);
@@ -111,12 +114,30 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decodeChannel(body: Uint8Array, channelID: string): ChannelProfile | null | 'rejected' | undefined {
+type GraphQLErrorOutcome = 'graphQLNotFound' | 'rateLimited' | 'unavailable' | 'rejected';
+
+/** Let any definite rejection win, then retryable codes, then NOT_FOUND. */
+function classifyGraphQLErrors(errors: unknown[]): GraphQLErrorOutcome {
+  const precedence: GraphQLErrorOutcome[] = ['graphQLNotFound', 'rateLimited', 'unavailable'];
+  let outcome = 0;
+  for (const error of errors) {
+    const extensions = isObject(error) ? error.extensions : undefined;
+    if (extensions !== undefined && extensions !== null && !isObject(extensions)) return 'rejected';
+    const code = isObject(extensions) ? extensions.code : undefined;
+    if (code === 'NOT_FOUND') continue;
+    if (code === 'RATE_LIMIT_EXCEEDED') outcome = Math.max(outcome, 1);
+    else if (code === 'UNEXPECTED') outcome = Math.max(outcome, 2);
+    else return 'rejected';
+  }
+  return precedence[outcome]!;
+}
+
+function decodeChannel(body: Uint8Array, channelID: string): ChannelProfile | null | GraphQLErrorOutcome | undefined {
   let raw: unknown;
   try { raw = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; } catch { return undefined; }
   if (!isObject(raw)) return undefined;
   if (raw.errors !== undefined && raw.errors !== null && !Array.isArray(raw.errors)) return undefined;
-  if (Array.isArray(raw.errors) && raw.errors.length > 0) return 'rejected';
+  if (Array.isArray(raw.errors) && raw.errors.length > 0) return classifyGraphQLErrors(raw.errors as unknown[]);
   if (!isObject(raw.data)) return undefined;
   const channel = raw.data.channel;
   if (channel === null) return null;

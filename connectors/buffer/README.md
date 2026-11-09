@@ -1,6 +1,6 @@
 # Buffer connector
 
-The Go, Python, and TypeScript `getChannel` Query reads a connected channel's ID, name, and social service using Buffer's [GraphQL channel query](https://developers.buffer.com/reference). A null channel selects optional `notFound`; GraphQL errors select `providerRejected`. HTTP 429, server failures, and transport failures retry. This operation is read only.
+The Go, Python, and TypeScript `getChannel` Query reads a connected channel's ID, name, and social service using Buffer's [GraphQL channel query](https://developers.buffer.com/reference). A null channel or only `NOT_FOUND` GraphQL errors select optional `notFound`. GraphQL errors with [`extensions.code`](https://developers.buffer.com/guides/error-handling.html) `RATE_LIMIT_EXCEEDED` or `UNEXPECTED` retry; any other code selects `providerRejected`. HTTP 429, server failures, and transport failures retry. This operation is read only.
 
 ## Connect
 

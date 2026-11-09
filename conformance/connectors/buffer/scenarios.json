@@ -242,6 +242,190 @@
       "operation": "getChannel"
     },
     {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"data\":null,\"errors\":[{\"message\":\"Channel not found\",\"extensions\":{\"code\":\"NOT_FOUND\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetChannel($id: ChannelId!) { channel(input: {id: $id}) { id name service } }",
+            "variables": {
+              "id": "channel-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "channel-1"
+      },
+      "name": "getChannel-graphqlNotFound",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"data\":null,\"errors\":[{\"message\":\"Unexpected error\",\"extensions\":{\"code\":\"UNEXPECTED\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetChannel($id: ChannelId!) { channel(input: {id: $id}) { id name service } }",
+            "variables": {
+              "id": "channel-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "channel-1"
+      },
+      "name": "getChannel-graphqlUnexpected",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"message\":\"Too many requests from this client. Please try again later.\",\"extensions\":{\"code\":\"RATE_LIMIT_EXCEEDED\",\"window\":\"15m\"}}]}",
+          "headers": {
+            "Retry-After": "7"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetChannel($id: ChannelId!) { channel(input: {id: $id}) { id name service } }",
+            "variables": {
+              "id": "channel-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "channel-1"
+      },
+      "name": "getChannel-graphqlRateLimit",
+      "operation": "getChannel"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "{\"data\":null,\"errors\":[{\"message\":\"Unexpected error\",\"extensions\":{\"code\":\"UNEXPECTED\"}},{\"message\":\"Forbidden\",\"extensions\":{\"code\":\"FORBIDDEN\"}}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "query": "query GetChannel($id: ChannelId!) { channel(input: {id: $id}) { id name service } }",
+            "variables": {
+              "id": "channel-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-api-key"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "service": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "channelId": "channel-1"
+      },
+      "name": "getChannel-graphqlForbidden",
+      "operation": "getChannel"
+    },
+    {
       "callId": "70e762e3-11d6-5d97-af52-c9a551737c8f",
       "exchanges": [
         {

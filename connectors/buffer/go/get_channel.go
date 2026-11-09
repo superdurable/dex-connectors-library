@@ -69,12 +69,19 @@ func (operation GetChannelOperation) Invoke(call sdkgo.Call, input GetChannelInp
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[ChannelProfile](channelFailure(sdkgo.FailureTransport, "Buffer response was interrupted"), 0)
 	}
-	profile, isNotFound, isRejected, err := decodeChannel(response.body, input.ChannelID)
+	profile, isNotFound, graphQLErrors, err := decodeChannel(response.body, input.ChannelID)
 	if err != nil {
 		return channelBranch(GetChannelBranchInvalidResponse, sdkgo.FailureProtocol, "Buffer returned invalid channel JSON")
 	}
-	if isRejected {
+	switch graphQLErrors {
+	case graphQLErrorRejected:
 		return channelBranch(GetChannelBranchProviderRejected, sdkgo.FailureProviderRejection, "Buffer rejected the GraphQL query")
+	case graphQLErrorRateLimited:
+		return sdkgo.NewQueryRetry[ChannelProfile](channelFailure(sdkgo.FailureRateLimit, "Buffer rate limited the request"), response.retryAfter)
+	case graphQLErrorUnavailable:
+		return sdkgo.NewQueryRetry[ChannelProfile](channelFailure(sdkgo.FailureAvailability, "Buffer reported an unexpected server error"), response.retryAfter)
+	case graphQLErrorNotFound:
+		return channelBranch(GetChannelBranchNotFound, sdkgo.FailureNotFound, "Buffer did not find the channel")
 	}
 	if isNotFound {
 		return channelBranch(GetChannelBranchNotFound, sdkgo.FailureNotFound, "Buffer did not expose the channel")
@@ -94,7 +101,18 @@ func validGraphQLID(value string) bool {
 	return true
 }
 
-func decodeChannel(body []byte, channelID string) (ChannelProfile, bool, bool, error) {
+// graphQLErrorOutcome classifies a GraphQL errors array by Buffer extensions.code.
+type graphQLErrorOutcome int
+
+const (
+	graphQLErrorNone graphQLErrorOutcome = iota
+	graphQLErrorNotFound
+	graphQLErrorRateLimited
+	graphQLErrorUnavailable
+	graphQLErrorRejected
+)
+
+func decodeChannel(body []byte, channelID string) (ChannelProfile, bool, graphQLErrorOutcome, error) {
 	var wire struct {
 		Data *struct {
 			Channel *struct {
@@ -106,21 +124,46 @@ func decodeChannel(body []byte, channelID string) (ChannelProfile, bool, bool, e
 		Errors []json.RawMessage `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
-		return ChannelProfile{}, false, false, err
+		return ChannelProfile{}, false, graphQLErrorNone, err
 	}
 	if len(wire.Errors) > 0 {
-		return ChannelProfile{}, false, true, nil
+		return ChannelProfile{}, false, classifyGraphQLErrors(wire.Errors), nil
 	}
 	if wire.Data == nil {
-		return ChannelProfile{}, false, false, errors.New("GraphQL data is missing")
+		return ChannelProfile{}, false, graphQLErrorNone, errors.New("GraphQL data is missing")
 	}
 	if wire.Data.Channel == nil {
-		return ChannelProfile{}, true, false, nil
+		return ChannelProfile{}, true, graphQLErrorNone, nil
 	}
 	if wire.Data.Channel.ID != channelID || wire.Data.Channel.Name == "" || wire.Data.Channel.Service == "" {
-		return ChannelProfile{}, false, false, errors.New("channel identity, name, or service is invalid")
+		return ChannelProfile{}, false, graphQLErrorNone, errors.New("channel identity, name, or service is invalid")
 	}
-	return ChannelProfile{ID: wire.Data.Channel.ID, Name: wire.Data.Channel.Name, Service: wire.Data.Channel.Service}, false, false, nil
+	return ChannelProfile{ID: wire.Data.Channel.ID, Name: wire.Data.Channel.Name, Service: wire.Data.Channel.Service}, false, graphQLErrorNone, nil
+}
+
+// classifyGraphQLErrors lets any definite rejection win, then retryable codes, then NOT_FOUND.
+func classifyGraphQLErrors(rawErrors []json.RawMessage) graphQLErrorOutcome {
+	outcome := graphQLErrorNotFound
+	for _, rawError := range rawErrors {
+		var graphQLError struct {
+			Extensions struct {
+				Code string `json:"code"`
+			} `json:"extensions"`
+		}
+		if json.Unmarshal(rawError, &graphQLError) != nil {
+			return graphQLErrorRejected
+		}
+		switch graphQLError.Extensions.Code {
+		case "NOT_FOUND":
+		case "RATE_LIMIT_EXCEEDED":
+			outcome = max(outcome, graphQLErrorRateLimited)
+		case "UNEXPECTED":
+			outcome = max(outcome, graphQLErrorUnavailable)
+		default:
+			return graphQLErrorRejected
+		}
+	}
+	return outcome
 }
 
 func channelFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
