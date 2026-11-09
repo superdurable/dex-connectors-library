@@ -391,6 +391,108 @@
       "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
       "exchanges": [
         {
+          "body": "{\"error\":{\"message\":\"(#32) Page request limit reached\",\"type\":\"OAuthException\",\"code\":32,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/feed",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,message,created_time,permalink_url"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "pageId": "123456789"
+      },
+      "name": "listPosts-graphThrottle",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"(#100) Invalid parameter\",\"type\":\"OAuthException\",\"code\":100,\"is_transient\":false,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/feed",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,message,created_time,permalink_url"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "posts": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "pageId": "123456789"
+      },
+      "name": "listPosts-graphInvalidParameter",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
           "body": "{\"id\":\"123456789_987654321\",\"message\":\"Welcome to our Page\",\"created_time\":\"2026-11-08T10:00:00+0000\",\"permalink_url\":\"https://www.facebook.com/123456789/posts/987654321\",\"comments\":{\"data\":[{\"message\":\"private\"}]}}",
           "headers": {},
           "keyMode": "absent",
@@ -724,6 +826,90 @@
         "postId": "123456789_987654321"
       },
       "name": "getPost-transport",
+      "operation": "getPost"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"User request limit reached\",\"type\":\"OAuthException\",\"code\":80001,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789_987654321",
+          "query": {
+            "fields": [
+              "id,message,created_time,permalink_url"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "getPost-graphThrottle",
+      "operation": "getPost"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"An unexpected error has occurred. Please retry your request later.\",\"type\":\"OAuthException\",\"code\":2,\"is_transient\":true,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789_987654321",
+          "query": {
+            "fields": [
+              "id,message,created_time,permalink_url"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "123456789_987654321"
+      },
+      "name": "getPost-graphTransient",
       "operation": "getPost"
     },
     {
@@ -1121,6 +1307,113 @@
         "pageId": "bad/id"
       },
       "name": "publishTextPost-defect",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"(#4) Application request limit reached\",\"type\":\"OAuthException\",\"code\":4,\"is_transient\":true,\"fbtrace_id\":\"AbCdEf\"}}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-graphThrottle",
+      "operation": "publishTextPost"
+    },
+    {
+      "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"An unexpected error has occurred. Please retry your request later.\",\"type\":\"OAuthException\",\"code\":2,\"is_transient\":true,\"fbtrace_id\":\"AbCdEf\"}}",
+          "form": {
+            "message": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/123456789/feed",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-page-token"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "d2357ac8-f73e-5df4-952e-b68da926f540",
+          "state": "claimed"
+        },
+        "output": {
+          "postId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d2357ac8-f73e-5df4-952e-b68da926f540",
+      "input": {
+        "message": "Hello from Dex",
+        "pageId": "123456789"
+      },
+      "name": "publishTextPost-graphTransientRejected",
       "operation": "publishTextPost"
     }
   ],

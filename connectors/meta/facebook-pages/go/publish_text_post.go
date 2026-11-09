@@ -99,12 +99,17 @@ func (operation PublishTextPostOperation) Invoke(call sdkgo.Call, input PublishT
 	}
 	response := dispatch.response
 	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable {
+	isRateLimited := response.StatusCode == http.StatusTooManyRequests
+	if !isRateLimited && response.StatusCode >= 400 && response.StatusCode < 500 {
+		// A Graph throttling code means Meta refused the post before processing it.
+		isRateLimited = isGraphThrottleResponse(response, operation.client.maxResponseBytes)
+	}
+	if isRateLimited || response.StatusCode == http.StatusServiceUnavailable {
 		if err := fence.RecordCanResend(); err != nil {
 			return retryPublish(sdkgo.FailureAvailability, "Meta retry checkpoint is unavailable", 0)
 		}
 		kind := sdkgo.FailureAvailability
-		if response.StatusCode == http.StatusTooManyRequests {
+		if isRateLimited {
 			kind = sdkgo.FailureRateLimit
 		}
 		return retryPublish(kind, "Meta did not process the post", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
