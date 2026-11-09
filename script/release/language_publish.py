@@ -27,6 +27,10 @@ else:
 
 PYPI_FIRST_PUBLISH_LIMIT = 3
 GITHUB_FIRST_RELEASE_LIMIT = 15
+GO_RELEASE_LIMIT = 15
+# Tagged versions come first because later runs select only untagged versions.
+GO_RELEASE_STATE_ORDER = {"tagged": 0, "update": 1, "first_release": 2}
+CONNECTOR_RELEASE_COMPLETE = "connector-release.complete"
 PYPI_RETRY_DELAYS = (20, 60, 120)
 LOOKUP_RETRY_DELAYS = (1, 3, 7)
 MAXIMUM_GITHUB_MATRIX_JOBS = 256
@@ -102,13 +106,21 @@ def has_pypi_release_files(package: str, version: str, *, read=read_registry_jso
     return has_wheel_and_sdist(release.get("urls"))
 
 
-def list_completed_language_tags() -> set[str]:
+def read_release_inventory() -> dict[str, list[str]]:
     inventory_path = os.environ.get("GH_RELEASE_INVENTORY_PATH")
     inventory = (json.loads(Path(inventory_path).read_text(encoding="utf-8"))
                  if inventory_path else release_inventory())
     if inventory.get("_inventory_unavailable"):
         raise RuntimeError("GitHub release inventory is unavailable")
-    return {tag for tag, assets in inventory.items() if "language-release.complete" in assets}
+    return inventory
+
+
+def list_completed_language_tags() -> set[str]:
+    return {tag for tag, assets in read_release_inventory().items() if "language-release.complete" in assets}
+
+
+def list_completed_go_tags() -> set[str]:
+    return {tag for tag, assets in read_release_inventory().items() if CONNECTOR_RELEASE_COMPLETE in assets}
 
 
 def has_run_project_limit_artifact(repository: str, run_id: str, *, fetch=github_json) -> bool:
@@ -128,9 +140,49 @@ def is_release_complete(item: dict[str, str], completed_tags: set[str]) -> bool:
     return item["tag_prefix"] + item["version"] in completed_tags
 
 
+def select_go_releases(items: list[dict[str, str]], go_release_limit: int,
+                       completed_go_tags: set[str] | None) -> dict[str, list[dict[str, str]]]:
+    """Start at most ``go_release_limit`` Go releases that need work and defer the remaining pending versions.
+
+    Each item's ``release_state`` from ``connectorctl release-matrix`` ranks tagged versions, then updates of
+    released connectors, then first releases, each in catalog order, and is removed from the returned items.
+    A tagged version is always selected, because later runs select only untagged versions; it takes a slot
+    unless ``completed_go_tags`` shows its release complete. ``None`` means the inventory is unavailable, so
+    every tagged version takes a slot. A deferred version has no tag yet, so a later run selects it again.
+    """
+    if not 1 <= go_release_limit <= MAXIMUM_GITHUB_MATRIX_JOBS:
+        raise ValueError(f"Go release limit must be between 1 and {MAXIMUM_GITHUB_MATRIX_JOBS}")
+    ranked: list[tuple[int, int, dict[str, str]]] = []
+    for index, item in enumerate(items):
+        state = item.get("release_state")
+        if state not in GO_RELEASE_STATE_ORDER:
+            raise ValueError(f"Go release matrix item has an unknown release_state: {state!r}")
+        ranked.append((GO_RELEASE_STATE_ORDER[state], index, item))
+    selected: list[dict[str, str]] = []
+    deferred: list[dict[str, str]] = []
+    used_slots = 0
+    for _, _, item in sorted(ranked, key=lambda entry: entry[:2]):
+        state = item.pop("release_state")
+        if state == "tagged":
+            selected.append(item)
+            if completed_go_tags is None or item["tag_prefix"] + item["version"] not in completed_go_tags:
+                used_slots += 1
+        elif used_slots < go_release_limit:
+            selected.append(item)
+            used_slots += 1
+        else:
+            item["defer_reason"] = "go_release_cap"
+            deferred.append(item)
+    if len(selected) > MAXIMUM_GITHUB_MATRIX_JOBS:
+        raise ValueError(f"Go release matrix needs {len(selected)} tagged versions; at most "
+                         f"{MAXIMUM_GITHUB_MATRIX_JOBS} fit in one run")
+    return {"selected": selected, "deferred": deferred}
+
+
 def select_release_matrices(items: list[dict[str, str]], first_publish_limit: int,
                             *, github_release_limit: int = GITHUB_FIRST_RELEASE_LIMIT,
                             completed_tags: set[str] | None = None,
+                            deferred_go_directories: frozenset[str] = frozenset(),
                             release_created_at: dict[str, str] | None = None,
                             release_package=None,
                             project_exists=has_registry_project,
@@ -139,6 +191,7 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     """Queue Python first releases for GitHub first and completed releases missing from PyPI for upload.
 
     ``pending_upload_directory`` limits pending uploads to that exact connector directory.
+    A package of a connector in ``deferred_go_directories`` waits with its Go release, whose tag it requires.
     """
     if first_publish_limit < 1:
         raise ValueError("PyPI first publish limit must be positive")
@@ -158,6 +211,10 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     github_first_count = 0
     for item in items:
         if is_release_complete(item, completed):
+            continue
+        if item["directory"] in deferred_go_directories:
+            item["defer_reason"] = "go_release_deferred"
+            deferred.append(item)
             continue
         try:
             has_project = project_exists(item["language"], item["package"])
@@ -287,10 +344,13 @@ def defer_beyond_matrix_limit(queues: list[list[dict[str, str]]], deferred: list
         remaining -= len(queue)
 
 
-def write_selection_outputs(output_path: Path, selection: dict[str, object], go_matrix: str, go_count: str) -> None:
+def write_selection_outputs(output_path: Path, selection: dict[str, object],
+                            go_selection: dict[str, list[dict[str, str]]]) -> None:
     built = selection["updates"] + selection["first"] + selection["github_first"]
     with output_path.open("a", encoding="utf-8") as output:
-        output.write(f"matrix={go_matrix}\ncount={go_count}\n")
+        output.write(f"matrix={json.dumps({'include': go_selection['selected']}, separators=(',', ':'))}\n")
+        output.write(f"count={len(go_selection['selected'])}\n")
+        output.write(f"go_deferred_count={len(go_selection['deferred'])}\n")
         for name in ("updates", "first", "github_first", "pypi_pending", "deferred"):
             items = selection[name]
             output.write(f"{name}_matrix={json.dumps({'include': items}, separators=(',', ':'))}\n")
@@ -513,6 +573,16 @@ def summarize(expected: list[dict[str, str]], results_directory: Path, deferred:
             "pending_count": len(pypi_pending) + len(deferred_tags) + len(failed)}
 
 
+def write_go_selection_summary(path: Path, go_selection: dict[str, list[dict[str, str]]]) -> None:
+    with path.open("a", encoding="utf-8") as output:
+        output.write("## Go releases\n\n")
+        for status in ("selected", "deferred"):
+            tags = [item["tag_prefix"] + item["version"] for item in go_selection[status]]
+            label = "deferred (go_release_cap)" if status == "deferred" else status
+            output.write(f"- {label}: {len(tags)} — {', '.join(tags) or 'none'}\n")
+        output.write("\n")
+
+
 def write_step_summary(path: Path, summary: dict[str, object]) -> None:
     with path.open("a", encoding="utf-8") as output:
         output.write("## Language releases\n\n")
@@ -537,6 +607,7 @@ def main() -> int:
     select_parser.add_argument("--github-output", type=Path, required=True)
     select_parser.add_argument("--first-publish-limit", type=int, default=PYPI_FIRST_PUBLISH_LIMIT)
     select_parser.add_argument("--github-release-limit", type=int, default=GITHUB_FIRST_RELEASE_LIMIT)
+    select_parser.add_argument("--go-release-limit", type=int, default=GO_RELEASE_LIMIT)
     select_parser.add_argument("--pending-upload-directory",
                                help="upload only this connector directory's pending PyPI versions")
     completed_parser = commands.add_parser("completed-language-tags")
@@ -589,6 +660,17 @@ def main() -> int:
         if args.command == "select":
             entries, items = read_language_matrix(args.matrix_output)
             try:
+                completed_go_tags: set[str] | None = list_completed_go_tags()
+            except RuntimeError as error:
+                print(f"::warning::{error}; every tagged Go version takes a release slot", file=sys.stderr)
+                completed_go_tags = None
+            go_selection = select_go_releases(json.loads(entries["matrix"])["include"], args.go_release_limit,
+                                              completed_go_tags)
+            deferred_go_directories = frozenset(item["directory"] for item in go_selection["deferred"])
+            if go_selection["deferred"]:
+                print(f"::notice::Deferred {len(go_selection['deferred'])} Go releases beyond the per-run limit of "
+                      f"{args.go_release_limit}; a later run releases them with their language packages.")
+            try:
                 completed_tags = list_completed_language_tags()
             except RuntimeError as error:
                 print(f"::warning::{error}; deferring language selection without blocking Go releases", file=sys.stderr)
@@ -600,11 +682,17 @@ def main() -> int:
                 selection = select_release_matrices(items, args.first_publish_limit,
                                                     github_release_limit=args.github_release_limit,
                                                     completed_tags=completed_tags,
+                                                    deferred_go_directories=deferred_go_directories,
                                                     release_created_at=read_release_created_at(),
                                                     pending_upload_directory=args.pending_upload_directory)
-            write_selection_outputs(args.github_output, selection, entries["matrix"], entries["count"])
+            selection["go_deferred"] = go_selection["deferred"]
+            write_selection_outputs(args.github_output, selection, go_selection)
+            if os.environ.get("GITHUB_STEP_SUMMARY"):
+                write_go_selection_summary(Path(os.environ["GITHUB_STEP_SUMMARY"]), go_selection)
             Path(os.environ.get("LANGUAGE_SELECTION_PATH", "/tmp/language-selection.json")).write_text(
                 json.dumps(selection) + "\n", encoding="utf-8")
+            print(f"Go release selection: {len(go_selection['selected'])} selected, "
+                  f"{len(go_selection['deferred'])} deferred")
             print(f"Language release selection: {len(selection['updates'])} updates, "
                   f"{len(selection['first'])} first publishes, {len(selection['github_first'])} GitHub-first "
                   f"Python releases, {len(selection['pypi_pending'])} pending PyPI uploads, "

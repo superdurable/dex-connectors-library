@@ -294,11 +294,15 @@ jobs:
           for _ in $(seq 1 120); do
             if [ "$CONNECTOR" = connectors/postgresql ]; then
               if docker exec "${{ job.services.database.id }}" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d connector_test >/dev/null 2>&1; then break; fi
+            elif [ "$CONNECTOR" = connectors/mongodb ]; then
+              if docker exec "${{ job.services.database.id }}" mongosh --quiet --eval 'db.runCommand({ping:1}).ok' 2>/dev/null | grep -qx 1; then break; fi
             elif (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null; then break; fi
             sleep 1
           done
           if [ "$CONNECTOR" = connectors/postgresql ]; then
             docker exec "${{ job.services.database.id }}" pg_isready -h 127.0.0.1 -p 5432 -U postgres -d connector_test
+          elif [ "$CONNECTOR" = connectors/mongodb ]; then
+            docker exec "${{ job.services.database.id }}" mongosh --quiet --eval 'db.runCommand({ping:1}).ok' | grep -qx 1
           else
             (echo > /dev/tcp/127.0.0.1/"$DATABASE_PORT") 2>/dev/null
           fi
@@ -319,6 +323,9 @@ jobs:
               docker exec '${{ job.services.database.id }}' mysqladmin ping -h127.0.0.1 --protocol=tcp -uroot -pconnector_test --silent
               docker cp '${{ job.services.database.id }}:/var/lib/mysql/ca.pem' "$RUNNER_TEMP/mysql-ca.pem"
               export MYSQL_TLS_CA_FILE="$RUNNER_TEMP/mysql-ca.pem" MYSQL_SSL_CA="$RUNNER_TEMP/mysql-ca.pem"
+              ;;
+            connectors/mongodb)
+              export MONGODB_CONNECTOR_TEST_URI=mongodb://127.0.0.1:27017
               ;;
             connectors/microsoft/sql-server)
               export SQLSERVER_CONNECTOR_TEST_HOST=127.0.0.1 SQLSERVER_CONNECTOR_TEST_PORT=1433

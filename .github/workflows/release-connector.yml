@@ -24,6 +24,10 @@ on:
         description: Maximum Python first releases to create on GitHub before their PyPI upload in this run
         required: false
         type: string
+      go_release_limit:
+        description: Maximum Go connector releases to start in this run (1-256); later runs release the rest
+        required: false
+        type: string
       drain_first_publishes:
         description: Drain pending language publishes and pending Go releases
         required: false
@@ -109,6 +113,8 @@ jobs:
           GH_RELEASE_CREATED_AT_PATH: ${{ runner.temp }}/release-created-at.json
           FIRST_PUBLISH_LIMIT: ${{ inputs.first_publish_limit || vars.PYPI_FIRST_PUBLISH_LIMIT || '3' }}
           PYTHON_GITHUB_FIRST_RELEASE_LIMIT: ${{ inputs.github_first_release_limit || vars.PYTHON_GITHUB_FIRST_RELEASE_LIMIT || '15' }}
+          # Bounds GITHUB_TOKEN use; deferred Go versions stay untagged, so later runs select them again.
+          GO_RELEASE_LIMIT: ${{ inputs.go_release_limit || vars.GO_RELEASE_LIMIT || '15' }}
           DRAIN_FIRST_PUBLISHES: ${{ inputs.drain_first_publishes }}
           LANGUAGE_SELECTION_PATH: ${{ runner.temp }}/language-selection.json
         run: |
@@ -117,7 +123,7 @@ jobs:
             exit 1
           fi
           if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -z "${REPAIR_DIRECTORY}" ] && [ "${DRAIN_FIRST_PUBLISHES}" != true ]; then
-            printf 'matrix={"include":[]}\ncount=0\nlanguage_matrix={"include":[]}\nlanguage_count=0\nupdates_matrix={"include":[]}\nupdates_count=0\nfirst_matrix={"include":[]}\nfirst_count=0\ngithub_first_matrix={"include":[]}\ngithub_first_count=0\npypi_pending_matrix={"include":[]}\npypi_pending_count=0\npending_count=0\n' >> "${GITHUB_OUTPUT}"
+            printf 'matrix={"include":[]}\ncount=0\ngo_deferred_count=0\nlanguage_matrix={"include":[]}\nlanguage_count=0\nupdates_matrix={"include":[]}\nupdates_count=0\nfirst_matrix={"include":[]}\nfirst_count=0\ngithub_first_matrix={"include":[]}\ngithub_first_count=0\npypi_pending_matrix={"include":[]}\npypi_pending_count=0\npending_count=0\n' >> "${GITHUB_OUTPUT}"
             exit
           fi
           arguments=(--catalog catalog.yaml --github-output "${RUNNER_TEMP}/release-matrix-output")
@@ -135,6 +141,7 @@ jobs:
           python3 script/release/language_publish.py select \
             --matrix-output "${RUNNER_TEMP}/release-matrix-output" \
             --github-output "${GITHUB_OUTPUT}" \
+            --go-release-limit "${GO_RELEASE_LIMIT}" \
             --first-publish-limit "${FIRST_PUBLISH_LIMIT}" \
             --github-release-limit "${PYTHON_GITHUB_FIRST_RELEASE_LIMIT}" \
             "${select_arguments[@]}"

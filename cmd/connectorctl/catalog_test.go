@@ -398,8 +398,38 @@ directories:
 	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--github-output", githubOutput}))
 	require.Equal(t, []connectorReleaseMatrixItem{{
 		Directory: "connectors/acme/chat", ManifestPath: "connectors/acme/chat/connector.yaml", TagPrefix: "connectors/acme/chat/go/",
-		Version: "v0.2.0", DisplayName: "Google Sheets Fixture",
+		Version: "v0.2.0", DisplayName: "Google Sheets Fixture", ReleaseState: goReleaseStateUpdate,
 	}}, readReleaseMatrixOutput(t, githubOutput).Include, "only the connector whose version moved releases")
+}
+
+func TestReleaseMatrixLabelsGoReleaseStatesForThePerRunCap(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	directories := []string{"connectors/acme/chat", "connectors/acme/mail", "connectors/acme/news"}
+	for _, directory := range directories {
+		writeConnectorFixture(t, repositoryRoot, directory, "example.com/"+directory)
+		replaceInFile(t, filepath.Join(repositoryRoot, filepath.FromSlash(directory), "connector.yaml"),
+			"name: fixture-connector", "name: "+strings.ReplaceAll(strings.TrimPrefix(directory, "connectors/"), "/", "-"))
+	}
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - "+strings.Join(directories, "\n  - ")+"\n"), 0o600))
+	sourceCommit := initializeConnectorReleaseRepository(t, repositoryRoot, "connectors/acme/chat/go/v0.1.0")
+	command := exec.Command("git", "tag", "connectors/acme/mail/go/v0.1.0")
+	command.Dir = repositoryRoot
+	output, err := command.CombinedOutput()
+	require.NoError(t, err, "%s", output)
+	replaceInFile(t, filepath.Join(repositoryRoot, "connectors", "acme", "mail", "connector.yaml"), "version: v0.1.0", "version: v0.2.0")
+
+	githubOutput := filepath.Join(t.TempDir(), "github-output")
+	require.NoError(t, releaseMatrixCommand([]string{"--catalog", catalogPath, "--include-published-at", sourceCommit, "--github-output", githubOutput}))
+	releaseStates := map[string]string{}
+	for _, item := range readReleaseMatrixOutput(t, githubOutput).Include {
+		releaseStates[item.Directory] = item.ReleaseState
+	}
+	require.Equal(t, map[string]string{
+		"connectors/acme/chat": goReleaseStateTagged,
+		"connectors/acme/mail": goReleaseStateUpdate,
+		"connectors/acme/news": goReleaseStateFirstRelease,
+	}, releaseStates)
 }
 
 func TestGoMigrationUsesOldTagWithoutConflatingLanguageTags(t *testing.T) {

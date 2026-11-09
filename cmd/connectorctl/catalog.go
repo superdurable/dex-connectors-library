@@ -107,7 +107,16 @@ type connectorReleaseMatrixItem struct {
 	DisplayName  string `json:"display_name"`
 	Language     string `json:"language,omitempty"`
 	Package      string `json:"package,omitempty"`
+	// ReleaseState orders Go releases for the per-run cap; language_publish.py removes it.
+	ReleaseState string `json:"release_state,omitempty"`
 }
+
+// Go release states let the planner rank repairs, then updates, then first releases.
+const (
+	goReleaseStateTagged       = "tagged"
+	goReleaseStateUpdate       = "update"
+	goReleaseStateFirstRelease = "first_release"
+)
 
 type reachableConnectorRelease struct {
 	Tag          string
@@ -257,9 +266,16 @@ func releaseMatrixCommand(args []string) error {
 		if !isPending && !*includePublished && !isPublishedAtIncludedSource {
 			continue
 		}
+		releaseState := goReleaseStateTagged
+		if isPending && latestRelease.Version == "" {
+			releaseState = goReleaseStateFirstRelease
+		} else if isPending {
+			releaseState = goReleaseStateUpdate
+		}
 		matrix.Include = append(matrix.Include, connectorReleaseMatrixItem{
 			Directory: entry.Directory, ManifestPath: entry.ManifestPath, TagPrefix: entry.Directory + "/go/",
 			Version: entry.Manifest.Metadata.Version, DisplayName: entry.Manifest.Metadata.DisplayName,
+			ReleaseState: releaseState,
 		})
 	}
 	for _, entry := range entries {

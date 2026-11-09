@@ -40,5 +40,27 @@ class DexDevelopmentServerDurabilityTest(unittest.TestCase):
         self.assertGreater(launch_count, 0)
 
 
+class NativeWireDatabaseServiceTest(unittest.TestCase):
+    def test_mongodb_service_waits_for_ping_and_exports_its_uri(self) -> None:
+        workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+        self.assertEqual(2, workflow.count("mongosh --quiet --eval 'db.runCommand({ping:1}).ok'"))
+        self.assertIn("export MONGODB_CONNECTOR_TEST_URI=mongodb://127.0.0.1:27017", workflow)
+
+
+class GoReleaseLimitTest(unittest.TestCase):
+    def test_plan_caps_go_releases_before_any_job_reads_the_matrix(self) -> None:
+        workflow = (WORKFLOW_DIRECTORY / "release-connector.yml").read_text(encoding="utf-8")
+        self.assertIn("      go_release_limit:\n", workflow.split("\npermissions:\n", 1)[0])
+        plan_step = workflow.split("      - name: Build pending or targeted repair matrix\n", 1)[1].split("\n      - ", 1)[0]
+        self.assertIn("GO_RELEASE_LIMIT: ${{ inputs.go_release_limit || vars.GO_RELEASE_LIMIT || '15' }}", plan_step)
+        self.assertIn('--go-release-limit "${GO_RELEASE_LIMIT}"', plan_step)
+        # Only the capped selection may write the Go matrix that release and build-language read.
+        self.assertIn('arguments=(--catalog catalog.yaml --github-output "${RUNNER_TEMP}/release-matrix-output")', plan_step)
+        self.assertIn('--github-output "${GITHUB_OUTPUT}"', plan_step.split("language_publish.py select", 1)[1])
+        self.assertIn("go_deferred_count=0", plan_step)
+        self.assertIn("matrix: ${{ steps.matrix.outputs.matrix }}", workflow)
+        self.assertIn("GO_MATRIX: ${{ needs.plan.outputs.matrix }}", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()

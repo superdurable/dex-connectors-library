@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NATIVE_WIRE_CONNECTORS = frozenset({
-    "connectors/postgresql", "connectors/mysql", "connectors/microsoft/sql-server",
+    "connectors/postgresql", "connectors/mysql", "connectors/mongodb", "connectors/microsoft/sql-server",
     "connectors/superdurable/email",
 })
 _CLOCK_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$")
@@ -42,13 +42,14 @@ def validate_scenario_fixed_clock(scenario: dict[str, object]) -> None:
 
 
 def conformance_exemptions() -> dict[str, str]:
-    """Load reviewed native-wire exemptions; never exempt an HTTP connector."""
+    """Load reviewed native-wire exemptions of present connectors; never exempt an HTTP connector."""
     exemption_file = ROOT / "conformance/exemptions.yaml"
     document = json.loads(exemption_file.read_text())
     entries = document.get("exemptions")
     if document.get("schemaVersion") != 1 or not isinstance(entries, list):
         raise ValueError("conformance/exemptions.yaml has an invalid schema")
     exemptions: dict[str, str] = {}
+    listed_connectors: set[str] = set()
     for entry in entries:
         if not isinstance(entry, dict) or set(entry) != {"connector", "reason"}:
             raise ValueError("conformance exemption needs connector and reason")
@@ -57,8 +58,12 @@ def conformance_exemptions() -> dict[str, str]:
             raise ValueError(f"{connector} is not an approved native-wire connector")
         if not isinstance(reason, str) or not reason.strip():
             raise ValueError(f"{connector} has no exemption reason")
-        if connector in exemptions:
+        if connector in listed_connectors:
             raise ValueError(f"{connector} repeats a conformance exemption")
+        listed_connectors.add(connector)
+        if not (ROOT / connector).exists():
+            # A tooling PR reviews an exemption before its connector lands.
+            continue
         if not (ROOT / connector / "connector.yaml").is_file():
             raise ValueError(f"{connector} is not a connector")
         exemptions[connector] = reason
@@ -70,6 +75,7 @@ def database_ci_matrix(paths: list[str]) -> list[dict[str, str]]:
     images = {
         "connectors/postgresql": ("postgres:17", "5432"),
         "connectors/mysql": ("mysql:8.4", "3306"),
+        "connectors/mongodb": ("mongo:8.0", "27017"),
         "connectors/microsoft/sql-server": ("mcr.microsoft.com/mssql/server:2022-latest", "1433"),
     }
     shared_change = any(path in {"conformance/exemptions.yaml", "script/connector_conformance.py",
