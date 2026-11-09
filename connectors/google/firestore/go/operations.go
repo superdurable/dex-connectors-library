@@ -108,6 +108,9 @@ func validPageToken(pageToken string) bool {
 	return len(pageToken) <= 4096 && !strings.ContainsAny(pageToken, "\r\n")
 }
 
+// maxDocumentIDBytes is Firestore's documented UTF-8 document ID limit.
+const maxDocumentIDBytes = 1500
+
 func decodeDocumentsPage(body []byte, input ListDocumentsInput) (DocumentsPage, error) {
 	var payload struct {
 		Documents []struct {
@@ -125,7 +128,7 @@ func decodeDocumentsPage(body []byte, input ListDocumentsInput) (DocumentsPage, 
 	prefix := "projects/" + input.ProjectID + "/databases/(default)/documents/" + input.CollectionID + "/"
 	for _, item := range payload.Documents {
 		documentID := strings.TrimPrefix(item.Name, prefix)
-		if documentID == item.Name || documentID == "" || len(documentID) > 255 || strings.ContainsAny(documentID, "/\r\n") {
+		if documentID == item.Name || documentID == "" || len(documentID) > maxDocumentIDBytes || strings.ContainsAny(documentID, "/\r\n") {
 			return DocumentsPage{}, fmt.Errorf("Firestore document name is invalid")
 		}
 		page.Documents = append(page.Documents, Document{Name: item.Name})

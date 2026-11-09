@@ -53,7 +53,9 @@ function classifyRead(exchange: FirestoreExchange): QueryAttempt<DocumentsPage> 
 }
 function validProjectID(value: unknown): value is string { return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9:._~-]{0,255}$/.test(value); }
 function validCollectionID(value: unknown): value is string { return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_.~-]{0,255}$/.test(value); }
-function validDocumentID(value: unknown): value is string { return typeof value === 'string' && value.length > 0 && value.length <= 255 && !/[/\r\n]/.test(value); }
+// Firestore's documented UTF-8 document ID limit.
+const maxDocumentIDBytes = 1500;
+function validDocumentID(value: unknown): value is string { return typeof value === 'string' && value.length > 0 && Buffer.byteLength(value, 'utf8') <= maxDocumentIDBytes && !/[/\r\n]/.test(value); }
 function validPageToken(value: unknown): value is string { return typeof value === 'string' && Buffer.byteLength(value) <= 4096 && !/[\r\n]/.test(value); }
 function parseDocument(body: Uint8Array): Record<string, unknown> | undefined {
   try { const value: unknown = JSON.parse(Buffer.from(body).toString('utf8')); return isObject(value) ? value : undefined; }

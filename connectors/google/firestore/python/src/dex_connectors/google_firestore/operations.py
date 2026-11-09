@@ -74,6 +74,10 @@ def _read_failure(exchange: Exchange) -> QueryAttempt[DocumentsPage] | None:
     return None
 
 
+# Firestore's documented UTF-8 document ID limit.
+_MAX_DOCUMENT_ID_BYTES = 1500
+
+
 class ListDocumentsOperation:
     """Read one bounded document page in a Google Cloud project."""
 
@@ -144,7 +148,7 @@ class ListDocumentsOperation:
                 not isinstance(name, str)
                 or not name.startswith(prefix)
                 or not name[len(prefix):]
-                or len(name[len(prefix):]) > 255
+                or len(name[len(prefix):].encode("utf-8", "surrogatepass")) > _MAX_DOCUMENT_ID_BYTES
                 or any(character in name[len(prefix):] for character in "/\r\n")
             ):
                 return _branch(

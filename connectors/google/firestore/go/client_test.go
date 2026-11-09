@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -62,6 +63,20 @@ func TestListDocumentsProjectsOneCursorPage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, string(encoded), "not-persisted")
 	require.NotContains(t, string(encoded), testAccessToken)
+}
+
+func TestDecodeDocumentsPageBoundsDocumentIDBytes(t *testing.T) {
+	input := ListDocumentsInput{ProjectID: "sample-project", CollectionID: "events", PageSize: 1}
+	prefix := "projects/sample-project/databases/(default)/documents/events/"
+	page := func(documentID string) []byte {
+		encoded, err := json.Marshal(map[string]any{"documents": []map[string]string{{"name": prefix + documentID}}})
+		require.NoError(t, err)
+		return encoded
+	}
+	_, err := decodeDocumentsPage(page(strings.Repeat("\u00e9", 700)+strings.Repeat("a", 100)), input)
+	require.NoError(t, err)
+	_, err = decodeDocumentsPage(page(strings.Repeat("\u00e9", 751)), input)
+	require.Error(t, err)
 }
 
 func TestListDocumentsClassifiesFailuresAndRejectsInvalidInputWithoutRequest(t *testing.T) {
