@@ -13,6 +13,11 @@ spec:
       version: v0.1.0
       operations: [sendMessage, getChat]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-telegram'
+      operations: [sendMessage, getChat]
+      triggers: []
   codegen:
     go:
       package: telegram
