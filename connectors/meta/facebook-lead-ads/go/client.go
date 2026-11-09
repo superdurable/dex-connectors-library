@@ -6,6 +6,7 @@ package facebookleadads
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -94,4 +95,33 @@ func (client *Client) get(call sdkgo.Call, path string) graphResponse {
 		return graphResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
 	return graphResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+// graphError is the subset of Meta's Graph API error envelope used for retry decisions.
+type graphError struct {
+	code        int
+	isTransient bool
+}
+
+// decodeGraphError reports false when the body is not a Graph API error envelope.
+func decodeGraphError(body []byte) (graphError, bool) {
+	var envelope struct {
+		Error *struct {
+			Code        int  `json:"code"`
+			IsTransient bool `json:"is_transient"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil || envelope.Error == nil {
+		return graphError{}, false
+	}
+	return graphError{code: envelope.Error.Code, isTransient: envelope.Error.IsTransient}, true
+}
+
+// isThrottled reports Meta's documented rate-limit codes, which Graph returns with HTTP 4xx.
+func (graphErr graphError) isThrottled() bool {
+	switch graphErr.code {
+	case 4, 17, 32, 341, 613:
+		return true
+	}
+	return graphErr.code >= 80000 && graphErr.code <= 80014
 }
