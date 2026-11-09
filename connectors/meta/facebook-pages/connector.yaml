@@ -107,7 +107,7 @@ spec:
       idempotency: required
       authorization: required
       # Sync preserves the single-dispatch heartbeat; Meta has no post idempotency key.
-      execution: {executeMethodTimeout: 30s, durability: sync}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: published, goName: Published, description: Meta returned the published post ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the post., optional: true}
