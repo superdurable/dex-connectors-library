@@ -97,7 +97,9 @@ def _decode(body: bytes, requested_id: int) -> tuple[str, LeadProfile | None, Fa
             return "availability", None, FailureKind.AVAILABILITY
         if code == "702":
             return "notFound", None, FailureKind.NOT_FOUND
-        if code in {"601", "602"}:
+        if code == "602":
+            return "tokenExpired", None, FailureKind.AUTHENTICATION
+        if code == "601":
             return "providerRejected", None, FailureKind.AUTHENTICATION
         return "providerRejected", None, FailureKind.PROVIDER_REJECTION
     records = envelope.get("result")
@@ -235,6 +237,9 @@ class GetLeadOperation:
             return _retry(
                 FailureKind.AVAILABILITY, "Marketo is temporarily unavailable", exchange.retry_after
             )
+        if result == "tokenExpired":
+            # The token expired between resolution and use; the next attempt resolves the credential again.
+            return _retry(FailureKind.AUTHENTICATION, "Marketo access token expired", exchange.retry_after)
         return _branch(
             result, failure or FailureKind.PROTOCOL, "Marketo lead lookup did not return a profile"
         )

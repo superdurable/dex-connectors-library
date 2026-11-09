@@ -110,11 +110,13 @@ export class GetLeadOperation implements Query<GetLeadInput, LeadProfile> {
     if (decoded.kind === 'found') return newQueryBranch('found', decoded.profile);
     if (decoded.kind === 'rateLimit') return retry('RATE_LIMIT', 'Marketo quota or concurrency limit was reached', exchange.retryAfterMs);
     if (decoded.kind === 'availability') return retry('AVAILABILITY', 'Marketo is temporarily unavailable', exchange.retryAfterMs);
+    // The token expired between resolution and use; the next attempt resolves the credential again.
+    if (decoded.kind === 'tokenExpired') return retry('AUTHENTICATION', 'Marketo access token expired', exchange.retryAfterMs);
     return terminal(decoded.kind, decoded.failure, 'Marketo lead lookup did not return a profile');
   }
 }
 
-type Decoded = { kind: 'found'; profile: LeadProfile } | { kind: 'rateLimit' } | { kind: 'availability' } | { kind: 'notFound' | 'providerRejected' | 'invalidResponse'; failure: Failure['kind'] };
+type Decoded = { kind: 'found'; profile: LeadProfile } | { kind: 'rateLimit' } | { kind: 'availability' } | { kind: 'tokenExpired' } |{ kind: 'notFound' | 'providerRejected' | 'invalidResponse'; failure: Failure['kind'] };
 function decodeLead(body: Uint8Array, requestedID: number): Decoded {
   let raw: unknown;
   try { raw = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) as unknown; }
@@ -127,7 +129,8 @@ function decodeLead(body: Uint8Array, requestedID: number): Decoded {
     if (['606', '607', '615'].includes(code)) return { kind: 'rateLimit' };
     if (['604', '608', '611', '614', '500', '502'].includes(code)) return { kind: 'availability' };
     if (code === '702') return { kind: 'notFound', failure: 'NOT_FOUND' };
-    return { kind: 'providerRejected', failure: ['601', '602'].includes(code) ? 'AUTHENTICATION' : 'PROVIDER_REJECTION' };
+    if (code === '602') return { kind: 'tokenExpired' };
+    return { kind: 'providerRejected', failure: code === '601' ? 'AUTHENTICATION' : 'PROVIDER_REJECTION' };
   }
   if (!Array.isArray(raw.result) || raw.result.length > 1) return { kind: 'invalidResponse', failure: 'PROTOCOL' };
   if (raw.result.length === 0) return { kind: 'notFound', failure: 'NOT_FOUND' };

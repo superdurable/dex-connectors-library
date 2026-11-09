@@ -69,6 +69,8 @@ func TestGetLeadClassifiesProviderResponses(t *testing.T) {
 		{"denied", 200, `{"success":false,"errors":[{"code":"603"}]}`, GetLeadBranchProviderRejected, false},
 		{"rate limit code", 200, `{"success":false,"errors":[{"code":"606"}]}`, "", true},
 		{"temporary code", 200, `{"success":false,"errors":[{"code":"608"}]}`, "", true},
+		{"expired token code", 200, `{"success":false,"errors":[{"code":"602","message":"Access token expired"}]}`, "", true},
+		{"invalid token code", 200, `{"success":false,"errors":[{"code":"601","message":"Access token invalid"}]}`, GetLeadBranchProviderRejected, false},
 		{"HTTP rate limit", 429, `{}`, "", true},
 		{"HTTP unavailable", 503, `{}`, "", true},
 		{"invalid JSON", 200, `{`, GetLeadBranchInvalidResponse, false},

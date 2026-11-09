@@ -422,6 +422,45 @@
       "operation": "getLead"
     },
     {
+      "callId": "c997463e-249c-5e03-bf5e-656dbdb26558",
+      "exchanges": [
+        {
+          "body": "{\"requestId\":\"e42b#14272d07d78\",\"success\":false,\"errors\":[{\"code\":\"602\",\"message\":\"Access token expired\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/lead/318581.json",
+          "query": {
+            "fields": [
+              "id,firstName,lastName"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AUTHENTICATION",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "leadId": 318581
+      },
+      "name": "getLead-accessTokenExpired",
+      "operation": "getLead"
+    },
+    {
       "callId": "af2a9402-c664-584e-8103-a1e003f47f5b",
       "exchanges": [
         {

@@ -107,8 +107,11 @@ func decodeLeadResponse(body []byte, requestedID int64, retryAfter time.Duration
 			return leadBranch(GetLeadBranchInvalidResponse, sdkgo.FailureProtocol, "Marketo returned an error without a code")
 		}
 		switch envelope.Errors[0].Code {
-		case "601", "602":
+		case "601":
 			return leadBranch(GetLeadBranchProviderRejected, sdkgo.FailureAuthentication, "Marketo access token was rejected")
+		case "602":
+			// The token expired between resolution and use; the next attempt resolves the credential again.
+			return leadRetry(sdkgo.FailureAuthentication, "Marketo access token expired", retryAfter)
 		case "606", "607", "615":
 			return leadRetry(sdkgo.FailureRateLimit, "Marketo quota or concurrency limit was reached", retryAfter)
 		case "604", "608", "611", "614", "500", "502":

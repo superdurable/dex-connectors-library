@@ -1,6 +1,6 @@
 # Adobe Marketo Engage connector
 
-The Go, Python, and TypeScript packages read selected lead profile fields through the Marketo REST API. `getLead` takes a positive lead ID and returns its ID, first name, and last name. It omits email and all other fields. A successful response with no result selects `notFound`; Marketo response codes for rate limits or temporary failures ask Dex to retry.
+The Go, Python, and TypeScript packages read selected lead profile fields through the Marketo REST API. `getLead` takes a positive lead ID and returns its ID, first name, and last name. It omits email and all other fields. A successful response with no result selects `notFound`; Marketo response codes for rate limits, temporary failures, or an expired access token (602) ask Dex to retry.
 
 ## Connection
 
