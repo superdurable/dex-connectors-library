@@ -1,0 +1,110 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: oracle-netsuite
+  displayName: Oracle NetSuite
+  description: Read a customer record through NetSuite REST Web Services.
+  company: Oracle
+  version: v0.1.0
+spec:
+  provider: oracle-netsuite
+  codegen:
+    go:
+      package: oraclenetsuite
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret account REST origin from https://system.netsuite.com > Setup > Company > Company Information > Account ID, formatted https://ACCOUNT.suitetalk.api.netsuite.com. Blank prevents customer reads.
+      - name: authorizationEndpoint
+        goName: AuthorizationEndpoint
+        type: url
+        required: true
+        description: Non-secret OAuth authorization URL https://ACCOUNT.app.netsuite.com/app/login/oauth2/authorize.nl for the same Account ID. Blank prevents authorization.
+      - name: tokenEndpoint
+        goName: TokenEndpoint
+        type: url
+        required: true
+        description: Non-secret OAuth token URL https://ACCOUNT.app.netsuite.com/services/rest/auth/oauth2/v1/token for the same Account ID. Blank prevents authorization and refresh.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one customer request as a positive Go duration such as 20s. Blank uses the displayed default; increase only for a slow account.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete customer JSON response in bytes. Blank uses the displayed default; increase only for unusually large records.
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: oracle-netsuite-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://ACCOUNT.app.netsuite.com > Setup > Integration > Manage Integrations > your OAuth 2.0 integration. Blank prevents authorization.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret shown once when saving the integration at https://ACCOUNT.app.netsuite.com > Setup > Integration > Manage Integrations. Save only in Dex; blank prevents authorization.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Oracle NetSuite consent and rotated by Dex. Never enter manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned by Oracle NetSuite consent and rotated by Dex. Never enter manually; blank requires reauthorization.
+    guide:
+      startURL: https://system.netsuite.com/
+      steps:
+        - At https://system.netsuite.com > Setup > Company > Enable Features > SuiteCloud, enable REST Web Services and OAuth 2.0. Record the Account ID from Setup > Company > Company Information; use its account-specific domains for all three URLs.
+        - Under Setup > Integration > Manage Integrations > New, enable OAuth 2.0 Authorization Code Grant and REST Web Services scope. Add the exact Dex Web redirect URI. Give the consenting role permission to read customer records and complete any administrator approval.
+        - Save the integration, then copy the Client ID and one-time Client Secret into Dex Web. Keep the secret private. Enter the account REST origin, authorization URL, and token URL using the same account ID.
+        - Authorize in Dex Web with the rest_webservices scope. Dex stores access and refresh tokens outside Flow state; leave their fields blank. In Lists > Relationships > Customers, open a customer and use its numeric internal ID as customerId in the example Flow. The ID is not secret; blank is invalid.
+    oauth2:
+      authorizationEndpoint: {fromSetting: authorizationEndpoint}
+      tokenEndpoint: {fromSetting: tokenEndpoint}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [rest_webservices]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_basic
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: getCustomer
+      goName: GetCustomer
+      inputType: GetCustomerInput
+      outputType: CustomerSummary
+      kind: query
+      description: Read one customer internal ID and entity name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: NetSuite returned the customer.}
+        - {id: notFound, goName: NotFound, description: No accessible customer has this internal ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Oracle NetSuite conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: NetSuite returned malformed or oversized customer JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample customer is returned.
+          output: {id: '107', entityId: CUST107}

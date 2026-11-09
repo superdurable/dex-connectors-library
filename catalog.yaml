@@ -139,6 +139,7 @@ directories:
   - connectors/openai
   - connectors/opensearch
   - connectors/openweathermap
+  - connectors/oracle/netsuite
   - connectors/paddle
   - connectors/pagerduty
   - connectors/pandadoc
