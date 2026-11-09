@@ -1114,6 +1114,55 @@
       "operation": "downloadFile"
     },
     {
+      "callId": "3c5e9f34-2a03-5172-870b-17f692f3de3e",
+      "exchanges": [
+        {
+          "body": "Hello",
+          "headers": {
+            "Dropbox-API-Result": "{\".tag\":\"file\",\"id\":\"id:unicode\",\"name\":\"\u003cQ1\u003e \u0026 na\\u00efve \\ud83d\\ude00.txt\",\"path_display\":\"/Projects/\u003cQ1\u003e \u0026 na\\u00efve \\ud83d\\ude00.txt\"}"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/download",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Dropbox-Api-Arg": [
+              "{\"path\":\"/Projects/\u003cQ1\u003e \u0026 na\\u00efve \\ud83d\\ude00.txt\"}"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "downloaded",
+        "failureKind": "",
+        "output": {
+          "contentBase64": "SGVsbG8=",
+          "contentBytes": 5,
+          "file": {
+            "id": "id:unicode",
+            "kind": "file",
+            "name": "\u003cQ1\u003e \u0026 naïve 😀.txt",
+            "pathDisplay": "/Projects/\u003cQ1\u003e \u0026 naïve 😀.txt"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "path": "/Projects/\u003cQ1\u003e \u0026 naïve 😀.txt"
+      },
+      "name": "downloadFile-unicodePath",
+      "operation": "downloadFile"
+    },
+    {
       "callId": "832f57aa-9bd5-5375-957c-ad3988273331",
       "exchanges": [
         {
@@ -1490,6 +1539,57 @@
         "path": "/Projects/example.txt"
       },
       "name": "uploadFile-success",
+      "operation": "uploadFile"
+    },
+    {
+      "callId": "4338ea88-ed63-5f6c-80a2-304064f8664b",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"id:unicode\",\"name\":\"\u003cQ1\u003e \u0026 naïve 😀.txt\",\"path_display\":\"/Projects/\u003cQ1\u003e \u0026 naïve 😀.txt\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2/files/upload",
+          "requestBody": "Hello",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "application/octet-stream"
+            ],
+            "Dropbox-Api-Arg": [
+              "{\"path\":\"/Projects/\u003cQ1\u003e \u0026 na\\u00efve \\ud83d\\ude00.txt\",\"mode\":\"overwrite\",\"autorename\":false}"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uploaded",
+        "failureKind": "",
+        "output": {
+          "file": {
+            "id": "id:unicode",
+            "kind": "file",
+            "name": "\u003cQ1\u003e \u0026 naïve 😀.txt",
+            "pathDisplay": "/Projects/\u003cQ1\u003e \u0026 naïve 😀.txt"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4338ea88-ed63-5f6c-80a2-304064f8664b",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "path": "/Projects/\u003cQ1\u003e \u0026 naïve 😀.txt"
+      },
+      "name": "uploadFile-unicodePath",
       "operation": "uploadFile"
     },
     {

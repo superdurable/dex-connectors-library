@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf16"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 	"github.com/superdurable/dex-connectors-library/sdkgo/providerhttp"
@@ -136,7 +137,13 @@ func (client *Client) download(call sdkgo.Call, filePath string) contentResponse
 	if err != nil {
 		return contentResponse{err: errRequest}
 	}
-	request.Header.Set("Dropbox-API-Arg", `{"path":`+strconv.QuoteToASCII(filePath)+`}`)
+	argument, err := encodeDropboxAPIArg(struct {
+		Path string `json:"path"`
+	}{filePath})
+	if err != nil {
+		return contentResponse{err: errRequest}
+	}
+	request.Header.Set("Dropbox-API-Arg", argument)
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
 	response, err := client.httpClient.Do(request)
@@ -166,7 +173,15 @@ func (client *Client) upload(call sdkgo.Call, filePath string, content []byte) c
 	if err != nil {
 		return contentResponse{err: errRequest}
 	}
-	request.Header.Set("Dropbox-API-Arg", `{"path":`+strconv.QuoteToASCII(filePath)+`,"mode":"overwrite","autorename":false}`)
+	argument, err := encodeDropboxAPIArg(struct {
+		Path       string `json:"path"`
+		Mode       string `json:"mode"`
+		Autorename bool   `json:"autorename"`
+	}{Path: filePath, Mode: "overwrite"})
+	if err != nil {
+		return contentResponse{err: errRequest}
+	}
+	request.Header.Set("Dropbox-API-Arg", argument)
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	request.Header.Set("Content-Type", "application/octet-stream")
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
@@ -236,4 +251,25 @@ func queryBranch[T any](operation string, branch sdkgo.BranchID, value T, kind s
 }
 func queryFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {
 	return sdkgo.Failure{Kind: kind, Provider: "dropbox", Operation: operation, Message: message}
+}
+
+// encodeDropboxAPIArg returns header-safe JSON: Dropbox requires 0x7F and non-ASCII as \uXXXX UTF-16 escapes.
+func encodeDropboxAPIArg(value any) (string, error) {
+	var encoded bytes.Buffer
+	encoder := json.NewEncoder(&encoded)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return "", err
+	}
+	var argument strings.Builder
+	for _, character := range strings.TrimSuffix(encoded.String(), "\n") {
+		if character < 0x7f {
+			argument.WriteRune(character)
+			continue
+		}
+		for _, unit := range utf16.Encode([]rune{character}) {
+			fmt.Fprintf(&argument, `\u%04x`, unit)
+		}
+	}
+	return argument.String(), nil
 }

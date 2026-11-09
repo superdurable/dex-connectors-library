@@ -120,6 +120,39 @@ func TestDownloadFileUsesContentEndpointAndKeepsOnlyBoundedBytes(t *testing.T) {
 	require.Equal(t, EntryMetadata{ID: "id:example", Name: "naïve.txt", PathDisplay: "/Projects/naïve.txt", Kind: "file"}, result.Value.File)
 }
 
+func TestEncodeDropboxAPIArgEscapesAsUTF16JSON(t *testing.T) {
+	argument, err := encodeDropboxAPIArg(struct {
+		Path string `json:"path"`
+	}{"/Reports/<Q1> & naïve 😀\u007f\"\\.txt"})
+	require.NoError(t, err)
+	const backslash = `\`
+	require.Equal(t, `{"path":"/Reports/<Q1> & na`+backslash+`u00efve `+backslash+`ud83d`+backslash+`ude00`+backslash+`u007f\"\\.txt"}`, argument)
+	for index := 0; index < len(argument); index++ {
+		require.Less(t, argument[index], byte(0x7f))
+	}
+	var decoded struct {
+		Path string `json:"path"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(argument), &decoded))
+	require.Equal(t, "/Reports/<Q1> & naïve 😀\u007f\"\\.txt", decoded.Path)
+}
+
+func TestDownloadFileSendsValidJSONForAstralPath(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		const backslash = `\`
+		require.Equal(t, `{"path":"/Photos/`+backslash+`ud83d`+backslash+`ude00.txt"}`, r.Header.Get("Dropbox-API-Arg"))
+		w.Header().Set("Dropbox-API-Result", `{".tag":"file","id":"id:emoji","name":"😀.txt","path_display":"/Photos/😀.txt"}`)
+		_, err := w.Write([]byte("Hi"))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	client, err := New(Config{ContentBaseURL: server.URL, MaxDownloadBytes: 8}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: testCredentials()})
+	require.NoError(t, err)
+	result, err := sdkgo.RunQuery(queryContext{}, client.DownloadFile(), testConnection, DownloadFileInput{Path: "/Photos/😀.txt"})
+	require.NoError(t, err)
+	require.Equal(t, DownloadFileBranchDownloaded, result.Branch)
+}
+
 func TestUploadFileOverwritesSamePathAndReturnsIdentity(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)

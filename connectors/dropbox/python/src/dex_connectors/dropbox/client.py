@@ -116,7 +116,7 @@ class Client:
 
     async def download(self, call: Call, path: str) -> Exchange:
         """Read bounded content and metadata from Dropbox's content endpoint."""
-        argument = json.dumps({"path": path}, ensure_ascii=True, separators=(",", ":"))
+        argument = _encode_dropbox_api_arg({"path": path})
         return await self._send(
             call,
             self.content_base_url + "/2/files/download",
@@ -128,11 +128,7 @@ class Client:
 
     async def upload(self, call: Call, path: str, content: bytes) -> Exchange:
         """Overwrite one path with the same bytes on every retry."""
-        argument = json.dumps(
-            {"path": path, "mode": "overwrite", "autorename": False},
-            ensure_ascii=True,
-            separators=(",", ":"),
-        )
+        argument = _encode_dropbox_api_arg({"path": path, "mode": "overwrite", "autorename": False})
         return await self._send(
             call,
             self.content_base_url + "/2/files/upload",
@@ -187,3 +183,9 @@ class Client:
             return Exchange(status, body, metadata, retry_after, read_error)
         finally:
             await response.aclose()
+
+
+def _encode_dropbox_api_arg(value: dict[str, object]) -> str:
+    """Return header-safe JSON: Dropbox requires 0x7F and non-ASCII as UTF-16 escapes."""
+    encoded = json.dumps(value, ensure_ascii=True, separators=(",", ":"))
+    return encoded.replace(chr(0x7F), "\\" + "u007f")
