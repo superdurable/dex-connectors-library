@@ -3,8 +3,8 @@
 """Register the runnable Insightly Python example with a mock connection."""
 
 import dex
-from dex_connectors.insightly.insightlymock import Mock
 
+from dex_connectors.insightly.insightlymock import Mock
 from examples.contact_discovery.flow import FLOW_TYPE, ContactDiscoveryFlow
 
 

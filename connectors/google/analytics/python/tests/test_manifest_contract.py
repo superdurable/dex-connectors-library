@@ -3,8 +3,8 @@
 """Register the runnable Google Analytics 4 Python Flow with a mock connection."""
 
 import dex
-from dex_connectors.google_analytics.analytics4mock import Mock
 
+from dex_connectors.google_analytics.analytics4mock import Mock
 from examples.property.flow import FLOW_TYPE, PropertyFlow
 
 
