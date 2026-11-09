@@ -1,0 +1,49 @@
+{
+  "connectorId": "amazon-redshift",
+  "releaseTag": "connectors/amazon/redshift/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-amazon-redshift",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_statement_result_step",
+      "kind": "query",
+      "operationId": "getStatementResult",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

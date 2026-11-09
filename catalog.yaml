@@ -10,6 +10,7 @@ directories:
   - connectors/alphavantage
   - connectors/amazon/dynamodb
   - connectors/amazon/lambda
+  - connectors/amazon/redshift
   - connectors/amazon/s3
   - connectors/amazon/ses
   - connectors/amazon/sns

@@ -1,0 +1,49 @@
+{
+  "connectorId": "amazon-redshift",
+  "releaseTag": "connectors/amazon/redshift/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-amazon-redshift",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetStatementResultStep",
+      "kind": "query",
+      "operationId": "getStatementResult",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "fetched",
+          "field": "fetched",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}
