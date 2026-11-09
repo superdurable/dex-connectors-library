@@ -91,6 +91,8 @@ export class GetPostOperation implements Query<GetPostInput, PostMetadata> {
     if (exchange.status !== 200) return terminal('providerRejected', 'PROVIDER_REJECTION', `X rejected HTTP ${exchange.status}`);
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'X response exceeded the configured limit');
     const post = decodePost(exchange.body, input.postId);
+    if (post === 'notFound') return terminal('notFound', 'NOT_FOUND', 'X did not expose the Post');
+    if (post === 'providerRejected') return terminal('providerRejected', 'PROVIDER_REJECTION', 'X denied access to the Post');
     if (!post) return terminal('invalidResponse', 'PROTOCOL', 'X returned invalid Post JSON');
     return newQueryBranch('found', post);
   }
@@ -108,9 +110,33 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decodePost(body: Uint8Array, postID: string): PostMetadata | undefined {
+type PostProblem = 'notFound' | 'providerRejected';
+const problemTypePrefixes = ['https://api.x.com/2/problems/', 'https://api.twitter.com/2/problems/'];
+/** Return the final segment of an api.x.com or legacy api.twitter.com problem type. */
+function problemType(value: string): string {
+  const prefix = problemTypePrefixes.find((candidate) => value.startsWith(candidate));
+  return prefix ? value.slice(prefix.length) : '';
+}
+/** Classify an HTTP 200 errors array without data, such as a deleted Post. */
+function decodeProblem(raw: Record<string, unknown>): PostProblem | undefined {
+  const errors = raw.errors ?? [];
+  if (!Array.isArray(errors)) return undefined;
+  let problem: PostProblem | undefined;
+  for (const providerError of errors as unknown[]) {
+    if (providerError === null) continue;
+    if (!isObject(providerError)) return undefined;
+    if (providerError.type === undefined || providerError.type === null) continue;
+    if (typeof providerError.type !== 'string') return undefined;
+    const segment = problemType(providerError.type);
+    if (segment === 'resource-not-found') return 'notFound';
+    if (segment === 'not-authorized-for-resource' || segment === 'client-forbidden') problem = 'providerRejected';
+  }
+  return problem;
+}
+function decodePost(body: Uint8Array, postID: string): PostMetadata | PostProblem | undefined {
   let raw: unknown;
   try { raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; }
+  if (isObject(raw) && (raw.data === undefined || raw.data === null)) return decodeProblem(raw);
   if (!isObject(raw) || !isObject(raw.data) || raw.data.id !== postID ||
     typeof raw.data.text !== 'string' || !raw.data.text.trim()) return undefined;
   return { id: postID, text: raw.data.text };

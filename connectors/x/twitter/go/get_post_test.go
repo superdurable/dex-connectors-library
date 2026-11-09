@@ -62,6 +62,9 @@ func TestGetPostClassifiesProviderOutcomes(t *testing.T) {
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},
 		{name: "malformed", status: 200, body: `{"data":{"id":"1845123456789012345","text":""}}`, branch: GetPostBranchInvalidResponse},
+		{name: "deleted in errors", status: 200, body: `{"errors":[{"detail":"Could not find tweet with id: [1845123456789012345].","type":"https://api.twitter.com/2/problems/resource-not-found"}]}`, branch: GetPostBranchNotFound},
+		{name: "protected in errors", status: 200, body: `{"errors":[{"detail":"Sorry, you are not authorized to see the Post.","type":"https://api.x.com/2/problems/not-authorized-for-resource"}]}`, branch: GetPostBranchProviderRejected},
+		{name: "unknown problem", status: 200, body: `{"errors":[{"type":"https://api.x.com/2/problems/invalid-request"}]}`, branch: GetPostBranchInvalidResponse},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {

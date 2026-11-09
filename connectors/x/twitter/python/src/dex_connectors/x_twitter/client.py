@@ -69,11 +69,53 @@ def _valid_post_id(post_id: object) -> bool:
     )
 
 
-def _decode_post(body: bytes, requested_post_id: str) -> PostMetadata:
+_PROBLEM_TYPE_PREFIXES = ("https://api.x.com/2/problems/", "https://api.twitter.com/2/problems/")
+
+
+def _problem_type(problem_type: str) -> str:
+    """Return the final segment of an api.x.com or legacy api.twitter.com problem type."""
+    for prefix in _PROBLEM_TYPE_PREFIXES:
+        if problem_type.startswith(prefix):
+            return problem_type[len(prefix) :]
+    return ""
+
+
+def _decode_problem(raw: dict[str, Any]) -> str:
+    """Return notFound or providerRejected for an HTTP 200 errors array without data."""
+    errors = raw.get("errors")
+    if errors is None:
+        errors = []
+    if not isinstance(errors, list):
+        raise ValueError("Post errors are not an array")
+    problem = ""
+    for provider_error in errors:
+        if provider_error is None:
+            continue
+        if not isinstance(provider_error, dict):
+            raise ValueError("Post error is not an object")
+        problem_type = provider_error.get("type")
+        if problem_type is None:
+            continue
+        if not isinstance(problem_type, str):
+            raise ValueError("Post error type is not a string")
+        segment = _problem_type(problem_type)
+        if segment == "resource-not-found":
+            return "notFound"
+        if segment in ("not-authorized-for-resource", "client-forbidden"):
+            problem = "providerRejected"
+    if not problem:
+        raise ValueError("Post data missing")
+    return problem
+
+
+def _decode_post(body: bytes, requested_post_id: str) -> PostMetadata | str:
+    """Return the Post, or the branch for a problem X reported without data."""
     raw: Any = json.loads(body)
     if not isinstance(raw, dict):
         raise ValueError("Post response is not an object")
     data = raw.get("data")
+    if data is None:
+        return _decode_problem(raw)
     if (
         not isinstance(data, dict)
         or data.get("id") != requested_post_id
@@ -191,4 +233,8 @@ class GetPostOperation:
             post = _decode_post(exchange.body, input.post_id)
         except (ValueError, TypeError, UnicodeDecodeError):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "X returned invalid Post JSON")
+        if isinstance(post, str):
+            if post == "notFound":
+                return _branch("notFound", FailureKind.NOT_FOUND, "X did not expose the Post")
+            return _branch("providerRejected", FailureKind.PROVIDER_REJECTION, "X denied access to the Post")
         return QueryAttempt.branch_result("found", post, Receipt())

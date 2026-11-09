@@ -273,6 +273,86 @@
       },
       "name": "getPost-transportFailure",
       "operation": "getPost"
+    },
+    {
+      "callId": "0ac63624-5838-5d7d-8929-35138cb0e628",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"value\":\"1845123456789012345\",\"detail\":\"Could not find tweet with id: [1845123456789012345].\",\"title\":\"Not Found Error\",\"resource_type\":\"tweet\",\"parameter\":\"id\",\"resource_id\":\"1845123456789012345\",\"type\":\"https://api.twitter.com/2/problems/resource-not-found\"}]}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-deletedInErrors",
+      "operation": "getPost"
+    },
+    {
+      "callId": "f3302f29-e7cd-5abd-b81d-d4b874aa88c2",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"value\":\"1845123456789012345\",\"detail\":\"Sorry, you are not authorized to see the Post with id: [1845123456789012345].\",\"title\":\"Authorization Error\",\"resource_type\":\"tweet\",\"parameter\":\"id\",\"resource_id\":\"1845123456789012345\",\"type\":\"https://api.x.com/2/problems/not-authorized-for-resource\"}]}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-notAuthorizedInErrors",
+      "operation": "getPost"
     }
   ],
   "schemaVersion": 1

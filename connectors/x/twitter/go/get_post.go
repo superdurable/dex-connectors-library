@@ -68,9 +68,15 @@ func (operation GetPostOperation) Invoke(call sdkgo.Call, input GetPostInput) sd
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[PostMetadata](postFailure(sdkgo.FailureTransport, "X response was interrupted"), 0)
 	}
-	post, err := decodePost(response.body, input.PostID)
+	post, problem, err := decodePost(response.body, input.PostID)
 	if err != nil {
 		return postBranch(GetPostBranchInvalidResponse, sdkgo.FailureProtocol, "X returned invalid Post JSON")
+	}
+	switch problem {
+	case postProblemNotFound:
+		return postBranch(GetPostBranchNotFound, sdkgo.FailureNotFound, "X did not expose the Post")
+	case postProblemNotAuthorized:
+		return postBranch(GetPostBranchProviderRejected, sdkgo.FailureProviderRejection, "X denied access to the Post")
 	}
 	return sdkgo.NewQueryBranch(GetPostBranchFound, post, nil, sdkgo.Receipt{})
 }
@@ -87,20 +93,59 @@ func validPostID(postID string) bool {
 	return true
 }
 
-func decodePost(body []byte, requestedPostID string) (PostMetadata, error) {
+type postProblem int
+
+const (
+	postProblemNone postProblem = iota
+	postProblemNotFound
+	postProblemNotAuthorized
+)
+
+// decodePost returns the Post, or the problem X reported in an HTTP 200
+// errors array without data, such as a deleted Post.
+func decodePost(body []byte, requestedPostID string) (PostMetadata, postProblem, error) {
 	var wire struct {
-		Data struct {
+		Data *struct {
 			ID   string `json:"id"`
 			Text string `json:"text"`
 		} `json:"data"`
+		Errors []struct {
+			Type string `json:"type"`
+		} `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
-		return PostMetadata{}, err
+		return PostMetadata{}, postProblemNone, err
+	}
+	if wire.Data == nil {
+		problem := postProblemNone
+		for _, providerError := range wire.Errors {
+			switch postProblemType(providerError.Type) {
+			case "resource-not-found":
+				return PostMetadata{}, postProblemNotFound, nil
+			case "not-authorized-for-resource", "client-forbidden":
+				problem = postProblemNotAuthorized
+			}
+		}
+		if problem != postProblemNone {
+			return PostMetadata{}, problem, nil
+		}
+		return PostMetadata{}, postProblemNone, fmt.Errorf("Post data missing")
 	}
 	if wire.Data.ID != requestedPostID || strings.TrimSpace(wire.Data.Text) == "" {
-		return PostMetadata{}, fmt.Errorf("Post identity or text missing")
+		return PostMetadata{}, postProblemNone, fmt.Errorf("Post identity or text missing")
 	}
-	return PostMetadata{ID: wire.Data.ID, Text: wire.Data.Text}, nil
+	return PostMetadata{ID: wire.Data.ID, Text: wire.Data.Text}, postProblemNone, nil
+}
+
+// postProblemType returns the final segment of an X problem type URI, which
+// uses either the api.x.com or legacy api.twitter.com host.
+func postProblemType(problemType string) string {
+	for _, prefix := range []string{"https://api.x.com/2/problems/", "https://api.twitter.com/2/problems/"} {
+		if strings.HasPrefix(problemType, prefix) {
+			return strings.TrimPrefix(problemType, prefix)
+		}
+	}
+	return ""
 }
 
 func postFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
