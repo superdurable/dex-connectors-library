@@ -20,8 +20,13 @@ ADAPTER = conformance.PythonOperationAdapter(
     "pinterest",
     CONNECTION,
     pinterest,
-    lambda http_client, _: pinterest.Client(
-        pinterest.Config(base_url="http://127.0.0.1:8848"),
+    lambda http_client, recorder: pinterest.Client(
+        pinterest.Config(
+            base_url="http://127.0.0.1:8848",
+            max_response_bytes=16
+            if str(recorder.scenario["name"]).startswith("listPins-oversized")
+            else 2_097_152,
+        ),
         conformance.static_credentials(
             CONNECTION,
             pinterest.Credentials(

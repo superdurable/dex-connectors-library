@@ -17,7 +17,8 @@ async function invokePinterest(scenario: Scenario, recorder: ExchangeRecorder) {
     oauthClientId: 'synthetic-client-id', oauthClientSecret: new SecretString('synthetic-client-secret'),
     accessToken: new SecretString('test-pinterest-token'), refreshToken: new SecretString('synthetic-refresh-token'),
   };
-  const client = new PinterestClient({ baseUrl: 'http://127.0.0.1:12345' }, new StaticCredentialProvider([[connection, credentials]]), {
+  const maxResponseBytes = scenario.name.startsWith('listPins-oversized') ? 16 : 2_097_152;
+  const client = new PinterestClient({ baseUrl: 'http://127.0.0.1:12345', maxResponseBytes }, new StaticCredentialProvider([[connection, credentials]]), {
     send: request => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before)),
   });
   const call: Call = {
