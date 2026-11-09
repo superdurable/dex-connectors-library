@@ -324,6 +324,158 @@
       },
       "name": "listCampaigns-transportFailure",
       "operation": "listCampaigns"
+    },
+    {
+      "callId": "c584c3c3-bd56-5f80-966e-d95c8b0adf7d",
+      "exchanges": [
+        {
+          "body": "{\"code\":40002,\"message\":\"No permission to operate advertiser\",\"request_id\":\"2026110800000001\",\"data\":{}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaign/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "campaigns": [],
+          "page": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listCampaigns-bodyCodeRejected",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "c59e7f3d-5f59-5adf-983c-81cdd5aad508",
+      "exchanges": [
+        {
+          "body": "{\"code\":40100,\"message\":\"Too many requests\",\"request_id\":\"2026110800000002\",\"data\":{}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaign/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listCampaigns-bodyCodeRateLimit",
+      "operation": "listCampaigns"
+    },
+    {
+      "callId": "100b2df0-5599-5983-98cb-198ad57a2939",
+      "exchanges": [
+        {
+          "body": "{\"code\":50000,\"message\":\"System error\",\"request_id\":\"2026110800000003\",\"data\":{}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/campaign/get/",
+          "query": {
+            "advertiser_id": [
+              "1845123456789012344"
+            ],
+            "page": [
+              "2"
+            ],
+            "page_size": [
+              "2"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Access-Token": [
+              "sample-tiktok-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "advertiserId": "1845123456789012344",
+        "page": 2,
+        "pageSize": 2
+      },
+      "name": "listCampaigns-bodyCodeSystemError",
+      "operation": "listCampaigns"
     }
   ],
   "schemaVersion": 1

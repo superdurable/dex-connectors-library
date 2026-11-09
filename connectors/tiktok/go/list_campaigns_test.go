@@ -62,7 +62,9 @@ func TestListCampaignsClassifiesProviderOutcomes(t *testing.T) {
 		retry  bool
 	}{
 		{name: "forbidden", status: 403, branch: ListCampaignsBranchProviderRejected},
-		{name: "business rejection", status: 200, body: `{"code":40100,"message":"denied"}`, branch: ListCampaignsBranchProviderRejected},
+		{name: "business rejection", status: 200, body: `{"code":40002,"message":"advertiser is not authorized"}`, branch: ListCampaignsBranchProviderRejected},
+		{name: "body rate limit", status: 200, body: `{"code":40100,"message":"Too many requests"}`, retry: true},
+		{name: "body system error", status: 200, body: `{"code":50000,"message":"System error"}`, retry: true},
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},
 		{name: "missing campaign name", status: 200, body: `{"code":0,"data":{"list":[{"campaign_id":"1845123456789012346"}],"page_info":{"page":1,"total_page":1}}}`, branch: ListCampaignsBranchInvalidResponse},

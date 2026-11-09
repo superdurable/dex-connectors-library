@@ -101,11 +101,16 @@ export class ListCampaignsOperation implements Query<ListCampaignsInput, Campaig
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'TikTok response exceeded the configured limit');
     const decoded = decodePage(exchange.body, selectedPage, selectedPageSize);
     if (!decoded) return terminal('invalidResponse', 'PROTOCOL', 'TikTok returned invalid campaign JSON');
-    if (decoded.rejected) return terminal('providerRejected', 'PROVIDER_REJECTION', 'TikTok rejected the campaign query');
+    if (decoded.apiCode === tiktokCodeRateLimited) return retry('RATE_LIMIT', 'TikTok rate limited the request', exchange.retryAfterMs);
+    if (isTikTokSystemErrorCode(decoded.apiCode)) return retry('AVAILABILITY', 'TikTok is temporarily unavailable', exchange.retryAfterMs);
+    if (decoded.apiCode !== 0) return terminal('providerRejected', 'PROVIDER_REJECTION', `TikTok rejected the campaign query with code ${decoded.apiCode}`);
     return newQueryBranch('listed', decoded.page);
   }
 }
 
+// TikTok reports API outcomes in the body code of an HTTP 200 response.
+const tiktokCodeRateLimited = 40100;
+function isTikTokSystemErrorCode(code: number): boolean { return code >= 50000 && code <= 59999; }
 function isDecimalID(value: unknown): value is string {
   return typeof value === 'string' && /^[1-9][0-9]{0,19}$/.test(value);
 }
@@ -118,11 +123,12 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decodePage(body: Uint8Array, requestedPage: number, pageSize: number): { page: CampaignsPage; rejected: boolean } | undefined {
+/** Return the page for body code zero, otherwise the nonzero API code. */
+function decodePage(body: Uint8Array, requestedPage: number, pageSize: number): { page: CampaignsPage; apiCode: number } | undefined {
   let raw: unknown;
   try { raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; }
   if (!isObject(raw) || !Number.isSafeInteger(raw.code)) return undefined;
-  if (raw.code !== 0) return { page: emptyPage(), rejected: true };
+  if (raw.code !== 0) return { page: emptyPage(), apiCode: raw.code as number };
   if (!isObject(raw.data) || !Array.isArray(raw.data.list) || !isObject(raw.data.page_info) ||
     raw.data.list.length > pageSize || raw.data.page_info.page !== requestedPage ||
     !Number.isSafeInteger(raw.data.page_info.total_page) ||
@@ -135,5 +141,5 @@ function decodePage(body: Uint8Array, requestedPage: number, pageSize: number): 
     seen.add(item.campaign_id);
     campaigns.push({ id: item.campaign_id, name: item.campaign_name });
   }
-  return { page: { campaigns, page: requestedPage, totalPages: raw.data.page_info.total_page as number }, rejected: false };
+  return { page: { campaigns, page: requestedPage, totalPages: raw.data.page_info.total_page as number }, apiCode: 0 };
 }

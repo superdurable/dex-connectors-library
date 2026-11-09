@@ -69,12 +69,21 @@ def _valid_decimal_id(identifier: object) -> bool:
     )
 
 
-def _decode_page(body: bytes, requested_page: int, page_size: int) -> tuple[CampaignsPage, bool]:
+# TikTok reports API outcomes in the body code of an HTTP 200 response.
+_CODE_RATE_LIMITED = 40100
+
+
+def _is_system_error_code(code: int) -> bool:
+    return 50000 <= code <= 59999
+
+
+def _decode_page(body: bytes, requested_page: int, page_size: int) -> tuple[CampaignsPage, int]:
+    """Return the page for body code zero, otherwise the nonzero API code."""
     raw: Any = json.loads(body)
     if not isinstance(raw, dict) or type(raw.get("code")) is not int:
         raise ValueError("missing API code")
     if raw["code"] != 0:
-        return CampaignsPage(), True
+        return CampaignsPage(), raw["code"]
     data = raw.get("data")
     if not isinstance(data, dict):
         raise ValueError("missing campaign data")
@@ -106,7 +115,7 @@ def _decode_page(body: bytes, requested_page: int, page_size: int) -> tuple[Camp
             raise ValueError("duplicate campaign")
         seen.add(campaign_id)
         campaigns.append(CampaignMetadata(campaign_id, name))
-    return CampaignsPage(tuple(campaigns), requested_page, total_pages), False
+    return CampaignsPage(tuple(campaigns), requested_page, total_pages), 0
 
 
 class Client:
@@ -223,11 +232,17 @@ class ListCampaignsOperation:
         if exchange.error:
             return _retry(FailureKind.TRANSPORT, "TikTok response was interrupted")
         try:
-            result, rejected = _decode_page(exchange.body, page, page_size)
+            result, api_code = _decode_page(exchange.body, page, page_size)
         except (ValueError, TypeError, UnicodeDecodeError):
             return _branch("invalidResponse", FailureKind.PROTOCOL, "TikTok returned invalid campaign JSON")
-        if rejected:
+        if api_code == _CODE_RATE_LIMITED:
+            return _retry(FailureKind.RATE_LIMIT, "TikTok rate limited the request", exchange.retry_after)
+        if _is_system_error_code(api_code):
+            return _retry(FailureKind.AVAILABILITY, "TikTok is temporarily unavailable", exchange.retry_after)
+        if api_code != 0:
             return _branch(
-                "providerRejected", FailureKind.PROVIDER_REJECTION, "TikTok rejected the campaign query"
+                "providerRejected",
+                FailureKind.PROVIDER_REJECTION,
+                f"TikTok rejected the campaign query with code {api_code}",
             )
         return QueryAttempt.branch_result("listed", result, Receipt())

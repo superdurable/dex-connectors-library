@@ -87,15 +87,26 @@ func (operation ListCampaignsOperation) Invoke(call sdkgo.Call, input ListCampai
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[CampaignsPage](campaignsFailure(sdkgo.FailureTransport, "TikTok response was interrupted"), 0)
 	}
-	page, rejected, err := decodeCampaignsPage(response.body, input.Page, input.PageSize)
-	if rejected {
-		return campaignsBranch(ListCampaignsBranchProviderRejected, sdkgo.FailureProviderRejection, "TikTok rejected the campaign query")
-	}
+	page, apiCode, err := decodeCampaignsPage(response.body, input.Page, input.PageSize)
 	if err != nil {
 		return campaignsBranch(ListCampaignsBranchInvalidResponse, sdkgo.FailureProtocol, "TikTok returned invalid campaign JSON")
 	}
+	if apiCode == tiktokCodeRateLimited {
+		return sdkgo.NewQueryRetry[CampaignsPage](campaignsFailure(sdkgo.FailureRateLimit, "TikTok rate limited the request"), response.retryAfter)
+	}
+	if isTikTokSystemErrorCode(apiCode) {
+		return sdkgo.NewQueryRetry[CampaignsPage](campaignsFailure(sdkgo.FailureAvailability, "TikTok is temporarily unavailable"), response.retryAfter)
+	}
+	if apiCode != 0 {
+		return campaignsBranch(ListCampaignsBranchProviderRejected, sdkgo.FailureProviderRejection, "TikTok rejected the campaign query with code "+strconv.Itoa(apiCode))
+	}
 	return sdkgo.NewQueryBranch(ListCampaignsBranchListed, page, nil, sdkgo.Receipt{})
 }
+
+// TikTok reports API outcomes in the body code of an HTTP 200 response.
+const tiktokCodeRateLimited = 40100
+
+func isTikTokSystemErrorCode(code int) bool { return code >= 50000 && code <= 59999 }
 
 func validDecimalID(identifier string) bool {
 	if len(identifier) == 0 || len(identifier) > 20 || identifier[0] == '0' {
@@ -109,7 +120,9 @@ func validDecimalID(identifier string) bool {
 	return true
 }
 
-func decodeCampaignsPage(body []byte, requestedPage, pageSize int) (CampaignsPage, bool, error) {
+// decodeCampaignsPage returns the page when the body code is zero, otherwise
+// the nonzero TikTok API code for classification.
+func decodeCampaignsPage(body []byte, requestedPage, pageSize int) (CampaignsPage, int, error) {
 	var wire struct {
 		Code *int `json:"code"`
 		Data struct {
@@ -124,32 +137,32 @@ func decodeCampaignsPage(body []byte, requestedPage, pageSize int) (CampaignsPag
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &wire); err != nil {
-		return CampaignsPage{}, false, err
+		return CampaignsPage{}, 0, err
 	}
 	if wire.Code == nil {
-		return CampaignsPage{}, false, fmt.Errorf("missing API code")
+		return CampaignsPage{}, 0, fmt.Errorf("missing API code")
 	}
 	if *wire.Code != 0 {
-		return CampaignsPage{}, true, nil
+		return CampaignsPage{}, *wire.Code, nil
 	}
 	if wire.Data.List == nil || wire.Data.PageInfo.Page == nil || wire.Data.PageInfo.TotalPage == nil ||
 		*wire.Data.PageInfo.Page != requestedPage || *wire.Data.PageInfo.TotalPage < 0 ||
 		*wire.Data.PageInfo.TotalPage > 1000000 || len(*wire.Data.List) > pageSize {
-		return CampaignsPage{}, false, fmt.Errorf("invalid campaign pagination")
+		return CampaignsPage{}, 0, fmt.Errorf("invalid campaign pagination")
 	}
 	campaigns := make([]CampaignMetadata, 0, len(*wire.Data.List))
 	seen := make(map[string]struct{}, len(*wire.Data.List))
 	for _, item := range *wire.Data.List {
 		if !validDecimalID(item.ID) || strings.TrimSpace(item.Name) == "" {
-			return CampaignsPage{}, false, fmt.Errorf("invalid campaign")
+			return CampaignsPage{}, 0, fmt.Errorf("invalid campaign")
 		}
 		if _, exists := seen[item.ID]; exists {
-			return CampaignsPage{}, false, fmt.Errorf("duplicate campaign")
+			return CampaignsPage{}, 0, fmt.Errorf("duplicate campaign")
 		}
 		seen[item.ID] = struct{}{}
 		campaigns = append(campaigns, CampaignMetadata{ID: item.ID, Name: item.Name})
 	}
-	return CampaignsPage{Campaigns: campaigns, Page: requestedPage, TotalPages: *wire.Data.PageInfo.TotalPage}, false, nil
+	return CampaignsPage{Campaigns: campaigns, Page: requestedPage, TotalPages: *wire.Data.PageInfo.TotalPage}, 0, nil
 }
 
 func campaignsFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
