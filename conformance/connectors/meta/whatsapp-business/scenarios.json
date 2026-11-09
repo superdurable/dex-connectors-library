@@ -1,0 +1,1310 @@
+{
+  "connector": "whatsapp-business",
+  "scenarios": [
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"1906385232743451\",\"verified_name\":\"Example Store\",\"display_phone_number\":\"+1 631-555-5555\",\"quality_rating\":\"GREEN\"}],\"paging\":{\"cursors\":{\"after\":\"next-cursor\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/phone_numbers",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextCursor": "next-cursor",
+          "numbers": [
+            {
+              "displayPhoneNumber": "+1 631-555-5555",
+              "id": "1906385232743451",
+              "verifiedName": "Example Store"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "123456789"
+      },
+      "name": "listPhoneNumbers-success",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"missing\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/phone_numbers",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "nextCursor": "",
+          "numbers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "123456789"
+      },
+      "name": "listPhoneNumbers-notFound",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"denied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/phone_numbers",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextCursor": "",
+          "numbers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "123456789"
+      },
+      "name": "listPhoneNumbers-providerRejected",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/phone_numbers",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextCursor": "",
+          "numbers": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "123456789"
+      },
+      "name": "listPhoneNumbers-invalidResponse",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextCursor": "",
+          "numbers": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "bad/id"
+      },
+      "name": "listPhoneNumbers-defect",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"limited\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/phone_numbers",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "123456789"
+      },
+      "name": "listPhoneNumbers-rateLimit",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/phone_numbers",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "123456789"
+      },
+      "name": "listPhoneNumbers-serverError",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/123456789/phone_numbers",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "businessAccountId": "123456789"
+      },
+      "name": "listPhoneNumbers-transport",
+      "operation": "listPhoneNumbers"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.example-message\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "providerId": "wamid.example-message",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "wamid.example-message"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-success",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"denied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-providerRejected",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-uncertain",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"messaging_product\":\"whatsapp\",\"messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-invalidResponse",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"limited\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-rateLimit",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-serverUnavailable",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "text": {
+              "body": "Hello from Dex",
+              "preview_url": false
+            },
+            "to": "16315551234",
+            "type": "text"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-transportBefore",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dafd56f7-07e7-5223-956d-91714d91663a",
+      "input": {
+        "phoneNumberId": "bad/id",
+        "recipient": "16315551234",
+        "text": "Hello from Dex"
+      },
+      "name": "sendTextMessage-defect",
+      "operation": "sendTextMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"messaging_product\":\"whatsapp\",\"messages\":[{\"id\":\"wamid.example-message\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "providerId": "wamid.example-message",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": "wamid.example-message"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-success",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"denied\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-providerRejected",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unknown\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-uncertain",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"messaging_product\":\"whatsapp\",\"messages\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "state": "claimed"
+        },
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-invalidResponse",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"limited\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-rateLimit",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-serverUnavailable",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/1906385232743451/messages",
+          "requestBody": {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "template": {
+              "components": [
+                {
+                  "parameters": [
+                    {
+                      "text": "A123",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "body"
+                }
+              ],
+              "language": {
+                "code": "en_US"
+              },
+              "name": "order_update"
+            },
+            "to": "16315551234",
+            "type": "template"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-system-user-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "1906385232743451",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-transportBefore",
+      "operation": "sendTemplateMessage"
+    },
+    {
+      "callId": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "messageId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "13e7c0f0-639d-5ad8-8a73-527d05f724a8",
+      "input": {
+        "bodyParameters": [
+          "A123"
+        ],
+        "languageCode": "en_US",
+        "phoneNumberId": "bad/id",
+        "recipient": "16315551234",
+        "templateName": "order_update"
+      },
+      "name": "sendTemplateMessage-defect",
+      "operation": "sendTemplateMessage"
+    }
+  ],
+  "schemaVersion": 1
+}
