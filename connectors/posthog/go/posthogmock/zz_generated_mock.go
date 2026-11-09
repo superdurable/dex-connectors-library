@@ -77,11 +77,6 @@ func CaptureEventProviderRejected(value posthog.CapturedEvent, failure *sdkgo.Fa
 	return connectormock.Branch(posthog.CaptureEventBranchProviderRejected, value, failure)
 }
 
-// CaptureEventInvalidResponse selects the invalidResponse branch: PostHog returned malformed or oversized confirmation JSON.
-func CaptureEventInvalidResponse(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
-	return connectormock.Branch(posthog.CaptureEventBranchInvalidResponse, value, failure)
-}
-
 // CaptureEventDefect selects the defect branch: Local event input or project token is invalid.
 func CaptureEventDefect(value posthog.CapturedEvent, failure *sdkgo.Failure) connectormock.Case[posthog.CapturedEvent] {
 	return connectormock.Branch(posthog.CaptureEventBranchDefect, value, failure)

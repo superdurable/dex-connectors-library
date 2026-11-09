@@ -66,7 +66,6 @@ spec:
         - {id: accepted, goName: Accepted, description: "PostHog accepted the event for processing, without confirming ingestion."}
         - {id: quotaLimited, goName: QuotaLimited, description: PostHog reported a billing quota limit and may not ingest the event., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: PostHog conclusively rejected the request., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: PostHog returned malformed or oversized confirmation JSON., optional: true}
         - {id: defect, goName: Defect, description: Local event input or project token is invalid., optional: true}
       execution: {executeMethodTimeout: 30s, durability: async}
       mocks:

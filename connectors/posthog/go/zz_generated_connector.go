@@ -207,7 +207,6 @@ func (credentials Credentials) Validate() error {
 const CaptureEventBranchAccepted sdkgo.BranchID = "accepted"
 const CaptureEventBranchQuotaLimited sdkgo.BranchID = "quotaLimited"
 const CaptureEventBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const CaptureEventBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const CaptureEventBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var CaptureEventDefinition = sdkgo.MutationDefinition{
@@ -216,7 +215,6 @@ var CaptureEventDefinition = sdkgo.MutationDefinition{
 		{ID: CaptureEventBranchAccepted, Description: "PostHog accepted the event for processing, without confirming ingestion."},
 		{ID: CaptureEventBranchQuotaLimited, Description: "PostHog reported a billing quota limit and may not ingest the event.", Optional: true},
 		{ID: CaptureEventBranchProviderRejected, Description: "PostHog conclusively rejected the request.", Optional: true},
-		{ID: CaptureEventBranchInvalidResponse, Description: "PostHog returned malformed or oversized confirmation JSON.", Optional: true},
 		{ID: CaptureEventBranchDefect, Description: "Local event input or project token is invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -240,7 +238,6 @@ type CaptureEventStepConfig[IN any] struct {
 	Accepted                          sdkgo.Target[CaptureEventResult]                    `connector:"branch=accepted"`
 	QuotaLimited                      sdkgo.Target[CaptureEventResult]                    `connector:"branch=quotaLimited,optional"`
 	ProviderRejected                  sdkgo.Target[CaptureEventResult]                    `connector:"branch=providerRejected,optional"`
-	InvalidResponse                   sdkgo.Target[CaptureEventResult]                    `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[CaptureEventResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[CapturedEvent]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                    `connector:"stepOptionsOverride"`
@@ -258,7 +255,7 @@ func NewCaptureEventStep[IN any](config CaptureEventStepConfig[IN]) sdkgo.Mutati
 		Operation: config.Connection.operations.CaptureEvent(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[CaptureEventResult] {
-			branches := make([]sdkgo.BranchTarget[CaptureEventResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[CaptureEventResult], 0, 4)
 			if config.Accepted.HasStep() {
 				branches = append(branches, config.Accepted.BranchTarget(CaptureEventBranchAccepted))
 			}
@@ -267,9 +264,6 @@ func NewCaptureEventStep[IN any](config CaptureEventStepConfig[IN]) sdkgo.Mutati
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(CaptureEventBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(CaptureEventBranchInvalidResponse))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(CaptureEventBranchDefect))
