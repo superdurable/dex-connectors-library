@@ -1,0 +1,65 @@
+{
+  "connectorId": "meta-ads-insights",
+  "releaseTag": "connectors/meta/ads-insights/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-meta-ads-insights",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetAdStep",
+      "kind": "query",
+      "operationId": "getAd",
+      "inputType": "GetAdInput",
+      "description": "Read one ad's ID, name, configured status, and effective status.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAdInput identifies one Meta Marketing API ad.",
+        "properties": {
+          "adId": {
+            "description": "AdID is the numeric ad ID from Ads Manager.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "adId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

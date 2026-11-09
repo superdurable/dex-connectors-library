@@ -1,0 +1,294 @@
+{
+  "connector": "shortcut",
+  "scenarios": [
+    {
+      "callId": "dd8f36c4-6e8e-5284-837d-21c540581883",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Example story\",\"story_type\":\"feature\",\"workflow_state_id\":678,\"archived\":false,\"description\":\"private details\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "archived": false,
+          "name": "Example story",
+          "storyId": "12345",
+          "storyType": "feature",
+          "workflowStateId": "678"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "getStory-found",
+      "operation": "getStory"
+    },
+    {
+      "callId": "1ce416e5-eb54-5a44-a283-51b050f3d48c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "getStory-notFound",
+      "operation": "getStory"
+    },
+    {
+      "callId": "b943ee2c-9321-5334-915c-9fad03f89942",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unauthorized\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "getStory-providerRejected",
+      "operation": "getStory"
+    },
+    {
+      "callId": "554b561c-3558-5220-9341-3e991920c27e",
+      "exchanges": [
+        {
+          "body": "{\"id\":12345,\"name\":\"Example story\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "getStory-invalidResponse",
+      "operation": "getStory"
+    },
+    {
+      "callId": "56dd5ca6-6190-5d99-bed2-496de2076e22",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "archived": false,
+          "name": "",
+          "storyId": "",
+          "storyType": "",
+          "workflowStateId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": ""
+      },
+      "name": "getStory-defect",
+      "operation": "getStory"
+    },
+    {
+      "callId": "f2eb5a58-c5c4-554b-ad01-4d8e7bd29b1a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "getStory-rateLimit",
+      "operation": "getStory"
+    },
+    {
+      "callId": "1fbd8cb8-c641-5452-900a-c1bc8a1565c9",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "getStory-serverUnavailable",
+      "operation": "getStory"
+    },
+    {
+      "callId": "20ace46c-4437-5ca6-9810-b99761208c2a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/stories/12345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Shortcut-Token": [
+              "sample-shortcut-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "storyId": "12345"
+      },
+      "name": "getStory-transportFailure",
+      "operation": "getStory"
+    }
+  ],
+  "schemaVersion": 1
+}

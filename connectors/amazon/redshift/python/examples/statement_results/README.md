@@ -1,0 +1,3 @@
+# Python Redshift statement results example
+
+The Worker runs `AmazonRedshiftStatementResultsPython` through the static `amazon-redshift` connection and stores the result page in an Attribute. From `connectors/amazon/redshift/python`, run `uv run python -m examples.statement_results.worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start the Flow with a unique ID and `GetStatementResultInput(statement_id="d9b6c0c9-0747-4bf4-b142-e8883122f766", next_token="")`. Use your actual statement ID. Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex and a local provider fixture. Configure the connection with the [connector guide](../../../README.md).

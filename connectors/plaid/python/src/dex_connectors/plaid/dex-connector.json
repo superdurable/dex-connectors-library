@@ -1,0 +1,65 @@
+{
+  "connectorId": "plaid",
+  "releaseTag": "connectors/plaid/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-plaid",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_accounts_step",
+      "kind": "query",
+      "operationId": "getAccounts",
+      "inputType": "GetAccountsInput",
+      "description": "Read linked account IDs, types, and subtypes without names, masks, or balances.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountsInput selects a linked Item by its non-secret Plaid ID.",
+        "properties": {
+          "itemId": {
+            "description": "ItemID is the Item ID returned by Plaid Link token exchange.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,469 @@
+{
+  "connector": "amazon-redshift",
+  "scenarios": [
+    {
+      "callId": "f0e4657a-c5de-5456-b5e7-066d411fdc17",
+      "exchanges": [
+        {
+          "body": "{\"Records\":[[{\"stringValue\":\"example\"}]],\"TotalNumRows\":1,\"NextToken\":\"more\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "nextToken": "more",
+          "records": [
+            [
+              {
+                "stringValue": "example"
+              }
+            ]
+          ],
+          "totalNumRows": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-found",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "4ec82989-a317-54e3-98bb-70d6fce37c14",
+      "exchanges": [
+        {
+          "body": "{\"Records\":[[{\"longValue\":42}]],\"TotalNumRows\":2}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "fetched",
+        "failureKind": "",
+        "output": {
+          "nextToken": "",
+          "records": [
+            [
+              {
+                "longValue": 42
+              }
+            ]
+          ],
+          "totalNumRows": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-nextPage",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "a714de2d-4bb7-5016-a8f1-ae894f80bde3",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"ResourceNotFoundException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "nextToken": "",
+          "records": [],
+          "totalNumRows": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-missing",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "cdb6c9ab-3dde-5b73-ad1b-add00d8293a5",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"AccessDeniedException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextToken": "",
+          "records": [],
+          "totalNumRows": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-providerRejected",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "a23cdcbf-10df-5844-b8b6-c9c14abb0d6e",
+      "exchanges": [
+        {
+          "body": "{\"Records\":\"invalid\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextToken": "",
+          "records": [],
+          "totalNumRows": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-invalidResponse",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "cf0a78b2-7e2b-5e37-9058-5c0095611bb3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextToken": "",
+          "records": [],
+          "totalNumRows": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "invalid"
+      },
+      "name": "getStatementResult-defect",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "3110bfe2-3a83-58b1-9e0b-f6a2f99f8cd2",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"ActiveStatementsExceededException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-activeStatementsExceeded",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "722c04ee-521d-5f10-874f-89b09a5ebd1b",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"ThrottlingException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-rateLimit",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "515bd252-2a8b-56da-a67d-3def23b4d524",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"InternalServerException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-serverUnavailable",
+      "operation": "getStatementResult"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "Id": "d9b6c0c9-0747-4bf4-b142-e8883122f766",
+            "NextToken": "page-token"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIAREDSHIFTCONNECTOR/20261030/eu-west-1/redshift-data/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=ce8eabbcc614ce1bf40a5be3765e0bf509dece4c5f7c6e42290fbbeba741e569"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.1"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "RedshiftData.GetStatementResult"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token",
+        "statementId": "d9b6c0c9-0747-4bf4-b142-e8883122f766"
+      },
+      "name": "getStatementResult-transportFailure",
+      "operation": "getStatementResult"
+    }
+  ],
+  "schemaVersion": 1
+}

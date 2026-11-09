@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Miro">
+  <rect width="64" height="64" rx="12" fill="#ffdd33"/>
+  <path d="M11 48V17h8l13 18 13-18h8v31h-8V30L32 47 19 30v18z" fill="#1e1e24"/>
+</svg>

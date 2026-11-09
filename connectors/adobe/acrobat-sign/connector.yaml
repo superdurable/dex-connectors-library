@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: adobe-acrobat-sign
+  displayName: Adobe Acrobat Sign
+  description: Read an agreement's name and status through Acrobat Sign REST API v6.
+  company: Adobe
+  version: v0.1.0
+spec:
+  provider: adobe-acrobat-sign
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-adobe-acrobat-sign
+      operations: [getAgreement]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-adobe-acrobat-sign"
+      operations: [getAgreement]
+      triggers: []
+  codegen:
+    go:
+      package: acrobatsign
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Acrobat Sign baseUris discovery root as an absolute HTTPS URL. Blank uses the displayed commercial production endpoint; override only for an Adobe-provided other environment or trusted local test gateway. The connector derives the account's regional API host from baseUris.
+        default: https://api.adobesign.com/api/rest/v6
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow agreement reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete provider response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large agreement metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: adobe-acrobat-sign-integration-key
+    fields:
+      - name: integration_key
+        goName: IntegrationKey
+        type: secretString
+        required: true
+        description: Secret opaque Acrobat Sign integration key from Personal Preferences > Access Tokens after creating one at Acrobat Sign API > API Information > Integration Key with agreement_read scope. Paste the complete key; blank prevents calls. Dex sends it only as a Bearer credential.
+    guide:
+      startURL: https://secure.adobesign.com/account/echosignApi
+      steps:
+        - Sign in to an Acrobat Sign Enterprise account, open Acrobat Sign API > API Information > Integration Key, and create a key with agreement_read scope at the needed account or user access level. If the link is absent, ask Acrobat Sign support to enable integration keys. The key inherits the creator's permissions.
+        - Open Personal Preferences > Access Tokens, select the new key, then Integration Key to reveal and copy its complete opaque value into secret integration_key in Dex Web. Revoke it from the same Access Tokens page. Never put it in the Flow input or logs.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The connector resolves the account-specific apiAccessPoint automatically. Find an agreement's non-secret ID in Acrobat Sign or the create-agreement API response and enter it as agreementId; blank is invalid.
+  operations:
+    - name: getAgreement
+      goName: GetAgreement
+      inputType: GetAgreementInput
+      outputType: AgreementStatus
+      kind: query
+      description: Read one agreement's ID, name, and status without participant identities or document content.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Acrobat Sign returned the agreement.}
+        - {id: notFound, goName: NotFound, description: Acrobat Sign did not expose the agreement., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Acrobat Sign conclusively rejected discovery or lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: "Acrobat Sign returned malformed, unsafe, or oversized JSON.", optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example signed agreement is returned.
+          output: {id: 3AAABLblqZNOTREALAGREEMENTID5_BjiH, name: Example agreement, status: SIGNED}

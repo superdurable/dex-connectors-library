@@ -1,0 +1,52 @@
+{
+  "connectorId": "google-search-console",
+  "releaseTag": "connectors/google/search-console/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-search-console",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_sites_step",
+      "kind": "query",
+      "operationId": "listSites",
+      "inputType": "ListSitesInput",
+      "description": "Return Search Console property URLs and the connected user's permission level.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSitesInput requests properties visible to the connected Google user.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

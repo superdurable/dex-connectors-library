@@ -1,0 +1,215 @@
+{
+  "connectorId": "google-analytics-4",
+  "releaseTag": "connectors/google/analytics/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-analytics",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_run_report_step",
+      "kind": "query",
+      "operationId": "runReport",
+      "inputType": "RunReportInput",
+      "description": "Run one bounded GA4 Data API report for a property, reporting-time-zone date range, requested dimensions and metrics.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "reported",
+          "field": "reported",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "RunReportInput selects one GA4 report page with up to nine dimensions and ten metrics.",
+        "properties": {
+          "dimensions": {
+            "description": "Dimensions are up to nine GA4 Data API dimension names in requested order.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "endDate": {
+            "description": "EndDate is the inclusive date in YYYY-MM-DD form.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Limit is the page size from 1 to 10000; zero uses 100.",
+            "type": "integer"
+          },
+          "metrics": {
+            "description": "Metrics are one to ten GA4 Data API metric names in requested order.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "offset": {
+            "description": "Offset is the zero-based row offset.",
+            "type": "integer"
+          },
+          "propertyId": {
+            "description": "PropertyID is the numeric GA4 Property ID from Analytics Admin.",
+            "type": "string"
+          },
+          "startDate": {
+            "description": "StartDate is the inclusive date in YYYY-MM-DD form.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dimensions",
+          "endDate",
+          "limit",
+          "metrics",
+          "offset",
+          "propertyId",
+          "startDate"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_get_property_step",
+      "kind": "query",
+      "operationId": "getProperty",
+      "inputType": "GetPropertyInput",
+      "description": "Read the GA4 property name, display name, time zone, and currency.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPropertyInput selects one numeric GA4 property ID.",
+        "properties": {
+          "propertyId": {
+            "description": "PropertyID is the numeric GA4 Property ID from Analytics Admin.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "propertyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_audiences_step",
+      "kind": "query",
+      "operationId": "listAudiences",
+      "inputType": "ListAudiencesInput",
+      "description": "List one bounded GA4 audience page with identity, display name, and description.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAudiencesInput selects one page of audiences for a numeric property ID.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize is from 1 to 200; zero uses 50.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is Google's opaque cursor from a prior page.",
+            "type": "string"
+          },
+          "propertyId": {
+            "description": "PropertyID is the numeric GA4 Property ID from Analytics Admin.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageSize",
+          "pageToken",
+          "propertyId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

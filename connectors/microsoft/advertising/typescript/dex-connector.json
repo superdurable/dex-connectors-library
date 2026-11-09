@@ -1,0 +1,60 @@
+{
+  "connectorId": "microsoft-advertising",
+  "releaseTag": "connectors/microsoft/advertising/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-microsoft-advertising",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListCampaignsStep",
+      "kind": "query",
+      "operationId": "listCampaigns",
+      "inputType": "ListCampaignsInput",
+      "description": "List campaign IDs, names, types, and statuses in one account.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCampaignsInput identifies the Microsoft Advertising account to query.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is the numeric aid in the signed-in Campaigns URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

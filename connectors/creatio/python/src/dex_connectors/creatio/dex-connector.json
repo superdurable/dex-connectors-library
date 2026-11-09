@@ -1,0 +1,65 @@
+{
+  "connectorId": "creatio",
+  "releaseTag": "connectors/creatio/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-creatio",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_contact_step",
+      "kind": "query",
+      "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Read one contact's UUID, name, and email through OData 4.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput identifies one Creatio contact by UUID.",
+        "properties": {
+          "contactId": {
+            "description": "ContactID is the Contact.Id value from the Creatio Contacts page or OData.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

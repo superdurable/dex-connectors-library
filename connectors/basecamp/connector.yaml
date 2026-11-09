@@ -1,0 +1,109 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: basecamp
+  displayName: Basecamp
+  description: Discover Basecamp accounts accessible to an authorized identity.
+  company: Basecamp
+  version: v0.1.0
+spec:
+  provider: basecamp
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listAccounts]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-basecamp'
+      operations: [listAccounts]
+      triggers: []
+  codegen:
+    go:
+      package: basecamp
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Basecamp authorization API HTTPS origin. Blank uses the displayed provider endpoint; override only for a trusted test gateway.
+        default: https://launchpad.37signals.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large account pages.
+        default: 1048576
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: basecamp-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://launchpad.37signals.com/integrations > your integration. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from https://launchpad.37signals.com/integrations > your integration. Save only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token supplied by Basecamp consent and rotated by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token supplied by Basecamp consent and rotated by Dex. Never enter it manually; blank requires reauthorization.
+    guide:
+      startURL: https://launchpad.37signals.com/integrations
+      steps:
+        - Sign in at https://launchpad.37signals.com/integrations and register or select an integration for the Basecamp account you will read.
+        - Register the exact OAuth Redirect URL displayed by Dex Web. Dex requests read scope; Launchpad uses account consent and may ignore that scope parameter.
+        - Copy the Client ID and secret into Dex Web and authorize an identity with access to the desired accounts. Dex stores access and refresh tokens; do not paste them into fields.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The Query returns only Basecamp account IDs and names.
+    oauth2:
+      authorizationEndpoint: https://launchpad.37signals.com/authorization/new
+      tokenEndpoint: https://launchpad.37signals.com/authorization/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [read]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountsPage
+      kind: query
+      description: Return a locally bounded page of Basecamp account IDs and names.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Basecamp returned accessible account identities.}
+        - {id: providerRejected, goName: ProviderRejected, description: Basecamp conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Basecamp returned malformed or oversized account JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One Basecamp account is accessible.
+          output: {accounts: [{id: '99999999', company: Example Company}], offset: 0, limit: 100, total: 1}

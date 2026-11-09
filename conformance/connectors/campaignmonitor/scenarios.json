@@ -1,0 +1,230 @@
+{
+  "connector": "campaignmonitor",
+  "scenarios": [
+    {
+      "callId": "e0fe733b-53e2-4cb1-b8d3-033b51abe7d6",
+      "exchanges": [
+        {
+          "body": "[{\"ClientID\":\"client-1\",\"Name\":\"Acme\",\"ApiKey\":\"not-persisted\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "clients": [
+            {
+              "id": "client-1",
+              "name": "Acme"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClients-success",
+      "operation": "listClients"
+    },
+    {
+      "callId": "6bc855c4-04b8-4fbc-9386-4d5de0536280",
+      "exchanges": [
+        {
+          "body": "{\"Code\":401,\"Message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "clients": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClients-providerRejected",
+      "operation": "listClients"
+    },
+    {
+      "callId": "a85bc90c-785b-446e-946c-bf622a0bc33a",
+      "exchanges": [
+        {
+          "body": "[{\"ClientID\":\"client-1\"}]",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "clients": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClients-invalidResponse",
+      "operation": "listClients"
+    },
+    {
+      "callId": "06e3c335-72af-4b15-bb0b-daa7494a2691",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "clients": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClients-defect",
+      "operation": "listClients"
+    },
+    {
+      "callId": "0cfe1b61-d7a5-43b7-8064-7069d1305513",
+      "exchanges": [
+        {
+          "body": "{\"Message\":\"Rate limited\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClients-rateLimit",
+      "operation": "listClients"
+    },
+    {
+      "callId": "15b79007-d856-4a47-8de7-328a5ca57d26",
+      "exchanges": [
+        {
+          "body": "{\"Message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClients-serverUnavailable",
+      "operation": "listClients"
+    },
+    {
+      "callId": "81d1c728-50f3-4dc8-ab67-2ec61064ec3f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/clients.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic dGVzdC10b2tlbjo="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listClients-transportFailure",
+      "operation": "listClients"
+    }
+  ],
+  "schemaVersion": 1
+}

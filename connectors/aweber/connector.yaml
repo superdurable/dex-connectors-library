@@ -1,0 +1,109 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: aweber
+  displayName: AWeber
+  description: Discover the connected AWeber account through its REST API.
+  company: AWeber
+  version: v0.1.0
+spec:
+  provider: aweber
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listAccounts]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-aweber'
+      operations: [listAccounts]
+      triggers: []
+  codegen:
+    go:
+      package: aweber
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: AWeber API HTTPS origin. Blank uses the displayed provider endpoint; override only for a trusted test gateway.
+        default: https://api.aweber.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large account pages.
+        default: 1048576
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: aweber-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://labs.aweber.com/apps > your confidential integration. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from https://labs.aweber.com/apps > your confidential integration. Save only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token supplied by AWeber consent and rotated by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token supplied by AWeber consent and rotated by Dex. Never enter it manually; blank requires reauthorization.
+    guide:
+      startURL: https://labs.aweber.com/apps
+      steps:
+        - Sign in to AWeber Developer at https://labs.aweber.com/apps and create or select a confidential integration. Use a customer account authorized to access the intended data.
+        - In the integration's OAuth settings, register the exact OAuth Redirect URL displayed by Dex Web. Select account.read for account discovery; add list.read and subscriber.read only when later operations need them. AWeber presents these permissions during customer consent.
+        - Copy the integration's Client ID and secret into Dex Web and authorize the customer account. Dex stores access and refresh tokens; do not paste them into fields.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. AWeber limits requests per customer account; reduce polling when its rate limit is reached.
+    oauth2:
+      authorizationEndpoint: https://auth.aweber.com/oauth2/authorize
+      tokenEndpoint: https://auth.aweber.com/oauth2/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [account.read]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_basic
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountsPage
+      kind: query
+      description: Return the authorized customer's account ID and company name.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: AWeber returned the selected account page.}
+        - {id: providerRejected, goName: ProviderRejected, description: AWeber conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: AWeber returned malformed or oversized account JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One authorized customer account is visible.
+          output: {accounts: [{id: '123', company: Example Company}], offset: 0, limit: 100, total: 1}

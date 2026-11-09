@@ -1,0 +1,78 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: upstash-redis
+  displayName: Upstash Redis
+  description: Read Redis string keys through an Upstash database REST endpoint.
+  company: Upstash
+  version: v0.1.0
+spec:
+  provider: upstash-redis
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-upstash-redis
+      operations: [getKey]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-upstash-redis'
+      operations: [getKey]
+      triggers: []
+  codegen:
+    go:
+      package: redis
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret HTTPS REST URL from https://console.upstash.com > Redis > selected database > Connect > REST > UPSTASH_REDIS_REST_URL; use the complete origin such as https://example.upstash.io. Blank prevents requests. A loopback HTTP URL is supported only for local tests.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one GET command as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 2097152
+        description: Maximum complete GET response in bytes. Blank uses the displayed default; increase only for larger stored strings.
+  auth:
+    type: apiKey
+    connectionKind: upstash-redis-rest-token
+    fields:
+      - name: rest_token
+        goName: RestToken
+        type: secretString
+        required: true
+        description: Secret opaque UPSTASH_REDIS_REST_TOKEN from https://console.upstash.com > Redis > selected database > Connect > REST. Copy the Read-Only Token for getKey, or the standard Token if writes are later needed. Blank prevents requests. Dex stores it as a secret and sends it only in the Authorization header; reset the database password to revoke it.
+    guide:
+      startURL: https://console.upstash.com
+      steps:
+        - Sign in to https://console.upstash.com > Redis, create or select a database, open Connect > REST, and copy UPSTASH_REDIS_REST_URL to baseUrl. It is a non-secret HTTPS origin such as https://example.upstash.io.
+        - In the same REST tab enable Read-Only Token and copy UPSTASH_REDIS_REST_TOKEN to secret rest_token. The opaque token is shown in the console; reset the database password to revoke it. A read-only token is sufficient for getKey.
+        - In the database's Data Browser, find the exact Redis string key; supply that key to getKey. Blank key is invalid. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: getKey
+      goName: GetKey
+      inputType: GetKeyInput
+      outputType: KeyLookup
+      kind: query
+      description: Read one Redis string value by key using Upstash REST.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: The key exists and has a string value.}
+        - {id: missing, goName: Missing, description: The key does not exist., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Upstash conclusively rejected the command or token., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Upstash returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The key, endpoint, or token is invalid.", optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example string key exists.
+          output: {key: "sample:key", value: example, exists: true}

@@ -1,0 +1,173 @@
+{
+  "connectorId": "hootsuite",
+  "releaseTag": "connectors/hootsuite/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-hootsuite",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_social_profiles_step",
+      "kind": "query",
+      "operationId": "listSocialProfiles",
+      "inputType": "ListSocialProfilesInput",
+      "description": "Return the connected user's visible social profile IDs, network types, and usernames.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSocialProfilesInput requests profiles visible to the connected user.",
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_scheduled_posts_step",
+      "kind": "query",
+      "operationId": "listScheduledPosts",
+      "inputType": "ListScheduledPostsInput",
+      "description": "Read one page of scheduled outbound messages within a UTC interval of at most four weeks.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListScheduledPostsInput selects one page of scheduled messages in a UTC interval.",
+        "properties": {
+          "cursor": {
+            "description": "Cursor is the opaque cursor from a prior page; empty selects the first page.",
+            "type": "string"
+          },
+          "endTime": {
+            "description": "EndTime is the exclusive UTC instant, no later than four weeks after StartTime.",
+            "type": "string"
+          },
+          "socialProfileId": {
+            "description": "SocialProfileID optionally filters to one ID returned by listSocialProfiles.",
+            "type": "string"
+          },
+          "startTime": {
+            "description": "StartTime is the inclusive UTC instant, formatted as RFC 3339 with a Z suffix.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "endTime",
+          "startTime"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_schedule_post_step",
+      "kind": "mutation",
+      "operationId": "schedulePost",
+      "inputType": "SchedulePostInput",
+      "description": "Schedule a text message on one social profile; inspect Hootsuite Planner if the outcome is uncertain.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "scheduled",
+          "field": "scheduled",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SchedulePostInput schedules one text message on one social profile.",
+        "properties": {
+          "scheduledSendTime": {
+            "description": "ScheduledSendTime is an ISO-8601 UTC instant ending in Z.",
+            "type": "string"
+          },
+          "socialProfileId": {
+            "description": "SocialProfileID is a stable ID returned by listSocialProfiles.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is the message body; Hootsuite applies network-specific length restrictions.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduledSendTime",
+          "socialProfileId",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

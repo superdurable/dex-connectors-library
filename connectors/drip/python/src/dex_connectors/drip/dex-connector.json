@@ -1,0 +1,111 @@
+{
+  "connectorId": "drip",
+  "releaseTag": "connectors/drip/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-drip",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_accounts_step",
+      "kind": "query",
+      "operationId": "listAccounts",
+      "inputType": "ListAccountsInput",
+      "description": "List IDs and names of Drip accounts accessible to the token.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAccountsInput selects accounts accessible to the connected Drip user.",
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_get_subscriber_step",
+      "kind": "query",
+      "operationId": "getSubscriber",
+      "inputType": "GetSubscriberInput",
+      "description": "Read one subscriber's ID, email, first name, last name, and status from a Drip account.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSubscriberInput selects one subscriber by ID or email in an account.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is a numeric ID returned by ListAccounts.",
+            "type": "string"
+          },
+          "subscriberIdOrEmail": {
+            "description": "SubscriberIDOrEmail is the Drip subscriber ID or email address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId",
+          "subscriberIdOrEmail"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

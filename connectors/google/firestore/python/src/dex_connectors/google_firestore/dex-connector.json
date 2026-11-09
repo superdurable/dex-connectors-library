@@ -1,0 +1,73 @@
+{
+  "connectorId": "google-firestore",
+  "releaseTag": "connectors/google/firestore/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-firestore",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_documents_step",
+      "kind": "query",
+      "operationId": "listDocuments",
+      "inputType": "ListDocumentsInput",
+      "description": "List one page of document resource names in a collection of the default Firestore database.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDocumentsInput selects one bounded collection page in the default Firestore database.",
+        "properties": {
+          "collectionId": {
+            "description": "CollectionID is the top-level collection ID shown in Firestore Documents.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize limits this page to 1 through 100 documents; zero uses 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is returned by the previous page; blank selects the first page.",
+            "type": "string"
+          },
+          "projectId": {
+            "description": "ProjectID is the Google Cloud project ID shown in Firestore Databases.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collectionId",
+          "projectId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

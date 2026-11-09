@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wise
+  displayName: Wise Platform
+  description: Read selected Wise transfer status through the Platform API.
+  company: Wise
+  version: v0.1.0
+spec:
+  provider: wise
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-wise
+      operations: [getTransfer]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-wise"
+      operations: [getTransfer]
+      triggers: []
+  codegen:
+    go:
+      package: wise
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Wise Platform API root as an absolute HTTPS URL. Blank uses the displayed Production endpoint. For Sandbox use https://api.wise-sandbox.com/2026Q4; override only for the matching environment or a trusted local test gateway.
+        default: https://api.wise.com/2026Q4
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow transfer reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete transfer response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large transfer metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: wise-personal-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret Wise business personal API token from Your Account > Connect and manage apps > API tokens > Add new token. Copy the complete opaque value when shown; blank prevents calls. Dex sends it only in the Authorization Bearer header. Match Production or Sandbox token to baseUrl.
+    guide:
+      startURL: https://wise.com
+      steps:
+        - Sign in to a Wise business account, open Your Account > Connect and manage apps > API tokens > Add new token, complete two-step verification, then copy the opaque personal API token once into Dex Web secret api_token; blank is invalid. Revoke or rotate it on the same page when retired. Partner OAuth user tokens also work when supplied through this secret field.
+        - Leave baseUrl blank for Production or set https://api.wise-sandbox.com/2026Q4 for Sandbox. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret numeric transfer ID in Wise transfer details or an API response and pass it as transferId; blank is invalid.
+  operations:
+    - name: getTransfer
+      goName: GetTransfer
+      inputType: GetTransferInput
+      outputType: TransferStatus
+      kind: query
+      description: Read one transfer's ID, status, and source currency without recipient, customer, or payment details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Wise returned the transfer.}
+        - {id: notFound, goName: NotFound, description: Wise did not expose the transfer., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wise conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wise returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample incoming transfer is returned.
+          output: {id: "16521632", status: incoming_payment_waiting, sourceCurrency: EUR}

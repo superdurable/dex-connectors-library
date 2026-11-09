@@ -1,0 +1,64 @@
+{
+  "connectorId": "odoo",
+  "releaseTag": "connectors/odoo/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-odoo",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_search_partners_step",
+      "kind": "query",
+      "operationId": "searchPartners",
+      "inputType": "SearchPartnersInput",
+      "description": "Search company partners by Odoo ilike name pattern and return only IDs and names.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchPartnersInput selects an Odoo ilike name pattern and result bound.",
+        "properties": {
+          "limit": {
+            "description": "Limit is one through one hundred; zero uses twenty.",
+            "type": "integer"
+          },
+          "namePattern": {
+            "description": "NamePattern is an Odoo ilike pattern such as %Acme%.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "namePattern"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

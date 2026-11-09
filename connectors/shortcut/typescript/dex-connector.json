@@ -1,0 +1,65 @@
+{
+  "connectorId": "shortcut",
+  "releaseTag": "connectors/shortcut/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-shortcut",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetStoryStep",
+      "kind": "query",
+      "operationId": "getStory",
+      "inputType": "GetStoryInput",
+      "description": "Read a story's ID, name, type, workflow state ID, and archived flag without its description or comments.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetStoryInput selects a Story by its positive decimal public ID.",
+        "properties": {
+          "storyId": {
+            "description": "StoryID is the non-secret decimal ID from a Shortcut Story URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storyId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

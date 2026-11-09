@@ -1,0 +1,65 @@
+{
+  "connectorId": "ashby",
+  "releaseTag": "connectors/ashby/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-ashby",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetCandidateStep",
+      "kind": "query",
+      "operationId": "getCandidate",
+      "inputType": "GetCandidateInput",
+      "description": "Read one candidate's ID, name, and creation/update timestamps.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCandidateInput selects a candidate by its non-secret Ashby ID.",
+        "properties": {
+          "candidateId": {
+            "description": "CandidateID is the ID shown in Ashby Candidates or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidateId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

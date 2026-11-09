@@ -1,0 +1,506 @@
+{
+  "connector": "creatio",
+  "scenarios": [
+    {
+      "callId": "d9e4f88f-f539-5f35-98a5-4caec221843e",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"Id\":\"90a68db5-cb3a-4f64-bb60-c0a934ee7600\",\"Name\":\"Ada Lovelace\",\"Email\":\"ada@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "email": "ada@example.com",
+          "id": "90a68db5-cb3a-4f64-bb60-c0a934ee7600",
+          "name": "Ada Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-found",
+      "operation": "getContact"
+    },
+    {
+      "callId": "c225bd1e-ed26-5e2b-b359-8f21319c7ca8",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-notFound",
+      "operation": "getContact"
+    },
+    {
+      "callId": "07747158-4b1d-5e5b-8e3e-381cf468eaee",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-providerRejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "ef8e8b6b-2269-5a60-beb7-b47c5543d00d",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-invalidResponse",
+      "operation": "getContact"
+    },
+    {
+      "callId": "7461ba2b-f532-512f-a267-82aab22a65f2",
+      "exchanges": [
+        {
+          "body": "{\"value\":[{\"Id\":\"7d61f73e-a18c-46a5-88e2-2bfa894657d7\",\"Name\":\"Ada Lovelace\",\"Email\":\"ada@example.com\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-wrongContact",
+      "operation": "getContact"
+    },
+    {
+      "callId": "9ec1984f-8025-54a4-a13d-656a72bbb435",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-rateLimit",
+      "operation": "getContact"
+    },
+    {
+      "callId": "41fa25bd-d3ea-5d92-bc37-2b6284608357",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-serverUnavailable",
+      "operation": "getContact"
+    },
+    {
+      "callId": "eb23f8e6-f884-5c08-a8c8-0ab710cacdf4",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-requestTimeout",
+      "operation": "getContact"
+    },
+    {
+      "callId": "05edb364-09a3-5754-8446-a31138e9ec50",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "invalid/id"
+      },
+      "name": "getContact-defect",
+      "operation": "getContact"
+    },
+    {
+      "callId": "6a288890-6165-582f-8d11-ba927db276df",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-transportFailure",
+      "operation": "getContact"
+    },
+    {
+      "callId": "2c4ba4c0-2ae6-4a8b-889b-bce502546b19",
+      "exchanges": [
+        {
+          "body": "{\"value\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/0/odata/Contact",
+          "query": {
+            "$filter": [
+              "Id eq 90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+            ],
+            "$select": [
+              "Id,Name,Email"
+            ],
+            "$top": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "email": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "90a68db5-cb3a-4f64-bb60-c0a934ee7600"
+      },
+      "name": "getContact-emptyCollection",
+      "operation": "getContact"
+    }
+  ],
+  "schemaVersion": 1
+}

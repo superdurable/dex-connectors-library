@@ -1,0 +1,65 @@
+{
+  "connectorId": "upstash-redis",
+  "releaseTag": "connectors/upstash/redis/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-upstash-redis",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_key_step",
+      "kind": "query",
+      "operationId": "getKey",
+      "inputType": "GetKeyInput",
+      "description": "Read one Redis string value by key using Upstash REST.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetKeyInput identifies one Redis string key.",
+        "properties": {
+          "key": {
+            "description": "Key is the exact case-sensitive Redis key.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

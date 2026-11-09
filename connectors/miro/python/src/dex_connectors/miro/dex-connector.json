@@ -1,0 +1,65 @@
+{
+  "connectorId": "miro",
+  "releaseTag": "connectors/miro/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-miro",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_board_step",
+      "kind": "query",
+      "operationId": "getBoard",
+      "inputType": "GetBoardInput",
+      "description": "Read one board's ID and name without owner, members, policies, or description.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBoardInput selects a board by its non-secret ID.",
+        "properties": {
+          "boardId": {
+            "description": "BoardID is the ID after /board/ in a Miro board URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "boardId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: whatsapp-business
+  displayName: WhatsApp Business Platform
+  description: Inspect business phone numbers and send text or template messages through the WhatsApp Cloud API.
+  company: Meta
+  version: v0.1.0
+spec:
+  provider: whatsapp-business
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listPhoneNumbers, sendTextMessage, sendTemplateMessage]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listPhoneNumbers, sendTextMessage, sendTemplateMessage]
+      triggers: []
+  codegen:
+    go:
+      package: whatsappbusiness
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Meta Graph API root with a supported version, as an absolute HTTPS URL. Blank uses the displayed versioned endpoint; override only for an approved gateway or local provider test.
+        default: https://graph.facebook.com/v25.0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one Graph API request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete Graph API response in bytes. Blank uses the displayed default; increase only for a known larger phone-number page.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: meta-whatsapp-system-user-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret opaque system-user access token from https://business.facebook.com/settings/system-users > select your system user > Generate New Token for the app with whatsapp_business_management and whatsapp_business_messaging. Copy the complete token only into Dex; blank prevents calls. Revoke it in Business Settings when retired.
+    guide:
+      startURL: https://business.facebook.com/settings/system-users
+      steps:
+        - In Meta Business Settings > Accounts > WhatsApp Accounts, select the WABA and copy its numeric ID. Assign that account to a system user with read access.
+        - In Meta Business Settings > Users > System Users, select or create a system user, assign the WhatsApp account, then choose Generate New Token for the Meta app with whatsapp_business_management and whatsapp_business_messaging permissions.
+        - Copy the secret token once into access_token in Dex. Do not put it in Flow input or logs; revoke it from the same System Users page when retired.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Use text only within Meta's customer service window; use an approved template to initiate or resume a conversation.
+  operations:
+    - name: listPhoneNumbers
+      goName: ListPhoneNumbers
+      inputType: ListPhoneNumbersInput
+      outputType: PhoneNumbersPage
+      kind: query
+      description: Read one page of phone-number IDs and display names for a WhatsApp Business Account.
+      idempotency: none
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one phone-number page.}
+        - {id: notFound, goName: NotFound, description: The WABA is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example business phone number is available.
+          output:
+            numbers: [{id: "1906385232743451", verifiedName: "Example Store", displayPhoneNumber: "+1 631-555-5555"}]
+            nextCursor: ""
+    - name: sendTextMessage
+      goName: SendTextMessage
+      inputType: SendTextMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send a plain-text WhatsApp message within the customer service window.
+      idempotency: required
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+      branches:
+        - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome cannot be confirmed; do not resend blindly., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Meta accepted the text message.
+          output: {messageId: "wamid.example-text-message"}
+    - name: sendTemplateMessage
+      goName: SendTemplateMessage
+      inputType: SendTemplateMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send an approved WhatsApp template, optionally with text body parameters.
+      idempotency: required
+      authorization: required
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+      branches:
+        - {id: sent, goName: Sent, description: Meta returned a WhatsApp message ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the template send., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The send outcome cannot be confirmed; do not resend blindly., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: sentDefault
+          branch: sent
+          default: true
+          description: Meta accepted the template message.
+          output: {messageId: "wamid.example-template-message"}

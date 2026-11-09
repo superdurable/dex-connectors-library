@@ -1,0 +1,120 @@
+{
+  "connectorId": "surveymonkey",
+  "releaseTag": "connectors/surveymonkey/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-surveymonkey",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListSurveysStep",
+      "kind": "query",
+      "operationId": "listSurveys",
+      "inputType": "ListSurveysInput",
+      "description": "List one page of survey IDs and titles without questions or answers.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSurveysInput selects a one-based page of at most 100 surveys.",
+        "properties": {
+          "page": {
+            "description": "Page is one-based; zero defaults to the first page.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage is the maximum survey count; zero defaults to 50.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetResponseStep",
+      "kind": "query",
+      "operationId": "getResponse",
+      "inputType": "GetResponseInput",
+      "description": "Read one survey response's ID, survey ID, status, and timestamps; answers are excluded.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetResponseInput selects one response within one survey.",
+        "properties": {
+          "responseId": {
+            "description": "ResponseID is the numeric response ID.",
+            "type": "string"
+          },
+          "surveyId": {
+            "description": "SurveyID is the numeric survey ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "responseId",
+          "surveyId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

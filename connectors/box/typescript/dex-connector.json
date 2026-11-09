@@ -1,0 +1,129 @@
+{
+  "connectorId": "box",
+  "releaseTag": "connectors/box/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-box",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newDownloadFileStep",
+      "kind": "query",
+      "operationId": "downloadFile",
+      "inputType": "DownloadFileInput",
+      "description": "Download one bounded Box file by its ID and return Base64 content.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "downloaded",
+          "field": "downloaded",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "tooLarge",
+          "field": "tooLarge",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DownloadFileInput selects one Box file by its numeric ID.",
+        "properties": {
+          "fileId": {
+            "description": "FileID appears in Box Web's /files/<ID> URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newUploadFileStep",
+      "kind": "mutation",
+      "operationId": "uploadFile",
+      "inputType": "UploadFileInput",
+      "description": "Replace an existing Box file's current content with bounded Base64 bytes, skipping an already identical file.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "uploaded",
+          "field": "uploaded",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UploadFileInput replaces an existing Box file's current content.",
+        "properties": {
+          "contentBase64": {
+            "description": "ContentBase64 holds the complete replacement bytes.",
+            "type": "string"
+          },
+          "fileId": {
+            "description": "FileID appears in Box Web's /files/<ID> URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentBase64",
+          "fileId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

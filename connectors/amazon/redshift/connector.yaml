@@ -1,0 +1,92 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: amazon-redshift
+  displayName: Amazon Redshift
+  description: Fetch a page of SQL statement results through the Redshift Data API.
+  company: Amazon
+  version: v0.1.0
+spec:
+  provider: amazon-redshift
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-amazon-redshift
+      operations: [getStatementResult]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-amazon-redshift'
+      operations: [getStatementResult]
+      triggers: []
+  codegen:
+    go:
+      package: redshift
+  configuration:
+    fields:
+      - name: region
+        goName: Region
+        type: string
+        default: us-east-1
+        description: AWS Region code containing the statement, such as eu-west-1. In https://console.aws.amazon.com/redshiftv2 > Query editor v2, use the console Region selector; blank uses the displayed default.
+      - name: endpoint
+        goName: Endpoint
+        type: url
+        description: Optional Redshift Data API root. Blank derives the regional AWS endpoint from region. Override only for a trusted compatible endpoint; local tests may use loopback HTTP.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one result-page request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 2097152
+        description: Maximum complete result page in bytes. Blank uses the displayed default; increase only for a known large page.
+  auth:
+    type: apiKey
+    connectionKind: amazon-redshift-access-key
+    fields:
+      - name: access_key_id
+        goName: AccessKeyID
+        type: secretString
+        required: true
+        description: Secret-stored AWS access key ID from https://console.aws.amazon.com/iam > Users > selected user > Security credentials > Access keys > Create access key. Long-term IDs start AKIA and temporary IDs start ASIA. Blank prevents signing.
+      - name: secret_access_key
+        goName: SecretAccessKey
+        type: secretString
+        required: true
+        description: Secret access key paired with access_key_id, shown once on the IAM Retrieve access keys page. Copy the Value, never the key ID. Blank prevents signing; rotate through IAM.
+      - name: session_token
+        goName: SessionToken
+        type: secretString
+        description: Secret session token for temporary ASIA credentials, from AWS STS. Blank means long-term IAM user credentials. Temporary credentials expire; replace all three fields before expiry.
+    guide:
+      startURL: https://console.aws.amazon.com/iam
+      steps:
+        - Open IAM > Users > Create user for Dex. Grant redshift-data:GetStatementResult. Limit statement access with the statement-owner-iam-userid condition where appropriate; do not use the root user.
+        - Open the IAM user > Security credentials > Access keys > Create access key > Other. Copy the Access key ID to secret access_key_id and the one-time Secret access key Value to secret_access_key. Leave session_token blank for long-term keys; include it for temporary ASIA keys.
+        - Open https://console.aws.amazon.com/redshiftv2 > Query editor v2 in the statement's Region. Run a query through the Redshift Data API, or use its ExecuteStatement response; copy the UUID Id to the Flow input statementId. Query results must use JSON format. A result page's NextToken is supplied to the next Flow input; blank starts at the first page.
+        - Rotate the key under IAM > Users > selected user > Security credentials > Access keys by creating a second key, updating this connection, verifying a Flow, then deactivating and deleting the old key.
+  operations:
+    - name: getStatementResult
+      goName: GetStatementResult
+      inputType: GetStatementResultInput
+      outputType: StatementResultPage
+      kind: query
+      description: Fetch one JSON result page by Redshift Data API statement UUID and optional page token.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: fetched, goName: Fetched, description: Redshift returned the statement result page.}
+        - {id: missing, goName: Missing, description: Redshift does not retain the specified statement result., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Redshift conclusively rejected the lookup or credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Redshift returned malformed or oversized result JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The statement ID, endpoint, Region, or credentials are invalid.", optional: true}
+      mocks:
+        - name: fetchedDefault
+          branch: fetched
+          default: true
+          description: One example result row is available.
+          output: {records: [[{stringValue: example}]], nextToken: '', totalNumRows: 1}

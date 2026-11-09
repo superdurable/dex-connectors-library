@@ -1,0 +1,64 @@
+{
+  "connectorId": "amazon-ses",
+  "releaseTag": "connectors/amazon/ses/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-amazon-ses",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_email_identity_step",
+      "kind": "query",
+      "operationId": "getEmailIdentity",
+      "inputType": "GetEmailIdentityInput",
+      "description": "Read the verification status of an SES email identity.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEmailIdentityInput identifies one SES email identity in the configured Region.",
+        "properties": {
+          "emailIdentity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailIdentity"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

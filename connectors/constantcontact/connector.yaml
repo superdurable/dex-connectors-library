@@ -1,0 +1,116 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: constantcontact
+  displayName: Constant Contact
+  description: Read contact details from the Constant Contact V3 API.
+  company: Constant Contact
+  version: v0.1.0
+spec:
+  provider: constantcontact
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-constantcontact
+      operations: [getContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-constantcontact'
+      operations: [getContact]
+      triggers: []
+  codegen:
+    go:
+      package: constantcontact
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Constant Contact V3 API root as an absolute HTTPS URL. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://api.cc.email/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete response in bytes as a positive integer. Blank uses the displayed default; raise only when contact responses are larger than expected.
+        default: 1048576
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: constantcontact-user-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret API Key from https://app.constantcontact.com/pages/dma/portal/ > My Applications > select the V3 API app. Blank prevents authorization and refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from the same My Applications page. Copy it into this secret field only; blank prevents authorization and refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret access token produced by Constant Contact OAuth and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token produced by Constant Contact OAuth and rotated by Dex. Never enter it manually; blank requires reauthorization.
+    guide:
+      startURL: https://app.constantcontact.com/pages/dma/portal/
+      steps:
+        - Open the Constant Contact Developer Portal > My Applications > Create a New Application, choose Authorization Code Flow, and copy the API Key and Client Secret. The API Key is not secret; store the Client Secret only in Dex credentials.
+        - In the application's Redirect URI settings, register the exact redirect URI displayed by Dex Web. Enable the contact_data scope for contact reads and offline_access for refresh tokens; ask the account administrator to authorize the application if your user cannot grant access.
+        - Save the two app credentials, choose Authorize in Dex Web, and approve Constant Contact consent. Dex stores and refreshes the returned access and refresh tokens. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - To find a contact ID, open Constant Contact > Contacts, select a contact, and use the contact ID from its V3 API resource or an exported V3 contacts list. It is a non-secret UUID. Blank contact IDs are invalid.
+    oauth2:
+      authorizationEndpoint: https://authz.constantcontact.com/oauth2/default/v1/authorize
+      tokenEndpoint: https://authz.constantcontact.com/oauth2/default/v1/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [contact_data, offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_basic
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
+        requiredScopes: [contact_data]
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactMetadata
+      kind: query
+      description: Read one contact's ID, optional email address, names, and current email permission when present.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Constant Contact returned the contact.}
+        - {id: notFound, goName: NotFound, description: The contact does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Constant Contact conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Constant Contact returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample subscribed contact is returned.
+          output: {contactId: "1898ae62-4752-11e9-9c8a-fa163e6b01c1", emailAddress: "reader@example.com", firstName: "Avery", lastName: "Reader", emailPermission: "explicit"}
+        - name: contactMissing
+          branch: notFound
+          description: The requested contact is absent.
+          failure: {kind: NOT_FOUND, message: Constant Contact did not find the contact.}

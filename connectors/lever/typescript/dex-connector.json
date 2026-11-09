@@ -1,0 +1,65 @@
+{
+  "connectorId": "lever",
+  "releaseTag": "connectors/lever/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-lever",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetOpportunityStep",
+      "kind": "query",
+      "operationId": "getOpportunity",
+      "inputType": "GetOpportunityInput",
+      "description": "Read one opportunity's ID, candidate name, and current stage UID.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetOpportunityInput selects an opportunity by its non-secret Lever ID.",
+        "properties": {
+          "opportunityId": {
+            "description": "OpportunityID is the ID shown in Lever Opportunities or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "opportunityId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

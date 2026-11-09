@@ -1,0 +1,115 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: linkedin-ads
+  displayName: LinkedIn Ads
+  description: Discover LinkedIn Advertising accounts accessible to an authorized member.
+  company: LinkedIn
+  version: v0.1.0
+spec:
+  provider: linkedin-ads
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listAdAccounts]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-linkedin-ads'
+      operations: [listAdAccounts]
+      triggers: []
+  codegen:
+    go:
+      package: ads
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: LinkedIn API HTTPS origin. Blank uses the displayed endpoint; override only for a trusted test gateway.
+        default: https://api.linkedin.com
+      - name: marketingVersion
+        goName: MarketingVersion
+        type: string
+        description: LinkedIn Marketing API version in YYYYMM format. Blank uses the displayed supported version; override when LinkedIn retires it and a newer version is verified.
+        default: '202609'
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large ad account pages.
+        default: 2097152
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: linkedin-ads-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://www.linkedin.com/developers/apps > your app > Auth > Application credentials. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from https://www.linkedin.com/developers/apps > your app > Auth > Application credentials. Save only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token supplied by LinkedIn consent. Dex refreshes it when the app receives a refresh token; otherwise expiry requires reauthorization. Do not enter manually.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: false
+        description: Secret refresh token issued only when LinkedIn approves programmatic refresh. Dex rotates it if supplied; blank means the member must reauthorize after access-token expiry.
+    guide:
+      startURL: https://www.linkedin.com/developers/apps
+      steps:
+        - In LinkedIn Developer > My Apps, create or select an app, open Products, and request Advertising API access. Development-tier approval supplies r_ads for reading ad accounts; the consenting member also needs an Ad Account role.
+        - Open Auth > OAuth 2.0 settings and register the exact redirect URL displayed by Dex Web under Authorized redirect URLs. Confirm r_ads appears among the app's OAuth permissions before authorization.
+        - Copy Client ID and Client Secret from Auth > Application credentials into Dex Web. The Client Secret is secret. Authorize the member with r_ads; Dex stores the access token, and a refresh token only if LinkedIn grants programmatic refresh.
+        - Run listAdAccounts to discover numeric account IDs and names. Leave baseUrl, marketingVersion, timeout, and maxResponseBytes blank for their displayed defaults; reauthorize when a non-refreshable token expires.
+    oauth2:
+      authorizationEndpoint: https://www.linkedin.com/oauth/v2/authorization
+      tokenEndpoint: https://www.linkedin.com/oauth/v2/accessToken
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [r_ads]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: keep
+        acceptsMissingTokenType: true
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client, access_denied]
+  operations:
+    - name: listAdAccounts
+      goName: ListAdAccounts
+      inputType: ListAdAccountsInput
+      outputType: AdAccountsPage
+      kind: query
+      description: List one cursor-based page of ad account IDs and names visible to the authorized member.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: LinkedIn returned the selected ad account page.}
+        - {id: providerRejected, goName: ProviderRejected, description: LinkedIn conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: LinkedIn returned malformed or oversized account JSON., optional: true}
+        - {id: defect, goName: Defect, description: Page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example ad account is visible.
+          output: {accounts: [{id: '507404993', name: Example Account}], nextPageToken: ''}

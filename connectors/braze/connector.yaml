@@ -1,0 +1,82 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: braze
+  displayName: Braze
+  description: Read selected Braze user profile fields by external ID.
+  company: Braze
+  version: v0.1.0
+spec:
+  provider: braze
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-braze
+      operations: [getUserProfile]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-braze"
+      operations: [getUserProfile]
+      triggers: []
+  codegen:
+    go:
+      package: braze
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Your account's HTTPS REST endpoint from Braze Dashboard > Settings > APIs and Identifiers > API Keys > REST Endpoint, such as https://rest.iad-01.braze.com. This non-secret endpoint is required; blank prevents calls.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow profile exports.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete response in bytes as a positive integer. Blank uses the displayed default; increase for known larger selected profiles.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: braze-rest-api-key
+    fields:
+      - name: rest_api_key
+        goName: RESTAPIKey
+        type: secretString
+        required: true
+        description: Secret REST API key from Braze Dashboard > Settings > APIs and Identifiers > API Keys. Create or select a key with users.export.ids permission, copy its value into this secret field; blank prevents calls. Dex sends it only as a Bearer token.
+    guide:
+      startURL: https://www.braze.com/docs/api/basics
+      steps:
+        - Sign in to your Braze Dashboard and open Settings > APIs and Identifiers > API Keys. Create a REST API key with users.export.ids permission or select an existing key with that permission; copy its secret value into rest_api_key. Restrict and revoke it on that page.
+        - On the same API Keys page, find the account REST Endpoint and enter its complete HTTPS URL in baseUrl. Each Braze account has its own endpoint. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Find an external user ID in Braze Dashboard > Audience > Search Users or your application's user ID records. Enter that non-secret ID as externalId; blank is invalid. The query exports only external_id, braze_id, first_name, last_name, and email.
+  operations:
+    - name: getUserProfile
+      goName: GetUserProfile
+      inputType: GetUserProfileInput
+      outputType: UserProfile
+      kind: query
+      description: Read one user's external ID, Braze ID, name, and email if present.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Braze returned the user profile.}
+        - {id: notFound, goName: NotFound, description: Braze returned no user for the external ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Braze conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Braze returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample user profile is returned.
+          output: {externalId: sample-user-1, brazeId: sample-braze-1, firstName: Avery, lastName: Reader, email: reader@example.com}
+        - name: userMissing
+          branch: notFound
+          description: The requested user is absent.
+          failure: {kind: NOT_FOUND, message: Braze did not find the user.}

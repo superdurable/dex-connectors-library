@@ -1,0 +1,65 @@
+{
+  "connectorId": "gusto",
+  "releaseTag": "connectors/gusto/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-gusto",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_employee_step",
+      "kind": "query",
+      "operationId": "getEmployee",
+      "inputType": "GetEmployeeInput",
+      "description": "Read one employee by UUID from the authorized Gusto company.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEmployeeInput identifies one employee in the authorized company.",
+        "properties": {
+          "employeeId": {
+            "description": "EmployeeID is the employee UUID from Gusto's employee list or webhook.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "employeeId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

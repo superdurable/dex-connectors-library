@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: wrike
+  displayName: Wrike
+  description: Read selected Wrike task fields through API v4.
+  company: Wrike
+  version: v0.1.0
+spec:
+  provider: wrike
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-wrike
+      operations: [getTask]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-wrike"
+      operations: [getTask]
+      triggers: []
+  codegen:
+    go:
+      package: wrike
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Wrike API v4 root as an absolute HTTPS URL ending in /api/v4. Blank uses the displayed US host. For EU accounts use https://app-eu.wrike.com/api/v4; override for the account's region or a trusted local test gateway.
+        default: https://www.wrike.com/api/v4
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow task reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete task response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large task metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: wrike-api-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret Wrike Permanent Access Token from profile > Apps & Integrations > API > your app > Permanent access token > Create token. Copy the complete opaque value when shown; blank prevents calls. Dex sends it only in the Authorization Bearer header. Use the baseUrl matching your account's data center.
+    guide:
+      startURL: https://www.wrike.com
+      steps:
+        - Sign in to Wrike, open profile > Apps & Integrations > API, create or select an app, then create a Permanent Access Token. Copy the opaque secret once into Dex Web api_token; blank is invalid. Revoke it on the same page when retired. It inherits the user's task permissions.
+        - Leave baseUrl blank for the displayed US API host; for an EU account enter https://app-eu.wrike.com/api/v4 or the host given by Wrike. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret task ID in a Wrike task URL or API response and pass it as taskId; blank is invalid.
+  operations:
+    - name: getTask
+      goName: GetTask
+      inputType: GetTaskInput
+      outputType: TaskStatus
+      kind: query
+      description: Read one task's ID, title, and status without description, custom fields, or assignees.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Wrike returned the task.}
+        - {id: notFound, goName: NotFound, description: Wrike did not expose the task., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Wrike conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Wrike returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample active task is returned.
+          output: {id: IEAAAABC, title: Example task, status: Active}

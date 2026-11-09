@@ -1,0 +1,65 @@
+{
+  "connectorId": "recurly",
+  "releaseTag": "connectors/recurly/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-recurly",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetAccountStep",
+      "kind": "query",
+      "operationId": "getAccount",
+      "inputType": "GetAccountInput",
+      "description": "Read one account's ID and code without contact, billing, or payment details.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetAccountInput selects a Recurly account by ID or code- prefixed account code.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is an account ID or a code- prefixed account code.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Python campaign discovery example
+
+The Worker runs `TikTokCampaignDiscoveryPython` through the static `tiktok-business` connection and stores the selected campaign page. Configure the secret `access_token` as described in the [connector README](../../README.md). From `connectors/tiktok/python`, run `uv run python -m examples.campaign_discovery.worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start the Flow with a unique ID and input `{"advertiserId":"1845123456789012344"}` (replace with your Ads Manager account ID). Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex and a local provider fixture.

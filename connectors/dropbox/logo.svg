@@ -1,0 +1,8 @@
+<!-- Copyright (c) 2026 Super Durable -->
+<!-- SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dropbox">
+  <rect width="64" height="64" rx="12" fill="#0061ff"/>
+  <g fill="#fff">
+    <path d="m19 13 12 8-12 8-12-8zM45 13l12 8-12 8-12-8zM19 31l12 8-12 8-12-8zM45 31l12 8-12 8-12-8zM32 43l12 8-12 8-12-8z" transform="translate(3 -4) scale(.88)"/>
+  </g>
+</svg>

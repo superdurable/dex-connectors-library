@@ -1,0 +1,65 @@
+{
+  "connectorId": "shortcut",
+  "releaseTag": "connectors/shortcut/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-shortcut",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_story_step",
+      "kind": "query",
+      "operationId": "getStory",
+      "inputType": "GetStoryInput",
+      "description": "Read a story's ID, name, type, workflow state ID, and archived flag without its description or comments.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetStoryInput selects a Story by its positive decimal public ID.",
+        "properties": {
+          "storyId": {
+            "description": "StoryID is the non-secret decimal ID from a Shortcut Story URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storyId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

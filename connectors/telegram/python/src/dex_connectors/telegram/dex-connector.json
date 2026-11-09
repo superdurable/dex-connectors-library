@@ -1,0 +1,119 @@
+{
+  "connectorId": "telegram",
+  "releaseTag": "connectors/telegram/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-telegram",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_send_message_step",
+      "kind": "mutation",
+      "operationId": "sendMessage",
+      "inputType": "SendMessageInput",
+      "description": "Send one text message to a chat. If Telegram does not confirm the outcome, check the chat before sending again.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "sent",
+          "field": "sent",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendMessageInput sends plain text to one bot-accessible chat.",
+        "properties": {
+          "chatId": {
+            "description": "ChatID is a decimal chat ID or public @username.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is 1 through 4096 UTF-8 characters; Telegram may further reject invalid entities.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chatId",
+          "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_get_chat_step",
+      "kind": "query",
+      "operationId": "getChat",
+      "inputType": "GetChatInput",
+      "description": "Read metadata for a chat accessible to the bot.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetChatInput selects a numeric chat ID or public @username.",
+        "properties": {
+          "chatId": {
+            "description": "ChatID is a decimal chat ID or an @username visible to the bot.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chatId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

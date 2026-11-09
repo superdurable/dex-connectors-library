@@ -1,0 +1,119 @@
+// Copyright (c) 2026 Super Durable
+// SPDX-License-Identifier: MIT
+
+// Package functionlookup runs Amazon Lambda getFunction as one Dex Flow.
+package functionlookup
+
+import (
+	"errors"
+
+	"github.com/superdurable/dex-connectors-library/connectors/amazon/lambda/go"
+	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex/sdk-go/dex"
+)
+
+const (
+	// FlowType is the stable example Flow identity.
+	FlowType = "AmazonLambdaFunctionLookup"
+	// ConnectionName is the static Dex Web connection used by this example.
+	ConnectionName    = "amazon-lambda"
+	operationStepType = "CallGetFunction"
+)
+
+var functionAttribute = dex.DefineAttribute[lambda.FunctionDetails]("lambda-function-lookup")
+
+// Flow runs GetFunction once and completes with its typed output.
+type Flow struct {
+	dex.FlowDefaults
+	connection lambda.Connection
+}
+
+// NewFlow binds the provider connection at registration time.
+func NewFlow(connection lambda.Connection) *Flow { return &Flow{connection: connection} }
+
+func (*Flow) GetFlowType() string { return FlowType }
+
+func (*Flow) GetPersistenceSchema() dex.PersistenceSchema {
+	return dex.PersistenceSchema{Attributes: []dex.AttributeDef{functionAttribute}}
+}
+
+func (flow *Flow) GetSteps() []dex.StepDef {
+	return []dex.StepDef{
+		dex.DefineStartStep(startRequest{}),
+		dex.DefineStep(lambda.NewGetFunctionStep(lambda.GetFunctionStepConfig[lambda.GetFunctionInput]{
+			StepType: operationStepType, ConnectionName: ConnectionName,
+			Annotations:         sdkgo.StepAnnotations{GroupID: "provider", GroupLabel: "Amazon Lambda", Explanation: "List one page of Amazon Lambda functions."},
+			Connection:          flow.connection,
+			MapToOperationInput: MapToOperationInput,
+			Found:               sdkgo.GoTo(completeResult{}),
+		})),
+		dex.DefineStep(completeResult{}),
+	}
+}
+
+// GetRPCs exposes read-only Dex Web summary and display views.
+func (flow *Flow) GetRPCs() []dex.RPCDef {
+	return []dex.RPCDef{dex.DefineRPC(flow.GetDexSummary, nil), dex.DefineRPC(flow.GetDexDisplay, nil)}
+}
+
+// dex:field attribute-key:lambda-function-lookup value-type:json editable:false description:"Provider result"
+// GetDexSummary shows the last provider result in Dex Web.
+func (*Flow) GetDexSummary(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := readFunctionDetails(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"lambda-function-lookup": outcome}}, nil
+}
+
+// dex:field attribute-key:lambda-function-lookup value-type:json editable:false description:"Provider result"
+// GetDexDisplay shows the last provider result in Dex Web.
+func (*Flow) GetDexDisplay(ctx dex.Context, _ dex.None) (*dex.RPCResult[map[string]any], error) {
+	outcome, err := readFunctionDetails(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &dex.RPCResult[map[string]any]{Output: map[string]any{"lambda-function-lookup": outcome}}, nil
+}
+
+func readFunctionDetails(ctx dex.Context) (lambda.FunctionDetails, error) {
+	outcome, err := functionAttribute.Get(ctx)
+	var missing *dex.AttributeNotFoundError
+	if errors.As(err, &missing) {
+		return lambda.FunctionDetails{}, nil
+	}
+	return outcome, err
+}
+
+// MapToOperationInput preserves the validated typed start input for the provider call.
+func MapToOperationInput(input lambda.GetFunctionInput) lambda.GetFunctionInput {
+	return input
+}
+
+// dex:group group-id:request group-label:"Request"
+// dex:explanation text:"Pass the typed start input to the provider Step."
+type startRequest struct{ dex.StepDefaults }
+
+func (startRequest) GetStepType() string { return "StartGetFunction" }
+func (startRequest) WaitFor(dex.Context, lambda.GetFunctionInput) (*dex.Wait, error) {
+	return dex.SkipWaitImmediately(), nil
+}
+func (startRequest) Execute(_ dex.Context, input lambda.GetFunctionInput) (*dex.StepDecision, error) {
+	return dex.GoTo(sdkgo.StepRef[lambda.GetFunctionInput](operationStepType), input), nil
+}
+
+// dex:group group-id:result group-label:"Result"
+// dex:explanation text:"Complete the Flow with the provider's typed result."
+type completeResult struct {
+	dex.StepDefaultsNoWaitFor[lambda.GetFunctionResult]
+}
+
+func (completeResult) GetStepType() string { return "CompleteGetFunction" }
+func (completeResult) Execute(ctx dex.Context, result lambda.GetFunctionResult) (*dex.StepDecision, error) {
+	if err := functionAttribute.Set(ctx, result.Value); err != nil {
+		return nil, err
+	}
+	return dex.GracefulComplete(result.Value), nil
+}
+
+var _ dex.Flow = (*Flow)(nil)

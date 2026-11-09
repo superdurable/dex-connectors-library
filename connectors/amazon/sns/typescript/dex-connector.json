@@ -1,0 +1,59 @@
+{
+  "connectorId": "amazon-sns",
+  "releaseTag": "connectors/amazon/sns/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-amazon-sns",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListTopicsStep",
+      "kind": "query",
+      "operationId": "listTopics",
+      "inputType": "ListTopicsInput",
+      "description": "Read one page of SNS topic ARNs and its next-page token.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "page",
+          "field": "page",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTopicsInput requests the first page when NextToken is empty.",
+        "properties": {
+          "nextToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nextToken"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

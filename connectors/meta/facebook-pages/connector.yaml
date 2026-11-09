@@ -1,0 +1,121 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: facebook-pages
+  displayName: Facebook Pages
+  description: Read Facebook Page posts and publish plain-text posts.
+  company: Meta
+  version: v0.1.0
+spec:
+  provider: facebook-pages
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listPosts, getPost, publishTextPost]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listPosts, getPost, publishTextPost]
+      triggers: []
+  codegen:
+    go:
+      package: facebookpages
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Versioned Meta Graph API root as an absolute HTTPS URL. Blank uses the displayed endpoint; override only for a supported version or trusted test gateway.
+        default: https://graph.facebook.com/v25.0
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one Meta API request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete Graph API response in bytes. Blank uses the displayed default; increase only for a known larger Page feed.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: meta-page-access-token
+    fields:
+      - name: page_access_token
+        goName: PageAccessToken
+        type: secretString
+        required: true
+        description: Secret opaque Page access token from https://developers.facebook.com/tools/explorer/ > select your Meta app > Get Token > Get Page Access Token > select the Page. Grant pages_read_engagement for queries and pages_manage_posts for publishing. Blank prevents calls; revoke it from the same app or Page access settings when retired.
+    guide:
+      startURL: https://developers.facebook.com/tools/explorer/
+      steps:
+        - In Meta for Developers > My Apps, create or select an app with Pages API access. Confirm the token holder has a Page role or task that permits reading its posts; production use may require App Review and advanced access.
+        - In Graph API Explorer, select that app, request pages_show_list and pages_read_engagement for reads and pages_manage_posts for publishing, then choose Get Token > Get Page Access Token and select the Page.
+        - Save the complete opaque Page access token only in page_access_token in Dex. Never put it in Flow input or logs. Revoke or rotate it in Meta when retired.
+        - Find the Page ID in Meta Business Suite > Settings > Business assets > Pages; listPosts returns post IDs for getPost. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listPosts
+      goName: ListPosts
+      inputType: ListPostsInput
+      outputType: PagePostsPage
+      kind: query
+      description: Read one page of Page feed post IDs, messages, timestamps, and permalinks.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Meta returned one Page feed page.}
+        - {id: notFound, goName: NotFound, description: The Page is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example Page post is available.
+          output:
+            posts: [{id: '123456789_987654321', message: 'Welcome to our Page', createdTime: '2026-11-08T10:00:00+0000', permalinkUrl: 'https://www.facebook.com/123456789/posts/987654321'}]
+            nextCursor: ''
+    - name: getPost
+      goName: GetPost
+      inputType: GetPostInput
+      outputType: PagePostMetadata
+      kind: query
+      description: Read one Page post's ID, message, timestamp, and permalink.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Meta returned the Page post.}
+        - {id: notFound, goName: NotFound, description: The post is missing or inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Meta returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one example Page post.
+          output: {id: '123456789_987654321', message: 'Welcome to our Page', createdTime: '2026-11-08T10:00:00+0000', permalinkUrl: 'https://www.facebook.com/123456789/posts/987654321'}
+    - name: publishTextPost
+      goName: PublishTextPost
+      inputType: PublishTextPostInput
+      outputType: PublishedPost
+      kind: mutation
+      description: Publish a plain-text post to a Facebook Page feed.
+      idempotency: required
+      authorization: required
+      # Sync preserves the single-dispatch heartbeat; Meta has no post idempotency key.
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
+      branches:
+        - {id: published, goName: Published, description: Meta returned the published post ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Meta definitively rejected the post., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The publish outcome is unknown; inspect the Page before retrying manually., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: publishedDefault
+          branch: published
+          default: true
+          description: Meta accepted the Page post.
+          output: {postId: '123456789_987654321'}

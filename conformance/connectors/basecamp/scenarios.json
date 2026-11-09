@@ -1,0 +1,435 @@
+{
+  "connector": "basecamp",
+  "scenarios": [
+    {
+      "callId": "b81d3531-1aa2-5994-a311-bee120342f8b",
+      "exchanges": [
+        {
+          "body": "{\"identity\":{\"email_address\":\"discard@example.com\"},\"accounts\":[{\"product\":\"bc3\",\"id\":1,\"name\":\"First\"},{\"product\":\"bc2\",\"id\":2,\"name\":\"Legacy\"},{\"product\":\"bc3\",\"id\":3,\"name\":\"Second\"},{\"product\":\"bc3\",\"id\":123,\"name\":\"Example Company\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "company": "Example Company",
+              "id": "123"
+            }
+          ],
+          "limit": 3,
+          "offset": 2,
+          "total": 3
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-listed",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "1c1bfd8b-75f2-508c-8fa1-cb8fd37d46a9",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"ForbiddenError\",\"message\":\"Account suspended\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accounts": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-providerRejected",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "46e16aaa-83de-5874-9525-d80581fb820f",
+      "exchanges": [
+        {
+          "body": "{\"accounts\":[{\"product\":\"bc3\",\"id\":0,\"name\":\"Invalid\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accounts": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-invalidResponse",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "c508fa17-f403-58a2-aece-55ad4c722718",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accounts": [],
+          "limit": 0,
+          "offset": 0,
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 101,
+        "offset": 2
+      },
+      "name": "listAccounts-defect",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "a5cf4940-0bf6-57a0-98c5-bcc1c6c56b83",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Too many requests\"}}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-final429",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "e70a8315-e7d9-54e1-bc3e-9214f95699f6",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-final503",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "e70a8315-e7d9-54e1-bc3e-9214f95699f6",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003cbody\u003eToo many requests: please slow down and retry later.\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-oversized429",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "e70a8315-e7d9-54e1-bc3e-9214f95699f6",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003cbody\u003eService temporarily unavailable; maintenance in progress.\u003c/body\u003e\u003c/html\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-oversized503",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "11717543-63b9-50c4-ba4a-17b637538187",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "name": "listAccounts-transportFailure",
+      "operation": "listAccounts"
+    },
+    {
+      "attempts": 2,
+      "callId": "891866fa-4251-5835-bc8e-18774a4455ed",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"identity\":{\"email_address\":\"discard@example.com\"},\"accounts\":[{\"product\":\"bc3\",\"id\":1,\"name\":\"First\"},{\"product\":\"bc2\",\"id\":2,\"name\":\"Legacy\"},{\"product\":\"bc3\",\"id\":3,\"name\":\"Second\"},{\"product\":\"bc3\",\"id\":123,\"name\":\"Example Company\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/authorization.json",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-basecamp-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (support@superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "company": "Example Company",
+              "id": "123"
+            }
+          ],
+          "limit": 3,
+          "offset": 2,
+          "total": 3
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 3,
+        "offset": 2
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "listAccounts-retryThenListed",
+      "operation": "listAccounts"
+    }
+  ],
+  "schemaVersion": 1
+}

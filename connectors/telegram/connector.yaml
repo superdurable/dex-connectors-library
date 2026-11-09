@@ -1,0 +1,103 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: telegram
+  displayName: Telegram Bot
+  description: Read chat metadata and send text messages through a Telegram bot.
+  company: Telegram
+  version: v0.1.0
+spec:
+  provider: telegram
+  languages:
+    python:
+      version: v0.1.0
+      operations: [sendMessage, getChat]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-telegram'
+      operations: [sendMessage, getChat]
+      triggers: []
+  codegen:
+    go:
+      package: telegram
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Telegram Bot API HTTPS base URL, normally https://api.telegram.org. Blank uses the displayed default; override only for a trusted local Bot API server.
+        default: https://api.telegram.org
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one Bot API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; raise only for a slow local Bot API server.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum Telegram JSON response in bytes as a positive integer. Blank uses the displayed default; raise only if chat metadata exceeds it.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: telegram-bot-token
+    fields:
+      - name: bot_token
+        goName: BotToken
+        type: secretString
+        description: Secret bot token from https://t.me/BotFather > /newbot or /mybots > your bot > API Token; use the full numeric-ID:secret token. Blank prevents calls. Store only in Dex credentials and revoke through BotFather if exposed.
+        required: true
+    guide:
+      startURL: https://core.telegram.org/bots/tutorial
+      steps:
+        - Open https://t.me/BotFather in Telegram, send /newbot, choose a bot name and username ending in bot, and copy the full numeric-ID:secret token shown once.
+        - For an existing bot, open BotFather > /mybots > your bot > API Token. Save the token only in bot_token, never in Flow input. Use BotFather to revoke and replace a leaked token.
+        - Add the bot to the target chat and grant access needed to read its metadata or send text. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: sendMessage
+      goName: SendMessage
+      inputType: SendMessageInput
+      outputType: SentMessage
+      kind: mutation
+      description: Send one text message to a chat. If Telegram does not confirm the outcome, check the chat before sending again.
+      idempotency: required
+      authorization: required
+      branches:
+        - {id: sent, goName: Sent, description: Telegram created the message and returned its ID.}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram conclusively rejected the send before creating a message., optional: true}
+        - {id: uncertain, goName: Uncertain, description: The request may have reached Telegram but no message ID was confirmed; do not resend automatically., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, bot token, or dispatch checkpoint is invalid.", optional: true}
+      # Sync exposes the single-dispatch heartbeat to retries; Telegram has no send idempotency key.
+      execution:
+        executeMethodTimeout: 30s
+        durability: sync
+        dispatchFence: true
+      mocks:
+        - name: sentText
+          branch: sent
+          description: The example bot sent one text message to the Meridian team chat.
+          default: true
+          output: {chatId: -1001234567890, messageId: 52, date: 1794110000}
+    - name: getChat
+      goName: GetChat
+      inputType: GetChatInput
+      outputType: Chat
+      kind: query
+      description: Read metadata for a chat accessible to the bot.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Telegram returned the chat metadata.}
+        - {id: notFound, goName: NotFound, description: Telegram could not find the chat., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Telegram rejected the chat lookup or bot credentials., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Telegram returned malformed or oversized chat data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or bot token is invalid., optional: true}
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: accessibleChat
+          branch: found
+          description: A Telegram group chat is accessible to the example bot.
+          default: true
+          output: {id: -1001234567890, type: supergroup, title: Meridian Team, username: meridian_team}

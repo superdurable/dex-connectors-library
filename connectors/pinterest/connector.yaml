@@ -1,0 +1,109 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: pinterest
+  displayName: Pinterest
+  description: List Pins owned by the connected Pinterest account.
+  company: Pinterest
+  version: v0.1.0
+spec:
+  provider: pinterest
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listPins]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-pinterest'
+      operations: [listPins]
+      triggers: []
+  codegen:
+    go:
+      package: pinterest
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Pinterest API HTTPS origin. Blank uses the displayed production endpoint; override only for a trusted test gateway.
+        default: https://api.pinterest.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete JSON response in bytes. Blank uses the displayed default; increase only for unusually large Pin pages.
+        default: 2097152
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: pinterest-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret App ID from https://developers.pinterest.com/apps/ > My apps > the approved app. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret app key from https://developers.pinterest.com/apps/ > My apps > the approved app. Save only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token supplied by Pinterest consent and rotated by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token supplied by Pinterest consent and rotated by Dex. Never enter it manually; blank requires reauthorization.
+    guide:
+      startURL: https://developers.pinterest.com/apps/
+      steps:
+        - Sign in with a verified Pinterest business account at https://developers.pinterest.com/apps/, accept the Developer Terms, and submit Connect app for Trial access. Wait for Pinterest approval before expecting the App ID and secret.
+        - In My apps > Manage > Configure > Redirect URIs, add the exact redirect URI displayed by Dex Web. Request boards:read and pins:read so the connected user can list owned Pins; Pinterest shows these scopes at consent.
+        - Copy the approved app's App ID and secret into Dex Web, then authorize the Pinterest user. Dex stores access and refresh tokens; do not paste them into fields. Reauthorize if Pinterest revokes the grant.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Use the returned bookmark to request the next Pin page.
+    oauth2:
+      authorizationEndpoint: https://www.pinterest.com/oauth/
+      tokenEndpoint: https://api.pinterest.com/v5/oauth/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [boards:read, pins:read]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_basic
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listPins
+      goName: ListPins
+      inputType: ListPinsInput
+      outputType: PinsPage
+      kind: query
+      description: List one page of Pin IDs, board IDs, and titles owned by the authorized user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Pinterest returned the selected Pin page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Pinterest conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Pinterest returned malformed or oversized Pin JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example Pin is visible.
+          output: {pins: [{id: '123456789', boardId: '987654321', title: Example Pin}], nextBookmark: ''}

@@ -1,0 +1,65 @@
+{
+  "connectorId": "adobe-marketo",
+  "releaseTag": "connectors/adobe/marketo/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-adobe-marketo",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetLeadStep",
+      "kind": "query",
+      "operationId": "getLead",
+      "inputType": "GetLeadInput",
+      "description": "Read one lead's ID and names by Marketo lead ID without returning email or other profile fields.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetLeadInput selects one non-secret positive Marketo lead ID.",
+        "properties": {
+          "leadId": {
+            "description": "LeadID is the ID shown on a lead detail page or returned by a lead query.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "leadId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,185 @@
+{
+  "connectorId": "opensearch",
+  "releaseTag": "connectors/opensearch/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-opensearch",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_index_document_step",
+      "kind": "mutation",
+      "operationId": "indexDocument",
+      "inputType": "IndexDocumentInput",
+      "description": "Create or fully replace one document in an existing index under a stable ID. Use an index without nonrepeatable ingest pipeline effects so retries preserve the intended source.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "indexed",
+          "field": "indexed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "IndexDocumentInput fully replaces one document under a stable caller-selected ID.",
+        "properties": {
+          "documentId": {
+            "description": "DocumentID is the stable ID used for every retry.",
+            "type": "string"
+          },
+          "index": {
+            "description": "Index is one concrete lowercase OpenSearch index name.",
+            "type": "string"
+          },
+          "source": {
+            "description": "Source is a complete JSON object replacing the current document."
+          }
+        },
+        "required": [
+          "documentId",
+          "index",
+          "source"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_delete_document_step",
+      "kind": "mutation",
+      "operationId": "deleteDocument",
+      "inputType": "DeleteDocumentInput",
+      "description": "Ensure one document is absent by deleting its stable ID; repeating the request is safe.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "absent",
+          "field": "absent",
+          "optional": false
+        },
+        {
+          "id": "indexNotFound",
+          "field": "index_not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DeleteDocumentInput identifies one document to remove.",
+        "properties": {
+          "documentId": {
+            "description": "DocumentID is the stable ID to remove.",
+            "type": "string"
+          },
+          "index": {
+            "description": "Index is one concrete lowercase OpenSearch index name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId",
+          "index"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_search_documents_step",
+      "kind": "query",
+      "operationId": "searchDocuments",
+      "inputType": "SearchDocumentsInput",
+      "description": "Search one OpenSearch index with a Lucene query string and bounded offset page.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "indexNotFound",
+          "field": "index_not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SearchDocumentsInput selects an index, Lucene query, and bounded offset page.",
+        "properties": {
+          "from": {
+            "description": "From is a zero-based offset; from plus size may not exceed 10000.",
+            "type": "integer"
+          },
+          "index": {
+            "description": "Index is one concrete lowercase OpenSearch index name.",
+            "type": "string"
+          },
+          "query": {
+            "description": "Query is a Lucene query string, such as title:Meridian.",
+            "type": "string"
+          },
+          "size": {
+            "description": "Size is 1 through 100; zero uses ten results.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "query"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

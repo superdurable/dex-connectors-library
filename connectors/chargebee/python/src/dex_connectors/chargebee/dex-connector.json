@@ -1,0 +1,65 @@
+{
+  "connectorId": "chargebee",
+  "releaseTag": "connectors/chargebee/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-chargebee",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_subscription_step",
+      "kind": "query",
+      "operationId": "getSubscription",
+      "inputType": "GetSubscriptionInput",
+      "description": "Read one subscription's ID, status, and currency code without customer or payment details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSubscriptionInput selects a subscription by its non-secret Chargebee ID.",
+        "properties": {
+          "subscriptionId": {
+            "description": "SubscriptionID is the ID shown in Chargebee Subscriptions or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscriptionId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "connectorId": "databricks",
+  "releaseTag": "connectors/databricks/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-databricks",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetJobRunStep",
+      "kind": "query",
+      "operationId": "getJobRun",
+      "inputType": "GetJobRunInput",
+      "description": "Read a job run ID, current state, and optional terminal result state without task details.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetJobRunInput selects a job run by its non-secret Databricks ID.",
+        "properties": {
+          "runId": {
+            "description": "RunID is the ID shown in Databricks JobRuns or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

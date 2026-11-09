@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: buffer
+  displayName: Buffer
+  description: Read one connected Buffer channel by ID.
+  company: Buffer
+  version: v0.1.0
+spec:
+  provider: buffer
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-buffer
+      operations: [getChannel]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-buffer'
+      operations: [getChannel]
+      triggers: []
+  codegen:
+    go:
+      package: buffer
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Buffer GraphQL HTTPS endpoint. Blank uses the displayed production URL; override only for a trusted test gateway. Do not append a path or credentials.
+        default: https://api.buffer.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one channel query as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete GraphQL JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: buffer-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret account API key from Buffer > Settings > API > Create a new API key. Copy the complete key; blank prevents calls. Dex sends it as a Bearer credential, never in Flow data. Rotate it on the same page if exposed.
+    guide:
+      startURL: https://publish.buffer.com/settings/api
+      steps:
+        - Sign in to Buffer, open Settings > API, create an API key, and copy the full secret into Dex Web apiKey. Blank prevents calls. The key can access all organizations and channels in the account; rotate it from the same page.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. In Buffer Settings > API use the GraphQL API to query account organizations and channels, then pass a channel's opaque ID as channelId; blank is invalid.
+  operations:
+    - name: getChannel
+      goName: GetChannel
+      inputType: GetChannelInput
+      outputType: ChannelProfile
+      kind: query
+      description: Return a connected channel's ID, name, and service.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Buffer returned the channel.}
+        - {id: notFound, goName: NotFound, description: Buffer did not expose a channel for this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Buffer returned a definite GraphQL or HTTP rejection., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Buffer returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample connected channel is returned.
+          output: {id: channel-1, name: Example Channel, service: instagram}

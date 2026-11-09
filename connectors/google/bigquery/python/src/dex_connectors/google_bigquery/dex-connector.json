@@ -1,0 +1,68 @@
+{
+  "connectorId": "google-bigquery",
+  "releaseTag": "connectors/google/bigquery/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-bigquery",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_datasets_step",
+      "kind": "query",
+      "operationId": "listDatasets",
+      "inputType": "ListDatasetsInput",
+      "description": "List one page of accessible dataset IDs and display names in a Google Cloud project.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDatasetsInput selects one bounded page of datasets in a Google Cloud project.",
+        "properties": {
+          "maxResults": {
+            "description": "MaxResults limits this page to 1 through 100 datasets; zero uses 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is returned by the previous page; blank selects the first page.",
+            "type": "string"
+          },
+          "projectId": {
+            "description": "ProjectID is the Google Cloud project ID shown in BigQuery Studio.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,178 @@
+{
+  "connectorId": "google-tag-manager",
+  "releaseTag": "connectors/google/tag-manager/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-tag-manager",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_accounts_step",
+      "kind": "query",
+      "operationId": "listAccounts",
+      "inputType": "ListAccountsInput",
+      "description": "List one page of Tag Manager accounts available to the connected user.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAccountsInput selects one page of accounts visible to the connected user.",
+        "properties": {
+          "pageToken": {
+            "description": "PageToken is Google's opaque cursor; blank selects the first page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageToken"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_containers_step",
+      "kind": "query",
+      "operationId": "listContainers",
+      "inputType": "ListContainersInput",
+      "description": "List one page of containers in a Tag Manager account.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContainersInput selects containers in one account.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is the numeric account ID from listAccounts.",
+            "type": "string"
+          },
+          "pageToken": {
+            "description": "PageToken is Google's opaque cursor; blank selects the first page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId",
+          "pageToken"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_tags_step",
+      "kind": "query",
+      "operationId": "listTags",
+      "inputType": "ListTagsInput",
+      "description": "List one page of tag identities and types in a Tag Manager workspace.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTagsInput selects tags in one workspace.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is the numeric Tag Manager account ID.",
+            "type": "string"
+          },
+          "containerId": {
+            "description": "ContainerID is the numeric Tag Manager container ID.",
+            "type": "string"
+          },
+          "pageToken": {
+            "description": "PageToken is Google's opaque cursor; blank selects the first page.",
+            "type": "string"
+          },
+          "workspaceId": {
+            "description": "WorkspaceID is the numeric Tag Manager workspace ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountId",
+          "containerId",
+          "pageToken",
+          "workspaceId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

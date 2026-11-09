@@ -1,0 +1,389 @@
+{
+  "connector": "workday",
+  "scenarios": [
+    {
+      "callId": "af901109-e5a9-43ff-99f4-191a11f089a9",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"0123456789abcdef0123456789abcdef\",\"descriptor\":\"Ada Lovelace\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "descriptor": "Ada Lovelace",
+          "id": "0123456789abcdef0123456789abcdef"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-found",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "19eace61-0c51-4206-8932-878b6f4ae721",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-not-found",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "db5b8be8-06ec-498a-b3d4-fb03e49692c2",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-provider-rejected",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "890fb1fc-61a1-43e2-b882-24295a666c06",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-invalid-json",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "8d9fb747-2b7c-4a80-91f1-9be3258fac9b",
+      "exchanges": [
+        {
+          "body": "{\"id\": \"0123456789abcdef0123456789abcdef\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-missing-descriptor",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "4d5a10d2-3538-4ee9-919e-ef74b530d999",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"fedcba9876543210fedcba9876543210\",\"descriptor\":\"Wrong Worker\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-wrong-id",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "83b74d5c-f04c-445c-8c61-1b383e695f6b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-rate-limit",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "ddaa5dd6-b7ab-4b94-9d52-b39ab352a139",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-server-error",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "b31a3658-57c9-4eec-8636-e714d8182c6e",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "status": 408
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-request-timeout",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "2f346303-3056-42d2-a926-78ba7cce2b34",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/common/v1/demo/workers/0123456789abcdef0123456789abcdef",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-workday-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "0123456789abcdef0123456789abcdef"
+      },
+      "name": "getWorker-transport-before-send",
+      "operation": "getWorker"
+    },
+    {
+      "callId": "8a0809a3-88c5-49d7-b612-f858ac2e856f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "descriptor": "",
+          "id": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "workerId": "../bad"
+      },
+      "name": "getWorker-defect",
+      "operation": "getWorker"
+    }
+  ],
+  "schemaVersion": 1
+}

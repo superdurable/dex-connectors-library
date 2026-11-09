@@ -1,0 +1,65 @@
+{
+  "connectorId": "gusto",
+  "releaseTag": "connectors/gusto/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-gusto",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetEmployeeStep",
+      "kind": "query",
+      "operationId": "getEmployee",
+      "inputType": "GetEmployeeInput",
+      "description": "Read one employee by UUID from the authorized Gusto company.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEmployeeInput identifies one employee in the authorized company.",
+        "properties": {
+          "employeeId": {
+            "description": "EmployeeID is the employee UUID from Gusto's employee list or webhook.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "employeeId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

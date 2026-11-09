@@ -1,0 +1,900 @@
+{
+  "connector": "google-tag-manager",
+  "scenarios": [
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"account\":[{\"path\":\"accounts/123456\",\"name\":\"Example Account\",\"private\":\"discard\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "name": "Example Account",
+              "path": "accounts/123456"
+            }
+          ],
+          "nextPageToken": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "cursor"
+      },
+      "name": "listAccounts-listed",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accounts": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "cursor"
+      },
+      "name": "listAccounts-providerRejected",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accounts": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "cursor"
+      },
+      "name": "listAccounts-invalidResponse",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accounts": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "bad\nheader"
+      },
+      "name": "listAccounts-defect",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "cursor"
+      },
+      "name": "listAccounts-rateLimit",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "cursor"
+      },
+      "name": "listAccounts-serverUnavailable",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageToken": "cursor"
+      },
+      "name": "listAccounts-transportFailure",
+      "operation": "listAccounts"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"container\":[{\"path\":\"accounts/123456/containers/987654\",\"name\":\"Example Container\",\"publicId\":\"GTM-EXAMPLE\",\"private\":\"discard\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "containers": [
+            {
+              "name": "Example Container",
+              "path": "accounts/123456/containers/987654",
+              "publicId": "GTM-EXAMPLE"
+            }
+          ],
+          "nextPageToken": "next"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "pageToken": "cursor"
+      },
+      "name": "listContainers-listed",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "containers": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "pageToken": "cursor"
+      },
+      "name": "listContainers-providerRejected",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "containers": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "pageToken": "cursor"
+      },
+      "name": "listContainers-invalidResponse",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "containers": [],
+          "nextPageToken": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "pageToken": "cursor"
+      },
+      "name": "listContainers-defect",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "pageToken": "cursor"
+      },
+      "name": "listContainers-rateLimit",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "pageToken": "cursor"
+      },
+      "name": "listContainers-serverUnavailable",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "pageToken": "cursor"
+      },
+      "name": "listContainers-transportFailure",
+      "operation": "listContainers"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"tag\":[{\"path\":\"accounts/123456/containers/987654/workspaces/1/tags/42\",\"name\":\"Analytics Tag\",\"type\":\"gaawe\",\"private\":\"discard\"}],\"nextPageToken\":\"next\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers/987654/workspaces/1/tags",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "next",
+          "tags": [
+            {
+              "name": "Analytics Tag",
+              "path": "accounts/123456/containers/987654/workspaces/1/tags/42",
+              "type": "gaawe"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "pageToken": "cursor",
+        "workspaceId": "1"
+      },
+      "name": "listTags-listed",
+      "operation": "listTags"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers/987654/workspaces/1/tags",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPageToken": "",
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "pageToken": "cursor",
+        "workspaceId": "1"
+      },
+      "name": "listTags-providerRejected",
+      "operation": "listTags"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers/987654/workspaces/1/tags",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "tags": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "pageToken": "cursor",
+        "workspaceId": "1"
+      },
+      "name": "listTags-invalidResponse",
+      "operation": "listTags"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "tags": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "pageToken": "bad\nheader",
+        "workspaceId": "1"
+      },
+      "name": "listTags-defect",
+      "operation": "listTags"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers/987654/workspaces/1/tags",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "pageToken": "cursor",
+        "workspaceId": "1"
+      },
+      "name": "listTags-rateLimit",
+      "operation": "listTags"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers/987654/workspaces/1/tags",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "pageToken": "cursor",
+        "workspaceId": "1"
+      },
+      "name": "listTags-serverUnavailable",
+      "operation": "listTags"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tagmanager/v2/accounts/123456/containers/987654/workspaces/1/tags",
+          "query": {
+            "pageToken": [
+              "cursor"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-tag-manager-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "accountId": "123456",
+        "containerId": "987654",
+        "pageToken": "cursor",
+        "workspaceId": "1"
+      },
+      "name": "listTags-transportFailure",
+      "operation": "listTags"
+    }
+  ],
+  "schemaVersion": 1
+}

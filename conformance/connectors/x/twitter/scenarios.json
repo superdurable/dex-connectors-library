@@ -1,0 +1,359 @@
+{
+  "connector": "x-twitter",
+  "scenarios": [
+    {
+      "callId": "5a9eea00-f2cb-5667-a202-80424d8b0531",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"1845123456789012345\",\"text\":\"Example public Post\"},\"includes\":{\"users\":[{\"name\":\"discard\"}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "1845123456789012345",
+          "text": "Example public Post"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-found",
+      "operation": "getPost"
+    },
+    {
+      "callId": "1e3bf96b-0687-534b-81c1-d2dab5e2fd24",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-notFound",
+      "operation": "getPost"
+    },
+    {
+      "callId": "4abed2af-b4f6-5850-b432-5e0f19c23c70",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-providerRejected",
+      "operation": "getPost"
+    },
+    {
+      "callId": "73b88e58-4786-540d-9293-88c903aee895",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"id\":\"1845123456789012345\",\"text\":\"\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-invalidResponse",
+      "operation": "getPost"
+    },
+    {
+      "callId": "57285b09-c920-5f9d-8759-a42a1618667b",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "invalid-id"
+      },
+      "name": "getPost-defect",
+      "operation": "getPost"
+    },
+    {
+      "callId": "7f8192bc-03ff-57af-bfa0-89d0baa17630",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-rateLimit",
+      "operation": "getPost"
+    },
+    {
+      "callId": "fb4a153f-c3bb-52dc-982d-9efc30fbbd2f",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-serverUnavailable",
+      "operation": "getPost"
+    },
+    {
+      "callId": "09bd6947-91dc-523b-a44a-409932e7d126",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-transportFailure",
+      "operation": "getPost"
+    },
+    {
+      "callId": "0ac63624-5838-5d7d-8929-35138cb0e628",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"value\":\"1845123456789012345\",\"detail\":\"Could not find tweet with id: [1845123456789012345].\",\"title\":\"Not Found Error\",\"resource_type\":\"tweet\",\"parameter\":\"id\",\"resource_id\":\"1845123456789012345\",\"type\":\"https://api.twitter.com/2/problems/resource-not-found\"}]}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-deletedInErrors",
+      "operation": "getPost"
+    },
+    {
+      "callId": "f3302f29-e7cd-5abd-b81d-d4b874aa88c2",
+      "exchanges": [
+        {
+          "body": "{\"errors\":[{\"value\":\"1845123456789012345\",\"detail\":\"Sorry, you are not authorized to see the Post with id: [1845123456789012345].\",\"title\":\"Authorization Error\",\"resource_type\":\"tweet\",\"parameter\":\"id\",\"resource_id\":\"1845123456789012345\",\"type\":\"https://api.x.com/2/problems/not-authorized-for-resource\"}]}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/tweets/1845123456789012345",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-x-access-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "text": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "1845123456789012345"
+      },
+      "name": "getPost-notAuthorizedInErrors",
+      "operation": "getPost"
+    }
+  ],
+  "schemaVersion": 1
+}

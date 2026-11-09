@@ -1,0 +1,65 @@
+{
+  "connectorId": "wise",
+  "releaseTag": "connectors/wise/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-wise",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetTransferStep",
+      "kind": "query",
+      "operationId": "getTransfer",
+      "inputType": "GetTransferInput",
+      "description": "Read one transfer's ID, status, and source currency without recipient, customer, or payment details.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTransferInput selects a transfer by its non-secret Wise ID.",
+        "properties": {
+          "transferId": {
+            "description": "TransferID is the ID shown in Wise Transfers or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transferId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

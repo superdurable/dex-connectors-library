@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: rippling
+  displayName: Rippling
+  description: Read selected worker status and title from Rippling.
+  company: Rippling
+  version: v0.1.0
+spec:
+  provider: rippling
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-rippling
+      operations: [getWorker]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-rippling"
+      operations: [getWorker]
+      triggers: []
+  codegen:
+    go:
+      package: rippling
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Rippling REST API root as an absolute HTTPS URL. Blank uses the displayed endpoint; override only for a trusted local test gateway.
+        default: https://rest.ripplingapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow worker reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete worker response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large worker metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: rippling-personal-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret Rippling API token from the Developer app > API credentials > Create token with workers.read scope. Copy the complete opaque value; blank prevents calls. Dex sends it only in the Authorization Bearer header.
+    guide:
+      startURL: https://developer.rippling.com/documentation/rest-api/essentials/api-tokens
+      steps:
+        - In Rippling open the Developer app > API credentials, create a token with workers.read scope and a suitable permission profile, and copy the secret opaque value into Dex Web api_token. Blank is invalid. Rotate or revoke it on the same page. A token owner's access and selected scopes control returned fields.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Use GET List workers in the Rippling API or the Developer app to find the non-secret string worker ID and pass it as workerId; blank is invalid. Worker status and title may be absent when the token owner cannot view them.
+  operations:
+    - name: getWorker
+      goName: GetWorker
+      inputType: GetWorkerInput
+      outputType: WorkerSummary
+      kind: query
+      description: Read one worker's ID, status, and title without personal or compensation details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Rippling returned the worker.}
+        - {id: notFound, goName: NotFound, description: Rippling did not expose the worker., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Rippling conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Rippling returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample worker is returned.
+          output: {id: "65699281fb7bc7c3510f44a6", status: ACTIVE, title: Engineer}

@@ -1,0 +1,101 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: personio
+  displayName: Personio
+  description: Read selected Personio v2 person profile fields.
+  company: Personio
+  version: v0.1.0
+spec:
+  provider: personio
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-personio
+      operations: [getPerson]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-personio'
+      operations: [getPerson]
+      triggers: []
+  codegen:
+    go:
+      package: personio
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Personio API root as an absolute HTTPS URL ending in /v2. Blank uses the displayed endpoint; override only for a trusted local test gateway.
+        default: https://api.personio.de/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one person read as a positive Go duration. Blank uses the displayed default; increase only for slow reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete person response in bytes as a positive integer. Blank uses the displayed default; increase only for unusually large responses.
+        default: 1048576
+  auth:
+    refreshable: true
+    type: apiKey
+    connectionKind: personio-client-credentials
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://app.personio.com/ > Marketplace > Connected integrations > your Custom integration > Credentials. Copy the complete ID; blank prevents token exchange.
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from https://app.personio.com/ > Marketplace > Connected integrations > your Custom integration > Credentials. Store it only in Dex Web; blank prevents token exchange.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Secret token Dex obtains from Personio and renews before expiry. Leave blank for automatic minting; never paste a token here.
+    guide:
+      startURL: https://app.personio.com/
+      steps:
+        - Sign in as an administrator, open Marketplace > Connected integrations > Create custom integration, and grant Persons read access. The v2 getPerson operation requires personio:persons:read. No redirect URI or user consent screen is needed for client credentials.
+        - Open the integration's Credentials page and copy its Client ID and Client Secret into Dex Web. Keep the secret out of Flow inputs, logs, and documentation.
+        - Save the connection. Dex requests the personio:persons:read scope from https://api.personio.de/v2/auth/token and refreshes the token automatically. Leave access_token, baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - To revoke this connection, deactivate the custom integration in Marketplace > Connected integrations.
+    clientCredentials:
+      tokenEndpoint: https://api.personio.de/v2/auth/token
+      tokenEndpointAuthMethod: client_secret_post
+      tokenExchangeTimeout: 8s
+      missingExpiry: reject
+      storedMissingExpiry: refresh
+      clientIDCredential: client_id
+      clientSecretCredential: client_secret
+      scopes: [personio:persons:read]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+      terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
+  operations:
+    - name: getPerson
+      goName: GetPerson
+      inputType: GetPersonInput
+      outputType: PersonProfile
+      kind: query
+      description: Read one person's ID and names without returning email or other personnel data.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Personio returned the selected person.}
+        - {id: notFound, goName: NotFound, description: Personio returned no accessible person for this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Personio conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Personio returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample Personio person is returned.
+          output: {id: '3003', firstName: Jane, lastName: Doe}

@@ -1,0 +1,569 @@
+{
+  "connector": "amazon-dynamodb",
+  "scenarios": [
+    {
+      "callId": "f0e4657a-c5de-5456-b5e7-066d411fdc17",
+      "exchanges": [
+        {
+          "body": "{\"Item\":{\"pk\":{\"S\":\"example\"},\"count\":{\"N\":\"3\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "exists": true,
+          "item": {
+            "count": {
+              "N": "3"
+            },
+            "pk": {
+              "S": "example"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-found",
+      "operation": "getItem"
+    },
+    {
+      "callId": "4ec82989-a317-54e3-98bb-70d6fce37c14",
+      "exchanges": [
+        {
+          "body": "{\"Item\":{\"pk\":{\"S\":\"example\"},\"count\":{\"N\":\"3\"},\"sk\":{\"N\":\"42\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              },
+              "sk": {
+                "N": "42"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=5d77d193a554326a0ee9c0c4a0c168c9ebb1f901c544d19082af0d004508406e"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "exists": true,
+          "item": {
+            "count": {
+              "N": "3"
+            },
+            "pk": {
+              "S": "example"
+            },
+            "sk": {
+              "N": "42"
+            }
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          },
+          "sk": {
+            "N": "42"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-compositeKey",
+      "operation": "getItem"
+    },
+    {
+      "callId": "a714de2d-4bb7-5016-a8f1-ae894f80bde3",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "exists": false,
+          "item": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-missing",
+      "operation": "getItem"
+    },
+    {
+      "callId": "cdb6c9ab-3dde-5b73-ad1b-add00d8293a5",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"AccessDeniedException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "exists": false,
+          "item": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-providerRejected",
+      "operation": "getItem"
+    },
+    {
+      "callId": "a23cdcbf-10df-5844-b8b6-c9c14abb0d6e",
+      "exchanges": [
+        {
+          "body": "{\"Item\":{\"pk\":false}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "exists": false,
+          "item": {}
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-invalidResponse",
+      "operation": "getItem"
+    },
+    {
+      "callId": "cf0a78b2-7e2b-5e37-9058-5c0095611bb3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "exists": false,
+          "item": {}
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "L": []
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-defect",
+      "operation": "getItem"
+    },
+    {
+      "callId": "3110bfe2-3a83-58b1-9e0b-f6a2f99f8cd2",
+      "exchanges": [
+        {
+          "body": "{\"__type\":\"com.amazonaws.dynamodb.v20120810#ProvisionedThroughputExceededException\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-throughputExceeded",
+      "operation": "getItem"
+    },
+    {
+      "callId": "722c04ee-521d-5f10-874f-89b09a5ebd1b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-rateLimit",
+      "operation": "getItem"
+    },
+    {
+      "callId": "515bd252-2a8b-56da-a67d-3def23b4d524",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-serverUnavailable",
+      "operation": "getItem"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/",
+          "requestBody": {
+            "ConsistentRead": true,
+            "Key": {
+              "pk": {
+                "S": "example"
+              }
+            },
+            "TableName": "Examples"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIADYNAMOCONNECTOR/20261030/eu-west-1/dynamodb/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-date;x-amz-target, Signature=18171e4d8e375007c19408900189e04881f8a417cc62e0e3f3d6594f7ac5f721"
+            ],
+            "Content-Type": [
+              "application/x-amz-json-1.0"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ],
+            "X-Amz-Target": [
+              "DynamoDB_20120810.GetItem"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "consistentRead": true,
+        "key": {
+          "pk": {
+            "S": "example"
+          }
+        },
+        "tableName": "Examples"
+      },
+      "name": "getItem-transportFailure",
+      "operation": "getItem"
+    }
+  ],
+  "schemaVersion": 1
+}

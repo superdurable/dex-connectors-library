@@ -1,0 +1,65 @@
+{
+  "connectorId": "adyen",
+  "releaseTag": "connectors/adyen/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-adyen",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_payment_link_step",
+      "kind": "query",
+      "operationId": "getPaymentLink",
+      "inputType": "GetPaymentLinkInput",
+      "description": "Read a payment link's ID, status, and amount currency without shopper or payment details.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPaymentLinkInput selects a payment link by its non-secret Adyen ID.",
+        "properties": {
+          "paymentLinkId": {
+            "description": "PaymentLinkID is a payment link ID returned by Adyen Checkout API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paymentLinkId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

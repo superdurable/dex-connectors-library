@@ -1,0 +1,110 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-search-console
+  displayName: Google Search Console
+  description: List Search Console properties accessible to the connected Google account.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google-search-console
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listSites]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listSites]
+      triggers: []
+  codegen:
+    go:
+      package: searchconsole
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Google Search Console API root as an absolute HTTPS URL. Blank uses the displayed production endpoint; override only for a trusted test gateway.
+        default: https://www.googleapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive duration for one Search Console request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow approved gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete Search Console response in bytes. Blank uses the displayed default; increase only for an account with many properties.
+        default: 1048576
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: google-search-console-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://console.cloud.google.com/apis/credentials > OAuth 2.0 Client IDs > your Web application. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from the same Google Cloud Web application credentials page. Store only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Google consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned with offline consent. Dex rotates it on refresh; blank requires reauthorization.
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project, open APIs & Services > Library, and enable Search Console API. In Google Auth Platform > Branding and Audience, configure consent and add test users if the External app remains in Testing.
+        - Open Google Auth Platform > Data Access and add the displayed webmasters.readonly scope. Under Clients > Create client > Web application, register the exact redirect URI shown by Dex Web.
+        - Copy the Web application's Client ID and Client Secret into Dex Web. Authorize with a Google user that has access to the desired Search Console properties; Dex requests offline access and refreshes tokens.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Properties and permission levels come from the API and require no manual site ID configuration.
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      authorizationParameters: {access_type: offline, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [https://www.googleapis.com/auth/webmasters.readonly]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listSites
+      goName: ListSites
+      inputType: ListSitesInput
+      outputType: SitesPage
+      kind: query
+      description: Return Search Console property URLs and the connected user's permission level.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned the accessible properties.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example verified property is visible.
+          output:
+            sites: [{siteUrl: 'sc-domain:example.com', permissionLevel: siteOwner}]

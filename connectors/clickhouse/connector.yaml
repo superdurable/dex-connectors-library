@@ -1,0 +1,81 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: clickhouse
+  displayName: ClickHouse
+  description: List tables in one ClickHouse database over the read-only HTTP interface.
+  company: ClickHouse
+  version: v0.1.0
+spec:
+  provider: clickhouse
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-clickhouse
+      operations: [listTables]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-clickhouse"
+      operations: [listTables]
+      triggers: []
+  codegen:
+    go:
+      package: clickhouse
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: HTTPS root of the ClickHouse HTTP interface, typically https://your-service.region.aws.clickhouse.cloud:8443; find the host in ClickHouse Cloud > Services > service > Connect > HTTPS or ask your self-hosted administrator. Do not include credentials, query, database, or path. Blank prevents connection creation.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one metadata query as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow catalogs.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete table-list JSON response in bytes as a positive integer. Blank uses the displayed default; increase for large catalogs.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: clickhouse-http-password
+    fields:
+      - name: username
+        goName: Username
+        type: string
+        required: true
+        description: Non-secret ClickHouse database username from Cloud > Services > service > Connect > HTTPS, or from your self-hosted administrator. Enter the exact user with SELECT access to system.tables; blank prevents calls. Dex sends it in X-ClickHouse-User.
+      - name: password
+        goName: Password
+        type: secretString
+        required: true
+        description: Secret password for that ClickHouse database user from Cloud > Services > service > Connect > HTTPS, or from your self-hosted administrator. Enter the complete password; blank prevents calls. Dex stores it only as a credential and sends it in X-ClickHouse-Key. Rotate it in the database user settings.
+    guide:
+      startURL: https://clickhouse.cloud
+      steps:
+        - In ClickHouse Cloud open Services > select the service > Connect > HTTPS. Copy the HTTPS endpoint host and port into baseUrl, the database username into username, and its secret password into Dex Web password. For self-hosted ClickHouse, obtain the equivalent HTTPS endpoint and user from your administrator. The user needs SELECT permission on system.tables. Blank values prevent connection or calls.
+        - Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret database name in the ClickHouse SQL console with SHOW DATABASES, then pass the exact name as database. Blank is invalid. The operation returns at most 100 table names in sorted order and hasMore when more exist.
+  operations:
+    - name: listTables
+      goName: ListTables
+      inputType: ListTablesInput
+      outputType: TablesPage
+      kind: query
+      description: Return up to 100 sorted table names in one database and indicate whether more exist.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: ClickHouse returned the table names.}
+        - {id: providerRejected, goName: ProviderRejected, description: ClickHouse conclusively rejected the metadata query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: ClickHouse returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: A database with two sample tables is returned.
+          output: {database: analytics, names: [events, users], hasMore: false}

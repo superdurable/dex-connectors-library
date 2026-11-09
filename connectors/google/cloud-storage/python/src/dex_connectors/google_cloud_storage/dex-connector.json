@@ -1,0 +1,203 @@
+{
+  "connectorId": "google-cloud-storage",
+  "releaseTag": "connectors/google/cloud-storage/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-cloud-storage",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_objects_step",
+      "kind": "query",
+      "operationId": "listObjects",
+      "inputType": "ListObjectsInput",
+      "description": "List one page of object names and generations in a bucket.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListObjectsInput selects one page from a named bucket.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket is the non-secret bucket name shown in Cloud Storage Buckets.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is 1 through 1000; zero uses 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is Google's opaque cursor; blank selects the first page.",
+            "type": "string"
+          },
+          "prefix": {
+            "description": "Prefix limits names to this optional object name prefix.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bucket",
+          "pageSize",
+          "pageToken",
+          "prefix"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_download_object_step",
+      "kind": "query",
+      "operationId": "downloadObject",
+      "inputType": "DownloadObjectInput",
+      "description": "Download one bounded object generation and return its content as Base64.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "downloaded",
+          "field": "downloaded",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "DownloadObjectInput selects one bounded object body.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket is the non-secret bucket name shown in Cloud Storage Buckets.",
+            "type": "string"
+          },
+          "generation": {
+            "description": "Generation optionally pins an immutable generation returned by listObjects.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name is the exact object name returned by listObjects.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bucket",
+          "generation",
+          "name"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_upload_object_step",
+      "kind": "mutation",
+      "operationId": "uploadObject",
+      "inputType": "UploadObjectInput",
+      "description": "Create an object only if absent, or confirm existing content matches the requested bytes.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "uploaded",
+          "field": "uploaded",
+          "optional": false
+        },
+        {
+          "id": "objectExists",
+          "field": "object_exists",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "UploadObjectInput supplies a destination and bounded Base64 content.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket is the destination bucket name shown in Cloud Storage Buckets.",
+            "type": "string"
+          },
+          "contentBase64": {
+            "description": "ContentBase64 is the complete object content encoded as Base64.",
+            "type": "string"
+          },
+          "contentType": {
+            "description": "ContentType is a valid HTTP media type, such as text/plain.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name is the exact destination object name to create if absent.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bucket",
+          "contentBase64",
+          "contentType",
+          "name"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

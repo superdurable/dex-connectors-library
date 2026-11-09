@@ -1,0 +1,177 @@
+{
+  "connectorId": "wordpress",
+  "releaseTag": "connectors/wordpress/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-wordpress",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newCreatePostStep",
+      "kind": "mutation",
+      "operationId": "createPost",
+      "inputType": "CreatePostInput",
+      "description": "Create one draft or published post. If WordPress does not confirm the outcome, inspect Posts before creating another.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreatePostInput creates a draft by default or publishes immediately when Status is publish.",
+        "properties": {
+          "content": {
+            "description": "Content is the post body in the site's accepted HTML or block format.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status is draft or publish; empty defaults to draft.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title is the nonempty post title, entered as plain text or permitted HTML.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content",
+          "title"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetPostStep",
+      "kind": "query",
+      "operationId": "getPost",
+      "inputType": "GetPostInput",
+      "description": "Read one published WordPress post by numeric ID.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPostInput selects one numeric WordPress post ID.",
+        "properties": {
+          "postId": {
+            "description": "PostID is a positive ID from WordPress Posts or the REST API.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "postId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newListPostsStep",
+      "kind": "query",
+      "operationId": "listPosts",
+      "inputType": "ListPostsInput",
+      "description": "Read one page of published posts, optionally after an ISO 8601 publication instant.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPostsInput selects one published-post page.",
+        "properties": {
+          "after": {
+            "description": "After is an RFC 3339 publication instant; empty has no lower bound.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page is one-based; zero selects page one.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage is 1 through 100; zero selects WordPress's default of ten.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

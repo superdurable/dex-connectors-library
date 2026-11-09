@@ -1,0 +1,178 @@
+{
+  "connectorId": "google-contacts",
+  "releaseTag": "connectors/google/contacts/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-google-contacts",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListContactsStep",
+      "kind": "query",
+      "operationId": "listContacts",
+      "inputType": "ListContactsInput",
+      "description": "List one page of the connected user's contact names and email addresses.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContactsInput selects one page of the connected user's contacts.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize is 1 through 1000; zero uses 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is Google's opaque cursor; blank selects the first page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageSize",
+          "pageToken"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetContactStep",
+      "kind": "query",
+      "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Get one contact by its People API resource name.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput selects a contact by People API resource name.",
+        "properties": {
+          "resourceName": {
+            "description": "ResourceName is the people/{id} identity returned by listContacts.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resourceName"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newCreateContactStep",
+      "kind": "mutation",
+      "operationId": "createContact",
+      "inputType": "CreateContactInput",
+      "description": "Create one contact. If Google does not confirm the outcome, inspect Contacts before creating another.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "created",
+          "field": "created",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CreateContactInput provides a name and optional email address for one contact.",
+        "properties": {
+          "emailAddress": {
+            "description": "EmailAddress is an optional email address; blank omits it.",
+            "type": "string"
+          },
+          "familyName": {
+            "description": "FamilyName is an optional contact family name.",
+            "type": "string"
+          },
+          "givenName": {
+            "description": "GivenName is a nonempty contact given name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailAddress",
+          "familyName",
+          "givenName"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

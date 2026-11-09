@@ -1,0 +1,307 @@
+{
+  "connector": "heap",
+  "scenarios": [
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_user_properties",
+          "requestBody": {
+            "app_id": "12345",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-accepted",
+      "operation": "setUserProperties"
+    },
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_user_properties",
+          "requestBody": {
+            "app_id": "12345",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-providerRejected",
+      "operation": "setUserProperties"
+    },
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [
+        {
+          "body": "0123456789",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_user_properties",
+          "requestBody": {
+            "app_id": "12345",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "RESPONSE_TOO_LARGE",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-invalidResponse",
+      "operation": "setUserProperties"
+    },
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-defect",
+      "operation": "setUserProperties"
+    },
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_user_properties",
+          "requestBody": {
+            "app_id": "12345",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-rateLimit",
+      "operation": "setUserProperties"
+    },
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_user_properties",
+          "requestBody": {
+            "app_id": "12345",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-serverUnavailable",
+      "operation": "setUserProperties"
+    },
+    {
+      "callId": "741e0028-34e1-567a-a9d7-f3854bd7b57f",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/api/add_user_properties",
+          "requestBody": {
+            "app_id": "12345",
+            "identity": "member-1",
+            "properties": {
+              "Plan": "Pro"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "553cdb69d4ffcf63c3466982a7f855b8aa43d9b6e9e40d93bca0bf91aa484932",
+      "input": {
+        "identity": "member-1",
+        "properties": {
+          "Plan": "Pro"
+        }
+      },
+      "name": "setUserProperties-transportFailure",
+      "operation": "setUserProperties"
+    }
+  ],
+  "schemaVersion": 1
+}

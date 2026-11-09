@@ -1,0 +1,118 @@
+{
+  "connectorId": "activecampaign",
+  "releaseTag": "connectors/activecampaign/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-activecampaign",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListContactsStep",
+      "kind": "query",
+      "operationId": "listContacts",
+      "inputType": "ListContactsInput",
+      "description": "List one page of contact IDs, email addresses, and names without embedded relationships.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContactsInput selects an offset-based page of at most 100 contacts.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the maximum contact count; zero defaults to 20.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based number of contacts to skip.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetContactStep",
+      "kind": "query",
+      "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Read one contact's ID, email address, and name without embedded relationships.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput selects one numeric ActiveCampaign contact ID.",
+        "properties": {
+          "contactId": {
+            "description": "ContactID is the numeric ID from the Contacts page or API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

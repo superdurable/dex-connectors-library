@@ -1,0 +1,393 @@
+{
+  "connector": "google/pubsub",
+  "scenarios": [
+    {
+      "callId": "eda6745b-47ea-5e34-b49d-b642989816c6",
+      "exchanges": [
+        {
+          "body": "{\"topics\":[{\"name\":\"projects/sample-project/topics/events\",\"labels\":{\"secret\":\"discard-me\"}}],\"nextPageToken\":\"following-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "following-page",
+          "topics": [
+            {
+              "name": "projects/sample-project/topics/events"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listTopics-listed",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "f49722fd-395e-56d8-8986-a6525c903a5d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Forbidden\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextPageToken": "",
+          "topics": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listTopics-providerRejected",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "148800c1-8b63-523e-845a-5abc832cb1fe",
+      "exchanges": [
+        {
+          "body": "{\"topics\":{}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextPageToken": "",
+          "topics": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listTopics-invalidResponse",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "458600f7-1ad1-5e3b-9883-662117588e89",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextPageToken": "",
+          "topics": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 101,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listTopics-defect",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "e67aff56-0e58-5212-b7a3-57dffc8a113d",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Rate limit\"}}",
+          "headers": {
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listTopics-final429",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "c7d8e21d-97eb-5de6-aa93-626a0e1616df",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Unavailable\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listTopics-final503",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "ebbf9e82-00c0-5371-8589-c949af7f4ee5",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "name": "listTopics-transportFailure",
+      "operation": "listTopics"
+    },
+    {
+      "attempts": 2,
+      "callId": "6216daf2-1f21-51c8-9d25-fc37e1c8f858",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"topics\":[{\"name\":\"projects/sample-project/topics/events\",\"labels\":{\"secret\":\"discard-me\"}}],\"nextPageToken\":\"following-page\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/v1/projects/sample-project/topics",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "next-page"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-google-pubsub-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "nextPageToken": "following-page",
+          "topics": [
+            {
+              "name": "projects/sample-project/topics/events"
+            }
+          ]
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "next-page",
+        "projectId": "sample-project"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "listTopics-retryThenListed",
+      "operation": "listTopics"
+    }
+  ],
+  "schemaVersion": 1
+}

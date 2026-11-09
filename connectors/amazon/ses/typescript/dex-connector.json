@@ -1,0 +1,64 @@
+{
+  "connectorId": "amazon-ses",
+  "releaseTag": "connectors/amazon/ses/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-amazon-ses",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetEmailIdentityStep",
+      "kind": "query",
+      "operationId": "getEmailIdentity",
+      "inputType": "GetEmailIdentityInput",
+      "description": "Read the verification status of an SES email identity.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetEmailIdentityInput identifies one SES email identity in the configured Region.",
+        "properties": {
+          "emailIdentity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailIdentity"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

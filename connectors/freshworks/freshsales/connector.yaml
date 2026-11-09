@@ -1,0 +1,96 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: freshsales
+  displayName: Freshsales
+  description: Read Freshsales contact views and selected contact identity.
+  company: Freshworks
+  version: v0.1.0
+spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listContactViews, getContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listContactViews, getContact]
+      triggers: []
+  provider: freshsales
+  codegen:
+    go:
+      package: freshsales
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret Freshsales API root copied from https://app.freshworks.com/ > your CRM account > profile picture > Profile Settings > API Settings > Bundle alias. Enter the full HTTPS alias ending in /crm/sales/api, such as https://example.myfreshworks.com/crm/sales/api; blank prevents connection creation.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for many contact views. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: freshsales-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret user API key from https://app.freshworks.com/ > CRM account > profile picture > Profile Settings > API Settings > Your API key. Copy the full key into this secret field; blank selects defect. Dex sends it only in the Authorization Token header. Reset Key on that page revokes it for every integration using it.
+    guide:
+      startURL: https://app.freshworks.com/
+      steps:
+        - Sign in to your Freshsales CRM account from https://app.freshworks.com/, click your profile picture, then Profile Settings > API Settings.
+        - Copy Bundle alias, including your account domain and /crm/sales path, into non-secret baseUrl with /api appended. Copy Your API key into Dex secret api_key; API requests use the API user's permissions.
+        - Reset Key on the same page revokes the previous key for all integrations using it. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listContactViews
+      goName: ListContactViews
+      inputType: ListContactViewsInput
+      outputType: ContactViews
+      kind: query
+      description: List available contact views and their stable IDs.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Freshsales returned the available contact views.}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Unavailable or invalid connection credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample contact view is listed.
+          output: {views: [{id: 1, name: All Contacts}]}
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactMetadata
+      kind: query
+      description: Read one contact's ID, name, and email address by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Freshsales returned the selected contact.}
+        - {id: notFound, goName: NotFound, description: No contact matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Freshsales conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Freshsales returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid contact ID or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample contact identity is returned.
+          output: {id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com'}

@@ -1,0 +1,3 @@
+# Python function lookup example
+
+The Worker runs `AmazonLambdaFunctionLookupPython` through the static `amazon-lambda` connection and stores the function details. Configure `region`, `access_key_id`, and `secret_access_key` as described in the [connector README](../../../README.md). From `connectors/amazon/lambda/python`, run `uv run python -m examples.function_lookup.worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start the Flow with a unique ID and input `{"functionName":"example-function"}`. Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex and a local provider fixture.

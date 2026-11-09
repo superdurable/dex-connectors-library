@@ -1,0 +1,105 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: adobe-marketo
+  displayName: Adobe Marketo Engage
+  description: Read selected lead profile fields from a Marketo Engage subscription.
+  company: Adobe
+  version: v0.1.0
+spec:
+  provider: adobe
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-adobe-marketo
+      operations: [getLead]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-adobe-marketo'
+      operations: [getLead]
+      triggers: []
+  codegen:
+    go:
+      package: marketo
+  configuration:
+    fields:
+      - name: restEndpoint
+        goName: RESTEndpoint
+        type: url
+        required: true
+        description: Non-secret subscription REST endpoint from https://app.marketo.com/ > Admin > Integration > Web Services > REST API > Endpoint. Copy the complete HTTPS URL ending in /rest, such as https://123-ABC-456.mktorest.com/rest; blank prevents requests.
+      - name: tokenEndpoint
+        goName: TokenEndpoint
+        type: url
+        required: true
+        description: Non-secret Identity URL from https://app.marketo.com/ > Admin > Integration > Web Services > REST API > Identity, followed by /oauth/token. Enter a complete HTTPS URL ending in /identity/oauth/token on the same subscription host as restEndpoint; blank prevents token minting.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one lead read as a positive Go duration. Leave blank for the displayed default; increase only for slow Marketo responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum bytes in one complete lead response as a positive integer. Leave blank for the displayed default; increase only for unusually large responses.
+        default: 1048576
+  auth:
+    refreshable: true
+    type: apiKey
+    connectionKind: adobe-marketo-client-credentials
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://app.marketo.com/ > Admin > Integration > LaunchPoint > your Custom service > View Details. Copy the complete value; blank prevents token minting.
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from https://app.marketo.com/ > Admin > Integration > LaunchPoint > your Custom service > View Details. Store only in Dex Web; blank prevents token minting.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Secret short-lived token derived from the custom service's Client ID and Client Secret. Leave blank for automatic minting; never paste a token.
+    guide:
+      startURL: https://app.marketo.com/
+      steps:
+        - Sign in to Marketo, open Admin > Users & Roles > Roles, and create an API role with Access API > Read-Only Lead. Add an API-Only user assigned this role in Admin > Users & Roles > Users. No browser redirect URI or consent screen is needed for this client credentials grant.
+        - Open Admin > Integration > LaunchPoint > New Service, choose Custom, select the API-Only user, and create the service. Open View Details to copy its Client ID and Client Secret; keep the secret in Dex Web only.
+        - Open Admin > Integration > Web Services. Copy REST API > Endpoint into restEndpoint. Copy REST API > Identity and append /oauth/token into tokenEndpoint. Both HTTPS URLs must use the same subscription host ending in .mktorest.com.
+        - Save the connection; Dex mints and refreshes the access token. Leave access_token, timeout, and maxResponseBytes blank. Revoke the Custom service in LaunchPoint to stop this connection.
+    clientCredentials:
+      tokenEndpoint: {fromSetting: tokenEndpoint}
+      tokenEndpointAuthMethod: client_secret_post
+      tokenExchangeTimeout: 8s
+      missingExpiry: reject
+      storedMissingExpiry: refresh
+      clientIDCredential: client_id
+      clientSecretCredential: client_secret
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+      terminalErrorCodes: [invalid_client, unauthorized_client, invalid_scope]
+  operations:
+    - name: getLead
+      goName: GetLead
+      inputType: GetLeadInput
+      outputType: LeadProfile
+      kind: query
+      description: Read one lead's ID and names by Marketo lead ID without returning email or other profile fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Marketo returned the selected lead.}
+        - {id: notFound, goName: NotFound, description: Marketo returned no lead for the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Marketo conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Marketo returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection configuration is invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample Marketo lead is returned.
+          output: {id: 318581, firstName: Sample, lastName: Lead}

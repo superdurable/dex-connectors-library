@@ -1,0 +1,65 @@
+{
+  "connectorId": "x-twitter",
+  "releaseTag": "connectors/x/twitter/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-x-twitter",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetPostStep",
+      "kind": "query",
+      "operationId": "getPost",
+      "inputType": "GetPostInput",
+      "description": "Read a public Post's ID and text without author, metrics, or media.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPostInput selects one public X Post by its numeric URL ID.",
+        "properties": {
+          "postId": {
+            "description": "PostID is the decimal value after /status/ in an x.com Post URL.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "postId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

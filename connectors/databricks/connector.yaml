@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: databricks
+  displayName: Databricks
+  description: Read the current state of a Databricks job run.
+  company: Databricks
+  version: v0.1.0
+spec:
+  provider: databricks
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-databricks
+      operations: [getJobRun]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-databricks"
+      operations: [getJobRun]
+      triggers: []
+  codegen:
+    go:
+      package: databricks
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Required Databricks workspace root as an absolute HTTPS URL, for example https://dbc-xxxx.cloud.databricks.com. Copy the host from the signed-in workspace browser address; no default or blank value is valid. Use the same workspace that issued the token.
+        required: true
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow job run reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete job run response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large job run metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: databricks-personal-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret opaque workspace personal access token. In your Databricks workspace open Settings > Developer > Access Tokens > Manage > Generate new token, select Other APIs and the jobs scope if required, and copy it once. Blank blocks calls. Dex sends it only in an Authorization Bearer header.
+    guide:
+      startURL: https://docs.databricks.com/aws/en/dev-tools/auth/pat
+      steps:
+        - Sign in to the target Databricks workspace, open Settings > Developer > Access Tokens > Manage > Generate new token, select Other APIs and the jobs scope when scope selection is required, then copy the secret opaque token into Dex Web api_token. Blank is invalid. Token creation can be disabled by a workspace administrator; revoke or rotate it on the same page.
+        - Set the required baseUrl to the non-secret HTTPS workspace root shown in your browser address, without /api or a trailing path. Leave timeout and maxResponseBytes blank for their displayed defaults. In Jobs & Pipelines > select a job > Runs, copy the numeric run ID from /runs/<run-id> and pass it as runId. This operation currently accepts IDs through 9007199254740991 for cross-language JSON safety.
+  operations:
+    - name: getJobRun
+      goName: GetJobRun
+      inputType: GetJobRunInput
+      outputType: JobRunStatus
+      kind: query
+      description: Read a job run ID, current state, and optional terminal result state without task details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Databricks returned the job run.}
+        - {id: notFound, goName: NotFound, description: Databricks did not expose the job run., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Databricks conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Databricks returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample job run is returned.
+          output: {id: "455644833", status: RUNNING, resultState: ""}

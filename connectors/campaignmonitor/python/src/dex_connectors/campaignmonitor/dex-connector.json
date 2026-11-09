@@ -1,0 +1,52 @@
+{
+  "connectorId": "campaignmonitor",
+  "releaseTag": "connectors/campaignmonitor/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-campaignmonitor",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_clients_step",
+      "kind": "query",
+      "operationId": "listClients",
+      "inputType": "ListClientsInput",
+      "description": "List IDs and names of clients accessible to the Campaign Monitor account.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListClientsInput selects the account's accessible clients without filters.",
+        "properties": {},
+        "type": "object"
+      }
+    }
+  ]
+}

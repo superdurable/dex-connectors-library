@@ -1,0 +1,3 @@
+# Python key lookup example
+
+The Worker runs `UpstashRedisKeyLookupPython` through the static `upstash-redis` connection and stores the lookup result. Configure `baseUrl` and secret `rest_token` as described in the [connector README](../../README.md). From `connectors/upstash/redis/python`, run `uv run python -m examples.key_lookup.worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start the Flow with a unique ID and input `{"key":"sample:key"}` (replace with your exact Redis string key). Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex and a local provider fixture.

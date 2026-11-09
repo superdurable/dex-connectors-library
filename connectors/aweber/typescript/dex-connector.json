@@ -1,0 +1,64 @@
+{
+  "connectorId": "aweber",
+  "releaseTag": "connectors/aweber/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-aweber",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListAccountsStep",
+      "kind": "query",
+      "operationId": "listAccounts",
+      "inputType": "ListAccountsInput",
+      "description": "Return the authorized customer's account ID and company name.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAccountsInput selects an offset-based page of authorized accounts.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the maximum account count; zero uses the provider default of 100.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based number of accounts to skip.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offset"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

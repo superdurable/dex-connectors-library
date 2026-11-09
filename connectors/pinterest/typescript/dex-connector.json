@@ -1,0 +1,61 @@
+{
+  "connectorId": "pinterest",
+  "releaseTag": "connectors/pinterest/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-pinterest",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListPinsStep",
+      "kind": "query",
+      "operationId": "listPins",
+      "inputType": "ListPinsInput",
+      "description": "List one page of Pin IDs, board IDs, and titles owned by the authorized user.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPinsInput selects one cursor-based page of owned Pins.",
+        "properties": {
+          "bookmark": {
+            "description": "Bookmark is the cursor returned by a previous PinsPage; blank starts at the first page.",
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "PageSize is the maximum count from 1 to 250; zero uses the provider default of 25.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: heap
+  displayName: Heap
+  description: Set user properties through Heap's server-side API.
+  company: Heap
+  version: v0.1.0
+spec:
+  provider: heap
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-heap
+      operations: [setUserProperties]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-heap'
+      operations: [setUserProperties]
+      triggers: []
+  codegen:
+    go:
+      package: heap
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Heap server-side API HTTPS root. Blank uses the displayed US endpoint; for an EU project use https://c.eu.heap-api.com. Do not append /api/add_user_properties.
+        default: https://heapanalytics.com
+      - name: appId
+        goName: AppID
+        type: string
+        required: true
+        description: Non-secret numeric environment ID from https://heapanalytics.com > Projects > the Main Production environment; copy its app ID as decimal digits. Blank prevents requests.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one request as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete provider response in bytes as a positive integer. Blank uses the displayed default; increase only if Heap returns a larger response.
+        default: 1048576
+  auth:
+    type: none
+    connectionKind: none
+    fields: []
+  operations:
+    - name: setUserProperties
+      goName: SetUserProperties
+      inputType: SetUserPropertiesInput
+      outputType: UserPropertiesResult
+      kind: mutation
+      description: Overwrite selected string properties for one stable Heap identity; repeated identical requests are safe.
+      idempotency: required
+      authorization: none
+      branches:
+        - {id: accepted, goName: Accepted, description: Heap accepted the property updates.}
+        - {id: providerRejected, goName: ProviderRejected, description: Heap conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Heap returned an oversized or unreadable confirmation., optional: true}
+        - {id: defect, goName: Defect, description: "Local identity, property input, or app ID is invalid.", optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: acceptedDefault
+          branch: accepted
+          default: true
+          description: One sample user's plan was set.
+          output: {accepted: true}

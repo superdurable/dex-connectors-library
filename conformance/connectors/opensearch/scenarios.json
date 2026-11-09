@@ -1,0 +1,1191 @@
+{
+  "connector": "opensearch",
+  "scenarios": [
+    {
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"sku-42\",\"result\":\"created\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "indexed",
+        "failureKind": "",
+        "output": {
+          "id": "sku-42",
+          "index": "products"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "name": "indexDocument-indexed",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "index": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "name": "indexDocument-provider-rejected",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "index": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": []
+      },
+      "name": "indexDocument-defect",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "name": "indexDocument-rate-limit",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "name": "indexDocument-server-error",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "name": "indexDocument-transport",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "name": "indexDocument-malformed-confirmation",
+      "operation": "indexDocument"
+    },
+    {
+      "attempts": 2,
+      "callId": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"sku-42\",\"result\":\"updated\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "PUT",
+          "path": "/products/_doc/sku-42",
+          "requestBody": {
+            "category": "release",
+            "title": "Meridian"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "indexed",
+        "failureKind": "",
+        "output": {
+          "id": "sku-42",
+          "index": "products"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3493ae74-bf81-5d0d-9694-d902dbab3a86",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products",
+        "source": {
+          "category": "release",
+          "title": "Meridian"
+        }
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "AVAILABILITY",
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "indexDocument-retry-then-indexed",
+      "operation": "indexDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"sku-42\",\"result\":\"deleted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "absent",
+        "failureKind": "",
+        "output": {
+          "id": "sku-42",
+          "index": "products",
+          "wasDeleted": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-absent",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\",\"_id\":\"sku-42\",\"result\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "absent",
+        "failureKind": "",
+        "output": {
+          "id": "sku-42",
+          "index": "products",
+          "wasDeleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-already-absent",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"type\":\"index_not_found_exception\"},\"status\":404}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "indexNotFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "index": "",
+          "wasDeleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-index-not-found",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "id": "",
+          "index": "",
+          "wasDeleted": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-provider-rejected",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "index": "",
+          "wasDeleted": false
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "",
+        "index": "products"
+      },
+      "name": "deleteDocument-defect",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-rate-limit",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-server-error",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-transport",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "exchanges": [
+        {
+          "body": "{\"_index\":\"products\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "DELETE",
+          "path": "/products/_doc/sku-42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "c3480c23-9839-5a72-852a-468b54f28d76",
+      "input": {
+        "documentId": "sku-42",
+        "index": "products"
+      },
+      "name": "deleteDocument-malformed-confirmation",
+      "operation": "deleteDocument"
+    },
+    {
+      "callId": "a10e1d56-5d07-510d-90fe-4136e0435509",
+      "exchanges": [
+        {
+          "body": "{\"timed_out\":false,\"_shards\":{\"failed\":0},\"hits\":{\"total\":{\"value\":1,\"relation\":\"eq\"},\"hits\":[{\"_index\":\"products\",\"_id\":\"sku-42\",\"_score\":1.25,\"_source\":{\"title\":\"Meridian\",\"category\":\"release\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "hits": [
+            {
+              "id": "sku-42",
+              "index": "products",
+              "score": 1.25,
+              "source": {
+                "category": "release",
+                "title": "Meridian"
+              }
+            }
+          ],
+          "relation": "eq",
+          "total": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-found",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "2a7d492d-ccf8-51a1-846c-f2289d0325c2",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"index_not_found_exception\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "indexNotFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "hits": [],
+          "relation": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-index-not-found",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "20f70134-6088-58eb-ba25-16d6a476ad1d",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unauthorized\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "hits": [],
+          "relation": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-provider-rejected",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "54eb5dab-0d00-5766-be78-bdc338734008",
+      "exchanges": [
+        {
+          "body": "{\"timed_out\":false,\"_shards\":{\"failed\":0},\"hits\":{\"total\":{\"value\":1,\"relation\":\"eq\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hits": [],
+          "relation": "",
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-invalid-response",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "61ee9d96-2941-5dc6-b77a-455628cc5229",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hits": [],
+          "relation": "",
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "",
+        "size": 10
+      },
+      "name": "searchDocuments-defect",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "93012d71-e75c-5c83-9573-cc14b132608d",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-rate-limit",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "9d10c680-078d-58e9-8e2b-96f9ca559122",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-server-error",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "dc1610b4-af16-5ca0-93fc-1c100394ab55",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-transport",
+      "operation": "searchDocuments"
+    },
+    {
+      "callId": "a6f3c5ff-b23e-5892-b768-b9a95e3a5702",
+      "exchanges": [
+        {
+          "body": "{\"timed_out\":true,\"_shards\":{\"failed\":0},\"hits\":{\"total\":{\"value\":1,\"relation\":\"eq\"},\"hits\":[{\"_index\":\"products\",\"_id\":\"sku-42\",\"_score\":1.25,\"_source\":{\"title\":\"Meridian\",\"category\":\"release\"}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/products/_search",
+          "query": {
+            "allow_partial_search_results": [
+              "false"
+            ],
+            "from": [
+              "5"
+            ],
+            "q": [
+              "title:Meridian"
+            ],
+            "size": [
+              "10"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZGV4X3JlYWRlcjpmYWtlLXBhc3N3b3Jk"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "from": 5,
+        "index": "products",
+        "query": "title:Meridian",
+        "size": 10
+      },
+      "name": "searchDocuments-timed-out",
+      "operation": "searchDocuments"
+    }
+  ],
+  "schemaVersion": 1
+}

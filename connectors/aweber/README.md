@@ -1,0 +1,7 @@
+# AWeber connector
+
+The Go, [Python](python/README.md), and [TypeScript](typescript/README.md) connectors implement `listAccounts` to discover the account authorized through [AWeber OAuth 2.0](https://api.aweber.com/). The [runnable Go account Flow](go/examples/accounts/README.md) uses the static `aweber` Dex Web connection; each language package has its own runnable Flow. Subscriber reads, writes, and webhooks remain in the backlog.
+
+In [AWeber Developer](https://labs.aweber.com/apps), create a confidential integration, register the exact Dex Web redirect URL, and request `account.read`. Copy its Client ID and Client Secret into Dex Web, then authorize the customer account. The connector refreshes tokens through AWeber's token endpoint. It sends only Bearer tokens to the [accounts endpoint](https://api.aweber.com/); token contents never enter Flow inputs or results.
+
+`listAccounts` accepts a zero-based offset and page size from 1 to 100; a zero page size uses AWeber's 100-account default. It returns account IDs, company names, the requested offset and size, and the provider's total. AWeber documents a 120-request-per-minute customer limit and returns a `Rate Limit Error` in HTTP 403 for it. The connector retries that response, HTTP 429, request timeouts, and server errors. Live AWeber authorization, provider behavior, and Dex Web rendering have not been verified in this checkout.

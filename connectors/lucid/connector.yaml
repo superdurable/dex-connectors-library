@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: lucid
+  displayName: Lucid
+  description: List document IDs and titles through Lucid REST API v1.
+  company: Lucid
+  version: v0.1.0
+spec:
+  provider: lucid
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-lucid
+      operations: [listDocuments]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-lucid"
+      operations: [listDocuments]
+      triggers: []
+  codegen:
+    go:
+      package: lucid
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Lucid REST API v1 root as an absolute HTTPS URL. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://api.lucid.co/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one search request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow searches.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete page response in bytes as a positive integer. Blank uses the displayed default; increase for large document pages.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: lucid-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret opaque key from Lucid Developer Portal > API Keys. Create it with DocumentReadonly grant, copy its complete one-time value into this secret field; blank prevents calls. Dex sends it only as a Bearer token.
+    guide:
+      startURL: https://lucid.app/developer
+      steps:
+        - Sign in to a licensed Lucid account, open Developer Portal > API Keys, and ask the administrator to enable Developer tools and API keys if the page is unavailable. Click Create API Key, name it, choose an expiration, and grant DocumentReadonly; grants cannot be changed later.
+        - Click Generate API key and copy its one-time opaque secret into Dex Web secret api_key. Restrict access to the Dex connection, rotate before expiration, and delete the key in the same portal to revoke it. The key sees only documents its Lucid owner can access.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Run listDocuments with blank pageToken for the first page; pass the non-secret nextPageToken from a result into pageToken for another page.
+  operations:
+    - name: listDocuments
+      goName: ListDocuments
+      inputType: ListDocumentsInput
+      outputType: DocumentsPage
+      kind: query
+      description: Search one page of accessible, non-trashed Lucid documents and return IDs and titles only.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Lucid returned one document page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Lucid conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Lucid returned malformed or oversized search data., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example document is returned.
+          output: {documents: [{id: "110808fd-4553-4316-bccf-4f25ff59a532", title: Example document}], nextPageToken: ""}

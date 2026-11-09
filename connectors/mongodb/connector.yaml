@@ -1,0 +1,84 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: mongodb
+  displayName: MongoDB
+  description: Find documents in one MongoDB collection through the native wire protocol.
+  company: MongoDB
+  version: v0.1.0
+spec:
+  provider: mongodb
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-mongodb
+      operations: [findDocuments]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-mongodb'
+      operations: [findDocuments]
+      triggers: []
+  codegen:
+    go:
+      package: mongodb
+  configuration:
+    fields:
+      - name: database
+        goName: Database
+        type: string
+        required: true
+        description: Non-secret database name from https://cloud.mongodb.com > Database > Browse Collections > select database, or the self-hosted database list. Use one name without a dot or dollar sign; blank prevents queries.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one find request, including server selection, as a positive Go duration such as 20s. Blank uses the displayed default; increase only for distant clusters.
+      - name: maxDocuments
+        goName: MaxDocuments
+        type: integer
+        default: 100
+        description: Maximum documents returned in one find result, as a positive count. Blank uses the displayed default; lower it when documents are large.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum canonical Extended JSON result size in bytes. Blank uses the displayed default; raise only for a deliberately large read.
+  auth:
+    type: apiKey
+    connectionKind: mongodb-uri
+    fields:
+      - name: connection_uri
+        goName: ConnectionURI
+        type: secretString
+        required: true
+        description: Secret mongodb+srv:// or mongodb:// connection string from https://cloud.mongodb.com > Database > Connect > Drivers, or your self-hosted administrator. Include the database user's encoded password; save only in Dex. Blank prevents queries.
+    guide:
+      startURL: https://cloud.mongodb.com/
+      steps:
+        - At https://cloud.mongodb.com > Database > Database Access, create a dedicated database user with read permission only on the chosen database. Store its generated password securely. For self-hosted MongoDB, ask the administrator for an equivalent read-only user.
+        - In Atlas Database > Network Access, allow the Dex Worker egress address. Under Database > Connect > Drivers, copy the mongodb+srv:// connection string for the chosen language; replace the password placeholder with the percent-encoded password. For self-hosted deployments, obtain the mongodb:// URI and TLS requirements from the administrator.
+        - In Database > Browse Collections, select the database and copy its name into database. Paste the complete URI into Dex Web as a secret. Do not place it in Flow input, logs, or Results. Revoke or rotate it in Database Access and update Dex Web.
+        - In the same Browse Collections page, select a collection and pass its non-secret name as collection in Flow input. Supply a JSON filter object such as {"status":"active"}; an empty object matches all documents. Blank collection is invalid; maxDocuments limits returned documents.
+  operations:
+    - name: findDocuments
+      goName: FindDocuments
+      inputType: FindDocumentsInput
+      outputType: DocumentSet
+      kind: query
+      description: Find bounded documents in a named collection using a JSON filter.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: MongoDB returned all matching documents within the configured bounds.}
+        - {id: truncated, goName: Truncated, description: More documents or bytes were available than configured bounds permit., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: MongoDB conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: MongoDB returned a document the connector could not encode safely., optional: true}
+        - {id: defect, goName: Defect, description: "Collection, filter, connection URI, or settings are invalid.", optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample document is returned.
+          output: {documents: [{_id: {$oid: '507f1f77bcf86cd799439011'}, status: active}]}

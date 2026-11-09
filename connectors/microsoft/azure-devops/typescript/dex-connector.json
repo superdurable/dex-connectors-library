@@ -1,0 +1,119 @@
+{
+  "connectorId": "azure-devops",
+  "releaseTag": "connectors/microsoft/azure-devops/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-microsoft-azure-devops",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListProjectsStep",
+      "kind": "query",
+      "operationId": "listProjects",
+      "inputType": "ListProjectsInput",
+      "description": "List one bounded page of accessible project IDs, names, and states.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListProjectsInput selects a bounded page of accessible projects.",
+        "properties": {
+          "skip": {
+            "description": "Skip is the nonnegative number of projects omitted before this page.",
+            "type": "integer"
+          },
+          "top": {
+            "description": "Top is the maximum number of projects in this page, from 1 to 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "skip",
+          "top"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetWorkItemStep",
+      "kind": "query",
+      "operationId": "getWorkItem",
+      "inputType": "GetWorkItemInput",
+      "description": "Read one work item's ID, title, state, and type by numeric ID.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetWorkItemInput selects one work item by numeric ID.",
+        "properties": {
+          "workItemId": {
+            "description": "WorkItemID is the decimal identifier displayed in Azure DevOps.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workItemId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

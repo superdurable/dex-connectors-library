@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: productboard
+  displayName: Productboard
+  description: List feature IDs and names through Productboard REST API v2.
+  company: Productboard
+  version: v0.1.0
+spec:
+  provider: productboard
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-productboard
+      operations: [listFeatures]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-productboard"
+      operations: [listFeatures]
+      triggers: []
+  codegen:
+    go:
+      package: productboard
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Productboard REST API v2 root as an absolute HTTPS URL. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://api.productboard.com/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow pages.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete page response in bytes as a positive integer. Blank uses the displayed default; increase for known larger feature pages.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: productboard-api-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret Personal Access Token from Productboard Workspace Settings > Integrations > Public APIs > Access Token. Create a token, copy its opaque value into this secret field; blank prevents calls. Dex sends it only as a Bearer token.
+    guide:
+      startURL: https://developer.productboard.com/reference/api-token
+      steps:
+        - Sign in to your Productboard workspace and open Settings > Integrations > Public APIs > Access Token. If the option is unavailable, ask the workspace administrator about Public API access. Click plus to create a token and copy its one-time opaque value into secret api_token. Revoke or rotate it from the same page.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. The connector requests only feature names; it never places the token in Flow state.
+        - Run listFeatures with a blank pageCursor for the first page. For the next page, copy the non-secret nextCursor returned by the previous call into pageCursor; it is an opaque string, not a URL. Blank always starts again from the first page.
+  operations:
+    - name: listFeatures
+      goName: ListFeatures
+      inputType: ListFeaturesInput
+      outputType: FeaturesPage
+      kind: query
+      description: List one page of feature IDs and names, with an opaque next-page cursor.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Productboard returned one feature page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Productboard conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Productboard returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example feature is returned.
+          output: {features: [{id: "123e4567-e89b-12d3-a456-426614174000", name: Example feature}], nextCursor: ""}

@@ -1,0 +1,65 @@
+{
+  "connectorId": "paddle",
+  "releaseTag": "connectors/paddle/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-paddle",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetTransactionStep",
+      "kind": "query",
+      "operationId": "getTransaction",
+      "inputType": "GetTransactionInput",
+      "description": "Read one transaction's ID, status, and currency without customer or payment details.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTransactionInput selects a transaction by its non-secret Paddle ID.",
+        "properties": {
+          "transactionId": {
+            "description": "TransactionID is a Paddle Billing transaction ID prefixed txn_.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transactionId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

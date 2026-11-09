@@ -1,0 +1,65 @@
+{
+  "connectorId": "sage-intacct",
+  "releaseTag": "connectors/sage/intacct/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-sage-intacct",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_invoice_step",
+      "kind": "query",
+      "operationId": "getInvoice",
+      "inputType": "GetInvoiceInput",
+      "description": "Read one accounts receivable invoice by its Sage Intacct system key.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetInvoiceInput identifies an accounts receivable invoice by its system-assigned key.",
+        "properties": {
+          "invoiceKey": {
+            "description": "InvoiceKey is the key returned by the Sage Intacct invoice REST endpoint.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invoiceKey"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

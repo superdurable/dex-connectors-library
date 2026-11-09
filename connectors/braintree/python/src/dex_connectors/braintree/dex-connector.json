@@ -1,0 +1,65 @@
+{
+  "connectorId": "braintree",
+  "releaseTag": "connectors/braintree/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-braintree",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_transaction_step",
+      "kind": "query",
+      "operationId": "getTransaction",
+      "inputType": "GetTransactionInput",
+      "description": "Return one Braintree transaction's GraphQL ID and status.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTransactionInput selects one Braintree GraphQL node by ID.",
+        "properties": {
+          "transactionId": {
+            "description": "TransactionID is the GraphQL transaction ID, not a legacy SDK ID.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transactionId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

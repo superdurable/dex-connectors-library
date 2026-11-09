@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: tiktok-business
+  displayName: TikTok for Business
+  description: Read paginated TikTok advertising campaigns.
+  company: TikTok
+  version: v0.1.0
+spec:
+  provider: tiktok-business
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-tiktok-business
+      operations: [listCampaigns]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-tiktok-business'
+      operations: [listCampaigns]
+      triggers: []
+  codegen:
+    go:
+      package: tiktok
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: TikTok Marketing API v1.3 HTTPS root. Blank uses the displayed public endpoint; override only for a trusted local test gateway.
+        default: https://business-api.tiktok.com/open_api/v1.3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one campaign request as a positive Go duration such as 15s. Blank uses the displayed default; increase for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete campaign page response in bytes. Blank uses the displayed default; increase for known larger pages.
+        default: 2097152
+  auth:
+    type: apiKey
+    connectionKind: tiktok-business-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Marketing API access token from https://business-api.tiktok.com/portal > My Apps > selected app > Advertiser authorization, after advertiser consent and /oauth2/access_token/ exchange. Copy the complete opaque token; blank prevents requests. Dex sends it only in Access-Token. Replace it if revoked or expired.
+    guide:
+      startURL: https://business-api.tiktok.com/portal
+      steps:
+        - Sign in to TikTok API for Business Portal, register as a developer, create an app, and request Marketing API campaign read access. Under My Apps > selected app > Basic Information, copy the Advertiser authorization URL and have the advertiser approve access.
+        - Exchange the returned auth_code with the app ID and secret at the documented /oauth2/access_token/ endpoint. Save only the returned access_token in Dex Web secret access_token; never put the app secret or token in Flow input. Renew or reauthorize when TikTok invalidates it.
+        - Open https://ads.tiktok.com > Ads Manager > Account Name > ID and copy the decimal ad account ID into listCampaigns advertiserId. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listCampaigns
+      goName: ListCampaigns
+      inputType: ListCampaignsInput
+      outputType: CampaignsPage
+      kind: query
+      description: Read one page of campaign IDs and names for an authorized advertiser.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: "TikTok returned a campaign page, possibly empty."}
+        - {id: providerRejected, goName: ProviderRejected, description: TikTok conclusively rejected the query or token., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: TikTok returned malformed or oversized campaign JSON., optional: true}
+        - {id: defect, goName: Defect, description: "Advertiser ID, pagination, or connection credentials are invalid.", optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example campaign is visible.
+          output: {campaigns: [{id: '1845123456789012345', name: Example Campaign}], page: 1, totalPages: 1}

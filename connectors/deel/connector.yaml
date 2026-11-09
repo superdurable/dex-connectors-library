@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: deel
+  displayName: Deel
+  description: Read selected Deel contract status through the stable API.
+  company: Deel
+  version: v0.1.0
+spec:
+  provider: deel
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-deel
+      operations: [getContract]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-deel"
+      operations: [getContract]
+      triggers: []
+  codegen:
+    go:
+      package: deel
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Deel API root as an absolute HTTPS URL ending in /rest. Blank uses the displayed Sandbox endpoint. For Production use https://api.letsdeel.com/rest; override only for the matching environment or a trusted local test gateway.
+        default: https://api-staging.letsdeel.com/rest
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow contract reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete contract response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large contract metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: deel-api-token
+    fields:
+      - name: api_token
+        goName: APIToken
+        type: secretString
+        required: true
+        description: Secret Deel organization API token from More > Developer > Access Tokens > Generate new token. Grant contracts:read, copy the complete opaque value when shown; blank prevents calls. Dex sends it only in the Authorization Bearer header. Match Sandbox or Production token to baseUrl.
+    guide:
+      startURL: https://app.deel.com
+      steps:
+        - Sign in to the Deel organization, open More > Developer > Access Tokens > Generate new token, select Organization token and contracts:read scope, review sensitive data access, then Generate. Copy the complete opaque token once into Dex Web secret api_token; blank is invalid. Delete or rotate the token on the Access Tokens page when retired.
+        - Leave baseUrl blank for a Sandbox token. For a Production token set baseUrl to https://api.letsdeel.com/rest. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret contract ID in Deel Contracts or an API response and pass it as contractId; blank is invalid.
+  operations:
+    - name: getContract
+      goName: GetContract
+      inputType: GetContractInput
+      outputType: ContractStatus
+      kind: query
+      description: Read one contract's ID, type, and status without worker, client, or compensation details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Deel returned the contract.}
+        - {id: notFound, goName: NotFound, description: Deel did not expose the contract., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Deel conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Deel returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample ongoing contract is returned.
+          output: {id: 123e4567-e89b-12d3-a456-426614174000, type: ongoing_time_based, status: in_progress}

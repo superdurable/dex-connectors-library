@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Reddit">
+  <circle cx="32" cy="32" r="30" fill="#FF4500"/>
+  <circle cx="24" cy="35" r="4" fill="#fff"/>
+  <circle cx="40" cy="35" r="4" fill="#fff"/>
+  <path d="M22 43c6 5 14 5 20 0" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="4"/>
+  <path d="M31 23l2-9 9 2" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+  <circle cx="44" cy="17" r="3" fill="#fff"/>
+</svg>

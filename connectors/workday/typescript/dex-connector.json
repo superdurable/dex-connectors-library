@@ -1,0 +1,65 @@
+{
+  "connectorId": "workday",
+  "releaseTag": "connectors/workday/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-workday",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetWorkerStep",
+      "kind": "query",
+      "operationId": "getWorker",
+      "inputType": "GetWorkerInput",
+      "description": "Read one Workday worker's WID and display name.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetWorkerInput identifies a worker by its Workday ID.",
+        "properties": {
+          "workerId": {
+            "description": "WorkerID is the WID returned by the Workday workers REST endpoint.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workerId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

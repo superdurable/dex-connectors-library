@@ -1,0 +1,60 @@
+{
+  "connectorId": "lucid",
+  "releaseTag": "connectors/lucid/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-lucid",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_documents_step",
+      "kind": "query",
+      "operationId": "listDocuments",
+      "inputType": "ListDocumentsInput",
+      "description": "Search one page of accessible, non-trashed Lucid documents and return IDs and titles only.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListDocumentsInput selects a page by its opaque, non-secret token.",
+        "properties": {
+          "pageToken": {
+            "description": "PageToken is blank for the first page or a previous NextPageToken value.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageToken"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

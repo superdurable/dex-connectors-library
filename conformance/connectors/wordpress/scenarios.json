@@ -1,0 +1,1213 @@
+{
+  "connector": "wordpress",
+  "scenarios": [
+    {
+      "callId": "053fca46-6608-58b2-a693-d0aefe234186",
+      "exchanges": [
+        {
+          "body": "{\"id\":43,\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "053fca46-6608-58b2-a693-d0aefe234186",
+          "providerId": "43",
+          "state": "claimed"
+        },
+        "output": {
+          "id": 43,
+          "status": "draft"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "053fca46-6608-58b2-a693-d0aefe234186",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-created",
+      "operation": "createPost"
+    },
+    {
+      "callId": "b7e69772-9ec2-5d91-93e4-a49cb65f8210",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rest_forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "b7e69772-9ec2-5d91-93e4-a49cb65f8210",
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "b7e69772-9ec2-5d91-93e4-a49cb65f8210",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-provider-rejected",
+      "operation": "createPost"
+    },
+    {
+      "callId": "1ad6c9d8-665f-5cf5-abf2-cc79816afdae",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"server_error\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "1ad6c9d8-665f-5cf5-abf2-cc79816afdae",
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "1ad6c9d8-665f-5cf5-abf2-cc79816afdae",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-uncertain",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4f696fd6-92f2-5852-a360-02563a177f01",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4f696fd6-92f2-5852-a360-02563a177f01",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": ""
+      },
+      "name": "createPost-defect",
+      "operation": "createPost"
+    },
+    {
+      "callId": "4d31eda8-8833-50d7-b881-c8bb35d60435",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rest_rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "4d31eda8-8833-50d7-b881-c8bb35d60435",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "4d31eda8-8833-50d7-b881-c8bb35d60435",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-rate-limit",
+      "operation": "createPost"
+    },
+    {
+      "callId": "3a12feac-f0ba-5344-bf56-ec72f3a3e3eb",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rest_unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "3a12feac-f0ba-5344-bf56-ec72f3a3e3eb",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "3a12feac-f0ba-5344-bf56-ec72f3a3e3eb",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-server-error",
+      "operation": "createPost"
+    },
+    {
+      "callId": "0922dd70-d035-5be2-bf7f-556a59bf0521",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "0922dd70-d035-5be2-bf7f-556a59bf0521",
+          "state": "canResend"
+        },
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "0922dd70-d035-5be2-bf7f-556a59bf0521",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-transport",
+      "operation": "createPost"
+    },
+    {
+      "attempts": 2,
+      "callId": "1cd9313c-057f-5c63-bf68-2b56f3952717",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rest_rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        },
+        {
+          "body": "{\"id\":44,\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "created",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "1cd9313c-057f-5c63-bf68-2b56f3952717",
+          "providerId": "44",
+          "state": "claimed"
+        },
+        "output": {
+          "id": 44,
+          "status": "draft"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "1cd9313c-057f-5c63-bf68-2b56f3952717",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 1,
+          "failureKind": "RATE_LIMIT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "1cd9313c-057f-5c63-bf68-2b56f3952717",
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "createPost-retry-then-created",
+      "operation": "createPost"
+    },
+    {
+      "callId": "30c89916-7ab7-5184-895d-531268a4b96f",
+      "exchanges": [
+        {
+          "body": "{\"id\":0,\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/wp-json/wp/v2/posts",
+          "requestBody": {
+            "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+            "status": "draft",
+            "title": "Meridian release"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 201
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "30c89916-7ab7-5184-895d-531268a4b96f",
+          "state": "claimed"
+        },
+        "output": {
+          "id": 0,
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "30c89916-7ab7-5184-895d-531268a4b96f",
+      "input": {
+        "content": "\u003cp\u003eDraft.\u003c/p\u003e",
+        "status": "draft",
+        "title": "Meridian release"
+      },
+      "name": "createPost-invalid-confirmation",
+      "operation": "createPost"
+    },
+    {
+      "callId": "724c95e5-936a-5850-a017-08fbb3adbeab",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"slug\":\"meridian-release\",\"status\":\"publish\",\"link\":\"https://example.test/meridian-release/\",\"title\":{\"rendered\":\"Meridian release\"},\"content\":{\"rendered\":\"\u003cp\u003eReleased.\u003c/p\u003e\"},\"date_gmt\":\"2026-11-07T12:00:00\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "content": {
+            "rendered": "\u003cp\u003eReleased.\u003c/p\u003e"
+          },
+          "dateGMT": "2026-11-07T12:00:00",
+          "id": 42,
+          "link": "https://example.test/meridian-release/",
+          "slug": "meridian-release",
+          "status": "publish",
+          "title": {
+            "rendered": "Meridian release"
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-found",
+      "operation": "getPost"
+    },
+    {
+      "callId": "1a938472-62d1-5d8a-8dce-35a67cecbec8",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rest_post_invalid_id\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content": {
+            "rendered": ""
+          },
+          "dateGMT": "",
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-not-found",
+      "operation": "getPost"
+    },
+    {
+      "callId": "660cf056-0b33-55a8-a506-baa5a5320348",
+      "exchanges": [
+        {
+          "body": "{\"id\":42,\"status\":\"draft\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "content": {
+            "rendered": ""
+          },
+          "dateGMT": "",
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-private-post",
+      "operation": "getPost"
+    },
+    {
+      "callId": "b8f5b836-1969-53ba-a267-518fb5b52786",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rest_cannot_read\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 401
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "content": {
+            "rendered": ""
+          },
+          "dateGMT": "",
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-provider-rejected",
+      "operation": "getPost"
+    },
+    {
+      "callId": "a318dd57-b998-59ad-a3a4-433e3e40bda6",
+      "exchanges": [
+        {
+          "body": "{\"id\":0,\"status\":\"publish\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "content": {
+            "rendered": ""
+          },
+          "dateGMT": "",
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-invalid-response",
+      "operation": "getPost"
+    },
+    {
+      "callId": "bde3ec9f-79f9-5e63-982c-f02e731446a3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "content": {
+            "rendered": ""
+          },
+          "dateGMT": "",
+          "id": 0,
+          "link": "",
+          "slug": "",
+          "status": "",
+          "title": {
+            "rendered": ""
+          }
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 0
+      },
+      "name": "getPost-defect",
+      "operation": "getPost"
+    },
+    {
+      "callId": "2ce32bd6-1e4f-53f3-a20b-a0ebb8b7e6d7",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-rate-limit",
+      "operation": "getPost"
+    },
+    {
+      "callId": "a6d87925-65b3-5fac-9b13-574fe0b79bcf",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-server-error",
+      "operation": "getPost"
+    },
+    {
+      "callId": "ad9182cd-b273-5d1c-82e6-cb3d5370ec95",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts/42",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": 42
+      },
+      "name": "getPost-transport",
+      "operation": "getPost"
+    },
+    {
+      "callId": "683b031a-888b-5c4a-8beb-e2e92477ceff",
+      "exchanges": [
+        {
+          "body": "[{\"id\":42,\"slug\":\"meridian-release\",\"status\":\"publish\",\"link\":\"https://example.test/meridian-release/\",\"title\":{\"rendered\":\"Meridian release\"},\"content\":{\"rendered\":\"\u003cp\u003eReleased.\u003c/p\u003e\"},\"date_gmt\":\"2026-11-07T12:00:00\"}]",
+          "headers": {
+            "X-WP-Total": "21",
+            "X-WP-TotalPages": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts",
+          "query": {
+            "after": [
+              "2026-11-01T00:00:00Z"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "status": [
+              "publish"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "posts": [
+            {
+              "content": {
+                "rendered": "\u003cp\u003eReleased.\u003c/p\u003e"
+              },
+              "dateGMT": "2026-11-07T12:00:00",
+              "id": 42,
+              "link": "https://example.test/meridian-release/",
+              "slug": "meridian-release",
+              "status": "publish",
+              "title": {
+                "rendered": "Meridian release"
+              }
+            }
+          ],
+          "total": 21,
+          "totalPages": 2
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2026-11-01T00:00:00Z",
+        "page": 2,
+        "perPage": 20
+      },
+      "name": "listPosts-listed",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "883cbc11-f52f-554a-9843-6bcf971dd0da",
+      "exchanges": [
+        {
+          "body": "{\"code\":\"rest_forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts",
+          "query": {
+            "after": [
+              "2026-11-01T00:00:00Z"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "status": [
+              "publish"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "page": 0,
+          "posts": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2026-11-01T00:00:00Z",
+        "page": 2,
+        "perPage": 20
+      },
+      "name": "listPosts-provider-rejected",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "ea498003-3405-534c-bfcb-e5025f7fc461",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {
+            "X-WP-Total": "21",
+            "X-WP-TotalPages": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts",
+          "query": {
+            "after": [
+              "2026-11-01T00:00:00Z"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "status": [
+              "publish"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "posts": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2026-11-01T00:00:00Z",
+        "page": 2,
+        "perPage": 20
+      },
+      "name": "listPosts-invalid-response",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "fed9e4b7-c2e1-549a-8c43-cf23bbe61b11",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "posts": [],
+          "total": 0,
+          "totalPages": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2026-11-01T00:00:00Z",
+        "page": 2,
+        "perPage": 101
+      },
+      "name": "listPosts-defect",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "90a759ef-48ba-54bb-90ed-39e438f26116",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts",
+          "query": {
+            "after": [
+              "2026-11-01T00:00:00Z"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "status": [
+              "publish"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2026-11-01T00:00:00Z",
+        "page": 2,
+        "perPage": 20
+      },
+      "name": "listPosts-rate-limit",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "6f46a1dc-06f3-5f28-b1ee-3d0d01fd687b",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts",
+          "query": {
+            "after": [
+              "2026-11-01T00:00:00Z"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "status": [
+              "publish"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2026-11-01T00:00:00Z",
+        "page": 2,
+        "perPage": 20
+      },
+      "name": "listPosts-server-error",
+      "operation": "listPosts"
+    },
+    {
+      "callId": "787d54bd-e1ec-5585-9ece-5e159d090896",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/wp-json/wp/v2/posts",
+          "query": {
+            "after": [
+              "2026-11-01T00:00:00Z"
+            ],
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "20"
+            ],
+            "status": [
+              "publish"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic ZWRpdG9yOnN5bnRoZXRpY3Rlc3RwYXNzd29yZA=="
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "2026-11-01T00:00:00Z",
+        "page": 2,
+        "perPage": 20
+      },
+      "name": "listPosts-transport",
+      "operation": "listPosts"
+    }
+  ],
+  "schemaVersion": 1
+}

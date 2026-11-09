@@ -1,0 +1,65 @@
+{
+  "connectorId": "dropbox-sign",
+  "releaseTag": "connectors/dropbox/sign/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-dropbox-sign",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_signature_request_step",
+      "kind": "query",
+      "operationId": "getSignatureRequest",
+      "inputType": "GetSignatureRequestInput",
+      "description": "Read one signature request's title, completion, declined, and error flags without signer or document data.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSignatureRequestInput selects a signature request by its non-secret ID.",
+        "properties": {
+          "signatureRequestId": {
+            "description": "SignatureRequestID is the identifier returned when Dropbox Sign creates the request.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signatureRequestId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

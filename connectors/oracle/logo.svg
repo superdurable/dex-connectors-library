@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Oracle">
+  <rect width="64" height="64" rx="12" fill="#C74634"/>
+  <rect x="9" y="22" width="46" height="20" rx="10" fill="white"/>
+  <rect x="18" y="28" width="28" height="8" rx="4" fill="#C74634"/>
+</svg>

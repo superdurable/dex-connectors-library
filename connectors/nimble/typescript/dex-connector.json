@@ -1,0 +1,119 @@
+{
+  "connectorId": "nimble",
+  "releaseTag": "connectors/nimble/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-nimble",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListContactIDsStep",
+      "kind": "query",
+      "operationId": "listContactIDs",
+      "inputType": "ListContactIDsInput",
+      "description": "List contact IDs with explicit page and page-size controls.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContactIDsInput selects one Nimble contact ID page.",
+        "properties": {
+          "page": {
+            "description": "Page is the one-based page number.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage is the bounded page size, from 1 through 100.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "perPage"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetContactStep",
+      "kind": "query",
+      "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Read one contact's ID and basic name and email fields.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput selects one Nimble contact by its BSON identifier.",
+        "properties": {
+          "contactId": {
+            "description": "ContactID is the 24-character hexadecimal ID returned by Nimble.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

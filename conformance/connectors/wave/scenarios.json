@@ -1,0 +1,412 @@
+{
+  "connector": "wave",
+  "scenarios": [
+    {
+      "callId": "01f3d12a-9b68-5e0a-9d44-6aac18603ea6",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"customer\":{\"id\":\"customer-1\",\"name\":\"Example Customer\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "businessId": "business-1",
+          "id": "customer-1",
+          "name": "Example Customer"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-found",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "95b0091d-79fa-5c50-981c-c82719452587",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-businessNotFound",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "8a4535d1-1489-5075-980b-bf0ae1261edf",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"customer\":null}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-customerNotFound",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "c9b68062-9083-5251-a427-3449cd276700",
+      "exchanges": [
+        {
+          "body": "access denied",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-providerRejected",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "70e762e3-11d6-5d97-af52-c9a551737c8f",
+      "exchanges": [
+        {
+          "body": "{\"data\":{\"business\":{\"customer\":{\"id\":\"wrong\",\"name\":\"Example\"}}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-invalidResponse",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "8e29694d-a049-5f1b-be0b-5006c90def90",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "businessId": "",
+          "id": "",
+          "name": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-defect",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "0740ee38-e35f-5b33-b16c-5982c057eba7",
+      "exchanges": [
+        {
+          "body": "rate limited",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-rateLimit",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "3fb444c7-c514-54c1-a5cd-f6b6bdd4e39f",
+      "exchanges": [
+        {
+          "body": "temporarily unavailable",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-serverUnavailable",
+      "operation": "getCustomer"
+    },
+    {
+      "callId": "e79d52f6-13c4-5e48-a653-6e2606720195",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/graphql/public",
+          "requestBody": {
+            "query": "query GetCustomer($businessId: ID!, $customerId: ID!) { business(id: $businessId) { customer(id: $customerId) { id name } } }",
+            "variables": {
+              "businessId": "business-1",
+              "customerId": "customer-1"
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-wave-access-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "businessId": "business-1",
+        "customerId": "customer-1"
+      },
+      "name": "getCustomer-transportFailure",
+      "operation": "getCustomer"
+    }
+  ],
+  "schemaVersion": 1
+}

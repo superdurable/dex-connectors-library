@@ -1,0 +1,65 @@
+{
+  "connectorId": "iterable",
+  "releaseTag": "connectors/iterable/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-iterable",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_user_step",
+      "kind": "query",
+      "operationId": "getUser",
+      "inputType": "GetUserInput",
+      "description": "Read one user's email and optional user ID without returning profile data fields.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserInput selects a user by a non-secret email address.",
+        "properties": {
+          "email": {
+            "description": "Email is the user's email in an Iterable email-based or hybrid project.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

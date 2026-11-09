@@ -1,0 +1,65 @@
+{
+  "connectorId": "pandadoc",
+  "releaseTag": "connectors/pandadoc/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-pandadoc",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_document_step",
+      "kind": "query",
+      "operationId": "getDocument",
+      "inputType": "GetDocumentInput",
+      "description": "Read one document's ID, name, and status without recipients, fields, tokens, or pricing.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetDocumentInput selects a document by its non-secret ID.",
+        "properties": {
+          "documentId": {
+            "description": "DocumentID is the ID returned by PandaDoc when a document is created.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

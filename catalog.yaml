@@ -1,58 +1,123 @@
 apiVersion: connectors.dex.dev/catalog-source/v1alpha1
 kind: ConnectorCatalogSource
 directories:
+  - connectors/activecampaign
+  - connectors/adobe/acrobat-sign
+  - connectors/adobe/marketo
+  - connectors/adyen
   - connectors/airtable
   - connectors/algolia
   - connectors/alphavantage
+  - connectors/amazon/dynamodb
+  - connectors/amazon/lambda
+  - connectors/amazon/redshift
   - connectors/amazon/s3
+  - connectors/amazon/ses
+  - connectors/amazon/sns
   - connectors/amazon/sqs
+  - connectors/amplitude
   - connectors/asana
+  - connectors/ashby
   - connectors/atlassian/bitbucket
   - connectors/atlassian/confluence
   - connectors/atlassian/jira
   - connectors/atlassian/jira-service-management
   - connectors/atlassian/trello
+  - connectors/aweber
   - connectors/bamboohr
+  - connectors/basecamp
+  - connectors/box
+  - connectors/braintree
+  - connectors/braze
   - connectors/brevo
+  - connectors/buffer
   - connectors/calendly
+  - connectors/campaignmonitor
+  - connectors/chargebee
+  - connectors/clickhouse
   - connectors/clickup
   - connectors/close
   - connectors/cloudflare
   - connectors/coda
   - connectors/cohere
+  - connectors/constantcontact
   - connectors/contentful
+  - connectors/copper
+  - connectors/creatio
+  - connectors/customerio
+  - connectors/databricks
   - connectors/datadog
+  - connectors/deel
   - connectors/discord
   - connectors/docusign
   - connectors/doist/todoist
+  - connectors/drip
+  - connectors/dropbox
+  - connectors/dropbox/sign
+  - connectors/elastic/elasticsearch
   - connectors/elevenlabs
+  - connectors/eventbrite
   - connectors/figma
+  - connectors/freshbooks
   - connectors/freshworks/freshdesk
+  - connectors/freshworks/freshsales
   - connectors/front
+  - connectors/getresponse
   - connectors/github
   - connectors/gitlab
+  - connectors/google/ads
+  - connectors/google/analytics
+  - connectors/google/bigquery
   - connectors/google/calendar
+  - connectors/google/cloud-storage
+  - connectors/google/contacts
   - connectors/google/docs
   - connectors/google/drive
+  - connectors/google/firestore
   - connectors/google/forms
   - connectors/google/gemini
   - connectors/google/gmail
+  - connectors/google/pubsub
+  - connectors/google/search-console
   - connectors/google/spreadsheet
+  - connectors/google/tag-manager
   - connectors/google/workspace-admin
   - connectors/google/youtube
   - connectors/gorgias
+  - connectors/greenhouse
+  - connectors/gusto
   - connectors/hackernews
   - connectors/harvest
+  - connectors/heap
   - connectors/helpscout
   - connectors/hiver
+  - connectors/hootsuite
   - connectors/hubspot
+  - connectors/insightly
   - connectors/intercom
   - connectors/intuit/mailchimp
   - connectors/intuit/quickbooks
+  - connectors/iterable
+  - connectors/jotform
+  - connectors/keap
+  - connectors/kit
   - connectors/klaviyo
+  - connectors/lever
   - connectors/linear
   - connectors/linkedin
+  - connectors/linkedin/ads
+  - connectors/lucid
   - connectors/mailgun
+  - connectors/meistertask
+  - connectors/meta/ads-insights
+  - connectors/meta/facebook-lead-ads
+  - connectors/meta/facebook-pages
+  - connectors/meta/instagram-business
+  - connectors/meta/whatsapp-business
+  - connectors/microsoft/advertising
+  - connectors/microsoft/azure-blob
+  - connectors/microsoft/azure-devops
+  - connectors/microsoft/dynamics-365-sales
   - connectors/microsoft/entra-id
   - connectors/microsoft/excel
   - connectors/microsoft/onedrive
@@ -60,26 +125,48 @@ directories:
   - connectors/microsoft/outlook-mail
   - connectors/microsoft/sql-server
   - connectors/microsoft/teams
+  - connectors/microsoft/todo
+  - connectors/miro
   - connectors/mixpanel
   - connectors/monday
+  - connectors/mongodb
   - connectors/mysql
   - connectors/netlify
   - connectors/newsapi
+  - connectors/nimble
   - connectors/notion
+  - connectors/odoo
+  - connectors/onespan/sign
   - connectors/openai
+  - connectors/opensearch
   - connectors/openweathermap
+  - connectors/oracle/netsuite
+  - connectors/paddle
   - connectors/pagerduty
+  - connectors/pandadoc
   - connectors/paypal
+  - connectors/personio
   - connectors/pinecone
+  - connectors/pinterest
   - connectors/pipedrive
+  - connectors/plaid
   - connectors/postgresql
+  - connectors/posthog
   - connectors/postmark
+  - connectors/productboard
+  - connectors/rabbitmq
+  - connectors/razorpay
   - connectors/reamaze
+  - connectors/recurly
+  - connectors/reddit
   - connectors/resend
+  - connectors/rippling
+  - connectors/sage/intacct
   - connectors/salesforce
   - connectors/sendgrid
   - connectors/sentry
   - connectors/shopify
+  - connectors/shortcut
   - connectors/slack
   - connectors/smartsheet
   - connectors/snowflake
@@ -91,14 +178,27 @@ directories:
   - connectors/superdurable/llm
   - connectors/superdurable/oauth2-http
   - connectors/superdurable/webhook
+  - connectors/surveymonkey
+  - connectors/teamwork
+  - connectors/telegram
+  - connectors/tiktok
   - connectors/tmdb
   - connectors/twilio/messaging
+  - connectors/twilio/segment
   - connectors/typeform
   - connectors/unsplash
+  - connectors/upstash/redis
   - connectors/vercel
+  - connectors/wave
   - connectors/webflow
+  - connectors/wise
   - connectors/woocommerce
+  - connectors/wordpress
+  - connectors/workday
+  - connectors/wrike
+  - connectors/x/twitter
   - connectors/xero
+  - connectors/zendesk/sell
   - connectors/zendesk/support
   - connectors/zoho/crm
   - connectors/zoho/desk

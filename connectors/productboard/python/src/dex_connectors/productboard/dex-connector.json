@@ -1,0 +1,60 @@
+{
+  "connectorId": "productboard",
+  "releaseTag": "connectors/productboard/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-productboard",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_features_step",
+      "kind": "query",
+      "operationId": "listFeatures",
+      "inputType": "ListFeaturesInput",
+      "description": "List one page of feature IDs and names, with an opaque next-page cursor.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListFeaturesInput selects a page by its opaque, non-secret cursor.",
+        "properties": {
+          "pageCursor": {
+            "description": "PageCursor is blank for the first page or a previous NextCursor value.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageCursor"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

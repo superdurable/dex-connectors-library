@@ -1,0 +1,65 @@
+{
+  "connectorId": "iterable",
+  "releaseTag": "connectors/iterable/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-iterable",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetUserStep",
+      "kind": "query",
+      "operationId": "getUser",
+      "inputType": "GetUserInput",
+      "description": "Read one user's email and optional user ID without returning profile data fields.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetUserInput selects a user by a non-secret email address.",
+        "properties": {
+          "email": {
+            "description": "Email is the user's email in an Iterable email-based or hybrid project.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

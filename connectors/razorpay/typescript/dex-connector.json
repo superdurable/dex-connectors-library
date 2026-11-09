@@ -1,0 +1,65 @@
+{
+  "connectorId": "razorpay",
+  "releaseTag": "connectors/razorpay/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-razorpay",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetPaymentStep",
+      "kind": "query",
+      "operationId": "getPayment",
+      "inputType": "GetPaymentInput",
+      "description": "Read one payment's ID, status, amount in currency subunits, and currency code.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPaymentInput selects a payment by its non-secret Razorpay ID.",
+        "properties": {
+          "paymentId": {
+            "description": "PaymentID is a Razorpay payment ID prefixed pay_.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "paymentId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

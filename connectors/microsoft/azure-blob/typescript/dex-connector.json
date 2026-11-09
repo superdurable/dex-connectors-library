@@ -1,0 +1,68 @@
+{
+  "connectorId": "microsoft-azure-blob",
+  "releaseTag": "connectors/microsoft/azure-blob/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-microsoft-azure-blob",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetBlobStep",
+      "kind": "query",
+      "operationId": "getBlob",
+      "inputType": "GetBlobInput",
+      "description": "Download one bounded blob and return its bytes as base64 with content type and ETag.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "downloaded",
+          "field": "downloaded",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetBlobInput names one blob within a lowercase Azure Storage container.",
+        "properties": {
+          "blobName": {
+            "type": "string"
+          },
+          "container": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "blobName",
+          "container"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Greenhouse connector
+
+The Go, Python, and TypeScript `getCandidate` Queries uses the current [Harvest v3 candidates list API](https://harvestdocs.greenhouse.io/reference/get_v3-candidates) with `ids`, `per_page=1`, and a field projection. It returns only candidate ID, first name, and last name. An empty result selects `notFound`; 429, 408, 5xx, and transport failures retry.
+
+Create a Harvest V3 (OAuth) custom integration at [Greenhouse](https://app.greenhouse.io/) > Configure > Dev Center > API Credential Management > Create new API credentials. Enable `harvest:candidates:list` under Manage permissions or scopes and ensure the integration service user has Site Admin access for list endpoints. Copy the Client ID and one-time Client Secret into Dex Web Connections. Dex exchanges them at `https://auth.greenhouse.io/token` and renews the access token; leave `access_token` blank. No redirect URI or consent screen is used for this client credentials flow. Leave `baseUrl`, `timeout`, and `maxResponseBytes` blank for their displayed defaults.
+
+Pass the positive integer `candidateId` from a Greenhouse candidate page or API result. The [Go](go/examples/candidate-inspection/README.md), [Python](python/examples/candidate_inspection/README.md), and [TypeScript](typescript/examples/candidate-inspection/README.md) examples use the static `greenhouse` connection. Live Greenhouse authorization and candidate retrieval remain unverified.

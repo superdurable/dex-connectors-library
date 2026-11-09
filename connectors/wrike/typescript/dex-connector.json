@@ -1,0 +1,65 @@
+{
+  "connectorId": "wrike",
+  "releaseTag": "connectors/wrike/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-wrike",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetTaskStep",
+      "kind": "query",
+      "operationId": "getTask",
+      "inputType": "GetTaskInput",
+      "description": "Read one task's ID, title, and status without description, custom fields, or assignees.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskInput selects a task by its non-secret Wrike ID.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the ID shown in Wrike Tasks or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

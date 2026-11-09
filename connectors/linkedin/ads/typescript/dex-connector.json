@@ -1,0 +1,61 @@
+{
+  "connectorId": "linkedin-ads",
+  "releaseTag": "connectors/linkedin/ads/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-linkedin-ads",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListAdAccountsStep",
+      "kind": "query",
+      "operationId": "listAdAccounts",
+      "inputType": "ListAdAccountsInput",
+      "description": "List one cursor-based page of ad account IDs and names visible to the authorized member.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAdAccountsInput selects a cursor-based page of LinkedIn ad accounts.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize accepts 1 through 1000 accounts; zero uses 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is the opaque cursor from a previous page; blank starts at the beginning.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

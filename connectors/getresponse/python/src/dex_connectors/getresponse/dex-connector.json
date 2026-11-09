@@ -1,0 +1,115 @@
+{
+  "connectorId": "getresponse",
+  "releaseTag": "connectors/getresponse/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-getresponse",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_contacts_step",
+      "kind": "query",
+      "operationId": "listContacts",
+      "inputType": "ListContactsInput",
+      "description": "List one page of contact IDs, email addresses, and names without embedded fields.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListContactsInput selects a one-based page of at most 1000 contacts.",
+        "properties": {
+          "page": {
+            "description": "Page is the one-based page number; zero defaults to one.",
+            "type": "integer"
+          },
+          "perPage": {
+            "description": "PerPage is the maximum count; zero defaults to 20.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_get_contact_step",
+      "kind": "query",
+      "operationId": "getContact",
+      "inputType": "GetContactInput",
+      "description": "Read one contact's ID, email address, and name without embedded fields.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContactInput selects one GetResponse contact ID.",
+        "properties": {
+          "contactId": {
+            "description": "ContactID is the ID from a contact page or API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

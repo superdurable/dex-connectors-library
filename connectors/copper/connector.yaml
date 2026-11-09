@@ -1,0 +1,102 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: copper
+  displayName: Copper CRM
+  description: Read Copper lead statuses and lead identity without custom fields.
+  company: Copper
+  version: v0.1.0
+spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listLeadStatuses, getLead]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-copper'
+      operations: [listLeadStatuses, getLead]
+      triggers: []
+  provider: copper
+  codegen:
+    go:
+      package: copper
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Copper Developer API v1 root. Blank uses the displayed default; override only for a compatible private test endpoint.
+        default: https://api.copper.com/developer_api/v1
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for large status lists. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: copper-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API key from https://app.copper.com/ under Settings > Integrations > API Keys. Generate and copy the full token; blank makes calls select defect. Revoke it on that page when retired.
+      - name: user_email
+        goName: UserEmail
+        type: secretString
+        required: true
+        description: Email address of the Copper user who generated the API key. Use the generating user's Copper login email; enter a complete address such as user@example.com. Blank makes calls select defect. Stored as a credential and never placed in Flow state.
+    guide:
+      startURL: https://app.copper.com/
+      steps:
+        - Sign in as a Copper admin at https://app.copper.com/ and open Settings > Integrations > API Keys. Select Generate API Key, label it for this integration, and copy the full secret value into api_key.
+        - Use the Copper login email address of the user who generated the key. Save it in user_email as a full email address; the key and user must match.
+        - Copper sends the secret key and owner email in request headers. Revoke the key at Settings > Integrations > API Keys when retired. Leave configuration fields blank for the displayed defaults.
+  operations:
+    - name: listLeadStatuses
+      goName: ListLeadStatuses
+      inputType: ListLeadStatusesInput
+      outputType: LeadStatusesList
+      kind: query
+      description: List stable IDs and names of Copper lead statuses.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Copper returned lead statuses.}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample lead status is listed.
+          output: {statuses: [{id: 208231, name: New}]}
+    - name: getLead
+      goName: GetLead
+      inputType: GetLeadInput
+      outputType: LeadMetadata
+      kind: query
+      description: Read a Copper lead's ID, name, status, and company name by ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Copper returned the selected lead.}
+        - {id: notFound, goName: NotFound, description: No lead matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Copper conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Copper returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid input or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample lead is returned.
+          output: {id: 8894157, name: Sample Lead, status: New, companyName: Example Company}

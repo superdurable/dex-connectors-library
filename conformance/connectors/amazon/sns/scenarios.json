@@ -1,0 +1,533 @@
+{
+  "connector": "amazon-sns",
+  "scenarios": [
+    {
+      "callId": "f0e4657a-c5de-5456-b5e7-066d411fdc17",
+      "exchanges": [
+        {
+          "body": "\u003cListTopicsResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cListTopicsResult\u003e\u003cTopics\u003e\u003cmember\u003e\u003cTopicArn\u003earn:aws:sns:eu-west-1:123456789012:alerts\u003c/TopicArn\u003e\u003c/member\u003e\u003c/Topics\u003e\u003cNextToken\u003enext-page\u003c/NextToken\u003e\u003c/ListTopicsResult\u003e\u003c/ListTopicsResponse\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "nextToken": "next-page",
+          "topicARNs": [
+            "arn:aws:sns:eu-west-1:123456789012:alerts"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-page",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "b6f5c060-291c-5b16-8657-ef2bbf66d5d3",
+      "exchanges": [
+        {
+          "body": "\u003cListTopicsResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cListTopicsResult\u003e\u003cTopics\u003e\u003cmember\u003e\u003cTopicArn\u003earn:aws:sns:eu-west-1:123456789012:alerts\u003c/TopicArn\u003e\u003c/member\u003e\u003c/Topics\u003e\u003cNextToken\u003enext-page\u003c/NextToken\u003e\u003c/ListTopicsResult\u003e\u003c/ListTopicsResponse\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "nextToken": "next-page",
+          "topicARNs": [
+            "arn:aws:sns:eu-west-1:123456789012:alerts"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-httpNamespace",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "4ec82989-a317-54e3-98bb-70d6fce37c14",
+      "exchanges": [
+        {
+          "body": "\u003cListTopicsResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cListTopicsResult\u003e\u003cTopics\u003e\u003cmember\u003e\u003cTopicArn\u003earn:aws:sns:eu-west-1:123456789012:reports\u003c/TopicArn\u003e\u003c/member\u003e\u003c/Topics\u003e\u003c/ListTopicsResult\u003e\u003c/ListTopicsResponse\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "NextToken": [
+              "page-token"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=416bf63de4f932025ad4034003f88615eefb008ba467f396a4635afbebb74213"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "nextToken": "",
+          "topicARNs": [
+            "arn:aws:sns:eu-west-1:123456789012:reports"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page-token"
+      },
+      "name": "listTopics-nextPage",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "395969b2-9d64-5248-b08b-545eb8647e8d",
+      "exchanges": [
+        {
+          "body": "\u003cListTopicsResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cListTopicsResult\u003e\u003cTopics\u003e\u003cmember\u003e\u003cTopicArn\u003earn:aws:sns:eu-west-1:123456789012:reports\u003c/TopicArn\u003e\u003c/member\u003e\u003c/Topics\u003e\u003c/ListTopicsResult\u003e\u003c/ListTopicsResponse\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "NextToken": [
+              "page+token"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=115eaa770429f7b7754e8be7f1c9052bc129d0fa63a8917bfc505bdfec114147"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "nextToken": "",
+          "topicARNs": [
+            "arn:aws:sns:eu-west-1:123456789012:reports"
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "page+token"
+      },
+      "name": "listTopics-encodedNextToken",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "a714de2d-4bb7-5016-a8f1-ae894f80bde3",
+      "exchanges": [
+        {
+          "body": "\u003cListTopicsResponse xmlns=\"https://sns.amazonaws.com/doc/2010-03-31/\"\u003e\u003cListTopicsResult\u003e\u003cTopics/\u003e\u003c/ListTopicsResult\u003e\u003c/ListTopicsResponse\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "page",
+        "failureKind": "",
+        "output": {
+          "nextToken": "",
+          "topicARNs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-emptyPage",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "658fe6b6-9583-5f78-aa96-918a8b505ee4",
+      "exchanges": [
+        {
+          "body": "\u003cListTopicsResponse xmlns=\"https://invalid.example/doc/2010-03-31/\"\u003e\u003cListTopicsResult\u003e\u003cTopics\u003e\u003cmember\u003e\u003cTopicArn\u003earn:aws:sns:eu-west-1:123456789012:alerts\u003c/TopicArn\u003e\u003c/member\u003e\u003c/Topics\u003e\u003cNextToken\u003enext-page\u003c/NextToken\u003e\u003c/ListTopicsResult\u003e\u003c/ListTopicsResponse\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextToken": "",
+          "topicARNs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-invalidNamespace",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "cdb6c9ab-3dde-5b73-ad1b-add00d8293a5",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"denied\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "nextToken": "",
+          "topicARNs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-providerRejected",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "a23cdcbf-10df-5844-b8b6-c9c14abb0d6e",
+      "exchanges": [
+        {
+          "body": "\u003cnot-sns/\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "nextToken": "",
+          "topicARNs": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-invalidResponse",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "cf0a78b2-7e2b-5e37-9058-5c0095611bb3",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "nextToken": "",
+          "topicARNs": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": "bad\nvalue"
+      },
+      "name": "listTopics-defect",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "722c04ee-521d-5f10-874f-89b09a5ebd1b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"busy\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-rateLimit",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "515bd252-2a8b-56da-a67d-3def23b4d524",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-serverUnavailable",
+      "operation": "listTopics"
+    },
+    {
+      "callId": "612d66db-4f25-5eb9-bfe8-48c34fb0ea27",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/",
+          "query": {
+            "Action": [
+              "ListTopics"
+            ],
+            "Version": [
+              "2010-03-31"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "AWS4-HMAC-SHA256 Credential=AKIASNSCONNECTOR/20261030/eu-west-1/sns/aws4_request, SignedHeaders=host;x-amz-date, Signature=d8cae684e8422270eccbc6cce24bc8248a5eedd6c3f4add3d6a0b59dc1f16ccc"
+            ],
+            "X-Amz-Date": [
+              "20261030T000000Z"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "nextToken": ""
+      },
+      "name": "listTopics-transportFailure",
+      "operation": "listTopics"
+    }
+  ],
+  "schemaVersion": 1
+}

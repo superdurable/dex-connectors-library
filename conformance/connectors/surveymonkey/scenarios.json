@@ -1,0 +1,605 @@
+{
+  "connector": "surveymonkey",
+  "scenarios": [
+    {
+      "callId": "a1422c37-7313-4d45-b0bb-53e3817d515e",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"123456789\",\"title\":\"Customer feedback\"}],\"page\":2,\"per_page\":3,\"total\":4}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "page": 2,
+          "perPage": 3,
+          "surveys": [
+            {
+              "id": "123456789",
+              "title": "Customer feedback"
+            }
+          ],
+          "total": 4
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listSurveys-success",
+      "operation": "listSurveys"
+    },
+    {
+      "callId": "531a4787-0704-4348-956c-b9e31ac3d2bd",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "page": 0,
+          "perPage": 0,
+          "surveys": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listSurveys-providerRejected",
+      "operation": "listSurveys"
+    },
+    {
+      "callId": "3667791e-3856-43cc-80c3-be81ff6d256e",
+      "exchanges": [
+        {
+          "body": "{\"data\":{},\"page\":2,\"per_page\":3,\"total\":4}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "page": 0,
+          "perPage": 0,
+          "surveys": [],
+          "total": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listSurveys-invalidResponse",
+      "operation": "listSurveys"
+    },
+    {
+      "callId": "761a2180-c813-49b7-8aaa-fb415a8369e4",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "page": 0,
+          "perPage": 0,
+          "surveys": [],
+          "total": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": -1,
+        "perPage": 3
+      },
+      "name": "listSurveys-defect",
+      "operation": "listSurveys"
+    },
+    {
+      "callId": "d2f69aa2-5fcf-4363-8ed8-363971c6b4ac",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listSurveys-rateLimit",
+      "operation": "listSurveys"
+    },
+    {
+      "callId": "97ae9169-2a8f-48aa-ba5e-1539b283e6eb",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listSurveys-serverUnavailable",
+      "operation": "listSurveys"
+    },
+    {
+      "callId": "07c69298-dccd-4287-8451-6372e02c3512",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys",
+          "query": {
+            "page": [
+              "2"
+            ],
+            "per_page": [
+              "3"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "page": 2,
+        "perPage": 3
+      },
+      "name": "listSurveys-transportFailure",
+      "operation": "listSurveys"
+    },
+    {
+      "callId": "c40fe5c0-c002-4fb5-998a-de39324035c0",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"987654321\",\"survey_id\":\"123456789\",\"response_status\":\"completed\",\"date_created\":\"2026-11-07T10:00:00+00:00\",\"date_modified\":\"2026-11-07T10:01:00+00:00\",\"ip_address\":\"not-persisted\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys/123456789/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "createdAt": "2026-11-07T10:00:00+00:00",
+          "id": "987654321",
+          "modifiedAt": "2026-11-07T10:01:00+00:00",
+          "status": "completed",
+          "surveyId": "123456789"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "123456789"
+      },
+      "name": "getResponse-success",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "327c233d-7165-4414-a3f2-6c954b3b8414",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"not_found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys/123456789/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "modifiedAt": "",
+          "status": "",
+          "surveyId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "123456789"
+      },
+      "name": "getResponse-notFound",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "c5a62831-6211-4aa9-aeb1-05e246cd33a6",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys/123456789/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "modifiedAt": "",
+          "status": "",
+          "surveyId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "123456789"
+      },
+      "name": "getResponse-providerRejected",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "7a429442-484c-40dc-8a44-1e67e93664f6",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"987654321\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys/123456789/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "modifiedAt": "",
+          "status": "",
+          "surveyId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "123456789"
+      },
+      "name": "getResponse-invalidResponse",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "ffaa7f7b-b5b1-4f94-a627-5e19dfd2ccf0",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "createdAt": "",
+          "id": "",
+          "modifiedAt": "",
+          "status": "",
+          "surveyId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "../"
+      },
+      "name": "getResponse-defect",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "1be24b6e-9c38-4cc9-aa38-84055dbae8ef",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"rate_limited\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys/123456789/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "123456789"
+      },
+      "name": "getResponse-rateLimit",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "50df2f29-4882-4818-be60-79217902d9e3",
+      "exchanges": [
+        {
+          "body": "{\"error\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys/123456789/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "123456789"
+      },
+      "name": "getResponse-serverUnavailable",
+      "operation": "getResponse"
+    },
+    {
+      "callId": "ace7f823-ca4a-49e3-9914-33fd26650c20",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/surveys/123456789/responses/987654321",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "responseId": "987654321",
+        "surveyId": "123456789"
+      },
+      "name": "getResponse-transportFailure",
+      "operation": "getResponse"
+    }
+  ],
+  "schemaVersion": 1
+}

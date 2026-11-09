@@ -1,0 +1,481 @@
+{
+  "connector": "adobe-acrobat-sign",
+  "scenarios": [
+    {
+      "callId": "d4bdc8dc-55fd-5cf3-8a99-c8fdd29435ef",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"3AAABLblqZNOTREALAGREEMENTID5_BjiH\",\"name\":\"Example agreement\",\"status\":\"SIGNED\",\"participantSetsInfo\":[{\"memberInfos\":[{\"email\":\"private@example.com\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "name": "Example agreement",
+          "status": "SIGNED"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-found",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "cf0c6e6c-c8b3-5d6b-a0ec-a1f899ec7b88",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-notFound",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "f57feb88-c9bd-5943-b915-0323cccfb121",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-providerRejected",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "3b95c253-8ccd-5dba-9ada-f5d25d21d731",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":\"3AAABLblqZNOTREALAGREEMENTID5_BjiH\",\"name\":\"Example agreement\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-invalidResponse",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "aed1d20b-b4fb-5cfa-acdc-7ccfdb934257",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": ""
+      },
+      "name": "getAgreement-defect",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "d898ccf9-769a-5e0a-9d22-24b4cd926aac",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-rateLimit",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "976844bd-0eeb-567b-bb89-9d974935a8f2",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-serverUnavailable",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "a1c0252b-47dd-56af-a005-6333e569cfc2",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"http://127.0.0.1:12345/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/agreements/3AAABLblqZNOTREALAGREEMENTID5_BjiH",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-transportFailure",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "ac6f85ff-827b-5d64-8929-66c5d786004a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-discoveryRejected",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "8448c05c-b653-52b7-b73c-cfe99ed33046",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":\"https://evil.example/\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-invalidAccessPoint",
+      "operation": "getAgreement"
+    },
+    {
+      "callId": "46b00a11-750c-50e8-95f3-bd1c3e2274d0",
+      "exchanges": [
+        {
+          "body": "{\"apiAccessPoint\":123}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/baseUris",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-acrobat-sign-integration-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "agreementId": "3AAABLblqZNOTREALAGREEMENTID5_BjiH"
+      },
+      "name": "getAgreement-discoveryMalformed",
+      "operation": "getAgreement"
+    }
+  ],
+  "schemaVersion": 1
+}

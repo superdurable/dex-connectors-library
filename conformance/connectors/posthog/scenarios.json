@@ -1,0 +1,703 @@
+{
+  "connector": "posthog",
+  "scenarios": [
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "Signed Up",
+            "properties": {
+              "source": "landing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "accepted",
+        "failureKind": "",
+        "output": {
+          "accepted": true,
+          "eventId": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "captureEvent-accepted",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [
+        {
+          "body": "{\"status\":\"Ok\",\"quota_limited\":[\"events\"]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "Signed Up",
+            "properties": {
+              "source": "landing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "quotaLimited",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "captureEvent-quota-limited",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "Signed Up",
+            "properties": {
+              "source": "landing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "captureEvent-provider-rejected",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accepted": false,
+          "eventId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "bad"
+      },
+      "name": "captureEvent-defect",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "Signed Up",
+            "properties": {
+              "source": "landing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "captureEvent-rate-limit",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "Signed Up",
+            "properties": {
+              "source": "landing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "captureEvent-server-error",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "Signed Up",
+            "properties": {
+              "source": "landing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "captureEvent-transport",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "ce4f06ff-5537-5013-8621-997f4bef8718",
+      "exchanges": [
+        {
+          "body": "{",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/i/v0/e/",
+          "requestBody": {
+            "distinct_id": "member-1",
+            "event": "Signed Up",
+            "properties": {
+              "source": "landing"
+            },
+            "timestamp": "2026-10-29T00:00:00Z",
+            "token": "phc_synthetic-token",
+            "uuid": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "PROTOCOL",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "40de2c7d-f02b-a6b8-ba2e-318caa12ae9d",
+      "input": {
+        "distinctId": "member-1",
+        "event": "Signed Up",
+        "properties": {
+          "source": "landing"
+        },
+        "timestamp": "2026-10-29T00:00:00Z"
+      },
+      "name": "captureEvent-malformed-confirmation",
+      "operation": "captureEvent"
+    },
+    {
+      "callId": "39bef6ed-58b8-5232-ad67-bd8d24f9588b",
+      "exchanges": [
+        {
+          "body": "{\"next\":\"https://example.test/next\",\"results\":[{\"id\":42,\"name\":\"Signups by day\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/projects/42/insights/",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer phx_synthetic-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "hasMore": true,
+          "insights": [
+            {
+              "id": 42,
+              "name": "Signups by day"
+            }
+          ],
+          "limit": 2,
+          "offset": 1
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 1,
+        "projectId": 42
+      },
+      "name": "listInsights-listed",
+      "operation": "listInsights"
+    },
+    {
+      "callId": "8da2c509-308c-55ea-aac1-7ae3e3f5114c",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/projects/42/insights/",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer phx_synthetic-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "AUTHORIZATION",
+        "output": {
+          "hasMore": false,
+          "insights": [],
+          "limit": 0,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 1,
+        "projectId": 42
+      },
+      "name": "listInsights-provider-rejected",
+      "operation": "listInsights"
+    },
+    {
+      "callId": "c5e0baf8-2ba5-5ad2-9bbf-6f82af79167a",
+      "exchanges": [
+        {
+          "body": "{\"results\":[{\"id\":0}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/projects/42/insights/",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer phx_synthetic-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "hasMore": false,
+          "insights": [],
+          "limit": 0,
+          "offset": 0
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 1,
+        "projectId": 42
+      },
+      "name": "listInsights-invalid-response",
+      "operation": "listInsights"
+    },
+    {
+      "callId": "4d738f73-cf34-594b-bedf-738444b18a4d",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "hasMore": false,
+          "insights": [],
+          "limit": 0,
+          "offset": 0
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 1,
+        "projectId": 0
+      },
+      "name": "listInsights-defect",
+      "operation": "listInsights"
+    },
+    {
+      "callId": "35b29c57-b39e-57eb-8fed-eeeba8759d44",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/projects/42/insights/",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer phx_synthetic-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 1,
+        "projectId": 42
+      },
+      "name": "listInsights-rate-limit",
+      "operation": "listInsights"
+    },
+    {
+      "callId": "9e2b0141-c213-55d1-86e7-c152be76d843",
+      "exchanges": [
+        {
+          "body": "{}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/projects/42/insights/",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer phx_synthetic-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 1,
+        "projectId": 42
+      },
+      "name": "listInsights-server-error",
+      "operation": "listInsights"
+    },
+    {
+      "callId": "14fae04c-95bb-516c-9ac7-fa645123e5f4",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/projects/42/insights/",
+          "query": {
+            "limit": [
+              "2"
+            ],
+            "offset": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer phx_synthetic-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "limit": 2,
+        "offset": 1,
+        "projectId": 42
+      },
+      "name": "listInsights-transport",
+      "operation": "listInsights"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -1,0 +1,446 @@
+{
+  "connector": "plaid",
+  "scenarios": [
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"item\":{\"item_id\":\"item_123456\"},\"accounts\":[{\"account_id\":\"account_123456\",\"type\":\"depository\",\"subtype\":\"checking\",\"name\":\"Private Checking\",\"mask\":\"1234\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "accounts": [
+            {
+              "id": "account_123456",
+              "subtype": "checking",
+              "type": "depository"
+            }
+          ],
+          "itemId": "item_123456"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-found",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "a1361226-b65b-52cd-81c9-423cc323222b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-notFound",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "d410c6a4-ee02-5101-a323-a2380562a585",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-providerRejected",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "27398a3d-ff91-5c77-b3bf-8082eeddb75d",
+      "exchanges": [
+        {
+          "body": "{\"item\":{\"item_id\":\"other\"},\"accounts\":[]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-invalidResponse",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "a6a73395-6808-5afe-9970-a95a5ce8b6a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": ""
+      },
+      "name": "getAccounts-defect",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "c400fb80-ea62-5a9b-8758-ad00c036837a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-rateLimit",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "323e41bb-18e1-56b0-8499-8fc575952b9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-serverUnavailable",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "2091cba2-6eb8-550c-8d19-81eb661fad9c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-transportFailure",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "438ed136-4335-511b-9648-c62054e5f4bd",
+      "exchanges": [
+        {
+          "body": "{\"display_message\":null,\"documentation_url\":\"https://plaid.com/docs/errors/item/#item_not_found\",\"error_code\":\"ITEM_NOT_FOUND\",\"error_code_reason\":null,\"error_message\":\"The Item you requested cannot be found. This Item does not exist, has been previously removed via /item/remove, or has had access removed by the user.\",\"error_type\":\"ITEM_ERROR\",\"request_id\":\"HNTDNrA8F1shFEW\",\"suggested_action\":null}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-itemNotFoundError",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "2fd34cf6-71b5-573c-83b7-a8587df62949",
+      "exchanges": [
+        {
+          "body": "{\"display_message\":null,\"error_code\":\"INVALID_ACCESS_TOKEN\",\"error_message\":\"could not find matching access token\",\"error_type\":\"INVALID_INPUT\",\"request_id\":\"HNTDNrA8F1shFEX\",\"suggested_action\":null}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-invalidAccessTokenError",
+      "operation": "getAccounts"
+    }
+  ],
+  "schemaVersion": 1
+}

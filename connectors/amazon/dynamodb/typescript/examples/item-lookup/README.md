@@ -1,0 +1,3 @@
+# TypeScript DynamoDB item lookup example
+
+The Worker runs `AmazonDynamoDBItemLookupTypeScript` through the static `amazon-dynamodb` connection and stores the item result in an Attribute. From `connectors/amazon/dynamodb/typescript`, run `npm run example:worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Run `npm run example:start -- Examples example` to read the table item whose partition key is `pk` with string value `example`. Adapt `start.ts` for a different key name or a composite key. Optional branches are unwired. The integration test runs the same Flow against real Dex and a local provider fixture. Configure the connection with the [connector guide](../../../README.md).

@@ -1,0 +1,373 @@
+{
+  "connector": "reddit",
+  "scenarios": [
+    {
+      "callId": "570972f8-4c3d-5838-93b3-854e674a5bf4",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"children\":[{\"kind\":\"t3\",\"data\":{\"name\":\"t3_abc123\",\"title\":\"Example post\",\"subreddit\":\"example\",\"permalink\":\"/r/example/comments/abc123/example_post/\",\"score\":42}}]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/info",
+          "query": {
+            "id": [
+              "t3_abc123"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "t3_abc123",
+          "permalink": "/r/example/comments/abc123/example_post/",
+          "score": 42,
+          "subreddit": "example",
+          "title": "Example post"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "getPost-found",
+      "operation": "getPost"
+    },
+    {
+      "callId": "3bbfc928-6444-5efd-94ab-cd072e4be226",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"children\":[]}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/info",
+          "query": {
+            "id": [
+              "t3_missing"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "missing",
+        "failureKind": "",
+        "output": {
+          "id": "",
+          "permalink": "",
+          "score": 0,
+          "subreddit": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_missing"
+      },
+      "name": "getPost-missing",
+      "operation": "getPost"
+    },
+    {
+      "callId": "a292d71c-ad9b-5361-83ba-6acd461c3c6e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/info",
+          "query": {
+            "id": [
+              "t3_abc123"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "permalink": "",
+          "score": 0,
+          "subreddit": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "getPost-providerRejected",
+      "operation": "getPost"
+    },
+    {
+      "callId": "505af707-3dcc-59fe-8a2a-102104ddb0c3",
+      "exchanges": [
+        {
+          "body": "{\"kind\":\"Listing\",\"data\":{\"children\":null}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/info",
+          "query": {
+            "id": [
+              "t3_abc123"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "permalink": "",
+          "score": 0,
+          "subreddit": "",
+          "title": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "getPost-invalidResponse",
+      "operation": "getPost"
+    },
+    {
+      "callId": "1c465f6c-6c90-536c-a9e8-bc55eae33521",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "permalink": "",
+          "score": 0,
+          "subreddit": "",
+          "title": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "invalid"
+      },
+      "name": "getPost-defect",
+      "operation": "getPost"
+    },
+    {
+      "callId": "a49b4464-32b7-592e-9df1-34e666d11d8e",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/info",
+          "query": {
+            "id": [
+              "t3_abc123"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "getPost-rateLimit429",
+      "operation": "getPost"
+    },
+    {
+      "callId": "a00491b3-d0ec-5e8a-9659-4f220110a8bb",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/info",
+          "query": {
+            "id": [
+              "t3_abc123"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "getPost-unavailable503",
+      "operation": "getPost"
+    },
+    {
+      "callId": "e61aa139-d4ea-5ba3-a352-635cd4f00f6e",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/api/info",
+          "query": {
+            "id": [
+              "t3_abc123"
+            ],
+            "raw_json": [
+              "1"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-reddit-token"
+            ],
+            "User-Agent": [
+              "desktop:synthetic-client-id:v0.1.0 (by /u/example)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "postId": "t3_abc123"
+      },
+      "name": "getPost-transportFailure",
+      "operation": "getPost"
+    }
+  ],
+  "schemaVersion": 1
+}

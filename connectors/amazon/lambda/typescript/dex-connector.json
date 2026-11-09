@@ -1,0 +1,64 @@
+{
+  "connectorId": "amazon-lambda",
+  "releaseTag": "connectors/amazon/lambda/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-amazon-lambda",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetFunctionStep",
+      "kind": "query",
+      "operationId": "getFunction",
+      "inputType": "GetFunctionInput",
+      "description": "Read the function name and ARN from AWS Lambda GetFunction.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetFunctionInput identifies one Lambda function in the configured Region.",
+        "properties": {
+          "functionName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "functionName"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

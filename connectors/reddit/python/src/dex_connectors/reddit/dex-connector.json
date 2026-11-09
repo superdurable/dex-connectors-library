@@ -1,0 +1,65 @@
+{
+  "connectorId": "reddit",
+  "releaseTag": "connectors/reddit/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-reddit",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_post_step",
+      "kind": "query",
+      "operationId": "getPost",
+      "inputType": "GetPostInput",
+      "description": "Read one post's ID, title, subreddit, permalink, and score by full t3_ ID.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetPostInput names a Reddit post by its full t3_ ID.",
+        "properties": {
+          "postId": {
+            "description": "PostID is the full t3_ ID copied from the Reddit post URL or API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "postId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

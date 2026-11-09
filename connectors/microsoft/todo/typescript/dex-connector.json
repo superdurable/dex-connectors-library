@@ -1,0 +1,106 @@
+{
+  "connectorId": "microsoft-todo",
+  "releaseTag": "connectors/microsoft/todo/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-microsoft-todo",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListTaskListsStep",
+      "kind": "query",
+      "operationId": "listTaskLists",
+      "inputType": "ListTaskListsInput",
+      "description": "Read all pages of the signed-in person's To Do task lists, within a bounded collection limit.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTaskListsInput requests the signed-in person's task lists.",
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "newListTasksStep",
+      "kind": "query",
+      "operationId": "listTasks",
+      "inputType": "ListTasksInput",
+      "description": "Read all pages of tasks in a selected To Do list, within a bounded collection limit.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTasksInput selects a task list returned by ListTaskLists.",
+        "properties": {
+          "listId": {
+            "description": "ListID is the stable non-secret ID returned by ListTaskLists.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: zendesk-sell
+  displayName: Zendesk Sell
+  description: Read Zendesk Sell lead identity for migration and existing sales workflows.
+  company: Zendesk
+  version: v0.1.0
+spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listLeads, getLead]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listLeads, getLead]
+      triggers: []
+  provider: zendesk-sell
+  codegen:
+    go:
+      package: sell
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Zendesk Sell API v2 root. The provider endpoint is fixed; blank uses the displayed default. Override only for a sanctioned proxy or local provider test, keeping the /v2 suffix.
+        default: https://api.getbase.com/v2
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive maximum duration of one API request in Go duration units such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for large lead pages. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: zendesk-sell-personal-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Zendesk Sell personal access token from https://app.futuresimple.com/ > Integrations > OAuth > Access Tokens > Add User Token. Copy the full token when shown once; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Revoke it from the same Access Tokens tab.
+    guide:
+      startURL: https://app.futuresimple.com/
+      steps:
+        - Sign in to Zendesk Sell at https://app.futuresimple.com/ with an account permitted to manage access tokens, then open Integrations > OAuth > Access Tokens.
+        - Click Add User Token, enter a description, and Save. Copy the secret token from the one-time modal into the Dex access_token secret field; the modal cannot reveal it again after closing.
+        - Revoke an unused token from the same Access Tokens tab. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: listLeads
+      goName: ListLeads
+      inputType: ListLeadsInput
+      outputType: LeadsPage
+      kind: query
+      description: Read one bounded page of lead identities for migration or lookup.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Zendesk Sell returned the selected lead page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk Sell conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk Sell returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid page input or unavailable credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample lead identity is listed.
+          output: {leads: [{id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com', organizationName: Example Co}], page: 1, perPage: 20}
+    - name: getLead
+      goName: GetLead
+      inputType: GetLeadInput
+      outputType: LeadMetadata
+      kind: query
+      description: Read one lead's ID, name, email, and organization by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Zendesk Sell returned the selected lead.}
+        - {id: notFound, goName: NotFound, description: No lead matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Zendesk Sell conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Zendesk Sell returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid lead ID or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample lead identity is returned.
+          output: {id: 144, firstName: Ada, lastName: Lovelace, emailAddress: 'ada@example.com', organizationName: Example Co}

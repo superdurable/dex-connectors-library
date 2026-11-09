@@ -1,0 +1,70 @@
+{
+  "connectorId": "microsoft-dynamics-365-sales",
+  "releaseTag": "connectors/microsoft/dynamics-365-sales/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-microsoft-dynamics-365-sales",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newFindContactStep",
+      "kind": "query",
+      "operationId": "findContact",
+      "inputType": "FindContactInput",
+      "description": "Find exactly one contact by its primary email address.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "multipleMatches",
+          "field": "multipleMatches",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindContactInput selects one contact by its primary email address.",
+        "properties": {
+          "emailAddress": {
+            "description": "EmailAddress is the contact's exact primary email address.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emailAddress"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

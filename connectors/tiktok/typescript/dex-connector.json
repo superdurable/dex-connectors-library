@@ -1,0 +1,68 @@
+{
+  "connectorId": "tiktok-business",
+  "releaseTag": "connectors/tiktok/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-tiktok-business",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListCampaignsStep",
+      "kind": "query",
+      "operationId": "listCampaigns",
+      "inputType": "ListCampaignsInput",
+      "description": "Read one page of campaign IDs and names for an authorized advertiser.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListCampaignsInput selects one advertiser campaign page.",
+        "properties": {
+          "advertiserId": {
+            "description": "AdvertiserID is the decimal ad account ID from TikTok Ads Manager.",
+            "type": "string"
+          },
+          "page": {
+            "description": "Page starts at one; zero uses one.",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "PageSize accepts 1 through 1000 campaigns; zero uses ten.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "advertiserId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

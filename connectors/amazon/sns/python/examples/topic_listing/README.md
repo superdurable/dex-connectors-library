@@ -1,0 +1,3 @@
+# Python topic listing example
+
+The Worker runs `AmazonSNSTopicListingPython` through the static `amazon-sns` connection and stores the topic page. Configure `region`, `access_key_id`, and `secret_access_key` as described in the [connector README](../../../README.md). From `connectors/amazon/sns/python`, run `uv run python -m examples.topic_listing.worker` with project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start a Flow with a unique ID and input `{"nextToken":""}`; use the returned token for another page. Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex and a local provider fixture.

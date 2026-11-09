@@ -1,0 +1,76 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: campaignmonitor
+  displayName: Campaign Monitor
+  description: Discover Campaign Monitor clients accessible to an account API key.
+  company: Campaign Monitor
+  version: v0.1.0
+spec:
+  provider: campaignmonitor
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listClients]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-campaignmonitor'
+      operations: [listClients]
+      triggers: []
+  codegen:
+    go:
+      package: campaignmonitor
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: HTTPS Campaign Monitor API v3.3 root. Blank uses the displayed default; override only for a compatible private test endpoint.
+        default: https://api.createsend.com/api/v3.3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for accounts with many clients. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: campaignmonitor-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret API key. Sign in at https://login.createsend.com/l, then open Profile image > Account settings > API keys. Generate or show and copy the full key; blank makes calls select defect. Rotate it on that page when retired.
+    guide:
+      startURL: https://login.createsend.com/l
+      steps:
+        - Sign in to Campaign Monitor at https://login.createsend.com/l as a user with full access and a verified email, open the profile image > Account settings > API keys, then click Show API key or Generate API key. Copy the full value.
+        - Save the key in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Rotate it on the same page when access should end.
+        - This key is for an account you control. Public integrations should use Campaign Monitor OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: listClients
+      goName: ListClients
+      inputType: ListClientsInput
+      outputType: ClientsList
+      kind: query
+      description: List IDs and names of clients accessible to the Campaign Monitor account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Campaign Monitor returned the account's clients.}
+        - {id: providerRejected, goName: ProviderRejected, description: Campaign Monitor conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Campaign Monitor returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample client is listed.
+          output: {clients: [{id: sample-client-id, name: Sample Client}]}

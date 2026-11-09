@@ -1,0 +1,96 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: azure-devops
+  displayName: Azure DevOps
+  description: Read Azure DevOps projects and work item identity.
+  company: Microsoft
+  version: v0.1.0
+spec:
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listProjects, getWorkItem]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listProjects, getWorkItem]
+      triggers: []
+  provider: azure-devops
+  codegen:
+    go:
+      package: azuredevops
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret organization URL copied from https://dev.azure.com/ after signing in. Open your organization and copy the full HTTPS address ending in its organization name, such as https://dev.azure.com/example; blank prevents connection creation. Do not include a project or _apis path.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive maximum duration of one API request in Go duration units such as 15s or 1m. Blank uses the displayed default; increase for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for organizations with many projects. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: azure-devops-personal-access-token
+    fields:
+      - name: personal_access_token
+        goName: PersonalAccessToken
+        type: secretString
+        required: true
+        description: Secret organization-scoped PAT from https://dev.azure.com/ > your organization > user settings > Personal access tokens > New Token. Select Project and Team (Read) and Work Items (Read), copy the opaque token shown once, and store it here; blank selects defect. Dex sends it only as a Basic authorization header with an empty username. Revoke or rotate it on the same page.
+    guide:
+      startURL: https://dev.azure.com/
+      steps:
+        - Sign in at https://dev.azure.com/ and open the target organization. Copy its full HTTPS URL, without a project path, into non-secret baseUrl.
+        - Open user settings > Personal access tokens > New Token. Name the token, choose this organization, set an expiration, and select Project and Team (Read) and Work Items (Read) scopes for these two Queries.
+        - Select Create and copy the secret PAT from the one-time display into personal_access_token. Revoke or rotate it under Personal access tokens. Leave timeout and maxResponseBytes blank for their displayed defaults.
+  operations:
+    - name: listProjects
+      goName: ListProjects
+      inputType: ListProjectsInput
+      outputType: Projects
+      kind: query
+      description: List one bounded page of accessible project IDs, names, and states.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Azure DevOps returned accessible projects.}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure DevOps conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure DevOps returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Unavailable or invalid connection credentials., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One sample project is listed.
+          output: {projects: [{id: 'eb6e4656-77fc-42a1-9181-4c6d8e9da5d1', name: Example, state: wellFormed}], top: 20, skip: 0}
+    - name: getWorkItem
+      goName: GetWorkItem
+      inputType: GetWorkItemInput
+      outputType: WorkItemMetadata
+      kind: query
+      description: Read one work item's ID, title, state, and type by numeric ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Azure DevOps returned the selected work item.}
+        - {id: notFound, goName: NotFound, description: No work item matches this ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Azure DevOps conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Azure DevOps returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Invalid work item ID or unavailable credentials., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample work item identity is returned.
+          output: {id: 144, title: Example task, state: Active, workItemType: Task}

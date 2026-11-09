@@ -1,0 +1,3 @@
+# Python DynamoDB item lookup example
+
+The Worker runs `AmazonDynamoDBItemLookupPython` through the static `amazon-dynamodb` connection and stores the item result in an Attribute. From `connectors/amazon/dynamodb/python`, run `uv run python -m examples.item_lookup.worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start the Flow with a unique ID and `GetItemInput(table_name="Examples", key={"pk": {"S": "example"}}, consistent_read=False)`. Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex and a local provider fixture. Configure the connection with the [connector guide](../../../README.md).

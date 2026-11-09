@@ -1,0 +1,156 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-analytics-4
+  displayName: Google Analytics 4
+  description: Read a GA4 report, property metadata, and one audience page.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google-analytics-4
+  languages:
+    python:
+      version: v0.1.0
+      operations: [runReport, getProperty, listAudiences]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [runReport, getProperty, listAudiences]
+      triggers: []
+  codegen:
+    go:
+      package: analytics4
+  configuration:
+    fields:
+      - name: dataBaseUrl
+        goName: DataBaseURL
+        type: url
+        description: GA4 Data API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://analyticsdata.googleapis.com
+      - name: adminBaseUrl
+        goName: AdminBaseURL
+        type: url
+        description: GA4 Admin API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://analyticsadmin.googleapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive maximum duration of one Google Analytics request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete response size in bytes. Blank uses the displayed default; increase only for larger bounded report pages.
+        default: 2097152
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: google-analytics-4-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://console.cloud.google.com/apis/credentials > OAuth 2.0 Client IDs > your Web application. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from the same Google Cloud Web application credentials page. Store only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Google consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned with offline consent. Dex rotates it on refresh; blank requires reauthorization.
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project and enable Google Analytics Data API and Google Analytics Admin API in APIs & Services > Library. Ensure the Google user has Viewer or higher access to the GA4 property in Analytics Admin > Property access management.
+        - In Google Auth Platform > Branding and Audience, configure consent and add test users if an External app remains in Testing. Under Data Access, add the displayed analytics.readonly scope.
+        - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize the Google account with offline access.
+        - Find the numeric property ID in Google Analytics > Admin > Property settings > Property ID. Pass it to each operation; the connection does not store one property ID because one user may access several.
+        - Leave dataBaseUrl, adminBaseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      authorizationParameters: {access_type: offline, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [https://www.googleapis.com/auth/analytics.readonly]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: runReport
+      goName: RunReport
+      inputType: RunReportInput
+      outputType: ReportPage
+      kind: query
+      description: Run one bounded GA4 Data API report for a property, reporting-time-zone date range, requested dimensions and metrics.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: reported, goName: Reported, description: Google returned a report page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the report request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized report JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local report input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: reportedDefault
+          branch: reported
+          default: true
+          description: One country row reports active users.
+          output: {rows: [{dimensions: [United States], metrics: ['4820']}], rowCount: 1}
+    - name: getProperty
+      goName: GetProperty
+      inputType: GetPropertyInput
+      outputType: Property
+      kind: query
+      description: Read the GA4 property name, display name, time zone, and currency.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Google returned property metadata.}
+        - {id: notFound, goName: NotFound, description: The property does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized property JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local property ID or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example GA4 property is accessible.
+          output: {name: properties/123456789, displayName: Example Analytics, timeZone: America/Los_Angeles, currencyCode: USD}
+    - name: listAudiences
+      goName: ListAudiences
+      inputType: ListAudiencesInput
+      outputType: AudiencesPage
+      kind: query
+      description: List one bounded GA4 audience page with identity, display name, and description.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned an audience page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized audience JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example audience is listed.
+          output: {audiences: [{name: properties/123456789/audiences/42, displayName: Returning users, description: Recently active users}], nextPageToken: ''}

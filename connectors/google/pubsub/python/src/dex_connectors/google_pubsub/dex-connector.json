@@ -1,0 +1,68 @@
+{
+  "connectorId": "google-pubsub",
+  "releaseTag": "connectors/google/pubsub/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-google-pubsub",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_topics_step",
+      "kind": "query",
+      "operationId": "listTopics",
+      "inputType": "ListTopicsInput",
+      "description": "List one page of topic resource names in a Google Cloud project.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListTopicsInput selects one bounded page of topics in a Google Cloud project.",
+        "properties": {
+          "pageSize": {
+            "description": "PageSize limits this page to 1 through 100 topics; zero uses 100.",
+            "type": "integer"
+          },
+          "pageToken": {
+            "description": "PageToken is returned by the previous page; blank selects the first page.",
+            "type": "string"
+          },
+          "projectId": {
+            "description": "ProjectID is the Google Cloud project ID shown in Pub/Sub Topics.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

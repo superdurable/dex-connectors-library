@@ -1,0 +1,3 @@
+# Facebook Pages TypeScript connector
+
+Read a Page feed with `listPosts`, inspect one post with `getPost`, or publish plain text with `publishTextPost`. The read results include only post ID, message, creation time, and permalink; comments and reactions are excluded. Publishing uses a durable single-dispatch checkpoint and selects `uncertain` when the result of a sent request cannot be confirmed. Inspect the Page before manually retrying. The static `facebook-pages` connection uses a Page access token. See the [connector README](../README.md) for Meta setup, the [feed Flow](examples/page-posts/README.md), and the [publishing Flow](examples/publish-post/README.md) for Dex usage. The package replays Go-recorded provider scenarios.

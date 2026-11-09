@@ -1,0 +1,70 @@
+{
+  "connectorId": "freshbooks",
+  "releaseTag": "connectors/freshbooks/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-freshbooks",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetInvoiceStep",
+      "kind": "query",
+      "operationId": "getInvoice",
+      "inputType": "GetInvoiceInput",
+      "description": "Read one invoice by accounting account ID and numeric invoice ID.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetInvoiceInput identifies an invoice within an accounting account.",
+        "properties": {
+          "accountId": {
+            "description": "AccountID is business_memberships[].business.account_id from FreshBooks /me.",
+            "type": "string"
+          },
+          "invoiceId": {
+            "description": "InvoiceID is the positive numeric ID shown by the invoice API or webhook.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accountId",
+          "invoiceId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

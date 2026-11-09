@@ -1,0 +1,82 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: odoo
+  displayName: Odoo
+  description: Search company partners through Odoo's JSON-2 API.
+  company: Odoo
+  version: v0.1.0
+spec:
+  provider: odoo
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-odoo
+      operations: [searchPartners]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-odoo'
+      operations: [searchPartners]
+      triggers: []
+  codegen:
+    go:
+      package: odoo
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret HTTPS origin of your Odoo 19 or newer site, such as https://mycompany.odoo.com. Find it in your browser address bar after signing in; omit /json/2 and all paths. Blank prevents connection creation. HTTP is accepted only on loopback for development.
+      - name: database
+        goName: Database
+        type: string
+        required: true
+        description: Non-secret Odoo database name from your Odoo administrator or the subdomain of your Odoo Online site before .odoo.com. Enter the exact database name for X-Odoo-Database. Blank prevents requests. This header selects the database on multi-database servers.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one JSON-2 request as a positive Go duration. Blank uses the displayed default; increase only for a slow Odoo instance.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete JSON-2 response in bytes as a positive integer. Blank uses the displayed default; increase only for a larger result page.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: odoo-api-key
+    fields:
+      - name: apiKey
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Odoo JSON-2 API key from your Odoo site > user avatar > My Profile or Preferences > Account Security > New API Key. Set a description and duration, generate, and copy the complete key once. Blank prevents requests; rotate before its expiry and never put it in Flow input.
+    guide:
+      startURL: https://www.odoo.com/documentation/19.0/developer/reference/external_api.html
+      steps:
+        - Confirm your Odoo 19 or newer deployment supports the JSON-2 API and that your plan permits external API access. Use a dedicated user with read access to company partners.
+        - At the Odoo site open your user avatar > My Profile or Preferences > Account Security > New API Key. Set a description and expiration, generate the key, copy it once into secret apiKey, and rotate it before expiration. Blank prevents requests.
+        - Enter the site origin as baseUrl without /json/2. Ask your administrator for the database name, or use the subdomain before .odoo.com on Odoo Online, as database. Blank values prevent requests. Leave timeout and maxResponseBytes blank for the displayed defaults.
+  operations:
+    - name: searchPartners
+      goName: SearchPartners
+      inputType: SearchPartnersInput
+      outputType: PartnerSearchPage
+      kind: query
+      description: Search company partners by Odoo ilike name pattern and return only IDs and names.
+      idempotency: none
+      authorization: required
+      branches:
+        - {id: found, goName: Found, description: Odoo returned a bounded list of matching company partners.}
+        - {id: providerRejected, goName: ProviderRejected, description: Odoo conclusively rejected the search., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Odoo returned malformed or oversized partner data., optional: true}
+        - {id: defect, goName: Defect, description: Local search input or connection credentials are invalid., optional: true}
+      execution: {executeMethodTimeout: 30s, durability: async}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample company matches the name pattern.
+          output: {partners: [{id: 42, name: Acme Company}]}

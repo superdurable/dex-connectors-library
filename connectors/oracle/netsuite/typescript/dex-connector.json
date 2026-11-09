@@ -1,0 +1,65 @@
+{
+  "connectorId": "oracle-netsuite",
+  "releaseTag": "connectors/oracle/netsuite/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-oracle-netsuite",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetCustomerStep",
+      "kind": "query",
+      "operationId": "getCustomer",
+      "inputType": "GetCustomerInput",
+      "description": "Read one customer internal ID and entity name.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetCustomerInput identifies a customer by its internal NetSuite ID.",
+        "properties": {
+          "customerId": {
+            "description": "CustomerID is the non-secret numeric internal ID shown on the customer record.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

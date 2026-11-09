@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: keap
+  displayName: Keap
+  description: Read one Keap CRM v2 contact by ID.
+  company: Keap
+  version: v0.1.0
+spec:
+  provider: keap
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-keap
+      operations: [getContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-keap'
+      operations: [getContact]
+      triggers: []
+  codegen:
+    go:
+      package: keap
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Keap CRM API root. Blank uses the displayed production root; override only for a trusted test gateway. Do not append /rest/v2/contacts or credentials.
+        default: https://api.infusionsoft.com/crm
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one contact lookup as a positive Go duration. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete contact JSON response in bytes as a positive integer. Blank uses the displayed default; increase only for large responses.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: keap-personal-access-token
+    fields:
+      - name: personalAccessToken
+        goName: PersonalAccessToken
+        type: secretString
+        required: true
+        description: Secret Personal Access Token from Keap > API Settings > Personal Access Tokens. Generate a token for your own Keap account and copy the complete value; blank prevents calls. Dex sends it only as a Bearer credential. This connector does not accept a short-lived OAuth access token.
+    guide:
+      startURL: https://developer.keap.com/docs/getting-started
+      steps:
+        - In your Keap account open API Settings > Personal Access Tokens, generate a Personal Access Token for your own account, and copy it into secret personalAccessToken. Blank prevents calls. For other users' accounts, Keap requires OAuth 2.0, which this connection method does not provide.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. In Keap CRM open Contacts and select a contact; copy its ID and enter it as contactId. It must be 1–128 ASCII letters, digits, hyphens, or underscores; blank is invalid.
+  operations:
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactProfile
+      kind: query
+      description: Return the ID and names of one Keap CRM v2 contact.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Keap returned the contact.}
+        - {id: notFound, goName: NotFound, description: Keap returned 404 for this contact., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Keap conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Keap returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample contact is returned.
+          output: {id: '123', givenName: Example, familyName: Contact}

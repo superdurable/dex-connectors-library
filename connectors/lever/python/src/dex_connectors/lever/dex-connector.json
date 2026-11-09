@@ -1,0 +1,65 @@
+{
+  "connectorId": "lever",
+  "releaseTag": "connectors/lever/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-lever",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_opportunity_step",
+      "kind": "query",
+      "operationId": "getOpportunity",
+      "inputType": "GetOpportunityInput",
+      "description": "Read one opportunity's ID, candidate name, and current stage UID.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetOpportunityInput selects an opportunity by its non-secret Lever ID.",
+        "properties": {
+          "opportunityId": {
+            "description": "OpportunityID is the ID shown in Lever Opportunities or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "opportunityId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

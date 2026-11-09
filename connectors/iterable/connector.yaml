@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: iterable
+  displayName: Iterable
+  description: Read selected Iterable user identity by email.
+  company: Iterable
+  version: v0.1.0
+spec:
+  provider: iterable
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-iterable
+      operations: [getUser]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-iterable"
+      operations: [getUser]
+      triggers: []
+  codegen:
+    go:
+      package: iterable
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Iterable API root as an absolute HTTPS URL. Blank uses the displayed US data center endpoint; choose https://api.eu.iterable.com/api for an EU project. Override only for the matching data center or a trusted local test gateway.
+        default: https://api.iterable.com/api
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow user reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete user response in bytes as a positive integer. Blank uses the displayed default; increase for large user profiles.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: iterable-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret Iterable Server-side API key from Integrations > API Keys > New API Key in the selected project. Copy the complete opaque value when shown; blank prevents calls. Dex sends it only in the Api-Key header. Match the key's data center to baseUrl.
+    guide:
+      startURL: https://app.iterable.com
+      steps:
+        - Sign in to the Iterable project as an org admin or member with Manage Integrations permission. Open Integrations > API Keys > New API Key, name the key, choose Server-side, and click Create. Copy the complete opaque key from Copy Your New API Key, which is shown only once, into the secret api_key field in Dex Web. To revoke it later, use Integrations > API Keys > Disable Key or Delete Key. Blank is invalid.
+        - Match baseUrl to the project's data center. Leave it blank for US or enter https://api.eu.iterable.com/api for EU. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the user's non-secret email in Iterable Audience > Users and enter it as the getUser email; blank is invalid.
+  operations:
+    - name: getUser
+      goName: GetUser
+      inputType: GetUserInput
+      outputType: UserIdentity
+      kind: query
+      description: Read one user's email and optional user ID without returning profile data fields.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Iterable returned the user.}
+        - {id: notFound, goName: NotFound, description: Iterable did not expose the user., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Iterable conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Iterable returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One example user is returned.
+          output: {email: user@example.com, userId: example-user-id}

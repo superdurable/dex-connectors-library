@@ -1,0 +1,115 @@
+{
+  "connectorId": "kit",
+  "releaseTag": "connectors/kit/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-kit",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListSubscribersStep",
+      "kind": "query",
+      "operationId": "listSubscribers",
+      "inputType": "ListSubscribersInput",
+      "description": "List one cursor page of subscriber IDs, email addresses, first names, and states.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListSubscribersInput selects a cursor page of up to 1000 subscribers.",
+        "properties": {
+          "after": {
+            "description": "After is the previous page's end cursor; blank starts from the first page.",
+            "type": "string"
+          },
+          "perPage": {
+            "description": "PerPage is the maximum count; zero defaults to 20.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "newGetSubscriberStep",
+      "kind": "query",
+      "operationId": "getSubscriber",
+      "inputType": "GetSubscriberInput",
+      "description": "Read one subscriber's ID, email address, first name, and state.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetSubscriberInput selects one numeric Kit subscriber ID.",
+        "properties": {
+          "subscriberId": {
+            "description": "SubscriberID is the ID from a subscriber page or API.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "subscriberId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

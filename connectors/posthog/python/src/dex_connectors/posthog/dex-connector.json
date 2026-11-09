@@ -1,0 +1,135 @@
+{
+  "connectorId": "posthog",
+  "releaseTag": "connectors/posthog/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-posthog",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_capture_event_step",
+      "kind": "mutation",
+      "operationId": "captureEvent",
+      "inputType": "CaptureEventInput",
+      "description": "Submit one event with stable timestamp, distinct ID, and derived UUID; acknowledgment does not guarantee later ingestion.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "accepted",
+          "field": "accepted",
+          "optional": false
+        },
+        {
+          "id": "quotaLimited",
+          "field": "quota_limited",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "CaptureEventInput is one event with stable identity and time across retries.",
+        "properties": {
+          "distinctId": {
+            "description": "DistinctID is the stable person or anonymous identity.",
+            "type": "string"
+          },
+          "event": {
+            "description": "Event is a nonempty custom event name.",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Properties contains non-secret string dimensions, excluding identity and person mutations.",
+            "type": "object"
+          },
+          "timestamp": {
+            "description": "Timestamp is the event time in RFC3339 format and must remain fixed across retries.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "distinctId",
+          "event",
+          "timestamp"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_list_insights_step",
+      "kind": "query",
+      "operationId": "listInsights",
+      "inputType": "ListInsightsInput",
+      "description": "List one bounded page of saved insight IDs and names without query results or private metadata.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListInsightsInput selects a project and bounded offset page of saved insights.",
+        "properties": {
+          "limit": {
+            "description": "Limit is the maximum count from 1 through 100; zero uses 20.",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Offset is the zero-based page offset.",
+            "type": "integer"
+          },
+          "projectId": {
+            "description": "ProjectID is the positive ID shown in the PostHog project URL or settings.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offset",
+          "projectId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

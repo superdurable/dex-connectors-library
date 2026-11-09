@@ -1,0 +1,77 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: adyen
+  displayName: Adyen
+  description: Read payment link status through Adyen Checkout API.
+  company: Adyen
+  version: v0.1.0
+spec:
+  provider: adyen
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-adyen
+      operations: [getPaymentLink]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: "@superdurable/connector-adyen"
+      operations: [getPaymentLink]
+      triggers: []
+  codegen:
+    go:
+      package: adyen
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Checkout API root as an absolute HTTPS URL. Blank uses the displayed test endpoint. For live, find your company prefix in Customer Area > Developers > API URLs > Prefix and use https://{PREFIX}-checkout-live.adyenpayments.com/checkout/v72; override only for live or a trusted local test gateway.
+        default: https://checkout-test.adyen.com/v72
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s. Blank uses the displayed default; increase for slow payment link reads.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Maximum complete payment link response in bytes as a positive integer. Blank uses the displayed default; increase for unusually large link metadata.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: adyen-api-key
+    fields:
+      - name: api_key
+        goName: APIKey
+        type: secretString
+        required: true
+        description: Secret server-side API key from Adyen Customer Area > Developers > API credentials > Payments > credential username > Server settings > Authentication > API key > Generate API key. Copy the complete opaque value when shown; blank prevents calls. Dex sends it only in the X-API-Key header. Use a key from the same test or live environment as baseUrl.
+    guide:
+      startURL: https://ca-test.adyen.com
+      steps:
+        - Sign in to the Adyen test or live Customer Area, select the company account, then open Developers > API credentials > Payments > credential username > Server settings > Authentication > API key > Generate API key. Copy the secret opaque key into Dex Web api_key and Save changes. The key cannot be copied again after leaving the page; rotate it on the same page. Blank is invalid. Grant the credential the Checkout webservice role under Permissions.
+        - Leave baseUrl blank for test. For live use the live key and find your company prefix under Developers > API URLs > Prefix; set baseUrl to https://{PREFIX}-checkout-live.adyenpayments.com/checkout/v72. Leave timeout and maxResponseBytes blank for their displayed defaults. Find the non-secret payment link ID in the Payment Links page or the create-link response, then pass it as paymentLinkId; for example PL50C5F751CED39G71. Blank is invalid.
+  operations:
+    - name: getPaymentLink
+      goName: GetPaymentLink
+      inputType: GetPaymentLinkInput
+      outputType: PaymentLinkStatus
+      kind: query
+      description: Read a payment link's ID, status, and amount currency without shopper or payment details.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Adyen returned the payment link.}
+        - {id: notFound, goName: NotFound, description: Adyen did not expose the payment link., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Adyen conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Adyen returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One completed sample payment link is returned.
+          output: {id: PL50C5F751CED39G71, status: completed, currencyCode: EUR}

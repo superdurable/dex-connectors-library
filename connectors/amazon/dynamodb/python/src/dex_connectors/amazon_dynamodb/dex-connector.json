@@ -1,0 +1,76 @@
+{
+  "connectorId": "amazon-dynamodb",
+  "releaseTag": "connectors/amazon/dynamodb/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-amazon-dynamodb",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_get_item_step",
+      "kind": "query",
+      "operationId": "getItem",
+      "inputType": "GetItemInput",
+      "description": "Read one DynamoDB item by its complete primary key, with an optional strongly consistent read.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "missing",
+          "field": "missing",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetItemInput identifies a table row by all of its S, N, or B key attributes.",
+        "properties": {
+          "consistentRead": {
+            "type": "boolean"
+          },
+          "key": {
+            "additionalProperties": {},
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "tableName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "consistentRead",
+          "key",
+          "tableName"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

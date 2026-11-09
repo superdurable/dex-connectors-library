@@ -1,0 +1,3 @@
+# Python identity lookup example
+
+The Worker runs `AmazonSESIdentityLookupPython` through the static `amazon-ses` connection and stores the identity details. Configure `region`, `access_key_id`, and `secret_access_key` as described in the [connector README](../../../README.md). From `connectors/amazon/ses/python`, run `uv run python -m examples.identity_lookup.worker` with the project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Start the Flow with a unique ID and input `{"emailIdentity":"example.com"}`. Optional branches are unwired. `integration_test.py` runs the same Flow against real Dex and a local provider fixture.

@@ -1,0 +1,74 @@
+{
+  "connectorId": "mongodb",
+  "releaseTag": "connectors/mongodb/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-mongodb",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_find_documents_step",
+      "kind": "query",
+      "operationId": "findDocuments",
+      "inputType": "FindDocumentsInput",
+      "description": "Find bounded documents in a named collection using a JSON filter.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "truncated",
+          "field": "truncated",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "FindDocumentsInput names one collection and supplies a JSON query filter.",
+        "properties": {
+          "collection": {
+            "description": "Collection is a non-secret name in the configured database.",
+            "type": "string"
+          },
+          "filter": {
+            "additionalProperties": {},
+            "description": "Filter is a JSON object; MongoDB Extended JSON values preserve BSON types.",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "collection",
+          "filter"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

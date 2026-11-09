@@ -1,0 +1,118 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: eventbrite
+  displayName: Eventbrite
+  description: Read organization and event metadata through Eventbrite API v3.
+  company: Eventbrite
+  version: v0.1.0
+spec:
+  provider: eventbrite
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listOrganizations, listEvents, getAttendee]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-eventbrite'
+      operations: [listOrganizations, listEvents, getAttendee]
+      triggers: []
+  codegen:
+    go:
+      package: eventbrite
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Eventbrite API v3 root as an absolute HTTPS URL. Blank uses the displayed provider endpoint; override only for a trusted test gateway.
+        default: https://www.eventbriteapi.com/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one API request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for known larger pages. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: eventbrite-private-token
+    fields:
+      - name: private_token
+        goName: PrivateToken
+        type: secretString
+        required: true
+        description: Secret Private Token from Eventbrite Account Settings > Developer Links > API Keys at https://www.eventbrite.com/account-settings/apps. Create an API key if needed, then copy its Private Token, not its public API key. Blank makes calls select defect. Dex sends it only in the Authorization header.
+    guide:
+      startURL: https://www.eventbrite.com/account-settings/apps
+      steps:
+        - Sign in and open Account Settings > Developer Links > API Keys at https://www.eventbrite.com/account-settings/apps.
+        - Create an API key if needed, then copy its Private Token into the secret private_token field. If API Keys is hidden, ask the organization owner or admin for access.
+        - Save the connection. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Run listOrganizations to discover organization IDs.
+  operations:
+    - name: listOrganizations
+      goName: ListOrganizations
+      inputType: ListOrganizationsInput
+      outputType: OrganizationsPage
+      kind: query
+      description: List one page of organizations accessible to the connected user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the organization page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example organization is listed.
+          output: {organizations: [{id: "12345", name: "Example organization"}], pageNumber: 1, pageCount: 1}
+    - name: listEvents
+      goName: ListEvents
+      inputType: ListEventsInput
+      outputType: EventsPage
+      kind: query
+      description: List one page of event IDs, names, and statuses in an organization.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Eventbrite returned the event page.}
+        - {id: notFound, goName: NotFound, description: The organization does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example event is listed.
+          output: {events: [{id: "67890", name: "Example event", status: "live"}], pageNumber: 1, pageCount: 1}
+    - name: getAttendee
+      goName: GetAttendee
+      inputType: GetAttendeeInput
+      outputType: AttendeeMetadata
+      kind: query
+      description: Read one attendee's identity and status without profile or answers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Eventbrite returned attendee metadata.}
+        - {id: notFound, goName: NotFound, description: The attendee does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Eventbrite conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Eventbrite returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one example attendee.
+          output: {id: "13579", eventId: "67890", status: "attending", createdAt: "2026-11-07T10:00:00Z"}

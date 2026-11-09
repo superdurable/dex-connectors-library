@@ -1,0 +1,97 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: surveymonkey
+  displayName: SurveyMonkey
+  description: List surveys and inspect response metadata through the SurveyMonkey API.
+  company: SurveyMonkey
+  version: v0.1.0
+spec:
+  provider: surveymonkey
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listSurveys, getResponse]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-surveymonkey'
+      operations: [listSurveys, getResponse]
+      triggers: []
+  codegen:
+    go:
+      package: surveymonkey
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: SurveyMonkey API v3 endpoint as an absolute HTTPS URL. Blank uses the displayed US default; use https://api.eu.surveymonkey.com/v3 for an EU account or https://api.surveymonkey.ca/v3 for a Canadian account. Override only for your account region or a trusted test gateway.
+        default: https://api.surveymonkey.com/v3
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Maximum duration of one request as a positive Go duration such as 15s or 1m. Blank uses the displayed default; increase only for slow responses.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete API response in bytes. Blank uses the displayed default; increase for known larger survey pages. Oversized responses select invalidResponse.
+        default: 1048576
+  auth:
+    type: apiKey
+    connectionKind: surveymonkey-access-token
+    fields:
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Access Token from https://developer.surveymonkey.com > My Apps > your private app > Settings. Copy the complete token into this secret field; blank makes calls select defect. Dex sends it only as a Bearer authorization header. Public apps need View Surveys and View Responses scopes.
+    guide:
+      startURL: https://developer.surveymonkey.com
+      steps:
+        - Sign in at https://developer.surveymonkey.com, open My Apps, create or select a private app, and open its Settings page.
+        - Copy the full Access Token into the secret access_token field. For a public app, configure View Surveys and View Responses scopes before obtaining a token. Revoke the token in the app settings when retired.
+        - Select the v3 API base URL matching the account region. Leave baseUrl, timeout, and maxResponseBytes blank only when their displayed defaults apply.
+  operations:
+    - name: listSurveys
+      goName: ListSurveys
+      inputType: ListSurveysInput
+      outputType: SurveysPage
+      kind: query
+      description: List one page of survey IDs and titles without questions or answers.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: SurveyMonkey returned the selected survey page.}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example survey is listed.
+          output: {surveys: [{id: '123456789', title: Customer feedback}], page: 1, perPage: 50, total: 1}
+    - name: getResponse
+      goName: GetResponse
+      inputType: GetResponseInput
+      outputType: ResponseMetadata
+      kind: query
+      description: Read one survey response's ID, survey ID, status, and timestamps; answers are excluded.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: SurveyMonkey returned response metadata.}
+        - {id: notFound, goName: NotFound, description: The survey response does not exist or is inaccessible., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: SurveyMonkey conclusively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: SurveyMonkey returned malformed or oversized JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: Metadata for one example response.
+          output: {id: '987654321', surveyId: '123456789', status: completed, createdAt: '2026-11-07T10:00:00+00:00', modifiedAt: '2026-11-07T10:01:00+00:00'}

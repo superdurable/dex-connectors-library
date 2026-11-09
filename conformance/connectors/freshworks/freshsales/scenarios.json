@@ -1,0 +1,554 @@
+{
+  "connector": "freshsales",
+  "scenarios": [
+    {
+      "callId": "cf4b32ff-8d31-4817-97ae-254c86b0dc0a",
+      "exchanges": [
+        {
+          "body": "{\"filters\":[{\"id\":1,\"name\":\"All Contacts\",\"model_class_name\":\"Contact\",\"private\":\"not-persisted\"}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "views": [
+            {
+              "id": 1,
+              "name": "All Contacts"
+            }
+          ]
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContactViews-success",
+      "operation": "listContactViews"
+    },
+    {
+      "callId": "8c4da3ee-d934-48f8-9034-128b27285278",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "views": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContactViews-providerRejected",
+      "operation": "listContactViews"
+    },
+    {
+      "callId": "d4cacd74-a94f-45df-8185-62b9c54a428a",
+      "exchanges": [
+        {
+          "body": "{\"filters\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "views": []
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContactViews-invalidResponse",
+      "operation": "listContactViews"
+    },
+    {
+      "callId": "3d6bb7ab-0ee0-4d36-bc27-4a3cfb533927",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "AUTHENTICATION",
+        "output": {
+          "views": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContactViews-defect",
+      "operation": "listContactViews"
+    },
+    {
+      "callId": "318618a4-b0ec-429b-8843-636b3b4d8041",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContactViews-rateLimit",
+      "operation": "listContactViews"
+    },
+    {
+      "callId": "1898310e-788b-439a-96aa-d27a0d3868f1",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContactViews-serverUnavailable",
+      "operation": "listContactViews"
+    },
+    {
+      "callId": "8836ef99-2440-4d13-973f-cdf5e4914f1a",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/filters",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {},
+      "name": "listContactViews-transportFailure",
+      "operation": "listContactViews"
+    },
+    {
+      "callId": "99224f68-5d7a-413c-94d5-3376b18428e2",
+      "exchanges": [
+        {
+          "body": "{\"contact\":{\"id\":144,\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"email\":\"ada@example.com\",\"custom_field\":{\"private\":\"not-persisted\"}}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/144",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "emailAddress": "ada@example.com",
+          "firstName": "Ada",
+          "id": 144,
+          "lastName": "Lovelace"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "144"
+      },
+      "name": "getContact-success",
+      "operation": "getContact"
+    },
+    {
+      "callId": "c8a9950c-5a4b-4ece-9210-11d2d727400c",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"No Result found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/144",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "144"
+      },
+      "name": "getContact-notFound",
+      "operation": "getContact"
+    },
+    {
+      "callId": "854b7c6a-a39b-41a7-b2e3-2f675aa841c2",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/144",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "144"
+      },
+      "name": "getContact-providerRejected",
+      "operation": "getContact"
+    },
+    {
+      "callId": "96eed713-ad5d-437a-9889-06395754a366",
+      "exchanges": [
+        {
+          "body": "{\"contact\":null}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/144",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "144"
+      },
+      "name": "getContact-invalidResponse",
+      "operation": "getContact"
+    },
+    {
+      "callId": "ad7f890d-40d3-4d8d-aa60-577decfcc9aa",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "emailAddress": "",
+          "firstName": "",
+          "id": 0,
+          "lastName": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "0"
+      },
+      "name": "getContact-defect",
+      "operation": "getContact"
+    },
+    {
+      "callId": "abbb2161-6c97-458d-b289-c07b37cda220",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Rate limited\"}",
+          "headers": {
+            "Retry-After": "2"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/144",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 2000,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "144"
+      },
+      "name": "getContact-rateLimit",
+      "operation": "getContact"
+    },
+    {
+      "callId": "83cc5bd3-e3e6-46d9-87c2-15b7def6a1ae",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"Unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/144",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "144"
+      },
+      "name": "getContact-serverUnavailable",
+      "operation": "getContact"
+    },
+    {
+      "callId": "619b425b-8542-4796-bb36-76734daf0117",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/contacts/144",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Token token=test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "contactId": "144"
+      },
+      "name": "getContact-transportFailure",
+      "operation": "getContact"
+    }
+  ],
+  "schemaVersion": 1
+}

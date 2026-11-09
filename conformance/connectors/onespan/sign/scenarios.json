@@ -1,0 +1,284 @@
+{
+  "connector": "onespan-sign",
+  "scenarios": [
+    {
+      "callId": "6abaa63c-239a-55af-befd-c135ce7ce0de",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=\",\"name\":\"Example agreement\",\"status\":\"COMPLETED\",\"roles\":[{\"signers\":[{\"email\":\"private@example.com\"}]}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "found",
+        "failureKind": "",
+        "output": {
+          "id": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "name": "Example agreement",
+          "status": "COMPLETED"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "getPackage-found",
+      "operation": "getPackage"
+    },
+    {
+      "callId": "a1361226-b65b-52cd-81c9-423cc323222b",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"not found\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 404
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "getPackage-notFound",
+      "operation": "getPackage"
+    },
+    {
+      "callId": "d410c6a4-ee02-5101-a323-a2380562a585",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"forbidden\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "getPackage-providerRejected",
+      "operation": "getPackage"
+    },
+    {
+      "callId": "27398a3d-ff91-5c77-b3bf-8082eeddb75d",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"9sKhW-h-qS9m6Ho3zRv3n2a-rkI=\",\"name\":\"Example agreement\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "getPackage-invalidResponse",
+      "operation": "getPackage"
+    },
+    {
+      "callId": "a6a73395-6808-5afe-9970-a95a5ce8b6a2",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "id": "",
+          "name": "",
+          "status": ""
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": ""
+      },
+      "name": "getPackage-defect",
+      "operation": "getPackage"
+    },
+    {
+      "callId": "c400fb80-ea62-5a9b-8758-ad00c036837a",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"rate limit\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "getPackage-rateLimit",
+      "operation": "getPackage"
+    },
+    {
+      "callId": "323e41bb-18e1-56b0-8499-8fc575952b9e",
+      "exchanges": [
+        {
+          "body": "{\"message\":\"unavailable\"}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "getPackage-serverUnavailable",
+      "operation": "getPackage"
+    },
+    {
+      "callId": "2091cba2-6eb8-550c-8d19-81eb661fad9c",
+      "exchanges": [
+        {
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/packages/9sKhW-h-qS9m6Ho3zRv3n2a-rkI=",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic sample-onespan-sign-api-key"
+            ]
+          },
+          "transportFailure": "before-send"
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "TRANSPORT",
+        "requestCount": 0,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "packageId": "9sKhW-h-qS9m6Ho3zRv3n2a-rkI="
+      },
+      "name": "getPackage-transportFailure",
+      "operation": "getPackage"
+    }
+  ],
+  "schemaVersion": 1
+}

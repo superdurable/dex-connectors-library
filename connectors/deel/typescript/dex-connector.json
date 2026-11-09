@@ -1,0 +1,65 @@
+{
+  "connectorId": "deel",
+  "releaseTag": "connectors/deel/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-deel",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetContractStep",
+      "kind": "query",
+      "operationId": "getContract",
+      "inputType": "GetContractInput",
+      "description": "Read one contract's ID, type, and status without worker, client, or compensation details.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetContractInput selects a contract by its non-secret Deel ID.",
+        "properties": {
+          "contractId": {
+            "description": "ContractID is the ID shown in Deel Contracts or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contractId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

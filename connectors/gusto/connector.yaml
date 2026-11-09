@@ -1,0 +1,118 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: gusto
+  displayName: Gusto
+  description: Read an employee from an authorized Gusto company.
+  company: Gusto
+  version: v0.1.0
+spec:
+  provider: gusto
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-gusto
+      operations: [getEmployee]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-gusto'
+      operations: [getEmployee]
+      triggers: []
+  codegen:
+    go:
+      package: gusto
+  configuration:
+    fields:
+      - name: redirectUri
+        goName: RedirectURI
+        type: url
+        required: true
+        description: Non-secret HTTPS callback URI shown by Dex Web. At https://dev.gusto.com/ open Applications > your application > Redirect URIs and register the identical URI; Blank prevents OAuth refresh.
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        default: https://api.gusto.com
+        description: Gusto API origin. Blank uses the displayed production endpoint; override only for a trusted compatible gateway or local test.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one Gusto request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete Gusto JSON response in bytes. Blank uses the displayed default; increase only for an unusually large employee record.
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: gusto-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret client ID from https://dev.gusto.com/ > Applications > the application. Blank prevents authorization and refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret client secret from https://dev.gusto.com/ > Applications > the application. Dex stores it only in credentials; blank prevents authorization.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret company-level access token returned after Gusto consent and refreshed by Dex. Never paste it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret rotating company-level refresh token returned after consent and atomically replaced by Dex. Never paste it manually; blank requires reauthorization.
+    guide:
+      startURL: https://dev.gusto.com/
+      steps:
+        - In Gusto Developer Portal, create or open an application under Applications and register the exact HTTPS redirect URI shown by Dex Web under Redirect URIs. Enable the employees:read scope and any required consent for the company.
+        - Copy the application Client ID and Client Secret into the fields below. Enter the same callback URI as redirectUri, and choose Authorize in Dex Web for the intended company.
+        - Supply employeeId in the Flow input as the employee UUID from Gusto's employee list or webhook. The company-level token must grant employees:read; employee IDs are non-secret UUIDs.
+    oauth2:
+      authorizationEndpoint: https://api.gusto.com/oauth/authorize
+      tokenEndpoint: https://api.gusto.com/oauth/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [employees:read]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      tokenRequestEncoding: json
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
+        requiredScopes: [employees:read]
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: getEmployee
+      goName: GetEmployee
+      inputType: GetEmployeeInput
+      outputType: Employee
+      kind: query
+      description: Read one employee by UUID from the authorized Gusto company.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Gusto returned the selected employee.}
+        - {id: missing, goName: Missing, description: Gusto returned no employee for this UUID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Gusto conclusively rejected the read., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Gusto returned malformed or oversized employee JSON., optional: true}
+        - {id: defect, goName: Defect, description: The employee UUID or OAuth credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample employee is returned.
+          output: {employeeId: 90a68db5-cb3a-4f64-bb60-c0a934ee7600, firstName: Ada, lastName: Lovelace, email: ada@example.com, companyId: 7d61f73e-a18c-46a5-88e2-2bfa894657d7}

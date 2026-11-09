@@ -1,0 +1,57 @@
+{
+  "connectorId": "google-ads",
+  "releaseTag": "connectors/google/ads/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-google-ads",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListAccessibleCustomersStep",
+      "kind": "query",
+      "operationId": "listAccessibleCustomers",
+      "inputType": "ListAccessibleCustomersInput",
+      "description": "List customer resource names directly accessible to the authorized Google identity.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListAccessibleCustomersInput bounds how many account names enter Flow state.",
+        "properties": {
+          "maxCustomers": {
+            "description": "MaxCustomers accepts 1 through 10000 names; zero uses 1000.",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

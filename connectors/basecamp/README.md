@@ -1,0 +1,7 @@
+# Basecamp connector
+
+The Go, [Python](python/README.md), and [TypeScript](typescript/README.md) packages implement `listAccounts`. The Query reads Basecamp's [authorization document](https://github.com/basecamp/bc-api/blob/master/sections/authentication.md#get-authorization), keeps only `bc3` account IDs and names, and omits the identity profile. Each package has a runnable [Go](go/examples/accounts/README.md), [Python](python/examples/accounts/README.md), or [TypeScript](typescript/examples/accounts/README.md) Flow with the static `basecamp` Dex Web connection.
+
+At [Launchpad Integrations](https://launchpad.37signals.com/integrations), register an application and the exact redirect URL from Dex Web. Save its Client ID and secret in Dex, then authorize an identity with the desired Basecamp accounts. Dex refreshes the Bearer token; token values stay outside Flow state. Launchpad uses account consent and may ignore the requested `read` scope.
+
+`listAccounts` accepts a zero-based offset and a local limit from 1 through 100; a zero limit uses 100. The provider returns its accessible accounts in one response, so the connector bounds the response in bytes before slicing it. It retries HTTP 429, timeouts, transport failures, and server errors. Live provider authorization and Dex Web rendering remain unverified.

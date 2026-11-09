@@ -1,0 +1,65 @@
+{
+  "connectorId": "meistertask",
+  "releaseTag": "connectors/meistertask/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-meistertask",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newGetTaskStep",
+      "kind": "query",
+      "operationId": "getTask",
+      "inputType": "GetTaskInput",
+      "description": "Read one task's ID, status code, and name.",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "found",
+          "field": "found",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "notFound",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "GetTaskInput selects a task by its non-secret MeisterTask ID.",
+        "properties": {
+          "taskId": {
+            "description": "TaskID is the ID shown in MeisterTask Tasks or returned by the API.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

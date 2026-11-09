@@ -1,0 +1,150 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: google-tag-manager
+  displayName: Google Tag Manager
+  description: Read accounts, containers, and workspace tags from the Google Tag Manager v2 API.
+  company: Google
+  version: v0.1.0
+spec:
+  provider: google-tag-manager
+  languages:
+    python:
+      version: v0.1.0
+      operations: [listAccounts, listContainers, listTags]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      operations: [listAccounts, listContainers, listTags]
+      triggers: []
+  codegen:
+    go:
+      package: tagmanager
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        description: Google Tag Manager API HTTPS origin. Blank uses the displayed Google endpoint; override only for a trusted test gateway.
+        default: https://tagmanager.googleapis.com
+      - name: timeout
+        goName: Timeout
+        type: duration
+        description: Positive maximum duration of one Tag Manager request in Go units such as 15s or 1m. Blank uses the displayed default; increase for a slow gateway.
+        default: 15s
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        description: Positive maximum complete response size in bytes. Blank uses the displayed default; increase only for an account with many tags.
+        default: 2097152
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: google-tag-manager-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://console.cloud.google.com/apis/credentials > OAuth 2.0 Client IDs > your Web application. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret Client Secret from the same Google Cloud Web application credentials page. Store only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Google consent and refreshed by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned with offline consent. Dex rotates it on refresh; blank requires reauthorization.
+    guide:
+      startURL: https://console.cloud.google.com/apis/credentials
+      steps:
+        - Select a Google Cloud project and enable Tag Manager API in APIs & Services > Library. Ensure the Google user has read access to the target Tag Manager account and container.
+        - In Google Auth Platform > Branding and Audience, configure consent and add test users if an External app remains in Testing. Under Data Access, add the displayed tagmanager.readonly scope.
+        - Under Clients > Create client > Web application, register the exact redirect URI displayed by Dex Web. Copy the Client ID and one-time Client Secret into Dex Web, then authorize the Google account with offline access.
+        - Use listAccounts to find account IDs, listContainers to find container IDs, and the Tag Manager Workspaces page to find a workspace ID before listing tags.
+        - Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults. Keep access and refresh tokens inside Dex.
+    oauth2:
+      authorizationEndpoint: https://accounts.google.com/o/oauth2/v2/auth
+      tokenEndpoint: https://oauth2.googleapis.com/token
+      authorizationParameters: {access_type: offline, prompt: consent}
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [https://www.googleapis.com/auth/tagmanager.readonly]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: true
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: listAccounts
+      goName: ListAccounts
+      inputType: ListAccountsInput
+      outputType: AccountsPage
+      kind: query
+      description: List one page of Tag Manager accounts available to the connected user.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned an account page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized account JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example Tag Manager account is visible.
+          output: {accounts: [{path: accounts/123456, name: Example Account}], nextPageToken: ''}
+    - name: listContainers
+      goName: ListContainers
+      inputType: ListContainersInput
+      outputType: ContainersPage
+      kind: query
+      description: List one page of containers in a Tag Manager account.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a container page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized container JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local account or page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example container is visible.
+          output: {containers: [{path: accounts/123456/containers/987654, name: Example Container, publicId: GTM-EXAMPLE}], nextPageToken: ''}
+    - name: listTags
+      goName: ListTags
+      inputType: ListTagsInput
+      outputType: TagsPage
+      kind: query
+      description: List one page of tag identities and types in a Tag Manager workspace.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: listed, goName: Listed, description: Google returned a tag page.}
+        - {id: providerRejected, goName: ProviderRejected, description: Google definitively rejected the request., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Google returned malformed or oversized tag JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local workspace or page input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: listedDefault
+          branch: listed
+          default: true
+          description: One example tag is visible.
+          output: {tags: [{path: accounts/123456/containers/987654/workspaces/1/tags/42, name: Analytics Tag, type: gaawe}], nextPageToken: ''}

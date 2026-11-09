@@ -1,0 +1,199 @@
+{
+  "connectorId": "whatsapp-business",
+  "releaseTag": "connectors/meta/whatsapp-business/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-meta-whatsapp-business",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_phone_numbers_step",
+      "kind": "query",
+      "operationId": "listPhoneNumbers",
+      "inputType": "ListPhoneNumbersInput",
+      "description": "Read one page of phone-number IDs and display names for a WhatsApp Business Account.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "listed",
+          "field": "listed",
+          "optional": false
+        },
+        {
+          "id": "notFound",
+          "field": "not_found",
+          "optional": true
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "ListPhoneNumbersInput selects one WhatsApp Business Account and an optional page cursor.",
+        "properties": {
+          "after": {
+            "description": "After is the opaque cursor from a prior PhoneNumbersPage; blank reads the first page.",
+            "type": "string"
+          },
+          "businessAccountId": {
+            "description": "BusinessAccountID is the numeric WABA ID in Meta Business Settings.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "businessAccountId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_send_text_message_step",
+      "kind": "mutation",
+      "operationId": "sendTextMessage",
+      "inputType": "SendTextMessageInput",
+      "description": "Send a plain-text WhatsApp message within the customer service window.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "sent",
+          "field": "sent",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendTextMessageInput selects a registered sender, recipient, and plain-text message.",
+        "properties": {
+          "phoneNumberId": {
+            "description": "PhoneNumberID is the numeric sender ID returned by listPhoneNumbers.",
+            "type": "string"
+          },
+          "recipient": {
+            "description": "Recipient is the customer's E.164 phone number without the leading plus sign.",
+            "type": "string"
+          },
+          "text": {
+            "description": "Text is nonempty UTF-8 text, sent only inside the customer service window.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phoneNumberId",
+          "recipient",
+          "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "new_send_template_message_step",
+      "kind": "mutation",
+      "operationId": "sendTemplateMessage",
+      "inputType": "SendTemplateMessageInput",
+      "description": "Send an approved WhatsApp template, optionally with text body parameters.",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "sent",
+          "field": "sent",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "uncertain",
+          "field": "uncertain",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ],
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "SendTemplateMessageInput selects an approved template and optional text body parameters.",
+        "properties": {
+          "bodyParameters": {
+            "description": "BodyParameters replace text placeholders in template body order.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "languageCode": {
+            "description": "LanguageCode is the approved template language code, such as en_US.",
+            "type": "string"
+          },
+          "phoneNumberId": {
+            "description": "PhoneNumberID is the numeric sender ID returned by listPhoneNumbers.",
+            "type": "string"
+          },
+          "recipient": {
+            "description": "Recipient is the customer's E.164 phone number without the leading plus sign.",
+            "type": "string"
+          },
+          "templateName": {
+            "description": "TemplateName is the approved template name in WhatsApp Manager.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "languageCode",
+          "phoneNumberId",
+          "recipient",
+          "templateName"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
