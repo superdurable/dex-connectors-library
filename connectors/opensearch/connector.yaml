@@ -14,6 +14,11 @@ spec:
       package: dex-connector-opensearch
       operations: [indexDocument, deleteDocument, searchDocuments]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-opensearch'
+      operations: [indexDocument, deleteDocument, searchDocuments]
+      triggers: []
   codegen:
     go:
       package: opensearch

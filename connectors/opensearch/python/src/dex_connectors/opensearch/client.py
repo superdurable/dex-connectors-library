@@ -351,14 +351,14 @@ def _rejection_kind(status: int) -> FailureKind:
 
 
 def _document_retry(exchange: Exchange, operation: str) -> MutationAttempt[Any] | None:
-    if exchange.error == "too_large":
-        return MutationAttempt.retry(_failure(operation, FailureKind.RESPONSE_TOO_LARGE))
-    if exchange.error:
-        return MutationAttempt.retry(_failure(operation, FailureKind.TRANSPORT))
     if exchange.status == 429:
         return MutationAttempt.retry(_failure(operation, FailureKind.RATE_LIMIT), exchange.retry_after)
     if exchange.status in (408, 409) or exchange.status >= 500:
         return MutationAttempt.retry(_failure(operation, FailureKind.AVAILABILITY), exchange.retry_after)
+    if exchange.error == "too_large":
+        return MutationAttempt.retry(_failure(operation, FailureKind.RESPONSE_TOO_LARGE))
+    if exchange.error:
+        return MutationAttempt.retry(_failure(operation, FailureKind.TRANSPORT))
     return None
 
 
