@@ -33,6 +33,7 @@ from dex_connectors.sdk.providerhttp import (
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
 from ._generated.definitions import LIST_MEDIA_DEFINITION
+from ._graph_error import decode_graph_error
 from .models import InstagramMedia, ListMediaInput, MediaListPage
 
 Output = TypeVar("Output")
@@ -157,6 +158,29 @@ class Client:
                     True,
                     retry_after,
                 )
+            if status >= 400:
+                try:
+                    error_body = await read_bounded_body(response, self.max_response_bytes)
+                except (BodyTooLargeError, ProviderTransportError):
+                    error_body = b""
+                if access_token.encode() in error_body:
+                    return _decision(
+                        operation,
+                        "defect",
+                        FailureKind.AUTHENTICATION,
+                        "connection credentials are unavailable or invalid",
+                    )
+                graph_error = decode_graph_error(error_body)
+                if graph_error is not None and (graph_error.is_throttled or graph_error.is_transient):
+                    kind = FailureKind.RATE_LIMIT if graph_error.is_throttled else FailureKind.AVAILABILITY
+                    message = (
+                        "Meta rate limited the request"
+                        if graph_error.is_throttled
+                        else "Meta reported a transient error"
+                    )
+                    return _Outcome(
+                        "", Failure(kind, "instagram-business", operation, message), True, retry_after
+                    )
             if status == 404:
                 return _decision(
                     operation, "notFound", FailureKind.NOT_FOUND, "Meta did not find the resource"

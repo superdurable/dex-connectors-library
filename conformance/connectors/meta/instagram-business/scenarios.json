@@ -387,6 +387,206 @@
       },
       "name": "listMedia-transport",
       "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"(#80002) There have been too many calls to this Instagram account.\",\"type\":\"OAuthException\",\"code\":80002,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-graphThrottle",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"(#613) Calls to this api have exceeded the rate limit.\",\"type\":\"OAuthException\",\"code\":613,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-graphCustomThrottle",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"Service temporarily unavailable\",\"type\":\"OAuthException\",\"code\":2,\"is_transient\":true,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-graphTransient",
+      "operation": "listMedia"
+    },
+    {
+      "callId": "7a1b9270-11e7-594b-91a8-70e8fc7bb31f",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"message\":\"(#100) Invalid parameter\",\"type\":\"OAuthException\",\"code\":100,\"is_transient\":false,\"fbtrace_id\":\"AbCdEf\"}}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/17900000000000001/media",
+          "query": {
+            "after": [
+              "cursor/+value"
+            ],
+            "fields": [
+              "id,caption,media_type,timestamp,permalink"
+            ],
+            "limit": [
+              "100"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-instagram-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "media": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "after": "cursor/+value",
+        "igUserId": "17900000000000001"
+      },
+      "name": "listMedia-graphInvalidParameter",
+      "operation": "listMedia"
     }
   ],
   "schemaVersion": 1
