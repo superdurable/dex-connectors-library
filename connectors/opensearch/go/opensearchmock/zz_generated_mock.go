@@ -83,11 +83,6 @@ func IndexDocumentProviderRejected(value opensearch.IndexedDocument, failure *sd
 	return connectormock.Branch(opensearch.IndexDocumentBranchProviderRejected, value, failure)
 }
 
-// IndexDocumentInvalidResponse selects the invalidResponse branch: OpenSearch returned malformed or oversized indexing data.
-func IndexDocumentInvalidResponse(value opensearch.IndexedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.IndexedDocument] {
-	return connectormock.Branch(opensearch.IndexDocumentBranchInvalidResponse, value, failure)
-}
-
 // IndexDocumentDefect selects the defect branch: Local document input or credentials are invalid.
 func IndexDocumentDefect(value opensearch.IndexedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.IndexedDocument] {
 	return connectormock.Branch(opensearch.IndexDocumentBranchDefect, value, failure)
@@ -122,11 +117,6 @@ func DeleteDocumentIndexNotFound(value opensearch.DeletedDocument, failure *sdkg
 // DeleteDocumentProviderRejected selects the providerRejected branch: OpenSearch conclusively rejected the deletion.
 func DeleteDocumentProviderRejected(value opensearch.DeletedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.DeletedDocument] {
 	return connectormock.Branch(opensearch.DeleteDocumentBranchProviderRejected, value, failure)
-}
-
-// DeleteDocumentInvalidResponse selects the invalidResponse branch: OpenSearch returned malformed or oversized deletion data.
-func DeleteDocumentInvalidResponse(value opensearch.DeletedDocument, failure *sdkgo.Failure) connectormock.Case[opensearch.DeletedDocument] {
-	return connectormock.Branch(opensearch.DeleteDocumentBranchInvalidResponse, value, failure)
 }
 
 // DeleteDocumentDefect selects the defect branch: Local document ID or credentials are invalid.
