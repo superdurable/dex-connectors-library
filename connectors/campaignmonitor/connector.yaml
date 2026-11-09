@@ -46,11 +46,11 @@ spec:
         goName: APIKey
         type: secretString
         required: true
-        description: Secret API key from https://help.campaignmonitor.com/articles/Knowledge/api-keys under Profile image > Account settings > API keys. Generate or show and copy the full key; blank makes calls select defect. Rotate it on that page when retired.
+        description: Secret API key. Sign in at https://login.createsend.com/l, then open Profile image > Account settings > API keys. Generate or show and copy the full key; blank makes calls select defect. Rotate it on that page when retired.
     guide:
-      startURL: https://help.campaignmonitor.com/articles/Knowledge/api-keys
+      startURL: https://login.createsend.com/l
       steps:
-        - Sign in to Campaign Monitor, open the profile image > Account settings > API keys, then click Show API key or Generate API key. Copy the full value.
+        - Sign in to Campaign Monitor at https://login.createsend.com/l as a user with full access and a verified email, open the profile image > Account settings > API keys, then click Show API key or Generate API key. Copy the full value.
         - Save the key in secret api_key. Dex sends it as the HTTP Basic username with a blank password. Rotate it on the same page when access should end.
         - This key is for an account you control. Public integrations should use Campaign Monitor OAuth. Leave baseUrl, timeout, and maxResponseBytes blank for the displayed defaults.
   operations:

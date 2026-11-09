@@ -1,6 +1,6 @@
 # Campaign Monitor Python client discovery
 
-This runnable Flow calls `listClients` using the static `campaignmonitor` connection, stores the client list in an Attribute, and completes with the typed result. Open [Campaign Monitor API keys](https://help.campaignmonitor.com/articles/Knowledge/api-keys) through Profile image > Account settings > API keys and save the full key in secret `api_key`. Leave `baseUrl`, timeout, and response-size fields blank for their displayed defaults.
+This runnable Flow calls `listClients` using the static `campaignmonitor` connection, stores the client list in an Attribute, and completes with the typed result. Sign in at [Campaign Monitor](https://login.createsend.com/l) and open Profile image > Account settings > API keys ([guide](https://help.campaignmonitor.com/articles/Knowledge/api-keys)) and save the full key in secret `api_key`. Leave `baseUrl`, timeout, and response-size fields blank for their displayed defaults.
 
 With `DEX_PROJECT_*` and `DEX_FLOW_SERVICE_ADDRESS` set for a running Dex development environment, run from `connectors/campaignmonitor/python`:
 

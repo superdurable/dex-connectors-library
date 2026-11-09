@@ -14,7 +14,7 @@ The command must report `valid: true` with no diagnostics.
 
 ## Run with Dex Web
 
-Build the connector release artifact, then run `dexcli dev` with `--connector-release-override campaignmonitor=<artifact-directory>`. In Dex Web Connections select `campaignmonitor / campaignmonitor`. Open [Campaign Monitor API keys](https://help.campaignmonitor.com/articles/Knowledge/api-keys) through Profile image > Account settings > API keys, and save the full account key in secret `api_key`. Leave configuration fields blank for displayed defaults.
+Build the connector release artifact, then run `dexcli dev` with `--connector-release-override campaignmonitor=<artifact-directory>`. In Dex Web Connections select `campaignmonitor / campaignmonitor`. Sign in at [Campaign Monitor](https://login.createsend.com/l) and open Profile image > Account settings > API keys ([guide](https://help.campaignmonitor.com/articles/Knowledge/api-keys)), and save the full account key in secret `api_key`. Leave configuration fields blank for displayed defaults.
 
 With the project's `DEX_PROJECT_*` environment set, run from `connectors/campaignmonitor/go`:
 

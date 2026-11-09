@@ -1,6 +1,6 @@
 # Campaign Monitor TypeScript client discovery
 
-This Flow calls `listClients` with the static `campaignmonitor` Dex Web connection. It stores client IDs and names in a Dex Attribute and completes with the typed result. Open [Campaign Monitor API keys](https://help.campaignmonitor.com/articles/Knowledge/api-keys) through Profile image > Account settings > API keys and save the full key in secret `api_key`. Leave configuration fields blank for their displayed defaults.
+This Flow calls `listClients` with the static `campaignmonitor` Dex Web connection. It stores client IDs and names in a Dex Attribute and completes with the typed result. Sign in at [Campaign Monitor](https://login.createsend.com/l) and open Profile image > Account settings > API keys ([guide](https://help.campaignmonitor.com/articles/Knowledge/api-keys)) and save the full key in secret `api_key`. Leave configuration fields blank for their displayed defaults.
 
 With `DEX_PROJECT_*` and `DEX_FLOW_SERVICE_ADDRESS` set for a running Dex development environment, run from this package:
 

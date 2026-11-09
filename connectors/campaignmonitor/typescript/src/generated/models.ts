@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
 
 /** Private connector credentials resolved by the host. */
 export interface Credentials {
-  /** Secret API key from https://help.campaignmonitor.com/articles/Knowledge/api-keys under Profile image > Account settings > API keys. Generate or show and copy the full key; blank makes calls select defect. Rotate it on that page when retired. */
+  /** Secret API key. Sign in at https://login.createsend.com/l, then open Profile image > Account settings > API keys. Generate or show and copy the full key; blank makes calls select defect. Rotate it on that page when retired. */
   apiKey: SecretString;
 }
 
