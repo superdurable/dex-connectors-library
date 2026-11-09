@@ -96,7 +96,7 @@ class AgentRulesTest(unittest.TestCase):
                 self.assertIn("conformance/exemptions.yaml", contents)
                 self.assertIn("connectors/superdurable/email", contents)
                 self.assertIn("`connectors/mongodb`", contents)
-                self.assertIn("MongoDB ports use the CI `mongo:8.0` service through `MONGODB_CONNECTOR_TEST_URI`",
+                self.assertIn("MongoDB ports use the CI `mongo:7.0` service through `MONGODB_CONNECTOR_TEST_URI`",
                               contents)
                 self.assertIn("Each Release run starts at most `GO_RELEASE_LIMIT` (default 15) Go connector releases "
                               "and defers the rest, with their language packages, to later runs.", contents)

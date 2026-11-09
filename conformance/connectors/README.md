@@ -37,7 +37,7 @@ Each exempt Python or TypeScript package needs unit tests for every Go-tested
 branch, Retry, uncertain decision, and protocol-error classification. It also
 needs real protocol integration tests in CI service containers. Database ports
 follow the Go connector's live-test scenarios and connection variables when
-available. MongoDB ports use the CI `mongo:8.0` service through
+available. MongoDB ports use the CI `mongo:7.0` service through
 `MONGODB_CONNECTOR_TEST_URI`. Email ports mirror the Go connector's in-process `internal/mailtest`
 tests, including `send_message_test.go` and `search_messages_test.go`.
 The GreenMail CI job exports `EMAIL_CONNECTOR_TEST_*` variables for SMTPS,

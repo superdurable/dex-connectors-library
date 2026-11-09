@@ -1419,7 +1419,7 @@ Their Python and TypeScript packages use native protocols, so HTTP replay does
 not apply. Require unit coverage for Go-tested branches, Retry, uncertainty,
 and protocol-error classification, plus real protocol integration tests in CI
 service containers. Database ports follow Go connector live-test setup and
-scenarios when available. MongoDB ports use the CI `mongo:8.0` service
+scenarios when available. MongoDB ports use the CI `mongo:7.0` service
 through `MONGODB_CONNECTOR_TEST_URI`. Email ports mirror the Go connector's in-process
 `internal/mailtest` tests, including `send_message_test.go` and
 `search_messages_test.go`, and use the GreenMail `EMAIL_CONNECTOR_TEST_*`

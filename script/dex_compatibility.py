@@ -565,15 +565,26 @@ def create_module_proxy(module_root: Path, proxy: Path) -> tuple[str, str]:
 
 
 def flow_examples(root: Path, connector_directories: list[str] | None = None) -> list[Path]:
-    selected_roots = None if connector_directories is None else [root / directory for directory in connector_directories]
+    selected_roots = None if connector_directories is None else {root / directory for directory in connector_directories}
     examples = []
     for source in sorted((root / "connectors").glob("**/examples/**/flow/*.go")):
-        if (selected_roots is None or any(connector_root in source.parents for connector_root in selected_roots)) \
+        if (selected_roots is None or owning_connector_root(root, source) in selected_roots) \
                 and "GetSteps(" in source.read_text():
             examples.append(source.parent)
     if not examples and connector_directories is None:
         raise RuntimeError("no Flow examples found")
     return examples
+
+
+def owning_connector_root(root: Path, source: Path) -> Path | None:
+    """Returns the nearest connector directory, so a nested connector owns its own examples."""
+    connectors = root / "connectors"
+    for parent in source.parents:
+        if parent == connectors:
+            return None
+        if (parent / "connector.yaml").is_file():
+            return parent
+    return None
 
 
 def test_current_examples(
@@ -588,7 +599,9 @@ def test_current_examples(
     for manifest in manifests(root, connector_directories):
         proxies[manifest.parent] = create_module_proxy(manifest.parent / "go", proxy)
     for example in flow_examples(root, connector_directories):
-        connector_root = max((path for path in proxies if path in example.parents), key=lambda path: len(path.parts))
+        connector_root = owning_connector_root(root, example)
+        if connector_root not in proxies:
+            raise RuntimeError(f"no selected connector manifest owns example {example}")
         name, version = proxies[connector_root]
         consumer = output / example_consumer_name(connector_root.relative_to(root).as_posix(), example)
         run_visualize(example, consumer, dexcli, name, version, proxy.as_uri())
