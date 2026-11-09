@@ -25,11 +25,22 @@ class FakeCursor:
 
     def __init__(self, documents: list[dict[str, Any]] | Exception) -> None:
         self.documents = documents
+        self.index = 0
 
-    async def to_list(self, length: int) -> list[dict[str, Any]]:
+    def __aiter__(self) -> "FakeCursor":
+        return self
+
+    async def __anext__(self) -> dict[str, Any]:
         if isinstance(self.documents, Exception):
             raise self.documents
-        return self.documents[:length]
+        if self.index >= len(self.documents):
+            raise StopAsyncIteration
+        document = self.documents[self.index]
+        self.index += 1
+        return document
+
+    async def close(self) -> None:
+        return None
 
 
 class FakeCollection:

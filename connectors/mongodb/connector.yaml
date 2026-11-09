@@ -14,6 +14,11 @@ spec:
       package: dex-connector-mongodb
       operations: [findDocuments]
       triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-mongodb'
+      operations: [findDocuments]
+      triggers: []
   codegen:
     go:
       package: mongodb

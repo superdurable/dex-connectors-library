@@ -50,7 +50,7 @@ GOWORK=off go vet ./...
 ```
 
 The [Python package](python/README.md) uses PyMongo's native asynchronous
-driver and a checked-in Dex Flow. Its driver unit tests and real Dex mock
-integration test pass locally. The native MongoDB service integration test
-runs in CI; live Atlas authorization remains unverified. TypeScript and its
-native protocol coverage are pending.
+driver. The [TypeScript package](typescript/README.md) uses MongoDB's Node.js
+driver. Both include runnable Dex Flows, driver unit tests, and real Dex mock
+integration tests. Their native MongoDB service integration tests run in CI;
+live Atlas authorization remains unverified.
