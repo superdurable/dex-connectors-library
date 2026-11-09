@@ -65,6 +65,20 @@ def _valid_payment_id(payment_id: object) -> bool:
     return isinstance(payment_id, str) and re.fullmatch(r"pay_[A-Za-z0-9]{6,64}", payment_id) is not None
 
 
+def _is_payment_missing(body: bytes) -> bool:
+    """Report Razorpay's documented HTTP 400 error for an unknown payment ID."""
+    try:
+        raw: Any = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return False
+    error = raw.get("error") if isinstance(raw, dict) else None
+    return (
+        isinstance(error, dict)
+        and error.get("code") == "BAD_REQUEST_ERROR"
+        and error.get("description") == "The id provided does not exist"
+    )
+
+
 def _decode_payment(body: bytes, requested_payment_id: str) -> PaymentStatus:
     data: Any = json.loads(body)
     if not isinstance(data, dict) or (
@@ -183,7 +197,9 @@ class GetPaymentOperation:
             return _retry(
                 FailureKind.AVAILABILITY, "Razorpay is temporarily unavailable", exchange.retry_after
             )
-        if exchange.status == 404:
+        if exchange.status == 404 or (
+            exchange.status == 400 and not exchange.error and _is_payment_missing(exchange.body)
+        ):
             return _branch("notFound", FailureKind.NOT_FOUND, "Razorpay did not expose the payment")
         if exchange.status != 200:
             return _branch(

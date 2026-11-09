@@ -88,7 +88,7 @@ export class GetPaymentOperation implements Query<GetPaymentInput, PaymentStatus
     if (exchange.error === 'request') return retry('TRANSPORT', 'Razorpay request failed');
     if (exchange.status === 429) return retry('RATE_LIMIT', 'Razorpay rate limited the request', exchange.retryAfterMs);
     if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'Razorpay is temporarily unavailable', exchange.retryAfterMs);
-    if (exchange.status === 404) return terminal('notFound', 'NOT_FOUND', 'Razorpay did not expose the payment');
+    if (exchange.status === 404 || (exchange.status === 400 && !exchange.error && isPaymentMissing(exchange.body))) return terminal('notFound', 'NOT_FOUND', 'Razorpay did not expose the payment');
     if (exchange.status !== 200) return terminal('providerRejected', 'PROVIDER_REJECTION', `Razorpay rejected HTTP ${exchange.status}`);
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Razorpay response exceeded the configured limit');
     const paymentStatus = decodePayment(exchange.body, input.paymentId);
@@ -109,6 +109,13 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+/** Report Razorpay's documented HTTP 400 error for an unknown payment ID. */
+function isPaymentMissing(body: Uint8Array): boolean {
+  let raw: unknown;
+  try { raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return false; }
+  return isObject(raw) && isObject(raw.error) && raw.error.code === 'BAD_REQUEST_ERROR' &&
+    raw.error.description === 'The id provided does not exist';
+}
 function decodePayment(body: Uint8Array, paymentID: string): PaymentStatus | undefined {
   let data: unknown;
   try { data = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; }

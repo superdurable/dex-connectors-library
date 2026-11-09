@@ -283,6 +283,90 @@
       },
       "name": "getPayment-transportFailure",
       "operation": "getPayment"
+    },
+    {
+      "callId": "c79ddaad-7d48-507a-aa2a-f1de3d7399e9",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"BAD_REQUEST_ERROR\",\"description\":\"The id provided does not exist\",\"source\":\"business\",\"step\":\"payment_initiation\",\"reason\":\"input_validation_failed\",\"metadata\":{}}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-idDoesNotExist",
+      "operation": "getPayment"
+    },
+    {
+      "callId": "ff228082-e235-5569-b146-be9578237967",
+      "exchanges": [
+        {
+          "body": "{\"error\":{\"code\":\"BAD_REQUEST_ERROR\",\"description\":\"Authentication failed\",\"source\":\"NA\",\"step\":\"NA\",\"reason\":\"NA\",\"metadata\":{}}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/payments/pay_DG4ZdRK8ZnXC3k",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Basic cnpwX3Rlc3RfMTIzNDU2Nzg5MDpzYW1wbGUtcmF6b3JwYXktc2VjcmV0"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "amount": 0,
+          "currencyCode": "",
+          "id": "",
+          "status": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "paymentId": "pay_DG4ZdRK8ZnXC3k"
+      },
+      "name": "getPayment-otherBadRequest",
+      "operation": "getPayment"
     }
   ],
   "schemaVersion": 1

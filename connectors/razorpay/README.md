@@ -1,6 +1,6 @@
 # Razorpay connector
 
-The Go, Python, and TypeScript `getPayment` Query reads a payment's ID, status, amount in currency subunits, and currency code. Customer contact and payment method details are excluded from Dex Results.
+The Go, Python, and TypeScript `getPayment` Query reads a payment's ID, status, amount in currency subunits, and currency code. Customer contact and payment method details are excluded from Dex Results. Razorpay's HTTP 400 `BAD_REQUEST_ERROR` with description `The id provided does not exist`, returned for an unknown ID or one from another account or test/live mode, selects `notFound`; other rejections select `providerRejected`.
 
 ## Connect
 

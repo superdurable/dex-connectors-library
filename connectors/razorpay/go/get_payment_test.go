@@ -58,6 +58,8 @@ func TestGetPaymentClassifiesProviderOutcomes(t *testing.T) {
 		retry  bool
 	}{
 		{name: "missing", status: 404, branch: GetPaymentBranchNotFound},
+		{name: "unknown payment ID", status: 400, body: `{"error":{"code":"BAD_REQUEST_ERROR","description":"The id provided does not exist","source":"business","step":"payment_initiation","reason":"input_validation_failed","metadata":{}}}`, branch: GetPaymentBranchNotFound},
+		{name: "other bad request", status: 400, body: `{"error":{"code":"BAD_REQUEST_ERROR","description":"Authentication failed"}}`, branch: GetPaymentBranchProviderRejected},
 		{name: "forbidden", status: 403, branch: GetPaymentBranchProviderRejected},
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},

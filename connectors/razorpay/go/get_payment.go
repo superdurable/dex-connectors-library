@@ -64,7 +64,7 @@ func (operation GetPaymentOperation) Invoke(call sdkgo.Call, input GetPaymentInp
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewQueryRetry[PaymentStatus](paymentFailure(sdkgo.FailureAvailability, "Razorpay is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound || (response.status == http.StatusBadRequest && response.err == nil && isRazorpayPaymentMissing(response.body)) {
 		return paymentBranch(GetPaymentBranchNotFound, sdkgo.FailureNotFound, "Razorpay did not expose the payment")
 	}
 	if response.status != http.StatusOK {
@@ -86,6 +86,21 @@ func (operation GetPaymentOperation) Invoke(call sdkgo.Call, input GetPaymentInp
 var paymentIDPattern = regexp.MustCompile(`^pay_[A-Za-z0-9]{6,64}$`)
 
 func validPaymentID(paymentID string) bool { return paymentIDPattern.MatchString(paymentID) }
+
+// isRazorpayPaymentMissing reports the documented HTTP 400 error Razorpay
+// returns for an unknown payment ID or one from another account or mode.
+func isRazorpayPaymentMissing(body []byte) bool {
+	var wire struct {
+		Error struct {
+			Code        string `json:"code"`
+			Description string `json:"description"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(body, &wire) != nil {
+		return false
+	}
+	return wire.Error.Code == "BAD_REQUEST_ERROR" && wire.Error.Description == "The id provided does not exist"
+}
 
 func decodePayment(body []byte, requestedPaymentID string) (PaymentStatus, error) {
 	var wire struct {
