@@ -83,11 +83,6 @@ func IndexDocumentProviderRejected(value elasticsearch.IndexedDocument, failure 
 	return connectormock.Branch(elasticsearch.IndexDocumentBranchProviderRejected, value, failure)
 }
 
-// IndexDocumentInvalidResponse selects the invalidResponse branch: Elasticsearch returned malformed or oversized indexing data.
-func IndexDocumentInvalidResponse(value elasticsearch.IndexedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexedDocument] {
-	return connectormock.Branch(elasticsearch.IndexDocumentBranchInvalidResponse, value, failure)
-}
-
 // IndexDocumentDefect selects the defect branch: Local document input or credentials are invalid.
 func IndexDocumentDefect(value elasticsearch.IndexedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.IndexedDocument] {
 	return connectormock.Branch(elasticsearch.IndexDocumentBranchDefect, value, failure)
@@ -122,11 +117,6 @@ func DeleteDocumentIndexNotFound(value elasticsearch.DeletedDocument, failure *s
 // DeleteDocumentProviderRejected selects the providerRejected branch: Elasticsearch conclusively rejected the deletion.
 func DeleteDocumentProviderRejected(value elasticsearch.DeletedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.DeletedDocument] {
 	return connectormock.Branch(elasticsearch.DeleteDocumentBranchProviderRejected, value, failure)
-}
-
-// DeleteDocumentInvalidResponse selects the invalidResponse branch: Elasticsearch returned malformed or oversized deletion data.
-func DeleteDocumentInvalidResponse(value elasticsearch.DeletedDocument, failure *sdkgo.Failure) connectormock.Case[elasticsearch.DeletedDocument] {
-	return connectormock.Branch(elasticsearch.DeleteDocumentBranchInvalidResponse, value, failure)
 }
 
 // DeleteDocumentDefect selects the defect branch: Local document ID or credentials are invalid.

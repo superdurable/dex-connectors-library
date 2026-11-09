@@ -209,7 +209,6 @@ func (credentials Credentials) Validate() error {
 
 const IndexDocumentBranchIndexed sdkgo.BranchID = "indexed"
 const IndexDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const IndexDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const IndexDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var IndexDocumentDefinition = sdkgo.MutationDefinition{
@@ -217,7 +216,6 @@ var IndexDocumentDefinition = sdkgo.MutationDefinition{
 	Branches: []sdkgo.BranchDefinition{
 		{ID: IndexDocumentBranchIndexed, Description: "Elasticsearch stored the requested document at the stable ID."},
 		{ID: IndexDocumentBranchProviderRejected, Description: "Elasticsearch conclusively rejected the document replacement.", Optional: true},
-		{ID: IndexDocumentBranchInvalidResponse, Description: "Elasticsearch returned malformed or oversized indexing data.", Optional: true},
 		{ID: IndexDocumentBranchDefect, Description: "Local document input or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -240,7 +238,6 @@ type IndexDocumentStepConfig[IN any] struct {
 	MapToOperationInput               func(IN) IndexDocumentInput                           `connector:"mapToOperationInput"`
 	Indexed                           sdkgo.Target[IndexDocumentResult]                     `connector:"branch=indexed"`
 	ProviderRejected                  sdkgo.Target[IndexDocumentResult]                     `connector:"branch=providerRejected,optional"`
-	InvalidResponse                   sdkgo.Target[IndexDocumentResult]                     `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[IndexDocumentResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[IndexedDocument]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
@@ -258,15 +255,12 @@ func NewIndexDocumentStep[IN any](config IndexDocumentStepConfig[IN]) sdkgo.Muta
 		Operation: config.Connection.operations.IndexDocument(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[IndexDocumentResult] {
-			branches := make([]sdkgo.BranchTarget[IndexDocumentResult], 0, 4)
+			branches := make([]sdkgo.BranchTarget[IndexDocumentResult], 0, 3)
 			if config.Indexed.HasStep() {
 				branches = append(branches, config.Indexed.BranchTarget(IndexDocumentBranchIndexed))
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(IndexDocumentBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(IndexDocumentBranchInvalidResponse))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(IndexDocumentBranchDefect))
@@ -281,7 +275,6 @@ func NewIndexDocumentStep[IN any](config IndexDocumentStepConfig[IN]) sdkgo.Muta
 const DeleteDocumentBranchAbsent sdkgo.BranchID = "absent"
 const DeleteDocumentBranchIndexNotFound sdkgo.BranchID = "indexNotFound"
 const DeleteDocumentBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const DeleteDocumentBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const DeleteDocumentBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
 var DeleteDocumentDefinition = sdkgo.MutationDefinition{
@@ -290,7 +283,6 @@ var DeleteDocumentDefinition = sdkgo.MutationDefinition{
 		{ID: DeleteDocumentBranchAbsent, Description: "The document is absent, whether deleted now or already missing."},
 		{ID: DeleteDocumentBranchIndexNotFound, Description: "The requested index does not exist.", Optional: true},
 		{ID: DeleteDocumentBranchProviderRejected, Description: "Elasticsearch conclusively rejected the deletion.", Optional: true},
-		{ID: DeleteDocumentBranchInvalidResponse, Description: "Elasticsearch returned malformed or oversized deletion data.", Optional: true},
 		{ID: DeleteDocumentBranchDefect, Description: "Local document ID or credentials are invalid.", Optional: true},
 	},
 	StepDefaults: sdkgo.StepDefaults{
@@ -314,7 +306,6 @@ type DeleteDocumentStepConfig[IN any] struct {
 	Absent                            sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=absent"`
 	IndexNotFound                     sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=indexNotFound,optional"`
 	ProviderRejected                  sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=providerRejected,optional"`
-	InvalidResponse                   sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[DeleteDocumentResult]                    `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[DeletedDocument]] `connector:"resultAttribute"`
 	StepOptionsOverride               *dex.StepOptions                                      `connector:"stepOptionsOverride"`
@@ -332,7 +323,7 @@ func NewDeleteDocumentStep[IN any](config DeleteDocumentStepConfig[IN]) sdkgo.Mu
 		Operation: config.Connection.operations.DeleteDocument(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[DeleteDocumentResult] {
-			branches := make([]sdkgo.BranchTarget[DeleteDocumentResult], 0, 5)
+			branches := make([]sdkgo.BranchTarget[DeleteDocumentResult], 0, 4)
 			if config.Absent.HasStep() {
 				branches = append(branches, config.Absent.BranchTarget(DeleteDocumentBranchAbsent))
 			}
@@ -341,9 +332,6 @@ func NewDeleteDocumentStep[IN any](config DeleteDocumentStepConfig[IN]) sdkgo.Mu
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(DeleteDocumentBranchProviderRejected))
-			}
-			if config.InvalidResponse.HasStep() {
-				branches = append(branches, config.InvalidResponse.BranchTarget(DeleteDocumentBranchInvalidResponse))
 			}
 			if config.Defect.HasStep() {
 				branches = append(branches, config.Defect.BranchTarget(DeleteDocumentBranchDefect))

@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: elasticsearch
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-elasticsearch
+      operations: [indexDocument, deleteDocument, searchDocuments]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-elasticsearch'
+      operations: [indexDocument, deleteDocument, searchDocuments]
+      triggers: []
   codegen:
     go:
       package: elasticsearch
@@ -66,7 +77,6 @@ spec:
       branches:
         - {id: indexed, goName: Indexed, description: Elasticsearch stored the requested document at the stable ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected the document replacement., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized indexing data., optional: true}
         - {id: defect, goName: Defect, description: Local document input or credentials are invalid., optional: true}
       execution:
         executeMethodTimeout: 30s
@@ -89,7 +99,6 @@ spec:
         - {id: absent, goName: Absent, description: "The document is absent, whether deleted now or already missing."}
         - {id: indexNotFound, goName: IndexNotFound, description: The requested index does not exist., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Elasticsearch conclusively rejected the deletion., optional: true}
-        - {id: invalidResponse, goName: InvalidResponse, description: Elasticsearch returned malformed or oversized deletion data., optional: true}
         - {id: defect, goName: Defect, description: Local document ID or credentials are invalid., optional: true}
       execution:
         executeMethodTimeout: 30s
