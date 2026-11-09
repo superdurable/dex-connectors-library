@@ -88,7 +88,6 @@ def new_upload_file_step(
     uploaded: dex.StepTarget[MutationResult[UploadedFile]],
     not_found: dex.StepTarget[MutationResult[UploadedFile]] | None = None,
     provider_rejected: dex.StepTarget[MutationResult[UploadedFile]] | None = None,
-    uncertain: dex.StepTarget[MutationResult[UploadedFile]] | None = None,
     invalid_response: dex.StepTarget[MutationResult[UploadedFile]] | None = None,
     defect: dex.StepTarget[MutationResult[UploadedFile]] | None = None,
     result_attribute: dex.Attribute[MutationResult[UploadedFile]] | None = None,
@@ -111,8 +110,6 @@ def new_upload_file_step(
         branches["notFound"] = not_found
     if provider_rejected is not None:
         branches["providerRejected"] = provider_rejected
-    if uncertain is not None:
-        branches["uncertain"] = uncertain
     if invalid_response is not None:
         branches["invalidResponse"] = invalid_response
     if defect is not None:

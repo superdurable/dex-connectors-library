@@ -3,7 +3,7 @@
 
 import { createHash } from 'node:crypto';
 import {
-  newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry,
+  newMutationBranch, newMutationRetry, newQueryBranch, newQueryRetry,
   type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt,
 } from '@superdurable/connectors-sdk';
 import { DownloadFileDefinition, UploadFileDefinition } from './generated/definitions.js';
@@ -28,10 +28,6 @@ function uploadBranch(branch: string, kind: Failure['kind'], message: string): M
 }
 function uploadRetry(kind: Failure['kind'], message: string, delay = 0): MutationAttempt<UploadedFile> {
   return newMutationRetry(failure('uploadFile', kind, message), delay);
-}
-function uncertainUpload(): MutationAttempt<UploadedFile> {
-  return newMutationUncertain(emptyUploadedFile,
-    failure('uploadFile', 'TRANSPORT', 'Box may have replaced the file but its current content could not be confirmed'));
 }
 function validFileID(value: string): boolean { return /^[0-9]{1,40}$/.test(value); }
 
@@ -72,13 +68,12 @@ export class DownloadFileOperation implements Query<DownloadFileInput, Downloade
     if (exchange.error === 'request') return downloadRetry('TRANSPORT', 'Box download request failed');
     if (exchange.status === 429) return downloadRetry('RATE_LIMIT', 'Box rate limited the download', exchange.retryAfterMs);
     if (exchange.status === 408 || exchange.status >= 500) return downloadRetry('AVAILABILITY', 'Box download is temporarily unavailable', exchange.retryAfterMs);
+    if (exchange.status === 202) return downloadRetry('AVAILABILITY', 'Box file is not ready for download', exchange.retryAfterMs);
+    if (exchange.error === 'invalidRedirect') return downloadBranch('invalidResponse', 'PROTOCOL', 'Box returned an unsafe download redirect');
     if (exchange.status !== 200 && exchange.error === 'tooLarge')
       return downloadBranch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Box error response exceeds the configured limit');
     if (exchange.status === 404) return downloadBranch('notFound', 'NOT_FOUND', 'Box did not find the file');
-    if (exchange.status !== 200) {
-      if (exchange.error === 'invalidRedirect') return downloadBranch('invalidResponse', 'PROTOCOL', 'Box returned an unsafe download redirect');
-      return downloadBranch('providerRejected', 'PROVIDER_REJECTION', `Box rejected HTTP ${exchange.status}`);
-    }
+    if (exchange.status !== 200) return downloadBranch('providerRejected', 'PROVIDER_REJECTION', `Box rejected HTTP ${exchange.status}`);
     if (exchange.error === 'tooLarge') return downloadBranch('tooLarge', 'RESPONSE_TOO_LARGE', 'Box file exceeds the configured download limit');
     if (exchange.error) return downloadRetry('TRANSPORT', 'Box download response was interrupted');
     return newQueryBranch('downloaded', { fileId: input.fileId, contentBase64: Buffer.from(exchange.body).toString('base64'), contentBytes: exchange.body.length });
@@ -120,9 +115,10 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadedFi
     if (exchange.status === 408 || exchange.status >= 500)
       return uploadRetry('AVAILABILITY', 'Box upload is temporarily unavailable', exchange.retryAfterMs);
     if (exchange.status === 404) return uploadBranch('notFound', 'NOT_FOUND', 'Box did not find the file');
-    if (exchange.status !== 0 && exchange.status !== 201)
+    const isAccepted = exchange.status === 200 || exchange.status === 201;
+    if (exchange.status !== 0 && !isAccepted)
       return uploadBranch('providerRejected', 'PROVIDER_REJECTION', `Box rejected HTTP ${exchange.status}`);
-    if (exchange.status === 201 && !exchange.error) {
+    if (isAccepted && !exchange.error) {
       try {
         const wire: unknown = JSON.parse(Buffer.from(exchange.body).toString('utf8'));
         if (wire && typeof wire === 'object' && 'entries' in wire && Array.isArray(wire.entries) && wire.entries.length === 1) {
@@ -136,9 +132,10 @@ export class UploadFileOperation implements Mutation<UploadFileInput, UploadedFi
       try {
         const confirmed = decodeMetadata(readback.body, input.fileId);
         if (matches(confirmed, input.fileId, digest, content.length)) return uploaded(confirmed);
-      } catch { /* The outcome remains uncertain when read-back cannot validate it. */ }
+      } catch { /* An invalid read-back leaves the replacement unconfirmed. */ }
     }
-    return uncertainUpload();
+    // Retry is safe: the next attempt compares the current SHA-1 and size before replacing the content again.
+    return uploadRetry('TRANSPORT', 'Box replacement could not be confirmed by read-back', readback.retryAfterMs);
   }
 }
 

@@ -137,7 +137,6 @@ spec:
         - {id: uploaded, goName: Uploaded, description: The existing Box file now has the requested content.}
         - {id: notFound, goName: NotFound, description: Box did not find the file or the user lacks access., optional: true}
         - {id: providerRejected, goName: ProviderRejected, description: Box conclusively rejected the replacement., optional: true}
-        - {id: uncertain, goName: Uncertain, description: The replacement may have reached Box but read-back could not confirm its content., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Box returned malformed or oversized file metadata., optional: true}
         - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
       mocks:

@@ -123,11 +123,6 @@ func UploadFileProviderRejected(value box.UploadedFile, failure *sdkgo.Failure) 
 	return connectormock.Branch(box.UploadFileBranchProviderRejected, value, failure)
 }
 
-// UploadFileUncertain returns an uncertain uploadFile outcome.
-func UploadFileUncertain(value box.UploadedFile, failure sdkgo.Failure) connectormock.Case[box.UploadedFile] {
-	return connectormock.Uncertain(value, failure)
-}
-
 // UploadFileInvalidResponse selects the invalidResponse branch: Box returned malformed or oversized file metadata.
 func UploadFileInvalidResponse(value box.UploadedFile, failure *sdkgo.Failure) connectormock.Case[box.UploadedFile] {
 	return connectormock.Branch(box.UploadFileBranchInvalidResponse, value, failure)

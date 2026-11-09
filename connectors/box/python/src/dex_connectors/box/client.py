@@ -96,13 +96,17 @@ class Client:
         signed_url = first.body.decode("utf-8", errors="ignore")
         if not _is_box_download_url(signed_url):
             return Exchange(status=302, error="invalid_redirect", request_sent=True)
-        return await self._send(
+        # The signed URL authorizes itself; the OAuth token must not leave the Box API host.
+        second = await self._send(
             "GET",
             signed_url,
             {"User-Agent": "Dex Connector (https://superdurable.io)"},
             self.max_download_bytes,
             token,
         )
+        if second.status == 302 and not second.error:
+            return Exchange(status=302, error="invalid_redirect", request_sent=True)
+        return second
 
     async def get_file_metadata(self, call: Call, file_id: str) -> Exchange:
         """Read one file's identity, current digest, and size."""
@@ -179,6 +183,10 @@ class Client:
             retry_after = parse_retry_after(response.headers.get("Retry-After", ""), datetime.now(UTC))
             if status == 302:
                 location = response.headers.get("Location", "")
+                if access_token in location:
+                    return Exchange(
+                        status=status, retry_after=retry_after, error="credential", request_sent=True
+                    )
                 return Exchange(
                     status=302, body=location.encode(), retry_after=retry_after, request_sent=True
                 )
@@ -198,14 +206,20 @@ class Client:
 
 
 def _is_box_download_url(value: str) -> bool:
-    parsed = urlsplit(value)
+    if not value or len(value) > 8192:
+        return False
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
     return (
         parsed.scheme == "https"
         and parsed.hostname is not None
-        and (parsed.hostname == "boxcloud.com" or parsed.hostname.endswith(".boxcloud.com"))
+        and parsed.hostname.endswith(".boxcloud.com")
+        and port is None
         and parsed.username is None
         and parsed.password is None
-        and parsed.port is None
         and not parsed.fragment
         and bool(parsed.path)
     )

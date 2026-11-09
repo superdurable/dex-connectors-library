@@ -151,7 +151,7 @@ func TestUploadFileConfirmsLostResponseWithoutAnotherWrite(t *testing.T) {
 	require.EqualValues(t, 1, postCount.Load())
 }
 
-func TestUploadFileReportsUnconfirmedAcceptedResponse(t *testing.T) {
+func TestUploadFileRetriesUnconfirmedAcceptedResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method == http.MethodGet {
 			_, _ = writer.Write([]byte(metadataJSON(oldDigest)))
@@ -161,9 +161,23 @@ func TestUploadFileReportsUnconfirmedAcceptedResponse(t *testing.T) {
 		_, _ = writer.Write([]byte(`{"entries":[]}`))
 	}))
 	defer server.Close()
+	_, err := sdkgo.RunMutation(queryContext{}, uploadClient(t, server.URL).UploadFile(), testConnection, UploadFileInput{FileID: "12345", ContentBase64: "SGVsbG8="})
+	var retry *sdkgo.RetryError
+	require.ErrorAs(t, err, &retry)
+}
+
+func TestUploadFileAcceptsDocumentedOKResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			_, _ = writer.Write([]byte(metadataJSON(oldDigest)))
+			return
+		}
+		_, _ = writer.Write([]byte(`{"total_count":1,"entries":[` + metadataJSON(helloDigest) + `]}`))
+	}))
+	defer server.Close()
 	result, err := sdkgo.RunMutation(queryContext{}, uploadClient(t, server.URL).UploadFile(), testConnection, UploadFileInput{FileID: "12345", ContentBase64: "SGVsbG8="})
 	require.NoError(t, err)
-	require.Equal(t, sdkgo.UncertainBranchID, result.Branch)
+	require.Equal(t, UploadFileBranchUploaded, result.Branch)
 }
 
 func TestUploadFileRetriesServerFailureAndRejectsInvalidInput(t *testing.T) {

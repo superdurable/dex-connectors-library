@@ -321,6 +321,231 @@
       "operation": "downloadFile"
     },
     {
+      "callId": "1eba544c-04a8-53b7-877f-2998074d24b9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "https://dl.boxcloud.com/d/1/signed/download"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/files/12345/content",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 302
+        },
+        {
+          "body": "Hello",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/d/1/signed/download",
+          "requestHeaders": {
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "downloaded",
+        "failureKind": "",
+        "output": {
+          "contentBase64": "SGVsbG8=",
+          "contentBytes": 5,
+          "fileId": "12345"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "12345"
+      },
+      "name": "downloadFile-signedRedirect",
+      "operation": "downloadFile"
+    },
+    {
+      "callId": "1eba544c-04a8-53b7-877f-2998074d24b9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Location": "https://dl.boxcloud.com.evil.example/download"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/files/12345/content",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 302
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "contentBase64": "",
+          "contentBytes": 0,
+          "fileId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "12345"
+      },
+      "name": "downloadFile-unsafeRedirect",
+      "operation": "downloadFile"
+    },
+    {
+      "callId": "1eba544c-04a8-53b7-877f-2998074d24b9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {
+            "Retry-After": "5"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/files/12345/content",
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 202
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {
+        "fileId": "12345"
+      },
+      "name": "downloadFile-notReady",
+      "operation": "downloadFile"
+    },
+    {
+      "callId": "bc3fe488-f7a0-5ea0-8330-6ef7795d5372",
+      "exchanges": [
+        {
+          "body": "{\"id\":\"12345\",\"type\":\"file\",\"name\":\"example.txt\",\"sha1\":\"0000000000000000000000000000000000000000\",\"size\":5}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/2.0/files/12345",
+          "query": {
+            "fields": [
+              "id,type,name,sha1,size"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"total_count\":1,\"entries\":[{\"id\":\"12345\",\"type\":\"file\",\"name\":\"example.txt\",\"sha1\":\"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0\",\"size\":5}]}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/2.0/files/12345/content",
+          "requestBody": {
+            "$multipart": [
+              {
+                "bodyBase64": "eyJuYW1lIjoiZXhhbXBsZS50eHQifQ==",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"attributes\""
+                  ]
+                }
+              },
+              {
+                "bodyBase64": "SGVsbG8=",
+                "headers": {
+                  "Content-Disposition": [
+                    "form-data; name=\"file\"; filename=\"example.txt\""
+                  ],
+                  "Content-Type": [
+                    "application/octet-stream"
+                  ]
+                }
+              }
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-token"
+            ],
+            "Content-Type": [
+              "multipart/form-data"
+            ],
+            "User-Agent": [
+              "Dex Connector (https://superdurable.io)"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uploaded",
+        "failureKind": "",
+        "output": {
+          "fileId": "12345",
+          "name": "example.txt",
+          "sha1": "F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"
+        },
+        "requestCount": 2,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "bc3fe488-f7a0-5ea0-8330-6ef7795d5372",
+      "input": {
+        "contentBase64": "SGVsbG8=",
+        "fileId": "12345"
+      },
+      "name": "uploadFile-success",
+      "operation": "uploadFile"
+    },
+    {
       "callId": "bc3fe488-f7a0-5ea0-8330-6ef7795d5372",
       "exchanges": [
         {
@@ -411,7 +636,7 @@
         "contentBase64": "SGVsbG8=",
         "fileId": "12345"
       },
-      "name": "uploadFile-success",
+      "name": "uploadFile-acceptedCreated",
       "operation": "uploadFile"
     },
     {
@@ -732,24 +957,19 @@
         }
       ],
       "expected": {
-        "branch": "uncertain",
+        "branch": "",
         "failureKind": "TRANSPORT",
-        "output": {
-          "fileId": "",
-          "name": "",
-          "sha1": ""
-        },
         "requestCount": 3,
-        "retry": false,
+        "retry": true,
         "retryAfterMs": 0,
-        "uncertain": true
+        "uncertain": false
       },
       "idempotencyKey": "bc3fe488-f7a0-5ea0-8330-6ef7795d5372",
       "input": {
         "contentBase64": "SGVsbG8=",
         "fileId": "12345"
       },
-      "name": "uploadFile-uncertain",
+      "name": "uploadFile-readbackMismatch",
       "operation": "uploadFile"
     },
     {

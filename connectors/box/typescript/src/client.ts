@@ -77,7 +77,10 @@ export class BoxClient {
     if (first.status !== 302 || first.error) return first;
     const location = first.location ?? '';
     if (!isBoxDownloadURL(location)) return { ...first, body: new Uint8Array(), error: 'invalidRedirect' };
-    return this.request(call, 'GET', location, {}, this.maxDownloadBytes, token);
+    // The signed URL authorizes itself; the OAuth token must not leave the Box API host.
+    const second = await this.request(call, 'GET', location, {}, this.maxDownloadBytes, token);
+    if (second.status === 302 && !second.error) return { ...second, body: new Uint8Array(), error: 'invalidRedirect' };
+    return second;
   }
 
   /** Read one file's current identity and digest. */
@@ -139,7 +142,7 @@ export class BoxClient {
     }
     const retryAfterMs = parseRetryAfter(header(response.headers, 'retry-after'), this.now());
     const location = response.status === 302 ? header(response.headers, 'location') : '';
-    if (location.length > 8192 || location.includes(token) || Buffer.from(response.body).includes(token))
+    if (location.includes(token) || Buffer.from(response.body).includes(token))
       return { status: response.status, body: new Uint8Array(), retryAfterMs, requestSent: true, error: 'credential' };
     const limit = response.status === 200 ? successLimit : this.maxResponseBytes;
     if (response.body.length > limit) return { status: response.status, body: new Uint8Array(), retryAfterMs, requestSent: true, error: 'tooLarge' };
@@ -152,6 +155,7 @@ function emptyExchange(error: NonNullable<BoxExchange['error']>): BoxExchange {
 }
 
 function isBoxDownloadURL(value: string): boolean {
+  if (!value || value.length > 8192) return false;
   try {
     const url = new URL(value);
     return url.protocol === 'https:' && url.hostname.endsWith('.boxcloud.com')

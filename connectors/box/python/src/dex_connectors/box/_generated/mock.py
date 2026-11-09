@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import DownloadFileInput, DownloadedFile, UploadFileInput, UploadedFile
-from .definitions import CONNECTOR_ID, DEFECT, DOWNLOADED, DOWNLOAD_FILE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, TOO_LARGE, UNCERTAIN, UPLOADED, UPLOAD_FILE_DEFINITION
+from .definitions import CONNECTOR_ID, DEFECT, DOWNLOADED, DOWNLOAD_FILE_DEFINITION, INVALID_RESPONSE, NOT_FOUND, PROVIDER_REJECTED, TOO_LARGE, UPLOADED, UPLOAD_FILE_DEFINITION
 
 def download_file_downloaded(value: DownloadedFile, failure: Failure | None = None) -> Case[DownloadedFile]:
     return Case.branch_result(DOWNLOADED, value, failure)
@@ -66,11 +66,6 @@ def upload_file_provider_rejected(value: UploadedFile, failure: Failure | None =
 
 setattr(upload_file_provider_rejected, '__module__', "dex_connectors.box.boxmock")
 
-def upload_file_uncertain(value: UploadedFile, failure: Failure) -> Case[UploadedFile]:
-    return Case.uncertain(value, failure)
-
-setattr(upload_file_uncertain, '__module__', "dex_connectors.box.boxmock")
-
 def upload_file_invalid_response(value: UploadedFile, failure: Failure | None = None) -> Case[UploadedFile]:
     return Case.branch_result(INVALID_RESPONSE, value, failure)
 
@@ -123,7 +118,6 @@ __all__ = [
     "upload_file_uploaded",
     "upload_file_not_found",
     "upload_file_provider_rejected",
-    "upload_file_uncertain",
     "upload_file_invalid_response",
     "upload_file_defect",
     "upload_file_retry",

@@ -369,7 +369,6 @@ func NewDownloadFileStep[IN any](config DownloadFileStepConfig[IN]) sdkgo.QueryS
 const UploadFileBranchUploaded sdkgo.BranchID = "uploaded"
 const UploadFileBranchNotFound sdkgo.BranchID = "notFound"
 const UploadFileBranchProviderRejected sdkgo.BranchID = "providerRejected"
-const UploadFileBranchUncertain sdkgo.BranchID = sdkgo.UncertainBranchID
 const UploadFileBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
 const UploadFileBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
 
@@ -379,7 +378,6 @@ var UploadFileDefinition = sdkgo.MutationDefinition{
 		{ID: UploadFileBranchUploaded, Description: "The existing Box file now has the requested content."},
 		{ID: UploadFileBranchNotFound, Description: "Box did not find the file or the user lacks access.", Optional: true},
 		{ID: UploadFileBranchProviderRejected, Description: "Box conclusively rejected the replacement.", Optional: true},
-		{ID: UploadFileBranchUncertain, Description: "The replacement may have reached Box but read-back could not confirm its content.", Optional: true},
 		{ID: UploadFileBranchInvalidResponse, Description: "Box returned malformed or oversized file metadata.", Optional: true},
 		{ID: UploadFileBranchDefect, Description: "Local input or connection credentials are invalid.", Optional: true},
 	},
@@ -404,7 +402,6 @@ type UploadFileStepConfig[IN any] struct {
 	Uploaded                          sdkgo.Target[UploadFileResult]                     `connector:"branch=uploaded"`
 	NotFound                          sdkgo.Target[UploadFileResult]                     `connector:"branch=notFound,optional"`
 	ProviderRejected                  sdkgo.Target[UploadFileResult]                     `connector:"branch=providerRejected,optional"`
-	Uncertain                         sdkgo.Target[UploadFileResult]                     `connector:"branch=uncertain,optional"`
 	InvalidResponse                   sdkgo.Target[UploadFileResult]                     `connector:"branch=invalidResponse,optional"`
 	Defect                            sdkgo.Target[UploadFileResult]                     `connector:"branch=defect,optional"`
 	ResultAttribute                   *dex.Attribute[sdkgo.MutationResult[UploadedFile]] `connector:"resultAttribute"`
@@ -423,7 +420,7 @@ func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationSt
 		Operation: config.Connection.operations.UploadFile(), Connection: config.Connection.reference,
 		MapToOperationInput: config.MapToOperationInput,
 		Branches: func() []sdkgo.BranchTarget[UploadFileResult] {
-			branches := make([]sdkgo.BranchTarget[UploadFileResult], 0, 6)
+			branches := make([]sdkgo.BranchTarget[UploadFileResult], 0, 5)
 			if config.Uploaded.HasStep() {
 				branches = append(branches, config.Uploaded.BranchTarget(UploadFileBranchUploaded))
 			}
@@ -432,9 +429,6 @@ func NewUploadFileStep[IN any](config UploadFileStepConfig[IN]) sdkgo.MutationSt
 			}
 			if config.ProviderRejected.HasStep() {
 				branches = append(branches, config.ProviderRejected.BranchTarget(UploadFileBranchProviderRejected))
-			}
-			if config.Uncertain.HasStep() {
-				branches = append(branches, config.Uncertain.BranchTarget(UploadFileBranchUncertain))
 			}
 			if config.InvalidResponse.HasStep() {
 				branches = append(branches, config.InvalidResponse.BranchTarget(UploadFileBranchInvalidResponse))

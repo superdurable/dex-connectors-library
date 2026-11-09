@@ -56,18 +56,6 @@ def _mutation_retry(kind: FailureKind, message: str, delay: float = 0) -> Mutati
     return MutationAttempt.retry(_failure("uploadFile", kind, message), delay)
 
 
-def _uncertain() -> MutationAttempt[UploadedFile]:
-    return MutationAttempt.uncertain(
-        UploadedFile(),
-        _failure(
-            "uploadFile",
-            FailureKind.TRANSPORT,
-            "Box may have replaced the file but its current content could not be confirmed",
-        ),
-        Receipt(),
-    )
-
-
 def _valid_file_id(value: str) -> bool:
     return bool(value) and len(value) <= 40 and all("0" <= character <= "9" for character in value)
 
@@ -151,6 +139,14 @@ class DownloadFileOperation:
             return _query_retry(
                 FailureKind.AVAILABILITY, "Box download is temporarily unavailable", exchange.retry_after
             )
+        if exchange.status == 202:
+            return _query_retry(
+                FailureKind.AVAILABILITY, "Box file is not ready for download", exchange.retry_after
+            )
+        if exchange.error == "invalid_redirect":
+            return _query_branch(
+                defs.INVALID_RESPONSE, FailureKind.PROTOCOL, "Box returned an unsafe download redirect"
+            )
         if exchange.status != 200 and exchange.error == "too_large":
             return _query_branch(
                 defs.INVALID_RESPONSE,
@@ -160,10 +156,6 @@ class DownloadFileOperation:
         if exchange.status == 404:
             return _query_branch(defs.NOT_FOUND, FailureKind.NOT_FOUND, "Box did not find the file")
         if exchange.status != 200:
-            if exchange.error == "invalid_redirect":
-                return _query_branch(
-                    defs.INVALID_RESPONSE, FailureKind.PROTOCOL, "Box returned an unsafe download redirect"
-                )
             return _query_branch(
                 defs.PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION, f"Box rejected HTTP {exchange.status}"
             )
@@ -240,11 +232,12 @@ class UploadFileOperation:
             )
         if exchange.status == 404:
             return _mutation_branch(defs.NOT_FOUND, FailureKind.NOT_FOUND, "Box did not find the file")
-        if exchange.status not in (0, 201):
+        is_accepted = exchange.status in (200, 201)
+        if exchange.status != 0 and not is_accepted:
             return _mutation_branch(
                 defs.PROVIDER_REJECTED, FailureKind.PROVIDER_REJECTION, f"Box rejected HTTP {exchange.status}"
             )
-        if exchange.status == 201 and not exchange.error:
+        if is_accepted and not exchange.error:
             try:
                 wire: Any = json.loads(exchange.body)
                 entries = wire["entries"]
@@ -262,7 +255,10 @@ class UploadFileOperation:
                     return _uploaded(confirmed)
             except (ValueError, TypeError):
                 pass
-        return _uncertain()
+        # Retry is safe: the next attempt compares SHA-1 and size before replacing the content again.
+        return _mutation_retry(
+            FailureKind.TRANSPORT, "Box replacement could not be confirmed by read-back", readback.retry_after
+        )
 
 
 def _initial_metadata(

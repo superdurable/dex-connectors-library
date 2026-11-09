@@ -53,8 +53,6 @@ export interface UploadFileStepConfig<StepInput, OperationInput = UploadFileInpu
   notFound?: StepTarget<MutationResult<OperationOutput>>;
   /** Box conclusively rejected the replacement. */
   providerRejected?: StepTarget<MutationResult<OperationOutput>>;
-  /** The replacement may have reached Box but read-back could not confirm its content. */
-  uncertain?: StepTarget<MutationResult<OperationOutput>>;
   /** Box returned malformed or oversized file metadata. */
   invalidResponse?: StepTarget<MutationResult<OperationOutput>>;
   /** Local input or connection credentials are invalid. */
@@ -63,13 +61,12 @@ export interface UploadFileStepConfig<StepInput, OperationInput = UploadFileInpu
 
 /** Build the uploadFile Step from a named connection. */
 export function newUploadFileStep<StepInput, OperationInput = UploadFileInput, OperationOutput = UploadedFile>(configuration: UploadFileStepConfig<StepInput, OperationInput, OperationOutput>): MutationStep<StepInput, OperationInput, OperationOutput> {
-  const { connection, connectionName, uploaded, notFound, providerRejected, uncertain, invalidResponse, defect, ...stepConfiguration } = configuration;
+  const { connection, connectionName, uploaded, notFound, providerRejected, invalidResponse, defect, ...stepConfiguration } = configuration;
   if (!connection || connection.reference.name !== connectionName) throw new TypeError('Step connection name differs from the bound connection');
   return newMutationStep({ ...stepConfiguration, operation: connection.operations.uploadFile(), connection: connection.reference, branches: [
     goToBranch("uploaded", uploaded),
     ...(notFound ? [goToBranch("notFound", notFound)] : []),
     ...(providerRejected ? [goToBranch("providerRejected", providerRejected)] : []),
-    ...(uncertain ? [goToBranch("uncertain", uncertain)] : []),
     ...(invalidResponse ? [goToBranch("invalidResponse", invalidResponse)] : []),
     ...(defect ? [goToBranch("defect", defect)] : []),
   ] });

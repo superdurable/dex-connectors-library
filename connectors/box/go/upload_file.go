@@ -91,10 +91,11 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 	if response.status == http.StatusNotFound {
 		return uploadFailure(UploadFileBranchNotFound, sdkgo.FailureNotFound, "Box did not find the file")
 	}
-	if response.status != 0 && response.status != http.StatusCreated {
+	isAccepted := response.status == http.StatusOK || response.status == http.StatusCreated
+	if response.status != 0 && !isAccepted {
 		return uploadFailure(UploadFileBranchProviderRejected, sdkgo.FailureProviderRejection, "Box rejected HTTP "+strconv.Itoa(response.status))
 	}
-	if response.status == http.StatusCreated && response.err == nil {
+	if isAccepted && response.err == nil {
 		var wire struct {
 			Entries []fileMetadata `json:"entries"`
 		}
@@ -108,7 +109,8 @@ func (operation UploadFileOperation) Invoke(call sdkgo.Call, input UploadFileInp
 			return uploaded(metadata)
 		}
 	}
-	return uploadUncertain("Box may have replaced the file but its current content could not be confirmed")
+	// Retry is safe: the next attempt compares the current SHA-1 and size before replacing the content again.
+	return uploadRetry(sdkgo.FailureTransport, "Box replacement could not be confirmed by read-back", readback.retryAfter)
 }
 
 func classifyInitialFileMetadata(response fileResponse, fileID string) (fileMetadata, sdkgo.MutationAttempt[UploadedFile], bool) {
@@ -158,9 +160,4 @@ func uploadFailure(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string
 func uploadRetry(kind sdkgo.FailureKind, message string, retryAfter time.Duration) sdkgo.MutationAttempt[UploadedFile] {
 	failure := sdkgo.Failure{Kind: kind, Provider: "box", Operation: "uploadFile", Message: message}
 	return sdkgo.NewMutationRetry[UploadedFile](failure, retryAfter)
-}
-
-func uploadUncertain(message string) sdkgo.MutationAttempt[UploadedFile] {
-	failure := sdkgo.Failure{Kind: sdkgo.FailureTransport, Provider: "box", Operation: "uploadFile", Message: message}
-	return sdkgo.NewMutationUncertain(UploadedFile{}, failure, sdkgo.Receipt{})
 }

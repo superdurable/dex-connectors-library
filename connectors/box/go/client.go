@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
@@ -73,12 +74,16 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 var errCredential = errors.New("Box credential unavailable")
 var errRefresh = errors.New("Box credential refresh failed")
 var errRequest = errors.New("Box request failed")
+var errUnsafeRedirect = errors.New("Box returned an unsafe download redirect")
+
+const maxDownloadLocationBytes = 8192
 
 type fileResponse struct {
 	body        []byte
 	status      int
 	retryAfter  time.Duration
 	requestSent bool
+	location    string
 	err         error
 }
 
@@ -107,12 +112,40 @@ func (client *Client) download(call sdkgo.Call, fileID string) fileResponse {
 	}
 	request.Header.Set("Authorization", "Bearer "+accessToken)
 	request.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
+	first := client.sendDownloadRequest(request, accessToken)
+	if first.status != http.StatusFound || first.err != nil {
+		return first
+	}
+	if !isBoxDownloadURL(first.location) {
+		return fileResponse{status: http.StatusFound, err: errUnsafeRedirect}
+	}
+	// The signed URL authorizes itself; the OAuth token must not leave the Box API host.
+	signedRequest, err := http.NewRequestWithContext(call.Context, http.MethodGet, first.location, nil)
+	if err != nil {
+		return fileResponse{status: http.StatusFound, err: errUnsafeRedirect}
+	}
+	signedRequest.Header.Set("User-Agent", "Dex Connector (https://superdurable.io)")
+	second := client.sendDownloadRequest(signedRequest, accessToken)
+	if second.status == http.StatusFound && second.err == nil {
+		return fileResponse{status: http.StatusFound, err: errUnsafeRedirect}
+	}
+	return second
+}
+
+func (client *Client) sendDownloadRequest(request *http.Request, accessToken string) fileResponse {
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return fileResponse{err: errRequest}
 	}
 	defer func() { _ = response.Body.Close() }()
 	retryAfter := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now())
+	if response.StatusCode == http.StatusFound {
+		location := response.Header.Get("Location")
+		if strings.Contains(location, accessToken) {
+			return fileResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
+		}
+		return fileResponse{status: response.StatusCode, retryAfter: retryAfter, location: location}
+	}
 	limit := client.maxDownloadBytes
 	if response.StatusCode != http.StatusOK {
 		limit = client.maxResponseBytes
@@ -122,6 +155,19 @@ func (client *Client) download(call sdkgo.Call, fileID string) fileResponse {
 		return fileResponse{status: response.StatusCode, retryAfter: retryAfter, err: errCredential}
 	}
 	return fileResponse{body: body, status: response.StatusCode, retryAfter: retryAfter, err: err}
+}
+
+// isBoxDownloadURL accepts only Box's signed HTTPS content hosts, such as dl.boxcloud.com.
+func isBoxDownloadURL(location string) bool {
+	if location == "" || len(location) > maxDownloadLocationBytes {
+		return false
+	}
+	parsed, err := url.Parse(location)
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "https" && strings.HasSuffix(strings.ToLower(parsed.Hostname()), ".boxcloud.com") && parsed.User == nil &&
+		parsed.Port() == "" && parsed.Fragment == "" && parsed.Path != ""
 }
 
 func queryFailure(operation string, kind sdkgo.FailureKind, message string) sdkgo.Failure {

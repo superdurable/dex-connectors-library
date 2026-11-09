@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
 import type { DownloadFileInput, DownloadedFile, UploadFileInput, UploadedFile } from './models.js';
 import { DownloadFileInputSchema, DownloadedFileSchema, UploadFileInputSchema, UploadedFileSchema } from './models.js';
@@ -65,8 +65,6 @@ export function uploadFileInvalidResponse(value: UploadedFile, failure?: Failure
 export function uploadFileDefect(value: UploadedFile, failure?: Failure): Case<UploadedFile> { return branchCase("defect", value, failure); }
 /** Script a safe retry of uploadFile. */
 export function uploadFileRetry(failure: Failure, retryAfterMs = 0): Case<UploadedFile> { return retryCase(failure, retryAfterMs); }
-/** Script an uncertain uploadFile attempt. */
-export function uploadFileUncertain(value: UploadedFile, failure: Failure): Case<UploadedFile> { return uncertainCase(value, failure); }
 /** Manifest scenario uploadedDefault for uploadFile. */
 export function uploadFileUploadedDefault(): Case<UploadedFile> {
   const value = UploadedFileSchema.parse({"fileId":"12345","name":"example.txt","sha1":"F7FF9E8B7BB2E09B70935A5D785E0CC5D9D0ABF0"});
