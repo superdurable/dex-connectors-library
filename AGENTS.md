@@ -205,7 +205,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   Go-tested branch, retry, uncertain decision, and protocol-error classification,
   plus real protocol integration tests in CI service containers. Database ports
   use Go connector live-test scenarios and connection variables when available.
-  MongoDB ports use the CI `mongo:8.0` service through `MONGODB_CONNECTOR_TEST_URI`.
+  MongoDB ports use the CI `mongo:7.0` service through `MONGODB_CONNECTOR_TEST_URI`.
   Email ports mirror the Go connector's in-process `internal/mailtest` tests,
   including `send_message_test.go` and `search_messages_test.go`; their CI
   integration tests use the `EMAIL_CONNECTOR_TEST_*` GreenMail variables.
