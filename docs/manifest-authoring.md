@@ -1413,13 +1413,14 @@ constructor per branch and per manifest mock, `<Operation>Retry`, and
 
 # Cross-language connector conformance
 
-PostgreSQL, MySQL, SQL Server, and Email use the reviewed native wire protocol
+PostgreSQL, MySQL, MongoDB, SQL Server, and Email use the reviewed native wire protocol
 exemptions in [`conformance/exemptions.yaml`](../conformance/exemptions.yaml).
 Their Python and TypeScript packages use native protocols, so HTTP replay does
 not apply. Require unit coverage for Go-tested branches, Retry, uncertainty,
 and protocol-error classification, plus real protocol integration tests in CI
 service containers. Database ports follow Go connector live-test setup and
-scenarios when available. Email ports mirror the Go connector's in-process
+scenarios when available. MongoDB ports use the CI `mongo:8.0` service
+through `MONGODB_CONNECTOR_TEST_URI`. Email ports mirror the Go connector's in-process
 `internal/mailtest` tests, including `send_message_test.go` and
 `search_messages_test.go`, and use the GreenMail `EMAIL_CONNECTOR_TEST_*`
 variables in CI. GreenMail lacks STARTTLS, so protocol unit fakes cover that

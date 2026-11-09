@@ -39,7 +39,11 @@ class LegacyConformanceSelectionTest(unittest.TestCase):
 class NativeWireExemptionTest(unittest.TestCase):
     def test_reviewed_native_connectors_are_exempt_without_fixtures(self) -> None:
         exemptions = connector_conformance.conformance_exemptions()
-        self.assertEqual(set(exemptions), connector_conformance.NATIVE_WIRE_CONNECTORS)
+        listed = json.loads((connector_conformance.ROOT / "conformance/exemptions.yaml").read_text())["exemptions"]
+        self.assertEqual({entry["connector"] for entry in listed}, connector_conformance.NATIVE_WIRE_CONNECTORS)
+        self.assertEqual(set(exemptions), {
+            connector for connector in connector_conformance.NATIVE_WIRE_CONNECTORS
+            if (connector_conformance.ROOT / connector / "connector.yaml").is_file()})
         for connector_path, reason in exemptions.items():
             with self.subTest(connector=connector_path), patch.object(connector_conformance.subprocess, "run") as run:
                 output = io.StringIO()
@@ -60,6 +64,41 @@ class NativeWireExemptionTest(unittest.TestCase):
             exemption_file.write_text(json.dumps({"schemaVersion": 1, "exemptions": [
                 {"connector": "connectors/stripe", "reason": "convenient"}]}))
             with self.assertRaisesRegex(ValueError, "not an approved native-wire connector"):
+                connector_conformance.conformance_exemptions()
+
+    def test_exemption_of_absent_connector_is_skipped_until_it_lands(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)):
+            root = Path(directory)
+            (root / "connectors/mysql/python").mkdir(parents=True)
+            (root / "connectors/mysql/connector.yaml").write_text("metadata: mysql\n")
+            (root / "connectors/mysql/python/pyproject.toml").write_text("[project]\n")
+            exemption_file = root / "conformance/exemptions.yaml"
+            exemption_file.parent.mkdir()
+            exemption_file.write_text(json.dumps({"schemaVersion": 1, "exemptions": [
+                {"connector": "connectors/mysql", "reason": "wire"},
+                {"connector": "connectors/mongodb", "reason": "wire"}]}))
+            self.assertEqual({"connectors/mysql": "wire"}, connector_conformance.conformance_exemptions())
+            self.assertEqual(["connectors/mysql"],
+                             [entry["connector"] for entry in connector_conformance.database_ci_matrix([])])
+
+    def test_present_directory_without_manifest_cannot_be_exempt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)):
+            root = Path(directory)
+            (root / "connectors/mongodb").mkdir(parents=True)
+            exemption_file = root / "conformance/exemptions.yaml"
+            exemption_file.parent.mkdir()
+            exemption_file.write_text(json.dumps({"schemaVersion": 1, "exemptions": [
+                {"connector": "connectors/mongodb", "reason": "wire"}]}))
+            with self.assertRaisesRegex(ValueError, "is not a connector"):
+                connector_conformance.conformance_exemptions()
+
+    def test_absent_duplicate_exemption_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, patch.object(connector_conformance, "ROOT", Path(directory)):
+            exemption_file = Path(directory) / "conformance/exemptions.yaml"
+            exemption_file.parent.mkdir()
+            exemption_file.write_text(json.dumps({"schemaVersion": 1, "exemptions": [
+                {"connector": "connectors/mongodb", "reason": "wire"}] * 2}))
+            with self.assertRaisesRegex(ValueError, "repeats"):
                 connector_conformance.conformance_exemptions()
 
     def test_duplicate_and_empty_reasons_are_rejected(self) -> None:

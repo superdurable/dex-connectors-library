@@ -42,13 +42,14 @@ def validate_scenario_fixed_clock(scenario: dict[str, object]) -> None:
 
 
 def conformance_exemptions() -> dict[str, str]:
-    """Load reviewed native-wire exemptions; never exempt an HTTP connector."""
+    """Load reviewed native-wire exemptions of present connectors; never exempt an HTTP connector."""
     exemption_file = ROOT / "conformance/exemptions.yaml"
     document = json.loads(exemption_file.read_text())
     entries = document.get("exemptions")
     if document.get("schemaVersion") != 1 or not isinstance(entries, list):
         raise ValueError("conformance/exemptions.yaml has an invalid schema")
     exemptions: dict[str, str] = {}
+    listed_connectors: set[str] = set()
     for entry in entries:
         if not isinstance(entry, dict) or set(entry) != {"connector", "reason"}:
             raise ValueError("conformance exemption needs connector and reason")
@@ -57,8 +58,12 @@ def conformance_exemptions() -> dict[str, str]:
             raise ValueError(f"{connector} is not an approved native-wire connector")
         if not isinstance(reason, str) or not reason.strip():
             raise ValueError(f"{connector} has no exemption reason")
-        if connector in exemptions:
+        if connector in listed_connectors:
             raise ValueError(f"{connector} repeats a conformance exemption")
+        listed_connectors.add(connector)
+        if not (ROOT / connector).exists():
+            # A tooling PR reviews an exemption before its connector lands.
+            continue
         if not (ROOT / connector / "connector.yaml").is_file():
             raise ValueError(f"{connector} is not a connector")
         exemptions[connector] = reason

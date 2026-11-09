@@ -303,6 +303,48 @@ PyPI projects keep the PyPI-then-GitHub order. npm first publishes keep the
 serialized `publish-language-first` queue; npm documents no comparable
 project-creation cap.
 
+Each run starts at most 15 Go connector releases. Release jobs share the
+repository's `GITHUB_TOKEN` budget of 1,000 REST requests per hour with CI, and
+an exhausted budget fails every release in the run. One new connector's first
+releases use about 35 requests: about 10 for Go (one pull-request lookup per
+release-note commit, release creation with two to four asset uploads, and the
+completion marker), about 13 for Python, and about 11 for TypeScript. Fifteen
+new connectors therefore use about 550 requests per run. Set the
+`GO_RELEASE_LIMIT` repository variable or the manual workflow's
+`go_release_limit` input, from 1 to 256, to change that cap.
+
+The plan job ranks Go versions in three tiers, each in catalog order:
+
+1. Versions already tagged. These are recovery checks of the pushed commit, a
+   targeted repair, or a manifest version whose tag exists but whose GitHub
+   release, according to the run's release inventory, lacks
+   `connector-release.complete`.
+2. Updates of released connectors.
+3. First releases.
+
+A batch of new connectors therefore never starves an update. A tagged version
+always runs. It takes a slot unless its release already has
+`connector-release.complete`. The release job repairs an incomplete release
+from the commit its tag points to and never changes a complete release. If a
+release fails after creating its tag, every later push, hourly, or drain run
+selects it again until it completes, so its language packages can publish.
+When the release inventory is unavailable, a run skips this detection, and the
+next run with an inventory selects the release. Versions beyond the cap stay
+untagged and are deferred with `go_release_cap`. The next push, hourly, or
+drain run selects them again in the same order, so none is lost. The plan job
+summary lists the selected and deferred Go tags.
+
+`connectorctl release-matrix` lists every candidate, however many. The
+selection step enforces GitHub's 256-job matrix limit on the Go matrix it
+emits. Pending versions wait once the matrix is full. The plan fails only if
+more than 256 tagged versions must run in one run.
+
+A language package names its Go release in `releaseTag` and requires it. The
+Python and TypeScript packages of a connector whose Go release is deferred
+therefore wait as deferred with `go_release_deferred`. As a result, a run
+starts at most the Go cap of npm first publishes, so they need no separate cap.
+One hundred new connectors release over about seven hourly runs.
+
 The same workflow runs hourly at minute 17 to drain pending language releases
 and pending Go releases. A scheduled run repairs an incomplete language release
 when its tag records the original source commit. If the upload succeeded but
@@ -318,8 +360,8 @@ A `pypi_pending` tag has a complete GitHub release whose PyPI upload is still
 due, with a reason such as `github_first_release`, `first_publish_cap`,
 `project_creation_limit`, or `registry_lookup_failure`. A published tag with
 reason `already_complete` was complete before its publish job ran. A deferred tag has no complete GitHub release yet,
-with a reason such as `github_release_cap`, `registry_lookup_failure`, or
-`matrix_limit`. To recover
+with a reason such as `github_release_cap`, `go_release_deferred`,
+`registry_lookup_failure`, or `matrix_limit`. To recover
 manually, run `Release Connectors and Catalog` on `main` with the affected
 `connector_directory`; leave `dry_run` disabled. For a broad backlog, set
 `drain_first_publishes` on a manual run or wait for the next hourly run. A

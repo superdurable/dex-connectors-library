@@ -210,8 +210,9 @@ Dex-integrated verified, not live or end-to-end verified.
 Normal `main` pushes produce a matrix containing only connectors whose manifest
 version is later than their latest release. Each connector job
 runs current compatibility before publication and released compatibility after
-publication. More than 256 pending releases fails with guidance to split work
-by independently released module.
+publication. Each run starts at most `GO_RELEASE_LIMIT` (default 15) Go
+releases, so any number of pending releases drains across later runs. Tagged
+versions whose release lacks `connector-release.complete` are repaired first.
 
 A workflow rerun keeps its original matrix. Manual repair accepts one optional,
 catalog-validated connector directory; an empty value rebuilds only the public
