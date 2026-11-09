@@ -5,6 +5,7 @@ package ads
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,11 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 		OAuthClientID: "synthetic-client-id", OAuthClientSecret: sdkgo.NewSecretString("synthetic-client-secret"),
 		AccessToken: sdkgo.NewSecretString("test-linkedin-ads-token"), RefreshToken: sdkgo.NewSecretString("synthetic-refresh-token"),
 	}
-	client, err := New(Config{BaseURL: endpoint}, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
+	config := Config{BaseURL: endpoint}
+	if strings.HasPrefix(scenario.Name, "listAdAccounts-oversized") {
+		config.MaxResponseBytes = 16
+	}
+	client, err := New(config, sdkgo.StaticCredentialProvider[Credentials]{reference: credentials}, WithHTTPClient(transport))
 	require.NoError(t, err)
 	return &conformanceMappedInvoker{t: t, scenario: scenario, actions: map[string]conformanceOperationInvocation{
 		"listAdAccounts": newConformanceQueryInvocation(t, scenario.Input, queryContext{}, client.ListAdAccounts(), reference),

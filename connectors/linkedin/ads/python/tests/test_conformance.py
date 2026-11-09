@@ -20,8 +20,13 @@ ADAPTER = conformance.PythonOperationAdapter(
     "linkedin-ads",
     CONNECTION,
     linkedin_ads,
-    lambda http_client, _: linkedin_ads.Client(
-        linkedin_ads.Config(base_url="http://127.0.0.1:8848"),
+    lambda http_client, recorder: linkedin_ads.Client(
+        linkedin_ads.Config(
+            base_url="http://127.0.0.1:8848",
+            max_response_bytes=16
+            if str(recorder.scenario["name"]).startswith("listAdAccounts-oversized")
+            else 2_097_152,
+        ),
         conformance.static_credentials(
             CONNECTION,
             linkedin_ads.Credentials(
