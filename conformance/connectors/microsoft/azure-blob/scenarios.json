@@ -94,6 +94,98 @@
       "operation": "getBlob"
     },
     {
+      "callId": "954cfa62-0171-5ac0-bd91-e0a00745d0ac",
+      "exchanges": [
+        {
+          "body": "report",
+          "headers": {
+            "Content-Type": "text/plain",
+            "ETag": "\"0x3\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs/reports/q1 résumé.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:XMFYoBKPLwYWhy2Wndyzt0NhUxKXUO4Q59D8OM8rtvo="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "downloaded",
+        "failureKind": "",
+        "output": {
+          "contentType": "text/plain",
+          "dataBase64": "cmVwb3J0",
+          "etag": "\"0x3\""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "blobName": "reports/q1 résumé.txt",
+        "container": "docs"
+      },
+      "name": "getBlob-encodedPath",
+      "operation": "getBlob"
+    },
+    {
+      "callId": "0796649c-28fe-57f6-b87b-f59a04f33dc1",
+      "exchanges": [
+        {
+          "body": "final",
+          "headers": {
+            "Content-Type": "text/plain",
+            "ETag": "\"0x4\""
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/docs/reports/q1+q2 (final)!'*$\u0026=:@;,.txt",
+          "requestHeaders": {
+            "Authorization": [
+              "SharedKey exampleacct:3mDwR/ZqdCNr2ksveXSIADrqiCyg4HiHLpg3i0bsFHE="
+            ],
+            "X-Ms-Date": [
+              "Fri, 30 Oct 2026 00:00:00 GMT"
+            ],
+            "X-Ms-Version": [
+              "2023-11-03"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "downloaded",
+        "failureKind": "",
+        "output": {
+          "contentType": "text/plain",
+          "dataBase64": "ZmluYWw=",
+          "etag": "\"0x4\""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "blobName": "reports/q1+q2 (final)!'*$\u0026=:@;,.txt",
+        "container": "docs"
+      },
+      "name": "getBlob-reservedCharacterPath",
+      "operation": "getBlob"
+    },
+    {
       "callId": "a714de2d-4bb7-5016-a8f1-ae894f80bde3",
       "exchanges": [
         {

@@ -53,10 +53,11 @@ export class MicrosoftAzureBlobClient {
     if (!accountKey || !isHeaderSafeCredential(accountKey) || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(accountKey)) return emptyExchange('credential');
     const signingKey = Buffer.from(accountKey, 'base64');
     if (!signingKey.length) return emptyExchange('credential');
-    const path = `/${container}/${blobName.split('/').map(encodeURIComponent).join('/')}`;
+    const path = `/${container}/${blobName.split('/').map(escapeBlobPathSegment).join('/')}`;
     const url = `${this.endpoint}${path}`;
     const timestamp = this.now().toUTCString();
-    const canonicalResource = `/${this.accountName}/${container}/${blobName}`;
+    // Shared Key signs the encoded path exactly as Node sends it, including any endpoint path.
+    const canonicalResource = `/${this.accountName}${new URL(url).pathname}`;
     const signedValue = `GET${'\n'.repeat(12)}x-ms-date:${timestamp}\nx-ms-version:${storageVersion}\n${canonicalResource}`;
     const signature = createHmac('sha256', signingKey).update(signedValue).digest('base64');
     const headers = {
@@ -110,6 +111,12 @@ function validBlobName(name: unknown): name is string {
   return typeof name === 'string' && Buffer.byteLength(name) > 0 && Buffer.byteLength(name) <= 1024 &&
     ![...name].some(character => character.charCodeAt(0) === 0 || character === '\r' || character === '\n') &&
     name.split('/').every(part => part !== '' && part !== '.' && part !== '..');
+}
+// Match Go url.PathEscape so every port sends and signs identical paths.
+function escapeBlobPathSegment(segment: string): string {
+  return encodeURIComponent(segment)
+    .replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/%(24|26|2B|3A|3D|40)/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
 }
 function safeHeader(value: string): boolean { return value.length <= 255 && ![...value].some(character => character.charCodeAt(0) === 0 || character === '\r' || character === '\n'); }
 function emptyExchange(error: NonNullable<Exchange['error']>): Exchange { return { status: 0, body: new Uint8Array(), contentType: '', etag: '', retryAfterMs: 0, error }; }

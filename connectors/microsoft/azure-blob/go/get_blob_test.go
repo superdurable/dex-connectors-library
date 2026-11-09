@@ -4,8 +4,12 @@ package azureblob
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,6 +55,25 @@ func TestGetBlobSignsAndDownloadsBytes(t *testing.T) {
 	require.Equal(t, "aGVsbG8=", result.Value.DataBase64)
 	require.Equal(t, "text/plain", result.Value.ContentType)
 	require.Equal(t, `"0x1"`, result.Value.ETag)
+}
+func TestGetBlobSignsEncodedRequestPath(t *testing.T) {
+	const encodedPath = "/docs/reports/q1%20r%C3%A9sum%C3%A9.txt"
+	signedValue := "GET" + strings.Repeat("\n", 12) + "x-ms-date:Fri, 30 Oct 2026 00:00:00 GMT\nx-ms-version:2023-11-03\n/exampleacct" + encodedPath
+	mac := hmac.New(sha256.New, []byte("secret-test-key"))
+	_, err := mac.Write([]byte(signedValue))
+	require.NoError(t, err)
+	expectedAuthorization := "SharedKey exampleacct:" + base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, encodedPath, r.URL.EscapedPath())
+		require.Equal(t, "/docs/reports/q1 résumé.txt", r.URL.Path)
+		require.Equal(t, expectedAuthorization, r.Header.Get("Authorization"))
+		_, err := w.Write([]byte("report"))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	result, err := sdkgo.RunQuery(queryContext{}, newTestClient(t, server.URL, 0).GetBlob(), testConnection, GetBlobInput{Container: "docs", BlobName: "reports/q1 résumé.txt"})
+	require.NoError(t, err)
+	require.Equal(t, GetBlobBranchDownloaded, result.Branch)
 }
 func TestGetBlobClassifiesOutcomes(t *testing.T) {
 	for _, tc := range []struct {

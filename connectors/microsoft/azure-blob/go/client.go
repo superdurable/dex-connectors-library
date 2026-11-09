@@ -114,7 +114,8 @@ func (client *Client) downloadBlob(call sdkgo.Call, container, blobName string) 
 		return providerResponse{err: errRequest}
 	}
 	timestamp := client.now().UTC().Format(http.TimeFormat)
-	canonicalResource := "/" + client.accountName + "/" + container + "/" + blobName
+	// Shared Key signs the encoded path exactly as sent, including any endpoint path.
+	canonicalResource := "/" + client.accountName + request.URL.EscapedPath()
 	signedValue := "GET" + strings.Repeat("\n", 12) + "x-ms-date:" + timestamp + "\n" + "x-ms-version:" + storageVersion + "\n" + canonicalResource
 	mac := hmac.New(sha256.New, signingKey)
 	if _, err := mac.Write([]byte(signedValue)); err != nil {

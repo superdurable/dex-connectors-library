@@ -115,23 +115,27 @@ class Client:
             return _Exchange(error="credential")
         if not account_key or not signing_key or not is_header_safe_credential(account_key):
             return _Exchange(error="credential")
-        path = f"/{container}/{quote(blob_name, safe='/')}"
+        # Match Go url.PathEscape so every port sends and signs identical paths.
+        path = f"/{container}/{quote(blob_name, safe='/$&+:=@')}"
         url = self.endpoint + path
         timestamp = format_datetime(self.now().astimezone(UTC), usegmt=True)
-        resource = f"/{self.account_name}/{container}/{blob_name}"
-        signed_value = (
-            "GET" + "\n" * 12 + f"x-ms-date:{timestamp}\n" + f"x-ms-version:{_STORAGE_VERSION}\n" + resource
-        )
-        signature = base64.b64encode(
-            hmac.new(signing_key, signed_value.encode(), hashlib.sha256).digest()
-        ).decode()
-        headers = {
-            "x-ms-date": timestamp,
-            "x-ms-version": _STORAGE_VERSION,
-            "Authorization": f"SharedKey {self.account_name}:{signature}",
-        }
         try:
-            request = self.http_client.build_request("GET", url, headers=headers)
+            request = self.http_client.build_request(
+                "GET", url, headers={"x-ms-date": timestamp, "x-ms-version": _STORAGE_VERSION}
+            )
+            # Shared Key signs the encoded path exactly as sent, including any endpoint path.
+            wire_path = request.url.raw_path.split(b"?", 1)[0].decode("ascii")
+            signed_value = (
+                "GET"
+                + "\n" * 12
+                + f"x-ms-date:{timestamp}\n"
+                + f"x-ms-version:{_STORAGE_VERSION}\n"
+                + f"/{self.account_name}{wire_path}"
+            )
+            signature = base64.b64encode(
+                hmac.new(signing_key, signed_value.encode(), hashlib.sha256).digest()
+            ).decode()
+            request.headers["Authorization"] = f"SharedKey {self.account_name}:{signature}"
             response, _ = await send_traced(self.http_client, request)
         except (ProviderTransportError, httpx.HTTPError, ValueError):
             return _Exchange(error="request")
