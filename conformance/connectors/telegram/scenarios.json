@@ -775,6 +775,134 @@
       },
       "name": "getChat-transport",
       "operation": "getChat"
+    },
+    {
+      "callId": "e7c56126-4231-5185-991e-c556ef3b53d7",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":429,\"description\":\"Too Many Requests: retry after 7\",\"parameters\":{\"retry_after\":7}}",
+          "form": {
+            "chat_id": [
+              "@meridian_team"
+            ],
+            "text": [
+              "Hello from Dex"
+            ]
+          },
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/bot123456:fake_test_token/sendMessage",
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/x-www-form-urlencoded"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "e7c56126-4231-5185-991e-c556ef3b53d7",
+          "state": "canResend"
+        },
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 7000,
+        "uncertain": false
+      },
+      "idempotencyKey": "e7c56126-4231-5185-991e-c556ef3b53d7",
+      "input": {
+        "chatId": "@meridian_team",
+        "text": "Hello from Dex"
+      },
+      "name": "sendMessage-rate-limit-body-retry-after",
+      "operation": "sendMessage"
+    },
+    {
+      "callId": "6c1418c3-a1f6-59ec-bf0f-63ef0cfde66f",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":429,\"description\":\"Too Many Requests: retry after 5\",\"parameters\":{\"retry_after\":5}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getChat",
+          "query": {
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 5000,
+        "uncertain": false
+      },
+      "input": {
+        "chatId": "@meridian_team"
+      },
+      "name": "getChat-rate-limit-body-retry-after",
+      "operation": "getChat"
+    },
+    {
+      "callId": "0eb03ad2-3935-5e3c-a513-62649bad8230",
+      "exchanges": [
+        {
+          "body": "{\"ok\":false,\"error_code\":429,\"description\":\"Too Many Requests: retry after 30\",\"parameters\":{\"retry_after\":30}}",
+          "headers": {
+            "Content-Type": "application/json",
+            "Retry-After": "3"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/bot123456:fake_test_token/getChat",
+          "query": {
+            "chat_id": [
+              "@meridian_team"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 3000,
+        "uncertain": false
+      },
+      "input": {
+        "chatId": "@meridian_team"
+      },
+      "name": "getChat-rate-limit-header-wins",
+      "operation": "getChat"
     }
   ],
   "schemaVersion": 1

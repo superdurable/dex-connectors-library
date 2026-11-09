@@ -135,6 +135,8 @@ class Client:
                 body, read_error = b"", "too_large"
             except ProviderTransportError:
                 body, read_error = b"", "read"
+            if retry_after <= 0:
+                retry_after = _body_retry_after(body)
             return Exchange(response.status_code, body, retry_after, read_error, True)
         finally:
             await response.aclose()
@@ -356,6 +358,19 @@ class GetChatOperation:
             Chat(result["id"], result["type"], result.get("title", ""), result.get("username", "")),
             Receipt(),
         )
+
+
+def _body_retry_after(body: bytes) -> float:
+    """Read Bot API parameters.retry_after seconds when Retry-After is absent."""
+    try:
+        envelope = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return 0
+    parameters = envelope.get("parameters") if isinstance(envelope, dict) else None
+    seconds = parameters.get("retry_after") if isinstance(parameters, dict) else None
+    if type(seconds) is not int or seconds <= 0:
+        return 0
+    return parse_retry_after(str(seconds), datetime.now(UTC))
 
 
 def _valid_chat_id(value: Any) -> bool:

@@ -118,10 +118,10 @@ func (operation GetChatOperation) Invoke(call sdkgo.Call, input GetChatInput) sd
 	// Closing a read-only response cannot alter the query outcome.
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode == http.StatusTooManyRequests {
-		return retryQuery(sdkgo.FailureRateLimit, "Telegram rate limited the request", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
+		return retryQuery(sdkgo.FailureRateLimit, "Telegram rate limited the request", retryAfterFromResponse(response, operation.client.maxResponseBytes))
 	}
 	if response.StatusCode == http.StatusRequestTimeout || response.StatusCode >= 500 {
-		return retryQuery(sdkgo.FailureAvailability, "Telegram is temporarily unavailable", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
+		return retryQuery(sdkgo.FailureAvailability, "Telegram is temporarily unavailable", retryAfterFromResponse(response, operation.client.maxResponseBytes))
 	}
 	body, err := providerhttp.ReadBoundedBody(response.Body, operation.client.maxResponseBytes)
 	if errors.Is(err, providerhttp.ErrBodyTooLarge) {
@@ -175,6 +175,27 @@ func (operation GetChatOperation) Invoke(call sdkgo.Call, input GetChatInput) sd
 		return failedQuery(GetChatBranchInvalidResponse, sdkgo.FailureProtocol, "Telegram returned unusable chat data")
 	}
 	return sdkgo.NewQueryBranch(GetChatBranchFound, chat, nil, sdkgo.Receipt{})
+}
+
+// retryAfterFromResponse prefers the Retry-After header, then the Bot API
+// error body's parameters.retry_after seconds.
+func retryAfterFromResponse(response *http.Response, maxResponseBytes int64) time.Duration {
+	if delay := providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()); delay > 0 {
+		return delay
+	}
+	body, err := providerhttp.ReadBoundedBody(response.Body, maxResponseBytes)
+	if err != nil {
+		return 0
+	}
+	var envelope struct {
+		Parameters struct {
+			RetryAfter int64 `json:"retry_after"`
+		} `json:"parameters"`
+	}
+	if json.Unmarshal(body, &envelope) != nil || envelope.Parameters.RetryAfter <= 0 {
+		return 0
+	}
+	return providerhttp.ParseRetryAfter(strconv.FormatInt(envelope.Parameters.RetryAfter, 10), time.Now())
 }
 
 func validChatID(chatID string) bool {

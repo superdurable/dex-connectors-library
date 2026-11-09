@@ -88,7 +88,7 @@ export class TelegramClient {
     try {
       const response = await this.send(request);
       return { status: response.status, body: response.body,
-        retryAfterMs: this.retryAfter(response.headers), requestSent: true };
+        retryAfterMs: this.retryAfter(response.headers) || this.bodyRetryAfter(response.body), requestSent: true };
     } catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined)
         return { status: error.status, body: new Uint8Array(),
@@ -100,6 +100,15 @@ export class TelegramClient {
       return { status: 0, body: new Uint8Array(), retryAfterMs: 0,
         error: 'request', requestSent: true };
     }
+  }
+
+  /** Read Bot API parameters.retry_after seconds when Retry-After is absent. */
+  private bodyRetryAfter(body: Uint8Array): number {
+    const envelope = parseJSON(body);
+    const parameters = isRecord(envelope) && isRecord(envelope.parameters) ? envelope.parameters : {};
+    const seconds = parameters.retry_after;
+    if (!Number.isSafeInteger(seconds) || (seconds as number) <= 0) return 0;
+    return parseRetryAfter(String(seconds), this.now());
   }
 
   private retryAfter(headers: ProviderResponse['headers']): number {

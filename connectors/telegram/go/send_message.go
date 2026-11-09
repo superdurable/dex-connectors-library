@@ -114,7 +114,7 @@ func (operation SendMessageOperation) Invoke(call sdkgo.Call, input SendMessageI
 		if response.StatusCode == http.StatusTooManyRequests {
 			kind = sdkgo.FailureRateLimit
 		}
-		return retrySend(kind, "Telegram did not process the send", providerhttp.ParseRetryAfter(response.Header.Get("Retry-After"), time.Now()))
+		return retrySend(kind, "Telegram did not process the send", retryAfterFromResponse(response, operation.client.maxResponseBytes))
 	}
 	if response.StatusCode >= 500 || response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusConflict {
 		return uncertainSend(sdkgo.FailureAvailability, "Telegram message outcome is unknown")
