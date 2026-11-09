@@ -10,6 +10,7 @@ from typing import Any
 from bson import json_util
 from bson.errors import InvalidBSON
 from dex_connectors.sdk import Call, Failure, FailureKind, QueryAttempt, QueryDefinition, Receipt
+from dns.exception import DNSException
 from pymongo.errors import ConfigurationError, ConnectionFailure, InvalidOperation, OperationFailure
 
 from ._generated.definitions import FIND_DOCUMENTS_DEFINITION
@@ -155,7 +156,12 @@ class FindDocumentsOperation:
             return _branch(
                 "providerRejected", FailureKind.PROVIDER_REJECTION, "MongoDB rejected the find command"
             )
-        except (ConfigurationError, InvalidOperation, ValueError):
+        except ConfigurationError as error:
+            # pymongo raises SRV and TXT lookup failures as ConfigurationError from the dnspython error.
+            if isinstance(error.__cause__, DNSException):
+                return _retry(FailureKind.TRANSPORT, "MongoDB DNS lookup failed")
+            return _branch("defect", FailureKind.VALIDATION, "MongoDB connection URI was rejected")
+        except (InvalidOperation, ValueError):
             return _branch("defect", FailureKind.VALIDATION, "MongoDB connection URI was rejected")
         except InvalidBSON:
             return _branch("invalidResponse", FailureKind.PROTOCOL, "MongoDB document encoding failed")

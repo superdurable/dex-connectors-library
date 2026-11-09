@@ -9,7 +9,7 @@ description = "MongoDB connector for Dex Python Flows"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-dependencies = ["dex-connectors-sdk==0.7.0", "dex-python-sdk>=1.28.0", "pymongo>=4.13,<5"]
+dependencies = ["dex-connectors-sdk==0.7.0", "dex-python-sdk>=1.28.0", "dnspython>=1.16,<3", "pymongo>=4.13,<5"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "mypy>=1.13", "ruff>=0.7"]

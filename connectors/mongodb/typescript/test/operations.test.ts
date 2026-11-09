@@ -1,13 +1,22 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
+import dns from 'node:dns';
 import { Int32, ObjectId } from 'bson';
 import { MongoClient, MongoNetworkError, MongoServerError } from 'mongodb';
 import { SecretString, type Call } from '@superdurable/connectors-sdk';
-import { expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { MongoDBClient } from '../src/client.js';
 
 const call = { id: 'mongodb-ts-test', context: {} } as Call;
+
+afterEach(() => { vi.restoreAllMocks(); });
+
+function nativeDriverClient(connectionUri: string) {
+  return new MongoDBClient({ database: 'example' }, {
+    resolve: async () => ({ connectionUri: new SecretString(connectionUri) }),
+  });
+}
 
 function fixture(documents: Array<Record<string, unknown>> | Error, maxDocuments = 100, maxResponseBytes = 1_048_576) {
   let requestedLimit = 0;
@@ -71,4 +80,23 @@ it('classifies response byte limits, command rejection, and network retry', asyn
   expect(await retryable.client.findDocuments().invoke(call, { collection: 'orders', filter: {} })).toMatchObject({
     kind: 'retry', failure: { kind: 'AVAILABILITY' },
   });
+});
+
+it.each(['ETIMEOUT', 'ESERVFAIL', 'ENOTFOUND'])('retries mongodb+srv:// DNS lookup failure %s', async (code) => {
+  const resolve = vi.spyOn(dns.promises, 'resolve').mockImplementation(async (hostname: string, recordType?: string) => {
+    throw Object.assign(new Error(`${code} ${hostname}`), { code, syscall: recordType === 'SRV' ? 'querySrv' : 'queryTxt', hostname });
+  });
+  const client = nativeDriverClient('mongodb+srv://reader:secret@cluster.example.com/example');
+  expect(await client.findDocuments().invoke(call, { collection: 'orders', filter: {} })).toMatchObject({
+    kind: 'retry', failure: { kind: 'TRANSPORT', message: 'MongoDB DNS lookup failed' },
+  });
+  expect(resolve).toHaveBeenCalledWith('_mongodb._tcp.cluster.example.com', 'SRV');
+});
+
+it('selects defect for connection URIs the native driver rejects before I/O', async () => {
+  for (const connectionUri of ['mongodb://reader:secret@localhost:notaport', 'mongodb+srv://reader:secret@cluster.example.com/?directConnection=true']) {
+    expect(await nativeDriverClient(connectionUri).findDocuments().invoke(call, { collection: 'orders', filter: {} })).toMatchObject({
+      kind: 'branch', branch: 'defect', failure: { message: 'MongoDB connection URI was rejected' },
+    });
+  }
 });

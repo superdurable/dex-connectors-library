@@ -5,6 +5,7 @@ package mongodb
 
 import (
 	"context"
+	"net"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/dns"
 )
 
 var testConnection = sdkgo.ConnectionRef{Provider: "mongodb", Name: "mongodb"}
@@ -29,8 +31,13 @@ func (queryContext) Value(key any) any           { return context.Background().V
 
 func testClient(t *testing.T, providerClient *mongo.Client, maxDocuments int64) *Client {
 	t.Helper()
+	return testClientWithURI(t, providerClient, maxDocuments, "mongodb://reader:secret@localhost:27017")
+}
+
+func testClientWithURI(t *testing.T, providerClient *mongo.Client, maxDocuments int64, connectionURI string) *Client {
+	t.Helper()
 	credentials := sdkgo.StaticCredentialProvider[Credentials]{
-		testConnection: {ConnectionURI: sdkgo.NewSecretString("mongodb://reader:secret@localhost:27017")},
+		testConnection: {ConnectionURI: sdkgo.NewSecretString(connectionURI)},
 	}
 	client, err := newClient(Config{Database: "example", MaxDocuments: maxDocuments}, credentials, providerClient)
 	require.NoError(t, err)
@@ -92,5 +99,33 @@ func TestFindDocumentsClassifiesMongoDBFailures(t *testing.T) {
 			FindDocumentsInput{Collection: "orders"})
 		var retry *sdkgo.RetryError
 		require.ErrorAs(mt, err, &retry)
+	})
+}
+
+func TestFindDocumentsClassifiesConnectionURIFailures(t *testing.T) {
+	originalLookupSRV, originalLookupTXT := dns.DefaultResolver.LookupSRV, dns.DefaultResolver.LookupTXT
+	t.Cleanup(func() {
+		dns.DefaultResolver.LookupSRV, dns.DefaultResolver.LookupTXT = originalLookupSRV, originalLookupTXT
+	})
+	dns.DefaultResolver.LookupTXT = func(string) ([]string, error) { return nil, nil }
+	for name, lookupError := range map[string]*net.DNSError{
+		"timeout":  {Err: "i/o timeout", Name: "_mongodb._tcp.cluster.example.com", IsTimeout: true},
+		"notFound": {Err: "no such host", Name: "_mongodb._tcp.cluster.example.com", IsNotFound: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dns.DefaultResolver.LookupSRV = func(string, string, string) (string, []*net.SRV, error) {
+				return "", nil, lookupError
+			}
+			client := testClientWithURI(t, nil, 1, "mongodb+srv://reader:secret@cluster.example.com/example")
+			_, err := sdkgo.RunQuery(queryContext{}, client.FindDocuments(), testConnection, FindDocumentsInput{Collection: "orders"})
+			var retry *sdkgo.RetryError
+			require.ErrorAs(t, err, &retry)
+		})
+	}
+	t.Run("malformed", func(t *testing.T) {
+		client := testClientWithURI(t, nil, 1, "mongodb://reader:secret@localhost:notaport/example")
+		result, err := sdkgo.RunQuery(queryContext{}, client.FindDocuments(), testConnection, FindDocumentsInput{Collection: "orders"})
+		require.NoError(t, err)
+		require.Equal(t, FindDocumentsBranchDefect, result.Branch)
 	})
 }

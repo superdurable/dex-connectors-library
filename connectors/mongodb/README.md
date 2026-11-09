@@ -6,7 +6,8 @@ JSON values, and returns canonical Extended JSON so BSON types are preserved.
 It never changes the database. `found` is the happy path, including an empty
 result. `truncated`, `providerRejected`, `invalidResponse`, and `defect` are
 optional branches. Temporary network, timeout, and retryable read failures
-return Retry to Dex.
+return Retry to Dex. So do DNS lookup failures, including `mongodb+srv://`
+SRV lookups; only a URI the driver rejects selects `defect`.
 
 The connector uses the native MongoDB wire protocol. Atlas Data API has been
 retired. The Go module currently pins driver v1.17.10 because this repository's

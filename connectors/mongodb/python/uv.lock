@@ -303,6 +303,7 @@ source = { editable = "." }
 dependencies = [
     { name = "dex-connectors-sdk" },
     { name = "dex-python-sdk" },
+    { name = "dnspython" },
     { name = "pymongo" },
 ]
 
@@ -318,6 +319,7 @@ dev = [
 requires-dist = [
     { name = "dex-connectors-sdk", specifier = "==0.7.0" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
+    { name = "dnspython", specifier = ">=1.16,<3" },
     { name = "pymongo", specifier = ">=4.13,<5" },
 ]
 

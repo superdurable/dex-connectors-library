@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"strings"
 	"time"
 
@@ -65,7 +66,7 @@ func (operation FindDocumentsOperation) Invoke(call sdkgo.Call, input FindDocume
 		providerClient, err = mongo.Connect(ctx, options.Client().ApplyURI(connectionURI).
 			SetServerSelectionTimeout(operation.client.timeout).SetConnectTimeout(operation.client.timeout))
 		if err != nil {
-			return documentBranch(FindDocumentsBranchDefect, sdkgo.FailureValidation, "MongoDB connection URI was rejected", emptyDocuments())
+			return connectFailure(err)
 		}
 		defer func() {
 			closeContext, stop := context.WithTimeout(context.Background(), 2*time.Second)
@@ -144,6 +145,18 @@ func documentFailure(err error) sdkgo.QueryAttempt[DocumentSet] {
 		return documentBranch(FindDocumentsBranchProviderRejected, sdkgo.FailureProviderRejection, "MongoDB rejected the find command", emptyDocuments())
 	}
 	return documentRetry(sdkgo.FailureTransport, "MongoDB read failed")
+}
+
+// connectFailure separates URI defects from DNS lookups, which ApplyURI performs for mongodb+srv:// URIs.
+func connectFailure(err error) sdkgo.QueryAttempt[DocumentSet] {
+	var dnsError *net.DNSError
+	if errors.As(err, &dnsError) {
+		return documentRetry(sdkgo.FailureTransport, "MongoDB DNS lookup failed")
+	}
+	if mongo.IsNetworkError(err) || mongo.IsTimeout(err) || errors.Is(err, context.DeadlineExceeded) {
+		return documentRetry(sdkgo.FailureTransport, "MongoDB read was interrupted")
+	}
+	return documentBranch(FindDocumentsBranchDefect, sdkgo.FailureValidation, "MongoDB connection URI was rejected", emptyDocuments())
 }
 
 func emptyDocuments() DocumentSet { return DocumentSet{Documents: []map[string]any{}} }

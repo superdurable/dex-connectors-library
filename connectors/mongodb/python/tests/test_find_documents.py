@@ -8,6 +8,9 @@ import pytest
 from bson import ObjectId
 from bson.errors import InvalidBSON
 from dex_connectors.sdk import Call, CallID, ConnectionRef, IdempotencyKey, OperationRef, SecretString
+from dns.exception import DNSException, Timeout
+from dns.resolver import NXDOMAIN
+from pymongo.asynchronous import srv_resolver
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from dex_connectors.mongodb import Client, Config, Credentials, FindDocumentsInput
@@ -16,8 +19,11 @@ from dex_connectors.mongodb import Client, Config, Credentials, FindDocumentsInp
 class CredentialSource:
     """Return a synthetic URI without storing it in Flow state."""
 
+    def __init__(self, uri: str = "mongodb://reader:secret@localhost:27017") -> None:
+        self.uri = uri
+
     async def resolve(self, call: Call) -> Credentials:
-        return Credentials(SecretString("mongodb://reader:secret@localhost:27017"))
+        return Credentials(SecretString(self.uri))
 
 
 class FakeCursor:
@@ -144,3 +150,30 @@ async def test_invalid_bson_and_response_byte_limit() -> None:
     truncated = await small.find_documents().invoke(_call(), FindDocumentsInput("orders", {}))
     assert truncated.branch == "truncated"
     assert truncated.value is not None and truncated.value.documents == ()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lookup_error", [Timeout, NXDOMAIN])
+async def test_srv_dns_failure_retries(
+    monkeypatch: pytest.MonkeyPatch, lookup_error: type[DNSException]
+) -> None:
+    """SRV lookups happen while connecting, so DNS failures retry instead of selecting defect."""
+
+    async def failing_resolve(*_args: object, **_kwargs: object) -> object:
+        raise lookup_error
+
+    monkeypatch.setattr(srv_resolver, "_resolve", failing_resolve)
+    client = Client(
+        Config(database="example"), CredentialSource("mongodb+srv://reader:secret@cluster.example.com/example")
+    )
+    result = await client.find_documents().invoke(_call(), FindDocumentsInput("orders", {}))
+    assert result.kind == "retry"
+    assert result.failure is not None and result.failure.message == "MongoDB DNS lookup failed"
+
+
+@pytest.mark.asyncio
+async def test_malformed_connection_uri_selects_defect() -> None:
+    """A URI the native driver cannot parse is a configuration defect."""
+    client = Client(Config(database="example"), CredentialSource("mongodb://reader:secret@localhost:notaport"))
+    result = await client.find_documents().invoke(_call(), FindDocumentsInput("orders", {}))
+    assert result.branch == "defect"

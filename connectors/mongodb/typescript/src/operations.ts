@@ -3,7 +3,8 @@
 
 import { EJSON, BSONError } from 'bson';
 import {
-  MongoClient, MongoError, MongoNetworkError, MongoOperationTimeoutError, MongoParseError, MongoServerError, MongoServerSelectionError,
+  MongoAPIError, MongoClient, MongoError, MongoNetworkError, MongoOperationTimeoutError, MongoParseError, MongoServerError,
+  MongoServerSelectionError,
 } from 'mongodb';
 import { newQueryBranch, newQueryRetry, type Call, type Failure, type Query, type QueryAttempt, type QueryDefinition } from '@superdurable/connectors-sdk';
 import { FindDocumentsDefinition } from './generated/definitions.js';
@@ -39,13 +40,23 @@ export class FindDocumentsOperation implements Query<FindDocumentsInput, Documen
     if (!validConnectionURI(uri)) return branch('defect', 'AUTHENTICATION', 'MongoDB connection URI is invalid');
 
     const settings = this.client.configuration;
-    let driver: MongoClient | undefined;
+    const startedAt = Date.now();
+    let driver: MongoClient;
     try {
-      const startedAt = Date.now();
       driver = this.client.createDriver(uri, {
         serverSelectionTimeoutMS: settings.timeoutMs, connectTimeoutMS: settings.timeoutMs,
       });
-      await driver.connect();
+    } catch {
+      // The constructor only parses the URI and options, so failures are deterministic; SRV DNS waits for connect().
+      return uriRejected();
+    }
+    try {
+      try { await driver.connect(); } catch (error) {
+        if (isDNSLookupError(error)) return retry('TRANSPORT', 'MongoDB DNS lookup failed');
+        // TXT record contents, SRV host verification, and missing driver options are configuration defects.
+        if (error instanceof MongoParseError || error instanceof MongoAPIError) return uriRejected();
+        throw error;
+      }
       const remainingMs = settings.timeoutMs - (Date.now() - startedAt);
       if (remainingMs <= 0) return retry('TRANSPORT', 'MongoDB read was interrupted');
       const deadline = AbortSignal.timeout(remainingMs);
@@ -78,7 +89,6 @@ export class FindDocumentsOperation implements Query<FindDocumentsInput, Documen
       }
       return newQueryBranch('found', { documents: output });
     } catch (error) {
-      if (error instanceof MongoParseError) return branch('defect', 'VALIDATION', 'MongoDB connection URI was rejected');
       if (error instanceof BSONError) return branch('invalidResponse', 'PROTOCOL', 'MongoDB document encoding failed');
       if (error instanceof MongoNetworkError || error instanceof MongoServerSelectionError || error instanceof MongoOperationTimeoutError ||
           (error instanceof Error && error.name === 'AbortError'))
@@ -91,14 +101,21 @@ export class FindDocumentsOperation implements Query<FindDocumentsInput, Documen
       if (error instanceof MongoError) return retry('TRANSPORT', 'MongoDB read failed');
       return retry('TRANSPORT', 'MongoDB read failed');
     } finally {
-      if (driver) {
-        try { await driver.close(); }
-        catch { /* A read outcome is already fixed; closing is best effort. */ }
-      }
+      try { await driver.close(); }
+      catch { /* A read outcome is already fixed; closing is best effort. */ }
     }
   }
 }
 
+/** Node reports SRV and TXT resolver failures as plain errors identified only by `syscall` and `code`. */
+function isDNSLookupError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const { syscall, code } = error as Error & { syscall?: unknown; code?: unknown };
+  return (syscall === 'querySrv' || syscall === 'queryTxt') && typeof code === 'string';
+}
+function uriRejected(): QueryAttempt<DocumentSet> {
+  return branch('defect', 'VALIDATION', 'MongoDB connection URI was rejected');
+}
 function validConnectionURI(uri: string): boolean {
   return uri.length <= 4096 && !uri.includes('\0') && !uri.includes('\r') && !uri.includes('\n') &&
     (uri.startsWith('mongodb://') || uri.startsWith('mongodb+srv://'));
