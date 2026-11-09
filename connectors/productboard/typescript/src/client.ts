@@ -23,7 +23,7 @@ interface Exchange {
 
 /** Authenticated Productboard REST API v2 client for feature pages. */
 export class ProductboardClient {
-  private readonly baseURL: string;
+  /** Validated provider base URL for requests and next-page links. */ readonly baseURL: string;
   private readonly timeoutMs: number;
   private readonly maxResponseBytes: number;
   private readonly send: (request: ProviderRequest) => Promise<ProviderResponse>;
@@ -92,7 +92,7 @@ export class ListFeaturesOperation implements Query<ListFeaturesInput, FeaturesP
     if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'Productboard is temporarily unavailable', exchange.retryAfterMs);
     if (exchange.status !== 200) return terminal('providerRejected', 'PROVIDER_REJECTION', `Productboard rejected HTTP ${exchange.status}`);
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Productboard response exceeded the configured limit');
-    const page = decodePage(exchange.body);
+    const page = decodePage(exchange.body, this.client.baseURL);
     if (!page) return terminal('invalidResponse', 'PROTOCOL', 'Productboard returned invalid feature JSON');
     return newQueryBranch('listed', page);
   }
@@ -115,7 +115,12 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
-function decodePage(body: Uint8Array): FeaturesPage | undefined {
+/** Accept the public entities URL or the entities URL below the configured base. */
+function isNextPageURL(nextURL: URL, baseURL: string): boolean {
+  if (nextURL.protocol === 'https:' && nextURL.host === 'api.productboard.com' && nextURL.pathname === '/v2/entities') return true;
+  return `${nextURL.protocol}//${nextURL.host}${nextURL.pathname}` === `${baseURL.replace(/\/+$/, '')}/entities`;
+}
+function decodePage(body: Uint8Array, baseURL: string): FeaturesPage | undefined {
   let raw: unknown;
   try { raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; }
   if (!isObject(raw) || !Array.isArray(raw.data)) return undefined;
@@ -131,7 +136,7 @@ function decodePage(body: Uint8Array): FeaturesPage | undefined {
   if (links.next) {
     let nextURL: URL;
     try { nextURL = new URL(links.next); } catch { return undefined; }
-    if (nextURL.protocol !== 'https:' || nextURL.host !== 'api.productboard.com' || nextURL.pathname !== '/v2/entities') return undefined;
+    if (!isNextPageURL(nextURL, baseURL)) return undefined;
     const cursors = nextURL.searchParams.getAll('pageCursor');
     if (cursors.length !== 1 || !cursors[0] || !isValidCursor(cursors[0])) return undefined;
     nextCursor = cursors[0];

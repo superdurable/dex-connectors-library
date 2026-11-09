@@ -306,6 +306,113 @@
       },
       "name": "listFeatures-transportFailure",
       "operation": "listFeatures"
+    },
+    {
+      "callId": "89151697-a594-5cea-9fa9-02da4ce77a1f",
+      "exchanges": [
+        {
+          "body": "{\"data\":[{\"id\":\"feature-3\",\"type\":\"feature\",\"fields\":{\"name\":\"Proxy feature\"}}],\"links\":{\"next\":\"http://127.0.0.1:12345/v2/entities?pageCursor=cursor-4\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "listed",
+        "failureKind": "",
+        "output": {
+          "features": [
+            {
+              "id": "feature-3",
+              "name": "Proxy feature"
+            }
+          ],
+          "nextCursor": "cursor-4"
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-nextLinkBelowConfiguredBase",
+      "operation": "listFeatures"
+    },
+    {
+      "callId": "fbbe75c7-603d-5d0d-b976-74161f9a28a1",
+      "exchanges": [
+        {
+          "body": "{\"data\":[],\"links\":{\"next\":\"https://example.com/v2/entities?pageCursor=cursor-2\"}}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/entities",
+          "query": {
+            "fields[]": [
+              "name"
+            ],
+            "pageCursor": [
+              "cursor-1"
+            ],
+            "type[]": [
+              "feature"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer sample-productboard-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "invalidResponse",
+        "failureKind": "PROTOCOL",
+        "output": {
+          "features": [],
+          "nextCursor": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageCursor": "cursor-1"
+      },
+      "name": "listFeatures-foreignNextLink",
+      "operation": "listFeatures"
     }
   ],
   "schemaVersion": 1

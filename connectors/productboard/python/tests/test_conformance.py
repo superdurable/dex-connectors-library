@@ -22,7 +22,7 @@ ADAPTER = conformance.PythonOperationAdapter(
     CONNECTION,
     productboard,
     lambda http_client, _recorder: productboard.Client(
-        productboard.Config(base_url="http://127.0.0.1:8848/v2"),
+        productboard.Config(base_url="http://127.0.0.1:12345/v2"),
         conformance.static_credentials(CONNECTION, TEST_CREDENTIALS),
         http_client,
     ),

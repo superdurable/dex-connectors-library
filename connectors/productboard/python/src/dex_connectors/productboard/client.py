@@ -67,7 +67,14 @@ def _valid_cursor(cursor: object) -> bool:
     )
 
 
-def _decode_page(body: bytes) -> FeaturesPage:
+def _is_next_page_url(scheme: str, netloc: str, path: str, base_url: str) -> bool:
+    """Accept the public entities URL or the entities URL below the configured base."""
+    if scheme == "https" and netloc == "api.productboard.com" and path == "/v2/entities":
+        return True
+    return f"{scheme}://{netloc}{path}" == base_url.rstrip("/") + "/entities"
+
+
+def _decode_page(body: bytes, base_url: str) -> FeaturesPage:
     raw: Any = json.loads(body)
     if not isinstance(raw, dict) or not isinstance(raw.get("data"), list):
         raise ValueError("missing feature data")
@@ -94,11 +101,7 @@ def _decode_page(body: bytes) -> FeaturesPage:
     next_cursor = ""
     if next_url:
         parsed = urlparse(next_url)
-        if (
-            parsed.scheme != "https"
-            or parsed.netloc != "api.productboard.com"
-            or parsed.path != "/v2/entities"
-        ):
+        if not _is_next_page_url(parsed.scheme, parsed.netloc, parsed.path, base_url):
             raise ValueError("invalid next page URL")
         cursors = parse_qs(parsed.query).get("pageCursor", [])
         if len(cursors) != 1 or not cursors[0] or not _valid_cursor(cursors[0]):
@@ -220,7 +223,7 @@ class ListFeaturesOperation:
         if exchange.error:
             return _retry(FailureKind.TRANSPORT, "Productboard response was interrupted")
         try:
-            page = _decode_page(exchange.body)
+            page = _decode_page(exchange.body, self.client.base_url)
         except (ValueError, TypeError, UnicodeDecodeError):
             return _branch(
                 "invalidResponse", FailureKind.PROTOCOL, "Productboard returned invalid feature JSON"

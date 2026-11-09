@@ -80,7 +80,7 @@ func (operation ListFeaturesOperation) Invoke(call sdkgo.Call, input ListFeature
 	if response.err != nil {
 		return sdkgo.NewQueryRetry[FeaturesPage](featuresFailure(sdkgo.FailureTransport, "Productboard response was interrupted"), 0)
 	}
-	page, err := decodeFeaturesPage(response.body)
+	page, err := decodeFeaturesPage(response.body, operation.client.baseURL)
 	if err != nil {
 		return featuresBranch(ListFeaturesBranchInvalidResponse, sdkgo.FailureProtocol, "Productboard returned invalid feature JSON")
 	}
@@ -99,7 +99,7 @@ func validCursor(cursor string) bool {
 	return true
 }
 
-func decodeFeaturesPage(body []byte) (FeaturesPage, error) {
+func decodeFeaturesPage(body []byte, baseURL string) (FeaturesPage, error) {
 	var wire struct {
 		Data []struct {
 			ID     string `json:"id"`
@@ -127,7 +127,7 @@ func decodeFeaturesPage(body []byte) (FeaturesPage, error) {
 	}
 	if wire.Links.Next != "" {
 		nextURL, err := url.Parse(wire.Links.Next)
-		if err != nil || nextURL.Scheme != "https" || nextURL.Host != "api.productboard.com" || nextURL.Path != "/v2/entities" {
+		if err != nil || !isFeaturesNextPageURL(nextURL, baseURL) {
 			return FeaturesPage{}, fmt.Errorf("invalid next page URL")
 		}
 		cursors := nextURL.Query()["pageCursor"]
@@ -137,6 +137,15 @@ func decodeFeaturesPage(body []byte) (FeaturesPage, error) {
 		page.NextCursor = cursors[0]
 	}
 	return page, nil
+}
+
+// isFeaturesNextPageURL accepts Productboard's public entities URL or the
+// entities URL below the configured base, such as a proxy or local fake.
+func isFeaturesNextPageURL(nextURL *url.URL, baseURL string) bool {
+	if nextURL.Scheme == "https" && nextURL.Host == "api.productboard.com" && nextURL.Path == "/v2/entities" {
+		return true
+	}
+	return nextURL.Scheme+"://"+nextURL.Host+nextURL.Path == strings.TrimRight(baseURL, "/")+"/entities"
 }
 
 func featuresFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {

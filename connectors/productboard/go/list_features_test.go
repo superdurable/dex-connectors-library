@@ -52,6 +52,23 @@ func TestListFeaturesReadsSelectedFieldsAndCursor(t *testing.T) {
 	require.Equal(t, FeaturesPage{Features: []FeatureMetadata{{ID: "feature-1", Name: "Example feature"}}, NextCursor: "cursor-2"}, result.Value)
 }
 
+func TestListFeaturesAcceptsNextLinkBelowConfiguredBase(t *testing.T) {
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, err := writer.Write([]byte(`{"data":[],"links":{"next":"` + serverURL + `/v2/entities?pageCursor=cursor-2"}}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	serverURL = server.URL
+	result, err := sdkgo.RunQuery(queryContext{}, newTestClient(t, server.URL+"/v2", 0).ListFeatures(), testConnection, ListFeaturesInput{})
+	require.NoError(t, err)
+	require.Equal(t, ListFeaturesBranchListed, result.Branch)
+	require.Equal(t, "cursor-2", result.Value.NextCursor)
+	result, err = sdkgo.RunQuery(queryContext{}, newTestClient(t, server.URL+"/v3", 0).ListFeatures(), testConnection, ListFeaturesInput{})
+	require.NoError(t, err)
+	require.Equal(t, ListFeaturesBranchInvalidResponse, result.Branch)
+}
+
 func TestListFeaturesClassifiesProviderOutcomes(t *testing.T) {
 	for _, testCase := range []struct {
 		name   string
