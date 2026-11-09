@@ -56,6 +56,9 @@ class GoReleaseLimitTest(unittest.TestCase):
         self.assertIn('--go-release-limit "${GO_RELEASE_LIMIT}"', plan_step)
         # Only the capped selection may write the Go matrix that release and build-language read.
         self.assertIn('arguments=(--catalog catalog.yaml --github-output "${RUNNER_TEMP}/release-matrix-output")', plan_step)
+        # Push, schedule, drain, and repair runs all see tagged Go versions whose release is incomplete.
+        self.assertIn('arguments+=(--release-inventory "${GH_RELEASE_INVENTORY_PATH}")', plan_step)
+        self.assertLess(plan_step.index("--release-inventory"), plan_step.index('if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n'))
         self.assertIn('--github-output "${GITHUB_OUTPUT}"', plan_step.split("language_publish.py select", 1)[1])
         self.assertIn("go_deferred_count=0", plan_step)
         self.assertIn("matrix: ${{ steps.matrix.outputs.matrix }}", workflow)

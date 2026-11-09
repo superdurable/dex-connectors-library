@@ -205,12 +205,13 @@ func releaseMatrixCommand(args []string) error {
 	includePublished := flags.Bool("include-published", false, "include versions with reachable tags for recovery checks")
 	includePublishedLanguages := flags.Bool("include-published-languages", false, "include tagged language versions for recovery checks")
 	includePublishedAt := flags.String("include-published-at", "", "include published versions whose tag resolves to this revision")
+	releaseInventoryPath := flags.String("release-inventory", "", "GitHub release inventory; include tagged Go versions whose release is incomplete")
 	githubOutputPath := flags.String("github-output", "", "GitHub Actions output path")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || *catalogPath == "" {
-		return errors.New("usage: connectorctl release-matrix --catalog PATH [--directory DIRECTORY] [--include-published | --include-published-languages | --include-published-at REV] [--github-output PATH]")
+		return errors.New("usage: connectorctl release-matrix --catalog PATH [--directory DIRECTORY] [--include-published | --include-published-languages | --include-published-at REV] [--release-inventory PATH] [--github-output PATH]")
 	}
 	if *includePublished && *includePublishedAt != "" {
 		return errors.New("include-published and include-published-at cannot be combined")
@@ -236,6 +237,13 @@ func releaseMatrixCommand(args []string) error {
 	latestReleases, err := latestReachableConnectorReleases(repositoryRoot)
 	if err != nil {
 		return err
+	}
+	// A nil set means no inventory, so only the other flags select tagged Go versions.
+	var completedGoReleaseTags map[string]bool
+	if *releaseInventoryPath != "" {
+		if completedGoReleaseTags, err = readCompletedGoReleaseTags(*releaseInventoryPath); err != nil {
+			return err
+		}
 	}
 	includedSourceCommit := ""
 	if *includePublishedAt != "" {
@@ -263,7 +271,10 @@ func releaseMatrixCommand(args []string) error {
 			}
 		}
 		isPublishedAtIncludedSource := includedSourceCommit != "" && latestRelease.SourceCommit == includedSourceCommit
-		if !isPending && !*includePublished && !isPublishedAtIncludedSource {
+		// Scheduled runs see only untagged versions otherwise, so a release that failed after tagging needs this.
+		isIncompleteTaggedRelease := completedGoReleaseTags != nil && !isPending &&
+			latestRelease.Tag == entry.Directory+"/go/"+entry.Manifest.Metadata.Version && !completedGoReleaseTags[latestRelease.Tag]
+		if !isPending && !*includePublished && !isPublishedAtIncludedSource && !isIncompleteTaggedRelease {
 			continue
 		}
 		releaseState := goReleaseStateTagged
@@ -315,9 +326,7 @@ func releaseMatrixCommand(args []string) error {
 			})
 		}
 	}
-	if err := validateConnectorReleaseMatrixSize(matrix); err != nil {
-		return err
-	}
+	// language_publish.py select caps the Go matrix and enforces the GitHub job limit on what it emits.
 	encoded, err := json.Marshal(matrix)
 	if err != nil {
 		return fmt.Errorf("encode connector release matrix: %w", err)
@@ -337,11 +346,32 @@ func releaseMatrixCommand(args []string) error {
 	return nil
 }
 
-func validateConnectorReleaseMatrixSize(matrix connectorReleaseMatrix) error {
-	if len(matrix.Include) > maximumGitHubActionsMatrixJobs {
-		return fmt.Errorf("release matrix contains %d connectors; split the release into at most %d connectors", len(matrix.Include), maximumGitHubActionsMatrixJobs)
+// readCompletedGoReleaseTags returns the tags whose GitHub release has connector-release.complete,
+// or nil when the plan job recorded the inventory as unavailable.
+func readCompletedGoReleaseTags(path string) (map[string]bool, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read release inventory: %w", err)
 	}
-	return nil
+	var inventory map[string]json.RawMessage
+	if err := json.Unmarshal(contents, &inventory); err != nil {
+		return nil, fmt.Errorf("decode release inventory: %w", err)
+	}
+	if _, isUnavailable := inventory["_inventory_unavailable"]; isUnavailable {
+		fmt.Fprintln(os.Stderr, "::warning::Release inventory unavailable; a later run includes incomplete tagged Go releases")
+		return nil, nil
+	}
+	completed := make(map[string]bool)
+	for tag, encodedAssets := range inventory {
+		var assets []string
+		if err := json.Unmarshal(encodedAssets, &assets); err != nil {
+			return nil, fmt.Errorf("release inventory assets of %s must be a list of names: %w", tag, err)
+		}
+		if slices.Contains(assets, "connector-release.complete") {
+			completed[tag] = true
+		}
+	}
+	return completed, nil
 }
 
 func loadConnectorDirectoryEntries(catalogPath string) ([]connectorDirectoryEntry, error) {

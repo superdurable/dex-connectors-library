@@ -307,6 +307,16 @@ class SelectGoReleasesTests(unittest.TestCase):
         self.assertEqual(4, len(selection["selected"]), "a tagged version beyond the limit still runs")
         self.assertEqual(["connectors/new/go/v0.1.0"], go_tags(selection["deferred"]))
 
+    def test_rejects_more_mandatory_tagged_jobs_than_one_matrix_holds(self) -> None:
+        limit = language_publish.MAXIMUM_GITHUB_MATRIX_JOBS
+        completed = {f"connectors/tagged-{index:03}/go/v0.1.0" for index in range(limit)}
+        tagged = [go_item(f"tagged-{index:03}", "tagged") for index in range(limit)]
+        selection = language_publish.select_go_releases(tagged + [go_item("new", "first_release")], 15, completed)
+        self.assertEqual((limit, 1), (len(selection["selected"]), len(selection["deferred"])))
+        tagged = [go_item(f"tagged-{index:03}", "tagged") for index in range(limit + 1)]
+        with self.assertRaisesRegex(ValueError, "tagged versions"):
+            language_publish.select_go_releases(tagged, 15, completed)
+
     def test_rejects_invalid_limits_and_unknown_states(self) -> None:
         for limit in (0, language_publish.MAXIMUM_GITHUB_MATRIX_JOBS + 1):
             with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "Go release limit"):

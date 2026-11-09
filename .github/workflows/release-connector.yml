@@ -127,6 +127,8 @@ jobs:
             exit
           fi
           arguments=(--catalog catalog.yaml --github-output "${RUNNER_TEMP}/release-matrix-output")
+          # Every run repairs tagged Go versions whose release lacks connector-release.complete, at their tagged source.
+          arguments+=(--release-inventory "${GH_RELEASE_INVENTORY_PATH}")
           select_arguments=()
           if [ "${EVENT_NAME}" = workflow_dispatch ] && [ -n "${REPAIR_DIRECTORY}" ]; then
             arguments+=(--directory "${REPAIR_DIRECTORY}" --include-published)

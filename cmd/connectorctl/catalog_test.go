@@ -246,15 +246,6 @@ func TestReleaseMatrixDefaultsToPendingVersions(t *testing.T) {
 	require.Equal(t, expectedDirectories, actualDirectories)
 }
 
-func TestReleaseMatrixRejectsMoreThanGitHubJobLimit(t *testing.T) {
-	require.NoError(t, validateConnectorReleaseMatrixSize(connectorReleaseMatrix{
-		Include: make([]connectorReleaseMatrixItem, maximumGitHubActionsMatrixJobs),
-	}))
-	require.ErrorContains(t, validateConnectorReleaseMatrixSize(connectorReleaseMatrix{
-		Include: make([]connectorReleaseMatrixItem, maximumGitHubActionsMatrixJobs+1),
-	}), "split the release")
-}
-
 func TestCatalogSourceRejectsMissingCompanyLogo(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	writeConnectorFixture(t, repositoryRoot, "connectors/acme/mail", "example.com/connectors/acme/mail")

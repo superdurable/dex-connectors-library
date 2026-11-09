@@ -315,17 +315,29 @@ new connectors therefore use about 550 requests per run. Set the
 
 The plan job ranks Go versions in three tiers, each in catalog order:
 
-1. Versions already tagged. These are recovery checks of the pushed commit or
-   a targeted repair.
+1. Versions already tagged. These are recovery checks of the pushed commit, a
+   targeted repair, or a manifest version whose tag exists but whose GitHub
+   release, according to the run's release inventory, lacks
+   `connector-release.complete`.
 2. Updates of released connectors.
 3. First releases.
 
 A batch of new connectors therefore never starves an update. A tagged version
-always runs, because later runs select only untagged versions. It takes a slot
-unless its release already has `connector-release.complete`. Versions beyond
-the cap stay untagged and are deferred with `go_release_cap`. The next push,
-hourly, or drain run selects them again in the same order, so none is lost.
-The plan job summary lists the selected and deferred Go tags.
+always runs. It takes a slot unless its release already has
+`connector-release.complete`. The release job repairs an incomplete release
+from the commit its tag points to and never changes a complete release. If a
+release fails after creating its tag, every later push, hourly, or drain run
+selects it again until it completes, so its language packages can publish.
+When the release inventory is unavailable, a run skips this detection, and the
+next run with an inventory selects the release. Versions beyond the cap stay
+untagged and are deferred with `go_release_cap`. The next push, hourly, or
+drain run selects them again in the same order, so none is lost. The plan job
+summary lists the selected and deferred Go tags.
+
+`connectorctl release-matrix` lists every candidate, however many. The
+selection step enforces GitHub's 256-job matrix limit on the Go matrix it
+emits. Pending versions wait once the matrix is full. The plan fails only if
+more than 256 tagged versions must run in one run.
 
 A language package names its Go release in `releaseTag` and requires it. The
 Python and TypeScript packages of a connector whose Go release is deferred

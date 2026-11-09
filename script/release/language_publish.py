@@ -28,7 +28,7 @@ else:
 PYPI_FIRST_PUBLISH_LIMIT = 3
 GITHUB_FIRST_RELEASE_LIMIT = 15
 GO_RELEASE_LIMIT = 15
-# Tagged versions come first because later runs select only untagged versions.
+# Tagged versions are repairs that are never deferred, so they come first.
 GO_RELEASE_STATE_ORDER = {"tagged": 0, "update": 1, "first_release": 2}
 CONNECTOR_RELEASE_COMPLETE = "connector-release.complete"
 PYPI_RETRY_DELAYS = (20, 60, 120)
@@ -146,9 +146,11 @@ def select_go_releases(items: list[dict[str, str]], go_release_limit: int,
 
     Each item's ``release_state`` from ``connectorctl release-matrix`` ranks tagged versions, then updates of
     released connectors, then first releases, each in catalog order, and is removed from the returned items.
-    A tagged version is always selected, because later runs select only untagged versions; it takes a slot
-    unless ``completed_go_tags`` shows its release complete. ``None`` means the inventory is unavailable, so
-    every tagged version takes a slot. A deferred version has no tag yet, so a later run selects it again.
+    A tagged version is always selected, because a later run selects it only while its release is incomplete;
+    it takes a slot unless ``completed_go_tags`` shows its release complete. ``None`` means the inventory is
+    unavailable, so every tagged version takes a slot. Pending versions also wait once the matrix holds the
+    GitHub job limit. A deferred version has no tag yet, so a later run selects it again. More tagged versions
+    than the job limit raise ``ValueError``.
     """
     if not 1 <= go_release_limit <= MAXIMUM_GITHUB_MATRIX_JOBS:
         raise ValueError(f"Go release limit must be between 1 and {MAXIMUM_GITHUB_MATRIX_JOBS}")
@@ -167,7 +169,7 @@ def select_go_releases(items: list[dict[str, str]], go_release_limit: int,
             selected.append(item)
             if completed_go_tags is None or item["tag_prefix"] + item["version"] not in completed_go_tags:
                 used_slots += 1
-        elif used_slots < go_release_limit:
+        elif used_slots < go_release_limit and len(selected) < MAXIMUM_GITHUB_MATRIX_JOBS:
             selected.append(item)
             used_slots += 1
         else:
