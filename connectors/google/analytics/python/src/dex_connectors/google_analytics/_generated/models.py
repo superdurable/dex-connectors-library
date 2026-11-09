@@ -13,7 +13,7 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
-# RunReportInput selects one GA4 report page with up to ten dimensions and metrics.
+# RunReportInput selects one GA4 report page with up to nine dimensions and ten metrics.
 @dataclass(frozen=True, slots=True)
 class RunReportInput:
     # PropertyID is the numeric GA4 Property ID from Analytics Admin.
@@ -22,9 +22,9 @@ class RunReportInput:
     start_date: str = _dataclass_field(default='', metadata={'dex_json_name': 'startDate'})
     # EndDate is the inclusive date in YYYY-MM-DD form.
     end_date: str = _dataclass_field(default='', metadata={'dex_json_name': 'endDate'})
-    # Dimensions are GA4 Data API dimension names in requested order.
+    # Dimensions are up to nine GA4 Data API dimension names in requested order.
     dimensions: tuple[str, ...] = ()
-    # Metrics are GA4 Data API metric names in requested order.
+    # Metrics are one to ten GA4 Data API metric names in requested order.
     metrics: tuple[str, ...] = ()
     # Limit is the page size from 1 to 10000; zero uses 100.
     limit: int = 0

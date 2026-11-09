@@ -93,7 +93,7 @@ export class RunReportOperation implements Query<RunReportInput, ReportPage> {
     const operation = 'runReport'; const empty: ReportPage = { rows: [], rowCount: 0 };
     const dimensions = input?.dimensions ?? []; const metrics = input?.metrics ?? [];
     if (!input || !validPropertyID(input.propertyId) || !validDateRange(input.startDate, input.endDate)
-      || !validNames(dimensions, false) || !validNames(metrics, true)
+      || !validNames(dimensions, maxReportDimensions, false) || !validNames(metrics, maxReportMetrics, true)
       || !Number.isSafeInteger(input.limit) || input.limit < 0 || input.limit > 10_000
       || !Number.isSafeInteger(input.offset) || input.offset < 0 || input.offset > 1_000_000_000)
       return queryBranch(operation, 'defect', empty, 'VALIDATION', 'report input is invalid');
@@ -190,7 +190,10 @@ function validDateRange(start: string, end: string): boolean {
   return !Number.isNaN(first.getTime()) && !Number.isNaN(last.getTime())
     && first.toISOString().slice(0, 10) === start && last.toISOString().slice(0, 10) === end && last >= first;
 }
-function validNames(names: string[], required: boolean): boolean { return Array.isArray(names) && names.length <= 10 && (!required || names.length > 0) && names.every(name => typeof name === 'string' && /^[A-Za-z][A-Za-z0-9_:]{0,127}$/.test(name)); }
+// GA4 runReport accepts at most nine dimensions and ten metrics.
+const maxReportDimensions = 9;
+const maxReportMetrics = 10;
+function validNames(names: string[], maxCount: number, required: boolean): boolean { return Array.isArray(names) && names.length <= maxCount && (!required || names.length > 0) && names.every(name => typeof name === 'string' && /^[A-Za-z][A-Za-z0-9_:]{0,127}$/.test(name)); }
 function failedExchange(error: NonNullable<Analytics4Exchange['error']>): Analytics4Exchange { return { status: 0, body: new Uint8Array(), retryAfterMs: 0, error }; }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
 function parseJSON(body: Uint8Array): unknown { try { return JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; } }

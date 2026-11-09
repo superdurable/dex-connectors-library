@@ -43,10 +43,10 @@
       ],
       "inputSchema": {
         "additionalProperties": false,
-        "description": "RunReportInput selects one GA4 report page with up to ten dimensions and metrics.",
+        "description": "RunReportInput selects one GA4 report page with up to nine dimensions and ten metrics.",
         "properties": {
           "dimensions": {
-            "description": "Dimensions are GA4 Data API dimension names in requested order.",
+            "description": "Dimensions are up to nine GA4 Data API dimension names in requested order.",
             "items": {
               "type": "string"
             },
@@ -64,7 +64,7 @@
             "type": "integer"
           },
           "metrics": {
-            "description": "Metrics are GA4 Data API metric names in requested order.",
+            "description": "Metrics are one to ten GA4 Data API metric names in requested order.",
             "items": {
               "type": "string"
             },

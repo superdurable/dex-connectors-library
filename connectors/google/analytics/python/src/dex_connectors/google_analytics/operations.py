@@ -117,9 +117,14 @@ def _valid_date_range(start: str, end: str) -> bool:
     return first.strftime("%Y-%m-%d") == start and last.strftime("%Y-%m-%d") == end and last >= first
 
 
-def _valid_names(names: tuple[str, ...], *, required: bool) -> bool:
+# GA4 runReport accepts at most nine dimensions and ten metrics.
+_MAX_REPORT_DIMENSIONS = 9
+_MAX_REPORT_METRICS = 10
+
+
+def _valid_names(names: tuple[str, ...], *, max_count: int, required: bool) -> bool:
     return (
-        len(names) <= 10
+        len(names) <= max_count
         and (not required or bool(names))
         and all(_ANALYTICS_NAME.fullmatch(name) for name in names)
     )
@@ -141,8 +146,8 @@ class RunReportOperation:
         if (
             not _valid_property_id(input.property_id)
             or not _valid_date_range(input.start_date, input.end_date)
-            or not _valid_names(input.dimensions, required=False)
-            or not _valid_names(input.metrics, required=True)
+            or not _valid_names(input.dimensions, max_count=_MAX_REPORT_DIMENSIONS, required=False)
+            or not _valid_names(input.metrics, max_count=_MAX_REPORT_METRICS, required=True)
             or input.limit < 0
             or input.limit > 10000
             or input.offset < 0

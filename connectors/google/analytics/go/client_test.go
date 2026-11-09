@@ -130,6 +130,11 @@ func TestInvalidInputsDoNotContactGoogle(t *testing.T) {
 	report, err := sdkgo.RunQuery(queryContext{}, client.RunReport(), testConnection, RunReportInput{PropertyID: "../123", Metrics: []string{"activeUsers"}})
 	require.NoError(t, err)
 	require.Equal(t, RunReportBranchDefect, report.Branch)
+	tenDimensions := []string{"country", "city", "region", "browser", "deviceCategory", "language", "date", "hour", "pagePath", "sessionSource"}
+	report, err = sdkgo.RunQuery(queryContext{}, client.RunReport(), testConnection, RunReportInput{PropertyID: "123456789", StartDate: "2026-11-01", EndDate: "2026-11-07", Dimensions: tenDimensions, Metrics: []string{"activeUsers"}})
+	require.NoError(t, err)
+	require.Equal(t, RunReportBranchDefect, report.Branch)
+	require.True(t, validNames(tenDimensions[:maxReportDimensions], maxReportDimensions, false))
 	audiences, err := sdkgo.RunQuery(queryContext{}, client.ListAudiences(), testConnection, ListAudiencesInput{PropertyID: "123456789", PageToken: "bad\nheader"})
 	require.NoError(t, err)
 	require.Equal(t, ListAudiencesBranchDefect, audiences.Branch)

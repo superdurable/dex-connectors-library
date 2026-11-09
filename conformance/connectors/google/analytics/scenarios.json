@@ -1095,6 +1095,46 @@
       },
       "name": "listAudiences-transportFailure",
       "operation": "listAudiences"
+    },
+    {
+      "callId": "d3fbee17-c7ae-5d7c-adc0-51029be60f09",
+      "exchanges": [],
+      "expected": {
+        "branch": "defect",
+        "failureKind": "VALIDATION",
+        "output": {
+          "rowCount": 0,
+          "rows": []
+        },
+        "requestCount": 0,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "dimensions": [
+          "country",
+          "city",
+          "region",
+          "browser",
+          "deviceCategory",
+          "language",
+          "date",
+          "hour",
+          "pagePath",
+          "sessionSource"
+        ],
+        "endDate": "2026-11-07",
+        "limit": 20,
+        "metrics": [
+          "activeUsers"
+        ],
+        "offset": 10,
+        "propertyId": "123456789",
+        "startDate": "2026-11-01"
+      },
+      "name": "runReport-tooManyDimensions",
+      "operation": "runReport"
     }
   ],
   "schemaVersion": 1

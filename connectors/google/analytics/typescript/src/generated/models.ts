@@ -83,7 +83,7 @@ export function decodeSharedCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
-/** RunReportInput selects one GA4 report page with up to ten dimensions and metrics. */
+/** RunReportInput selects one GA4 report page with up to nine dimensions and ten metrics. */
 export interface RunReportInput {
   /** PropertyID is the numeric GA4 Property ID from Analytics Admin. */
   "propertyId": string;
@@ -91,9 +91,9 @@ export interface RunReportInput {
   "startDate": string;
   /** EndDate is the inclusive date in YYYY-MM-DD form. */
   "endDate": string;
-  /** Dimensions are GA4 Data API dimension names in requested order. */
+  /** Dimensions are up to nine GA4 Data API dimension names in requested order. */
   "dimensions": Array<string> | null;
-  /** Metrics are GA4 Data API metric names in requested order. */
+  /** Metrics are one to ten GA4 Data API metric names in requested order. */
   "metrics": Array<string> | null;
   /** Limit is the page size from 1 to 10000; zero uses 100. */
   "limit": number;

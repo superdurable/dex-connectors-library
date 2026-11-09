@@ -20,7 +20,7 @@ import (
 var analyticsName = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_:]{0,127}$`)
 var propertyID = regexp.MustCompile(`^[0-9]{1,30}$`)
 
-// RunReportInput selects one GA4 report page with up to ten dimensions and metrics.
+// RunReportInput selects one GA4 report page with up to nine dimensions and ten metrics.
 type RunReportInput struct {
 	// PropertyID is the numeric GA4 Property ID from Analytics Admin.
 	PropertyID string `json:"propertyId"`
@@ -28,9 +28,9 @@ type RunReportInput struct {
 	StartDate string `json:"startDate"`
 	// EndDate is the inclusive date in YYYY-MM-DD form.
 	EndDate string `json:"endDate"`
-	// Dimensions are GA4 Data API dimension names in requested order.
+	// Dimensions are up to nine GA4 Data API dimension names in requested order.
 	Dimensions []string `json:"dimensions"`
-	// Metrics are GA4 Data API metric names in requested order.
+	// Metrics are one to ten GA4 Data API metric names in requested order.
 	Metrics []string `json:"metrics"`
 	// Limit is the page size from 1 to 10000; zero uses 100.
 	Limit int64 `json:"limit"`
@@ -129,7 +129,7 @@ func (ListAudiencesOperation) Definition() sdkgo.QueryDefinition { return ListAu
 
 // Invoke sends a bounded report request; POST is a read-only Google Data API method.
 func (operation RunReportOperation) Invoke(call sdkgo.Call, input RunReportInput) sdkgo.QueryAttempt[ReportPage] {
-	if !validPropertyID(input.PropertyID) || !validDateRange(input.StartDate, input.EndDate) || !validNames(input.Dimensions, false) || !validNames(input.Metrics, true) || input.Limit < 0 || input.Limit > 10000 || input.Offset < 0 || input.Offset > 1000000000 {
+	if !validPropertyID(input.PropertyID) || !validDateRange(input.StartDate, input.EndDate) || !validNames(input.Dimensions, maxReportDimensions, false) || !validNames(input.Metrics, maxReportMetrics, true) || input.Limit < 0 || input.Limit > 10000 || input.Offset < 0 || input.Offset > 1000000000 {
 		return queryBranch("runReport", RunReportBranchDefect, ReportPage{}, sdkgo.FailureValidation, "report input is invalid")
 	}
 	limit := input.Limit
@@ -295,8 +295,14 @@ func validDateRange(start, end string) bool {
 	return err == nil && last.Format("2006-01-02") == end && !last.Before(first)
 }
 
-func validNames(names []string, required bool) bool {
-	if len(names) > 10 || required && len(names) == 0 {
+// GA4 runReport accepts at most nine dimensions and ten metrics.
+const (
+	maxReportDimensions = 9
+	maxReportMetrics    = 10
+)
+
+func validNames(names []string, maxCount int, required bool) bool {
+	if len(names) > maxCount || required && len(names) == 0 {
 		return false
 	}
 	for _, name := range names {
