@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: workday
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-workday
+      operations: [getWorker]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-workday'
+      operations: [getWorker]
+      triggers: []
   codegen:
     go:
       package: workday
