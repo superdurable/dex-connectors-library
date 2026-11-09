@@ -71,17 +71,17 @@ func (operation ListAdAccountsOperation) Invoke(call sdkgo.Call, input ListAdAcc
 	if errors.Is(response.err, errRequest) {
 		return adAccountRetry(sdkgo.FailureTransport, "LinkedIn Ads request failed", 0)
 	}
-	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return adAccountBranch(ListAdAccountsBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "LinkedIn Ads response exceeded the configured limit")
-	}
-	if response.err != nil {
-		return adAccountRetry(sdkgo.FailureTransport, "LinkedIn Ads response was interrupted", 0)
-	}
 	if response.status == http.StatusTooManyRequests {
 		return adAccountRetry(sdkgo.FailureRateLimit, "LinkedIn Ads rate limited the request", response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return adAccountRetry(sdkgo.FailureAvailability, "LinkedIn Ads is temporarily unavailable", response.retryAfter)
+	}
+	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
+		return adAccountBranch(ListAdAccountsBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "LinkedIn Ads response exceeded the configured limit")
+	}
+	if response.err != nil {
+		return adAccountRetry(sdkgo.FailureTransport, "LinkedIn Ads response was interrupted", 0)
 	}
 	if response.status != http.StatusOK {
 		return adAccountBranch(ListAdAccountsBranchProviderRejected, sdkgo.FailureProviderRejection, "LinkedIn Ads rejected HTTP "+strconv.Itoa(response.status))

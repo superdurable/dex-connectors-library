@@ -46,6 +46,12 @@ def _read_failure(exchange: Exchange) -> QueryAttempt[AdAccountsPage] | None:
         )
     if exchange.error in ("request", "refresh"):
         return _retry(FailureKind.TRANSPORT, "LinkedIn Ads request failed")
+    if exchange.status == 429:
+        return _retry(FailureKind.RATE_LIMIT, "LinkedIn Ads rate limited the request", exchange.retry_after)
+    if exchange.status == 408 or exchange.status >= 500:
+        return _retry(
+            FailureKind.AVAILABILITY, "LinkedIn Ads is temporarily unavailable", exchange.retry_after
+        )
     if exchange.error == "too_large":
         return _branch(
             "invalidResponse", FailureKind.RESPONSE_TOO_LARGE,
@@ -53,12 +59,6 @@ def _read_failure(exchange: Exchange) -> QueryAttempt[AdAccountsPage] | None:
         )
     if exchange.error:
         return _retry(FailureKind.TRANSPORT, "LinkedIn Ads response was interrupted")
-    if exchange.status == 429:
-        return _retry(FailureKind.RATE_LIMIT, "LinkedIn Ads rate limited the request", exchange.retry_after)
-    if exchange.status == 408 or exchange.status >= 500:
-        return _retry(
-            FailureKind.AVAILABILITY, "LinkedIn Ads is temporarily unavailable", exchange.retry_after
-        )
     if exchange.status != 200:
         return _branch(
             "providerRejected", FailureKind.PROVIDER_REJECTION,

@@ -49,9 +49,9 @@ export class ListAdAccountsOperation implements Query<ListAdAccountsInput, AdAcc
 function classifyRead(exchange: AdsExchange): QueryAttempt<AdAccountsPage> | undefined {
   if (exchange.error === 'credential') return branch('defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
   if (exchange.error === 'refresh' || exchange.error === 'request') return retry('TRANSPORT', 'LinkedIn Ads request failed');
-  if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'LinkedIn Ads response exceeded the configured limit');
   if (exchange.status === 429) return retry('RATE_LIMIT', 'LinkedIn Ads rate limited the request', exchange.retryAfterMs);
   if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'LinkedIn Ads is temporarily unavailable', exchange.retryAfterMs);
+  if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'LinkedIn Ads response exceeded the configured limit');
   if (exchange.status !== 200) return branch('providerRejected', 'PROVIDER_REJECTION', `LinkedIn Ads rejected HTTP ${exchange.status}`);
   return undefined;
 }

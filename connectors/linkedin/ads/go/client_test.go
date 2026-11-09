@@ -102,3 +102,29 @@ func TestListAdAccountsClassifiesFailuresAndRejectsInvalidInputWithoutRequest(t 
 	}
 	require.Equal(t, int32(4), calls.Load())
 }
+
+func TestListAdAccountsRetriesOversizedThrottleAndOutageResponses(t *testing.T) {
+	var responseStatus atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(int(responseStatus.Load()))
+		_, err := w.Write([]byte(`{"message":"an error page larger than the configured response limit"}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+	credentials := Credentials{
+		OAuthClientID: "client-id", OAuthClientSecret: sdkgo.NewSecretString("client-secret"),
+		AccessToken: sdkgo.NewSecretString(testAccessToken), RefreshToken: sdkgo.NewSecretString("refresh-token"),
+	}
+	client, err := New(Config{BaseURL: server.URL, MaxResponseBytes: 16}, sdkgo.StaticCredentialProvider[Credentials]{testConnection: credentials})
+	require.NoError(t, err)
+	for _, status := range []int{http.StatusTooManyRequests, http.StatusServiceUnavailable} {
+		responseStatus.Store(int32(status))
+		_, err := sdkgo.RunQuery(queryContext{}, client.ListAdAccounts(), testConnection, ListAdAccountsInput{PageSize: 2})
+		var retry *sdkgo.RetryError
+		require.ErrorAs(t, err, &retry, "status %d", status)
+	}
+	responseStatus.Store(http.StatusOK)
+	result, err := sdkgo.RunQuery(queryContext{}, client.ListAdAccounts(), testConnection, ListAdAccountsInput{PageSize: 2})
+	require.NoError(t, err)
+	require.Equal(t, ListAdAccountsBranchInvalidResponse, result.Branch)
+}
