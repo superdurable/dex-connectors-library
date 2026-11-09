@@ -63,7 +63,7 @@ spec:
       steps:
         - Open your OpenSearch Dashboards URL and choose Security > Internal users > Create internal user. Set a username and password, then save them as username and password in this Dex connection.
         - Choose Security > Roles > Create role and grant indices:data/read/search for searches, indices:data/write/index for document replacement, and indices:data/write/delete for deletion on the target index pattern. Map the internal user under that role's Mapped users tab. Grant only the permissions used by your Flows.
-        - Find the HTTPS REST endpoint in your cluster deployment or managed-service console and save it as clusterUrl without an index path. Leave timeout and maxResponseBytes blank for their displayed defaults.
+        - Find the HTTPS REST endpoint in your cluster deployment or managed-service console and save it as clusterUrl without an index path. Leave timeout, maxResponseBytes, and maxDocumentBytes blank for their displayed defaults.
   operations:
     - name: indexDocument
       goName: IndexDocument
