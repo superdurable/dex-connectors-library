@@ -1,0 +1,3 @@
+# TypeScript topic listing example
+
+The Worker runs `AmazonSNSTopicListingTypeScript` through the static `amazon-sns` connection and stores the topic page. Configure `region`, `access_key_id`, and `secret_access_key` as described in the [connector README](../../../README.md). From `connectors/amazon/sns/typescript`, run `npm run example:worker` with project `DEX_PROJECT_*` environment and a running `dexcli dev` service. Run `npm run example:start` for the first page; pass `-- <next-token>` for another page. Optional branches are unwired. The integration test runs the same Flow against real Dex and a local provider fixture.

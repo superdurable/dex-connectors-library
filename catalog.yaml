@@ -11,6 +11,7 @@ directories:
   - connectors/amazon/lambda
   - connectors/amazon/s3
   - connectors/amazon/ses
+  - connectors/amazon/sns
   - connectors/amazon/sqs
   - connectors/amplitude
   - connectors/asana

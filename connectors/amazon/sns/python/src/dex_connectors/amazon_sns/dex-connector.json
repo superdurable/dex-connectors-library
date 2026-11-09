@@ -1,0 +1,44 @@
+{
+  "connectorId": "amazon-sns",
+  "releaseTag": "connectors/amazon/sns/go/v0.1.0",
+  "package": {
+    "ecosystem": "pypi",
+    "name": "dex-connector-amazon-sns",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "new_list_topics_step",
+      "kind": "query",
+      "operationId": "listTopics",
+      "fields": {
+        "stepType": "step_type",
+        "annotations": "annotations",
+        "connectionName": "connection_name",
+        "resultAttribute": "result_attribute"
+      },
+      "branches": [
+        {
+          "id": "page",
+          "field": "page",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "provider_rejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalid_response",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

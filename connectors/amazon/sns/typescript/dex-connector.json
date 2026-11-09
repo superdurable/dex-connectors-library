@@ -1,0 +1,44 @@
+{
+  "connectorId": "amazon-sns",
+  "releaseTag": "connectors/amazon/sns/go/v0.1.0",
+  "package": {
+    "ecosystem": "npm",
+    "name": "@superdurable/connector-amazon-sns",
+    "version": "0.1.0"
+  },
+  "factories": [
+    {
+      "name": "newListTopicsStep",
+      "kind": "query",
+      "operationId": "listTopics",
+      "fields": {
+        "stepType": "stepType",
+        "annotations": "annotations",
+        "connectionName": "connectionName",
+        "resultAttribute": "resultAttribute"
+      },
+      "branches": [
+        {
+          "id": "page",
+          "field": "page",
+          "optional": false
+        },
+        {
+          "id": "providerRejected",
+          "field": "providerRejected",
+          "optional": true
+        },
+        {
+          "id": "invalidResponse",
+          "field": "invalidResponse",
+          "optional": true
+        },
+        {
+          "id": "defect",
+          "field": "defect",
+          "optional": true
+        }
+      ]
+    }
+  ]
+}

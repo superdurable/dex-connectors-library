@@ -1,0 +1,7 @@
+# Amazon SNS connector
+
+`listTopics` reads one page of topic ARNs through the [Amazon SNS ListTopics API](https://docs.aws.amazon.com/sns/latest/api/API_ListTopics.html). Pass an empty `nextToken` for the first page, then pass the returned `nextToken` to read the next page. The `page` branch returns `TopicPage {topicARNs, nextToken}`; an empty list is a valid page. SNS returns up to 100 topics per request. Rate limits, transport failures, HTTP 408, and server failures retry. Other definitive rejections and malformed XML use optional branches. Requests use AWS Signature Version 4.
+
+In [Amazon SNS Console](https://console.aws.amazon.com/sns), open **Topics** and select the Region. Set that code in the connection's `region` field. In [IAM Console](https://console.aws.amazon.com/iam), open **Users > selected user > Security credentials > Access keys > Create access key**. Grant `sns:ListTopics`, then copy the access key ID and one-time secret access key into their respective secret fields. Set `session_token` for temporary credentials. Leave `endpoint` blank for the regional AWS API. Leave `timeout` and `maxResponseBytes` blank for their displayed defaults. Rotate credentials through IAM when needed.
+
+Runnable examples: [Go](go/examples/topic-listing/README.md), [Python](python/examples/topic_listing/README.md), [TypeScript](typescript/examples/topic-listing/README.md). Tests use local HTTP fixtures; live AWS authorization and calls have not been verified.
