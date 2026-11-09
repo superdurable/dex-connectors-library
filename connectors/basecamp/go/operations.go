@@ -67,17 +67,18 @@ func (operation ListAccountsOperation) Invoke(call sdkgo.Call, input ListAccount
 	if errors.Is(response.err, errRequest) {
 		return accountRetry(sdkgo.FailureTransport, "Basecamp request failed", 0)
 	}
-	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
-		return accountBranch(ListAccountsBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Basecamp response exceeded the configured limit")
-	}
-	if response.err != nil {
-		return accountRetry(sdkgo.FailureTransport, "Basecamp response was interrupted", 0)
-	}
+	// Retryable statuses win over their body, so an oversized 429 or 5xx page still retries.
 	if response.status == http.StatusTooManyRequests {
 		return accountRetry(sdkgo.FailureRateLimit, "Basecamp rate limited the request", response.retryAfter)
 	}
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return accountRetry(sdkgo.FailureAvailability, "Basecamp is temporarily unavailable", response.retryAfter)
+	}
+	if errors.Is(response.err, providerhttp.ErrBodyTooLarge) {
+		return accountBranch(ListAccountsBranchInvalidResponse, sdkgo.FailureResponseTooLarge, "Basecamp response exceeded the configured limit")
+	}
+	if response.err != nil {
+		return accountRetry(sdkgo.FailureTransport, "Basecamp response was interrupted", 0)
 	}
 	if response.status != http.StatusOK {
 		return accountBranch(ListAccountsBranchProviderRejected, sdkgo.FailureProviderRejection, "Basecamp rejected HTTP "+strconv.Itoa(response.status))

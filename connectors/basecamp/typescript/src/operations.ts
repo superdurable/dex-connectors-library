@@ -41,9 +41,10 @@ export class ListAccountsOperation implements Query<ListAccountsInput, AccountsP
 function classifyRead(exchange: BasecampExchange): QueryAttempt<AccountsPage> | undefined {
   if (exchange.error === 'credential') return branch('defect', 'AUTHENTICATION', 'connection credentials are unavailable or invalid');
   if (exchange.error === 'refresh' || exchange.error === 'request') return retry('TRANSPORT', 'Basecamp request failed');
-  if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Basecamp response exceeded the configured limit');
+  // Retryable statuses win over their body, so an oversized 429 or 5xx page still retries.
   if (exchange.status === 429) return retry('RATE_LIMIT', 'Basecamp rate limited the request', exchange.retryAfterMs);
   if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'Basecamp is temporarily unavailable', exchange.retryAfterMs);
+  if (exchange.error === 'tooLarge') return branch('invalidResponse', 'RESPONSE_TOO_LARGE', 'Basecamp response exceeded the configured limit');
   if (exchange.status !== 200) return branch('providerRejected', 'PROVIDER_REJECTION', `Basecamp rejected HTTP ${exchange.status}`);
   return undefined;
 }

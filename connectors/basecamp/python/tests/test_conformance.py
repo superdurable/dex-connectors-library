@@ -20,8 +20,13 @@ ADAPTER = conformance.PythonOperationAdapter(
     "basecamp",
     CONNECTION,
     basecamp,
-    lambda http_client, _: basecamp.Client(
-        basecamp.Config(base_url="http://127.0.0.1:8848"),
+    lambda http_client, recorder: basecamp.Client(
+        basecamp.Config(
+            base_url="http://127.0.0.1:8848",
+            max_response_bytes=16
+            if str(recorder.scenario["name"]).startswith("listAccounts-oversized")
+            else 1_048_576,
+        ),
         conformance.static_credentials(
             CONNECTION,
             basecamp.Credentials(
