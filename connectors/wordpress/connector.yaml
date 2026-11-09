@@ -83,6 +83,7 @@ spec:
       execution:
         executeMethodTimeout: 30s
         durability: sync
+        dispatchFence: true
       mocks:
         - name: createdDraft
           branch: created
