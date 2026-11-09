@@ -303,6 +303,112 @@
       "operation": "listAdAccounts"
     },
     {
+      "callId": "e67aff56-0e58-5212-b7a3-57dffc8a113d",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003cbody\u003eToo many requests: please slow down and retry later.\u003c/body\u003e\u003c/html\u003e",
+          "headers": {
+            "Retry-After": "4"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "cursor_1"
+            ],
+            "q": [
+              "search"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 4000,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor_1"
+      },
+      "name": "listAdAccounts-oversized429",
+      "operation": "listAdAccounts"
+    },
+    {
+      "callId": "c7d8e21d-97eb-5de6-aa93-626a0e1616df",
+      "exchanges": [
+        {
+          "body": "\u003chtml\u003e\u003cbody\u003eService temporarily unavailable; maintenance in progress.\u003c/body\u003e\u003c/html\u003e",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/rest/adAccounts",
+          "query": {
+            "pageSize": [
+              "2"
+            ],
+            "pageToken": [
+              "cursor_1"
+            ],
+            "q": [
+              "search"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer test-linkedin-ads-token"
+            ],
+            "Linkedin-Version": [
+              "202609"
+            ],
+            "X-Restli-Protocol-Version": [
+              "2.0.0"
+            ]
+          },
+          "status": 503
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "pageSize": 2,
+        "pageToken": "cursor_1"
+      },
+      "name": "listAdAccounts-oversized503",
+      "operation": "listAdAccounts"
+    },
+    {
       "callId": "ebbf9e82-00c0-5371-8589-c949af7f4ee5",
       "exchanges": [
         {
