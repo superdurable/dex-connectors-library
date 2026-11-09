@@ -8,6 +8,17 @@ metadata:
   version: v0.1.0
 spec:
   provider: microsoft-advertising
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-microsoft-advertising
+      operations: [listCampaigns]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-microsoft-advertising'
+      operations: [listCampaigns]
+      triggers: []
   codegen:
     go:
       package: microsoftadvertising

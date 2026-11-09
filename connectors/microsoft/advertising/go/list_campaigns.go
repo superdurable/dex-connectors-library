@@ -151,7 +151,7 @@ func campaignsFailure(kind sdkgo.FailureKind, message string) sdkgo.Failure {
 
 func campaignsBranch(branch sdkgo.BranchID, kind sdkgo.FailureKind, message string) sdkgo.QueryAttempt[CampaignsPage] {
 	failure := campaignsFailure(kind, message)
-	return sdkgo.NewQueryBranch(branch, CampaignsPage{}, &failure, sdkgo.Receipt{})
+	return sdkgo.NewQueryBranch(branch, CampaignsPage{Campaigns: []CampaignSummary{}}, &failure, sdkgo.Receipt{})
 }
 
 func campaignsRetry(kind sdkgo.FailureKind, message string, delay time.Duration) sdkgo.QueryAttempt[CampaignsPage] {
