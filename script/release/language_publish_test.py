@@ -350,12 +350,13 @@ class SelectGoReleasesTests(unittest.TestCase):
                          "--first-publish-limit", "3", "--github-release-limit", "15"]
             with patch.object(language_publish, "list_completed_go_tags", return_value=set()), \
                  patch.object(language_publish, "list_completed_language_tags", return_value=set()), \
-                 patch.object(language_publish, "has_registry_project", return_value=False), \
+                 patch.object(language_publish, "has_registry_url", return_value=False) as registry_lookup, \
                  patch.object(language_publish, "select_pending_pypi_uploads", return_value=[]), \
                  patch.object(language_publish.sys, "argv", arguments), \
                  patch.dict(os.environ, {"LANGUAGE_SELECTION_PATH": str(directory / "selection.json"),
                                          "GITHUB_STEP_SUMMARY": str(summary_path)}):
                 self.assertEqual(0, language_publish.main())
+            self.assertEqual(30, registry_lookup.call_count, "deferred packages skip registry lookups")
             outputs = dict(line.split("=", 1) for line in github_output.read_text(encoding="utf-8").splitlines())
             selection = json.loads((directory / "selection.json").read_text(encoding="utf-8"))
             summary = summary_path.read_text(encoding="utf-8")
