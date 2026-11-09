@@ -152,6 +152,7 @@ directories:
   - connectors/razorpay
   - connectors/reamaze
   - connectors/recurly
+  - connectors/reddit
   - connectors/resend
   - connectors/rippling
   - connectors/salesforce

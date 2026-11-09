@@ -1,0 +1,119 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: reddit
+  displayName: Reddit
+  description: Read a post from Reddit's approved OAuth Data API.
+  company: Reddit
+  version: v0.1.0
+spec:
+  provider: reddit
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-reddit
+      operations: [getPost]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-reddit'
+      operations: [getPost]
+      triggers: []
+  codegen:
+    go:
+      package: reddit
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        default: https://oauth.reddit.com
+        description: Reddit OAuth API origin. Blank uses the displayed public endpoint; override only for a trusted compatible gateway or local test.
+      - name: redditUsername
+        goName: RedditUsername
+        type: string
+        required: true
+        description: Non-secret account username shown at https://www.reddit.com > profile menu > Profile, without /u/. Dex combines it with the registered app's client ID to form Reddit's required User-Agent. Blank prevents requests.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one Reddit request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete Reddit JSON response in bytes. Blank uses the displayed default; increase only when a post has unusually large metadata.
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: reddit-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret client ID shown beneath the app name at https://www.reddit.com/prefs/apps > your approved web app. Blank prevents authorization and User-Agent construction.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret app client secret from https://www.reddit.com/prefs/apps > your approved web app. Dex stores it as a secret for OAuth token exchange; blank prevents authorization.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret access token returned by Reddit consent and refreshed by Dex. Never paste it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned after permanent Reddit consent and maintained by Dex. Never paste it manually; blank requires reauthorization.
+    guide:
+      startURL: https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki
+      steps:
+        - Request Reddit Data API access through the link in the Reddit Data API Wiki and wait for explicit approval before connecting. Commercial uses require separate written approval under Reddit's Responsible Builder Policy.
+        - Sign in at https://www.reddit.com/prefs/apps, create or open an approved web app, and register the exact HTTPS redirect URI displayed by Dex Web. Copy the client ID beneath the app name and its client secret into the fields below.
+        - Open your Reddit profile menu > Profile and enter your username without /u/ in redditUsername. Dex sends a User-Agent containing the app client ID, connector version, and this username; do not use another person's identity.
+        - Choose Authorize in Dex Web and grant the read scope with permanent duration. Dex stores access and refresh tokens; leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+    oauth2:
+      authorizationEndpoint: https://www.reddit.com/api/v1/authorize
+      tokenEndpoint: https://www.reddit.com/api/v1/access_token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [read]
+      authorizationParameters: {duration: permanent}
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_basic
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        scopeSeparators: whitespaceAndComma
+        requiredScopes: [read]
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: getPost
+      goName: GetPost
+      inputType: GetPostInput
+      outputType: Post
+      kind: query
+      description: Read one post's ID, title, subreddit, permalink, and score by full t3_ ID.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Reddit returned the selected post.}
+        - {id: missing, goName: Missing, description: Reddit returned no post for the ID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Reddit conclusively rejected the read or app access., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned malformed or oversized post JSON., optional: true}
+        - {id: defect, goName: Defect, description: "The ID, username, or OAuth credentials are invalid.", optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: One sample post is returned.
+          output: {id: t3_abc123, title: Example post, subreddit: example, permalink: /r/example/comments/abc123/example_post/, score: 42}
