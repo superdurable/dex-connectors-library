@@ -136,7 +136,7 @@ spec:
       description: Schedule a text message on one social profile; inspect Hootsuite Planner if the outcome is uncertain.
       idempotency: required
       authorization: required
-      execution: {executeMethodTimeout: 30s, durability: sync}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       branches:
         - {id: scheduled, goName: Scheduled, description: Hootsuite accepted the scheduled message and returned its ID.}
         - {id: providerRejected, goName: ProviderRejected, description: Hootsuite definitively rejected the schedule request., optional: true}
