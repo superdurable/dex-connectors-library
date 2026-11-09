@@ -21,7 +21,8 @@ from dex_connectors.adobe_marketo import (
     LeadProfile,
     new_connection,
 )
-from examples.lead_inspection.flow import CONNECTION_NAME, LeadInspectionFlow
+
+from .flow import CONNECTION_NAME, LeadInspectionFlow
 
 
 @pytest.mark.asyncio
