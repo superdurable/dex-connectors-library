@@ -69,6 +69,19 @@ def _valid_item_id(item_id: object) -> bool:
     )
 
 
+def _is_item_not_found(body: bytes) -> bool:
+    """Report Plaid's ITEM_NOT_FOUND error, sent with HTTP 400 for a removed or unknown Item."""
+    try:
+        raw: Any = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return False
+    return (
+        isinstance(raw, dict)
+        and raw.get("error_type") == "ITEM_ERROR"
+        and raw.get("error_code") == "ITEM_NOT_FOUND"
+    )
+
+
 def _decode_accounts(body: bytes, requested_item_id: str) -> AccountsSnapshot:
     raw: Any = json.loads(body)
     if (
@@ -193,7 +206,7 @@ class GetAccountsOperation:
             return _retry(FailureKind.RATE_LIMIT, "Plaid rate limited the request", exchange.retry_after)
         if exchange.status == 408 or exchange.status >= 500:
             return _retry(FailureKind.AVAILABILITY, "Plaid is temporarily unavailable", exchange.retry_after)
-        if exchange.status == 404:
+        if exchange.status == 404 or (not exchange.error and _is_item_not_found(exchange.body)):
             return _branch("notFound", FailureKind.NOT_FOUND, "Plaid did not expose the Item")
         if exchange.status != 200:
             return _branch(

@@ -72,6 +72,8 @@ func TestGetAccountsClassifiesProviderOutcomes(t *testing.T) {
 		retry  bool
 	}{
 		{name: "missing", status: 404, branch: GetAccountsBranchNotFound},
+		{name: "item not found", status: 400, body: `{"error_type":"ITEM_ERROR","error_code":"ITEM_NOT_FOUND","error_message":"The Item you requested cannot be found."}`, branch: GetAccountsBranchNotFound},
+		{name: "invalid access token", status: 400, body: `{"error_type":"INVALID_INPUT","error_code":"INVALID_ACCESS_TOKEN","error_message":"could not find matching access token"}`, branch: GetAccountsBranchProviderRejected},
 		{name: "forbidden", status: 403, branch: GetAccountsBranchProviderRejected},
 		{name: "rate limit", status: 429, retry: true},
 		{name: "unavailable", status: 503, retry: true},

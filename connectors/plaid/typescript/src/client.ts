@@ -91,7 +91,7 @@ export class GetAccountsOperation implements Query<GetAccountsInput, AccountsSna
     if (exchange.error === 'request') return retry('TRANSPORT', 'Plaid request failed');
     if (exchange.status === 429) return retry('RATE_LIMIT', 'Plaid rate limited the request', exchange.retryAfterMs);
     if (exchange.status === 408 || exchange.status >= 500) return retry('AVAILABILITY', 'Plaid is temporarily unavailable', exchange.retryAfterMs);
-    if (exchange.status === 404) return terminal('notFound', 'NOT_FOUND', 'Plaid did not expose the Item');
+    if (exchange.status === 404 || (!exchange.error && isItemNotFound(exchange.body))) return terminal('notFound', 'NOT_FOUND', 'Plaid did not expose the Item');
     if (exchange.status !== 200) return terminal('providerRejected', 'PROVIDER_REJECTION', `Plaid rejected HTTP ${exchange.status}`);
     if (exchange.error === 'tooLarge') return terminal('invalidResponse', 'RESPONSE_TOO_LARGE', 'Plaid response exceeded the configured limit');
     const accountsStatus = decodeAccounts(exchange.body, input.itemId);
@@ -112,6 +112,12 @@ function header(headers: ProviderResponse['headers'], name: string): string {
   return Array.isArray(entry) ? entry[0] ?? '' : entry ?? '';
 }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value); }
+/** Report Plaid's ITEM_NOT_FOUND error, sent with HTTP 400 for a removed or unknown Item. */
+function isItemNotFound(body: Uint8Array): boolean {
+  let raw: unknown;
+  try { raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return false; }
+  return isObject(raw) && raw.error_type === 'ITEM_ERROR' && raw.error_code === 'ITEM_NOT_FOUND';
+}
 function decodeAccounts(body: Uint8Array, itemID: string): AccountsSnapshot | undefined {
   let raw: unknown;
   try { raw = JSON.parse(Buffer.from(body).toString('utf8')) as unknown; } catch { return undefined; }

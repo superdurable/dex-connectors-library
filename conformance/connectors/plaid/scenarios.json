@@ -342,6 +342,104 @@
       },
       "name": "getAccounts-transportFailure",
       "operation": "getAccounts"
+    },
+    {
+      "callId": "438ed136-4335-511b-9648-c62054e5f4bd",
+      "exchanges": [
+        {
+          "body": "{\"display_message\":null,\"documentation_url\":\"https://plaid.com/docs/errors/item/#item_not_found\",\"error_code\":\"ITEM_NOT_FOUND\",\"error_code_reason\":null,\"error_message\":\"The Item you requested cannot be found. This Item does not exist, has been previously removed via /item/remove, or has had access removed by the user.\",\"error_type\":\"ITEM_ERROR\",\"request_id\":\"HNTDNrA8F1shFEW\",\"suggested_action\":null}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "notFound",
+        "failureKind": "NOT_FOUND",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-itemNotFoundError",
+      "operation": "getAccounts"
+    },
+    {
+      "callId": "2fd34cf6-71b5-573c-83b7-a8587df62949",
+      "exchanges": [
+        {
+          "body": "{\"display_message\":null,\"error_code\":\"INVALID_ACCESS_TOKEN\",\"error_message\":\"could not find matching access token\",\"error_type\":\"INVALID_INPUT\",\"request_id\":\"HNTDNrA8F1shFEX\",\"suggested_action\":null}",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/accounts/get",
+          "requestBody": {
+            "access_token": "sample-plaid-access-token"
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Content-Type": [
+              "application/json"
+            ],
+            "Plaid-Client-Id": [
+              "sample-plaid-client-id"
+            ],
+            "Plaid-Secret": [
+              "sample-plaid-secret"
+            ]
+          },
+          "status": 400
+        }
+      ],
+      "expected": {
+        "branch": "providerRejected",
+        "failureKind": "PROVIDER_REJECTION",
+        "output": {
+          "accounts": [],
+          "itemId": ""
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "input": {
+        "itemId": "item_123456"
+      },
+      "name": "getAccounts-invalidAccessTokenError",
+      "operation": "getAccounts"
     }
   ],
   "schemaVersion": 1

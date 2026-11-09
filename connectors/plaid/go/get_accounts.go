@@ -68,7 +68,7 @@ func (operation GetAccountsOperation) Invoke(call sdkgo.Call, input GetAccountsI
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewQueryRetry[AccountsSnapshot](accountsFailure(sdkgo.FailureAvailability, "Plaid is temporarily unavailable"), response.retryAfter)
 	}
-	if response.status == http.StatusNotFound {
+	if response.status == http.StatusNotFound || (response.err == nil && isPlaidItemNotFound(response.body)) {
 		return accountsBranch(GetAccountsBranchNotFound, sdkgo.FailureNotFound, "Plaid did not expose the Item")
 	}
 	if response.status != http.StatusOK {
@@ -99,6 +99,19 @@ func validItemID(itemID string) bool {
 		return false
 	}
 	return true
+}
+
+// isPlaidItemNotFound reports Plaid's ITEM_NOT_FOUND error, which Plaid sends
+// with HTTP 400 for a removed or unknown Item.
+func isPlaidItemNotFound(body []byte) bool {
+	var wire struct {
+		ErrorType string `json:"error_type"`
+		ErrorCode string `json:"error_code"`
+	}
+	if json.Unmarshal(body, &wire) != nil {
+		return false
+	}
+	return wire.ErrorType == "ITEM_ERROR" && wire.ErrorCode == "ITEM_NOT_FOUND"
 }
 
 func decodeAccounts(body []byte, requestedItemID string) (AccountsSnapshot, error) {

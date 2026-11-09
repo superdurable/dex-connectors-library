@@ -1,6 +1,6 @@
 # Plaid connector
 
-The Go, Python, and TypeScript `getAccounts` Query returns account IDs, types, and subtypes for one linked Plaid Item. Names, masks, balances, and credentials stay out of Dex Results.
+The Go, Python, and TypeScript `getAccounts` Query returns account IDs, types, and subtypes for one linked Plaid Item. Names, masks, balances, and credentials stay out of Dex Results. Plaid's `ITEM_NOT_FOUND` error for a removed or unknown Item selects `notFound`; other Plaid errors, including `INVALID_ACCESS_TOKEN`, select `providerRejected`.
 
 ## Connect
 
