@@ -92,6 +92,14 @@ func classifyGraphResponse[Output any](operation string, response graphResponse,
 	if response.status == http.StatusRequestTimeout || response.status >= 500 {
 		return sdkgo.NewQueryRetry[Output](queryFailure(operation, sdkgo.FailureAvailability, "Meta is temporarily unavailable"), response.retryAfter), true
 	}
+	if graphErr, ok := decodeGraphError(response.body); response.status >= 400 && response.err == nil && ok {
+		if graphErr.isThrottled() {
+			return sdkgo.NewQueryRetry[Output](queryFailure(operation, sdkgo.FailureRateLimit, "Meta rate limited the request"), response.retryAfter), true
+		}
+		if graphErr.isTransient {
+			return sdkgo.NewQueryRetry[Output](queryFailure(operation, sdkgo.FailureAvailability, "Meta reported a transient error"), response.retryAfter), true
+		}
+	}
 	if response.status == http.StatusNotFound {
 		return queryBranch(operation, notFound, empty, sdkgo.FailureNotFound, "Meta did not find the resource"), true
 	}
