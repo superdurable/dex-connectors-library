@@ -158,6 +158,7 @@ directories:
   - connectors/reddit
   - connectors/resend
   - connectors/rippling
+  - connectors/sage/intacct
   - connectors/salesforce
   - connectors/sendgrid
   - connectors/sentry

@@ -1,0 +1,112 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: sage-intacct
+  displayName: Sage Intacct
+  description: Read an accounts receivable invoice from Sage Intacct REST API.
+  company: Sage
+  version: v0.1.0
+spec:
+  provider: sage-intacct
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-sage-intacct
+      operations: [getInvoice]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-sage-intacct'
+      operations: [getInvoice]
+      triggers: []
+  codegen:
+    go:
+      package: sageintacct
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        default: https://api.intacct.com
+        description: Sage Intacct REST API HTTPS origin. Blank uses the displayed provider origin; override only for a trusted test gateway.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one invoice request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow gateway.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete JSON invoice response in bytes. Blank uses the displayed default; increase only for unusually large invoices.
+  auth:
+    type: oauth2
+    refreshable: true
+    connectionKind: sage-intacct-oauth
+    fields:
+      - name: oauth_client_id
+        goName: OAuthClientID
+        type: string
+        required: true
+        description: Non-secret Client ID from https://app-registry.sage.com/ > workspace > application > Create API Keys > Sage Intacct. Blank prevents authorization or refresh.
+      - name: oauth_client_secret
+        goName: OAuthClientSecret
+        type: secretString
+        required: true
+        description: Secret from https://app-registry.sage.com/ > workspace > application > Create API Keys > Sage Intacct. Save only in Dex; blank prevents authorization or refresh.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        required: true
+        description: Secret Bearer token returned by Sage Intacct consent and rotated by Dex. Never enter it manually; blank requires authorization.
+      - name: refresh_token
+        goName: RefreshToken
+        type: secretString
+        required: true
+        description: Secret refresh token returned by Sage Intacct consent and rotated by Dex. Never enter it manually; blank requires reauthorization.
+    guide:
+      startURL: https://app-registry.sage.com/
+      steps:
+        - Obtain a Sage Intacct Web Services Developer License and authorize its sender ID in your Intacct company under Company > Setup > Configuration > Company > Security > Web Services authorizations. Give the authorizing user read permission on Accounts Receivable invoices.
+        - At https://app-registry.sage.com/, create a workspace, then Apps > Add application > Create API Keys. Select Sage Intacct, enter the licensed sender ID and password, choose the matching production or non-production scope, and register the exact OAuth Redirect URL displayed by Dex Web. Copy the generated Client ID and Client Secret into Dex Web; keep the secret private.
+        - Consent as the intended Intacct user. The offline_access scope permits Dex to refresh tokens. Sage Intacct's OAuth 2.0 authorization guide at https://developer.sage.com/intacct/docs/1/sage-intacct-rest-api/authorization-and-security/oauth2 describes the provider exchange.
+        - Authorize the connection in Dex Web. Dex stores the access and refresh tokens; never paste either into Flow input. Leave baseUrl, timeout, and maxResponseBytes blank for their displayed defaults.
+        - In Accounts Receivable > Invoices, find an invoice's system-assigned key through the REST API response or invoice record and pass it as invoiceKey to the example Flow. This key is not a secret; blank is invalid.
+    oauth2:
+      authorizationEndpoint: https://api.intacct.com/ia/api/v1/oauth2/authorize
+      tokenEndpoint: https://api.intacct.com/ia/api/v1/oauth2/token
+      clientIDCredential: oauth_client_id
+      clientSecretCredential: oauth_client_secret
+      scopes: [offline_access]
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+        - {credential: refresh_token, source: refresh_token}
+      tokenEndpointAuthMethod: client_secret_post
+      pkce: false
+      refresh:
+        tokenExchangeTimeout: 15s
+        missingExpiry: reject
+        storedMissingExpiry: refresh
+        terminalErrorCodes: [invalid_grant, invalid_client, unauthorized_client]
+  operations:
+    - name: getInvoice
+      goName: GetInvoice
+      inputType: GetInvoiceInput
+      outputType: InvoiceSummary
+      kind: query
+      description: Read one accounts receivable invoice by its Sage Intacct system key.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Sage Intacct returned the requested invoice.}
+        - {id: notFound, goName: NotFound, description: No accessible invoice has this system key., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Sage Intacct conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Sage Intacct returned malformed or oversized invoice JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample accounts receivable invoice is returned.
+          output: {key: '443', id: INV-443}
