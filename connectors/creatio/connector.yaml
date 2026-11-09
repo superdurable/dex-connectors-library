@@ -1,0 +1,104 @@
+apiVersion: connectors.dex.dev/v1alpha1
+kind: Connector
+metadata:
+  name: creatio
+  displayName: Creatio
+  description: Read one contact from a Creatio OData 4 instance.
+  company: Creatio
+  version: v0.1.0
+spec:
+  provider: creatio
+  languages:
+    python:
+      version: v0.1.0
+      package: dex-connector-creatio
+      operations: [getContact]
+      triggers: []
+    typescript:
+      version: v0.1.0
+      package: '@superdurable/connector-creatio'
+      operations: [getContact]
+      triggers: []
+  codegen:
+    go:
+      package: creatio
+  configuration:
+    fields:
+      - name: baseUrl
+        goName: BaseURL
+        type: url
+        required: true
+        description: Non-secret HTTPS root of your Creatio application, copied from the signed-in browser before /0. Blank prevents Contact reads; choose the instance that owns the contact.
+      - name: tokenEndpoint
+        goName: TokenEndpoint
+        type: url
+        required: true
+        description: Non-secret HTTPS Identity Service token endpoint. In your Creatio instance, open System Designer > System settings > Authorization server Url for OAuth 2.0 integrations (OAuth20IdentityServerUrl), then append /connect/token to that URL. Blank prevents token minting.
+      - name: timeout
+        goName: Timeout
+        type: duration
+        default: 15s
+        description: Maximum duration of one Creatio request as a positive Go duration such as 15s. Blank uses the displayed default; increase only for a slow network.
+      - name: maxResponseBytes
+        goName: MaxResponseBytes
+        type: integer
+        default: 1048576
+        description: Maximum complete Creatio JSON response in bytes. Blank uses the displayed default; increase only for unusually large contact records.
+  auth:
+    refreshable: true
+    type: apiKey
+    connectionKind: creatio-client-credentials
+    fields:
+      - name: client_id
+        goName: ClientID
+        type: string
+        required: true
+        description: Non-secret Client Id from your Creatio instance > System Designer > OAuth 2.0 integrated applications > your integration. Blank prevents token minting.
+      - name: client_secret
+        goName: ClientSecret
+        type: secretString
+        required: true
+        description: Secret Client secret from your Creatio instance > System Designer > OAuth 2.0 integrated applications > your integration. Dex stores it only in credentials; blank prevents token minting.
+      - name: access_token
+        goName: AccessToken
+        type: secretString
+        description: Secret token Dex obtains from the configured Identity Service and renews before expiry. Leave blank for automatic minting; never paste it into Flow input.
+    guide:
+      startURL: https://academy.creatio.com/guides/no-code-customization/8.2/base-integrations/oauth-2-0/set-up-the-oauth-2-0-authorization-instruction
+      steps:
+        - In your Creatio instance, open System Designer > OAuth 2.0 integrated applications > New. Create a dedicated technical user and grant it read permission on Contact, then copy Client Id and Client secret into Dex Web. Client secret is secret; no user consent screen or redirect URI is needed.
+        - Open System Designer > System settings > Authorization server Url for OAuth 2.0 integrations (OAuth20IdentityServerUrl). Append /connect/token to that HTTPS URL and enter it as tokenEndpoint. Copy your signed-in Creatio application origin as baseUrl; neither URL is secret.
+        - Leave access_token, timeout, and maxResponseBytes blank. Dex mints a token with client_credentials and renews it before expiry. Find a contact's UUID in your instance's Contacts page or OData response and pass it as contactId in Flow input.
+    clientCredentials:
+      tokenEndpoint: {fromSetting: tokenEndpoint}
+      tokenEndpointAuthMethod: client_secret_post
+      tokenExchangeTimeout: 8s
+      missingExpiry: reject
+      storedMissingExpiry: refresh
+      clientIDCredential: client_id
+      clientSecretCredential: client_secret
+      credentialMappings:
+        - {credential: access_token, source: access_token}
+      terminalErrorCodes: [invalid_client, unauthorized_client]
+  operations:
+    - name: getContact
+      goName: GetContact
+      inputType: GetContactInput
+      outputType: ContactSummary
+      kind: query
+      description: Read one contact's UUID, name, and email through OData 4.
+      idempotency: none
+      authorization: required
+      execution: {executeMethodTimeout: 30s, durability: async}
+      branches:
+        - {id: found, goName: Found, description: Creatio returned the selected contact.}
+        - {id: notFound, goName: NotFound, description: Creatio returned no accessible contact for this UUID., optional: true}
+        - {id: providerRejected, goName: ProviderRejected, description: Creatio conclusively rejected the lookup., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Creatio returned malformed or oversized OData JSON., optional: true}
+        - {id: defect, goName: Defect, description: Local input or connection credentials are invalid., optional: true}
+      mocks:
+        - name: foundDefault
+          branch: found
+          default: true
+          description: A sample contact is returned.
+          output: {id: 90a68db5-cb3a-4f64-bb60-c0a934ee7600, name: Ada Lovelace, email: ada@example.com}

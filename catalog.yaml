@@ -43,6 +43,7 @@ directories:
   - connectors/constantcontact
   - connectors/contentful
   - connectors/copper
+  - connectors/creatio
   - connectors/customerio
   - connectors/databricks
   - connectors/datadog
