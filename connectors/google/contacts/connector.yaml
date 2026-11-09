@@ -143,7 +143,7 @@ spec:
         - {id: uncertain, goName: Uncertain, description: Google may have created the contact but its resource name was not confirmed; do not resend automatically., optional: true}
         - {id: defect, goName: Defect, description: "Local contact input, connection credentials, or dispatch checkpoint is invalid.", optional: true}
       # The People API has no create-contact idempotency key; sync preserves the dispatch heartbeat for retries.
-      execution: {executeMethodTimeout: 30s, durability: sync}
+      execution: {executeMethodTimeout: 30s, durability: sync, dispatchFence: true}
       mocks:
         - name: createdDefault
           branch: created
