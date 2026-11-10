@@ -141,12 +141,22 @@ class ReleaseIndexResult:
     """The index document, with the older releases it reused from the deployed index or dropped."""
 
     index: dict[str, object]
+    complete_release_count: int = 0
     reused_tags: list[str] = field(default_factory=list)
+    # Reused entries whose SHA-256 neither a GitHub digest nor the lock confirmed in this run.
+    unverified_tags: list[str] = field(default_factory=list)
     dropped_tags: list[str] = field(default_factory=list)
 
     @property
     def outcome(self) -> str:
-        return "dropped_versions" if self.dropped_tags else "ok"
+        """Returns ok, or the most severe degradation: empty, dropped_versions, or reused_unverified."""
+        if self.complete_release_count and not self.index["releases"]:
+            return "empty"
+        if self.dropped_tags:
+            return "dropped_versions"
+        if self.unverified_tags:
+            return "reused_unverified"
+        return "ok"
 
 
 @dataclass
@@ -683,7 +693,8 @@ def build_release_index(releases: list[dict[str, object]], fetch_bytes: Callable
             complete.append((server_version_key(version), release, assets))
     complete.sort(key=lambda item: item[0], reverse=True)
     deployed_entries = deployed_index_entries(deployed_index)
-    result = ReleaseIndexResult(index={"schemaVersion": INDEX_SCHEMA_VERSION, "releases": []})
+    result = ReleaseIndexResult(index={"schemaVersion": INDEX_SCHEMA_VERSION, "releases": []},
+                                complete_release_count=len(complete))
     for position, (_, release, assets) in enumerate(complete):
         tag = release["tag_name"]
         lock = None
@@ -694,10 +705,14 @@ def build_release_index(releases: list[dict[str, object]], fetch_bytes: Callable
             if position == 0:
                 raise ConnectorsMCPReleaseError(f"the newest Connectors MCP release {tag} cannot be indexed: {error}") from error
             deployed = deployed_entries.get(tag)
-            if deployed is not None and is_deployed_entry_consistent(deployed, assets, lock):
-                warn(f"Connectors MCP release {tag} keeps its deployed index entry after a failed download: {error}")
+            is_consistent, is_verified = deployed_entry_state(deployed, assets, lock) if deployed is not None else (False, False)
+            if is_consistent:
+                warn(f"Connectors MCP release {tag} keeps its deployed index entry after a failed download"
+                     f"{'' if is_verified else ' without a current SHA-256 to verify it'}: {error}")
                 result.index["releases"].append(deployed)
                 result.reused_tags.append(tag)
+                if not is_verified:
+                    result.unverified_tags.append(tag)
             else:
                 warn(f"Connectors MCP release {tag} is left out of the index: {error}")
                 result.dropped_tags.append(tag)
@@ -719,25 +734,29 @@ def deployed_index_entries(deployed_index: object) -> dict[str, dict[str, object
     return {entry["tag"]: entry for entry in releases if isinstance(entry, dict) and isinstance(entry.get("tag"), str)}
 
 
-def is_deployed_entry_consistent(entry: dict[str, object], assets: dict[str, dict], lock: dict[str, object] | None) -> bool:
-    """Reports whether a deployed entry still names this release's assets with every known SHA-256."""
+def deployed_entry_state(entry: dict[str, object], assets: dict[str, dict],
+                         lock: dict[str, object] | None) -> tuple[bool, bool]:
+    """Returns (entry matches the assets and known SHA-256 values, a digest or the lock confirmed them now)."""
     tag = entry.get("tag")
     entry_assets = entry.get("assets")
     if not isinstance(tag, str) or server_version_of_tag(tag) != entry.get("version") or not isinstance(entry_assets, dict):
-        return False
+        return False, False
+    is_verified = True
     for goos, goarch in PLATFORMS:
         indexed = entry_assets.get(platform_key(goos, goarch))
         name = archive_name(str(entry["version"]), goos, goarch)
         asset = assets.get(name)
         if not isinstance(indexed, dict) or not isinstance(indexed.get("sha256"), str) or asset is None \
                 or indexed.get("url") != asset.get("browser_download_url"):
-            return False
+            return False, False
         digest = asset.get("digest")
-        if isinstance(digest, str) and digest.startswith("sha256:") and digest.removeprefix("sha256:") != indexed["sha256"]:
-            return False
+        has_digest = isinstance(digest, str) and digest.startswith("sha256:")
+        if has_digest and digest.removeprefix("sha256:") != indexed["sha256"]:
+            return False, False
         if lock is not None and lock["assets"][platform_key(goos, goarch)]["sha256"] != indexed["sha256"]:
-            return False
-    return True
+            return False, False
+        is_verified = is_verified and (has_digest or lock is not None)
+    return True, is_verified
 
 
 def read_release_lock(release: dict[str, object], assets: dict[str, dict],
@@ -917,7 +936,8 @@ def command_index(args: argparse.Namespace) -> None:
     print(f"Connectors MCP index: {len(result.index['releases'])} releases; reused {result.reused_tags or 'none'}; "
           f"dropped {result.dropped_tags or 'none'}", flush=True)
     write_github_output(args.github_output, {"outcome": result.outcome, "dropped": " ".join(result.dropped_tags),
-                                             "reused": " ".join(result.reused_tags)})
+                                             "reused": " ".join(result.reused_tags),
+                                             "unverified": " ".join(result.unverified_tags)})
 
 
 def main(argv: list[str] | None = None) -> None:

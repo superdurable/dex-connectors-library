@@ -669,15 +669,18 @@ GitHub has none. The rebuild treats failures by release:
   none is deployed (`omitted`).
 - **Older release, download failed.** It keeps its entry from the deployed
   index when that entry still names the same assets and SHA-256 values. It
-  was verified when first published.
+  was verified when first published. When neither a GitHub digest nor the
+  lock confirms those values in this run, the outcome is `reused_unverified`;
+  dexcli still rejects a replaced archive by its SHA-256.
 - **Older release, asset mismatched or deleted.** It is left out
   (`dropped_versions`), as is an older release whose download failed and that
   has no matching deployed entry.
 
 The index never blocks the catalog. After the catalog deploys, the
 `check-connectors-mcp-index` job fails when the outcome is `fell_back`,
-`omitted`, or `dropped_versions`, so a degraded index shows as a red Release
-run. To repair it:
+`omitted`, `dropped_versions`, `reused_unverified`, or `empty` (no release
+listed although a complete one exists), so a degraded index shows as a red
+Release run. An empty index is `ok` only before the first release. To repair it:
 
 1. Read the job's warnings in `build-catalog` for the release and the reason.
 2. For a transient download failure, rerun the Release workflow manually with

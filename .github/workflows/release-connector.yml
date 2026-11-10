@@ -1146,6 +1146,7 @@ jobs:
     outputs:
       connectors_mcp_index: ${{ steps.connectors-mcp-index.outputs.outcome }}
       connectors_mcp_index_dropped: ${{ steps.connectors-mcp-index.outputs.dropped }}
+      connectors_mcp_index_unverified: ${{ steps.connectors-mcp-index.outputs.unverified }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1255,6 +1256,7 @@ jobs:
         env:
           INDEX_OUTCOME: ${{ needs.build-catalog.outputs.connectors_mcp_index }}
           DROPPED_TAGS: ${{ needs.build-catalog.outputs.connectors_mcp_index_dropped }}
+          UNVERIFIED_TAGS: ${{ needs.build-catalog.outputs.connectors_mcp_index_unverified }}
         run: |
           repair='See docs/versioning-and-releases.md#connectors-mcp-server-releases for the repair path.'
           case "${INDEX_OUTCOME}" in
@@ -1262,6 +1264,8 @@ jobs:
             fell_back) echo "::error::The newest Connectors MCP release could not be indexed; the deployed index was republished. ${repair}"; exit 1 ;;
             omitted) echo "::error::The Connectors MCP index could not be built and none was deployed. ${repair}"; exit 1 ;;
             dropped_versions) echo "::error::The Connectors MCP index left out ${DROPPED_TAGS}. ${repair}"; exit 1 ;;
+            reused_unverified) echo "::error::The Connectors MCP index reused deployed entries it could not verify: ${UNVERIFIED_TAGS}. ${repair}"; exit 1 ;;
+            empty) echo "::error::The Connectors MCP index lists no release although complete releases exist. ${repair}"; exit 1 ;;
             *) echo "::error::Unknown Connectors MCP index outcome '${INDEX_OUTCOME}'. ${repair}"; exit 1 ;;
           esac
 

@@ -582,6 +582,14 @@ class ReleaseIndexTests(unittest.TestCase):
 
         index, _ = self.build(releases, locks, unavailable={"v0.1.1/" + release.RELEASE_LOCK_ASSET}, deployed_index=deployed)
         self.assertEqual(deployed, index, "an unavailable lock of an older release also keeps the deployed entry")
+        self.assertEqual("reused_unverified", self.result.outcome, "nothing confirmed the reused SHA-256 values")
+        self.assertEqual(["connectorsmcp/v0.1.1"], self.result.unverified_tags)
+        digests = {asset["name"]: "sha256:" + asset["sha256"] for asset in older["assets"].values()}
+        verified_releases = [github_release("0.1.1", older, digests=digests), github_release("0.1.2", newest)]
+        index, _ = self.build(verified_releases, locks, unavailable={"v0.1.1/" + release.RELEASE_LOCK_ASSET},
+                              deployed_index=deployed)
+        self.assertEqual((deployed, "ok", []), (index, self.result.outcome, self.result.unverified_tags),
+                         "GitHub digests confirm the reused entry")
         self.assertRaises(release.ConnectorsMCPReleaseError, self.build, releases, {"v0.1.1": older, "v0.1.2": b"{"},
                           deployed_index=deployed)
 
@@ -615,6 +623,13 @@ class ReleaseIndexTests(unittest.TestCase):
                 self.assertEqual(["0.1.2"], [entry["version"] for entry in index["releases"]])
                 self.assertEqual(["connectorsmcp/v0.1.1"], self.result.dropped_tags)
                 self.assertIn("left out of the index", warnings[0])
+
+    def test_an_empty_index_is_healthy_only_before_the_first_release(self) -> None:
+        self.build([], {})
+        self.assertEqual("ok", self.result.outcome)
+        emptied = release.ReleaseIndexResult(index={"schemaVersion": release.INDEX_SCHEMA_VERSION, "releases": []},
+                                             complete_release_count=2, dropped_tags=["connectorsmcp/v0.1.1"])
+        self.assertEqual("empty", emptied.outcome)
 
     def test_a_failed_download_of_the_newest_release_fails_the_index(self) -> None:
         def fetch(url: str) -> bytes:

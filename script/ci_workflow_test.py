@@ -186,10 +186,11 @@ class ConnectorsMCPWorkflowTest(unittest.TestCase):
         outputs = (directory / "output").read_text() if (directory / "output").exists() else ""
         return result, directory / "dist/pages/connectors-mcp/index.json", outputs
 
-    def run_health_step(self, outcome: str, dropped: str = "") -> subprocess.CompletedProcess:
+    def run_health_step(self, outcome: str, dropped: str = "", unverified: str = "") -> subprocess.CompletedProcess:
         script = step_script(workflow_job(self.release_workflow, "check-connectors-mcp-index"),
                              "Fail when the Connectors MCP index fell back, was omitted, or dropped a version")
-        return subprocess.run(["bash", "-e", "-c", script], env={**os.environ, "INDEX_OUTCOME": outcome, "DROPPED_TAGS": dropped},
+        return subprocess.run(["bash", "-e", "-c", script], env={**os.environ, "INDEX_OUTCOME": outcome, "DROPPED_TAGS": dropped,
+                                                                   "UNVERIFIED_TAGS": unverified},
                               capture_output=True, text=True)
 
     def test_failed_index_rebuild_never_blocks_the_catalog_but_turns_the_health_check_red(self) -> None:
@@ -212,10 +213,12 @@ class ConnectorsMCPWorkflowTest(unittest.TestCase):
 
     def test_index_health_check_reports_each_outcome(self) -> None:
         self.assertEqual(0, self.run_health_step("ok").returncode)
-        for outcome in ("omitted", "dropped_versions", ""):
+        for outcome in ("omitted", "dropped_versions", "reused_unverified", "empty", ""):
             with self.subTest(outcome):
                 self.assertNotEqual(0, self.run_health_step(outcome, "connectorsmcp/v0.1.1").returncode)
         self.assertIn("left out connectorsmcp/v0.1.1", self.run_health_step("dropped_versions", "connectorsmcp/v0.1.1").stdout)
+        self.assertIn("could not verify: connectorsmcp/v0.1.2",
+                      self.run_health_step("reused_unverified", unverified="connectorsmcp/v0.1.2").stdout)
 
     def test_successful_rebuild_passes_the_deployed_index_and_records_its_outcome(self) -> None:
         deployed = '{"schemaVersion": "dex-connectors-mcp/release-index/v1", "releases": []}'
