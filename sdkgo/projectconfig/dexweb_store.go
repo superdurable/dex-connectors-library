@@ -189,6 +189,7 @@ func copyObject(object Object) Object {
 }
 
 // writePrivateFile atomically replaces path with a regular file readable only by its owner.
+// Synchronizing the contents and the rename leaves the prior or new file complete after a crash.
 func writePrivateFile(path string, contents []byte) error {
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".write-*")
 	if err != nil {
@@ -210,6 +211,9 @@ func writePrivateFile(path string, contents []byte) error {
 	}
 	if err = os.Rename(name, path); err != nil {
 		return fmt.Errorf("replace file: %w", err)
+	}
+	if err = syncDirectory(filepath.Dir(path)); err != nil {
+		return fmt.Errorf("synchronize directory: %w", err)
 	}
 	return nil
 }

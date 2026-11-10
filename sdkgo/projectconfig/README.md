@@ -413,12 +413,72 @@ needs `sdkgo` v0.28.0 or later; connectors need no change.
   one, the application writes the new credential back to `connections.json`
   while that file still holds the credential it read, so a restart or Dex Web
   keeps the current refresh token. A newer credential that Dex Web saved wins.
-  Run one application per directory: the write-back does not coordinate across
-  processes.
+- Several processes may share one `connections.json`, such as an application
+  Worker and another local tool. They refresh a credential once and adopt each
+  other's result, as [Refresh across processes](#refresh-across-processes)
+  describes. This needs `sdkgo` v0.35.0 or later in every Go process that
+  refreshes the shared connection.
 - Trigger inboxes persist in `trigger-inboxes/` beside `connections.json`, so
   acknowledged events survive a restart.
 - The connections file holds plaintext secrets for local development. Never
   commit it or use it outside a developer machine.
+
+### Refresh across processes
+
+Each process keeps its own copy of the connection records, so the conditional
+writes that admit one refresh coordinate only the goroutines of one process. A
+refresh of a local connection therefore also holds a file lock:
+
+1. The caller takes an exclusive `flock(2)` lock on `connections.json.lock`
+   beside `connections.json`. The lock file is created with mode `0600`, a
+   symbolic link is refused, and it is never renamed or removed. The lock is
+   on a separate file because the write-back replaces `connections.json`. It
+   covers the whole file, so refreshes of different connections in one file
+   run one at a time.
+2. Holding the lock, it reads `connections.json` again. When another process
+   wrote back a credential that needs no refresh, the caller uses it and sends
+   no provider request. This is how a refresh token that the provider rotated
+   reaches every process.
+3. Otherwise it sends the one refresh request and writes the result back: a
+   temporary file in the same directory, `fsync`, rename over
+   `connections.json`, then `fsync` of the directory.
+4. It releases the lock. An observer that recovers an unfinished refresh of
+   its own process holds the lock in the same way.
+
+The wait for the lock ends with the call's context, and after two minutes at
+most, with an error that wraps `ErrRefreshFailed`; no provider request was
+sent, and the current authorization is kept. When the lock file cannot be
+created, for example in a read-only directory, the refresh fails the same way.
+
+Process failures:
+
+- The kernel releases the lock when its holder exits, including a crash or
+  `SIGKILL`. The lock descriptor is close-on-exec, so a child process never
+  keeps it. The next process then reads the file and refreshes.
+- A crash before the rename leaves the complete previous `connections.json`.
+  A temporary `.write-*` file may remain beside it; it can hold credentials,
+  is readable only by its owner, and can be deleted.
+- If the provider rotated the refresh token before the holder died, the new
+  token is lost and the file keeps the old one. The next refresh receives
+  `invalid_grant`, and the connection requires reauthorization in Dex Web. No
+  lock can recover a provider response that died with its process.
+- A write-back failure is logged without credential values, and the refresh
+  still succeeds in that process. Other processes keep the file's credential;
+  with a provider that rotates refresh tokens, their next refresh can then
+  require reauthorization.
+
+Limits:
+
+- File locking is implemented on Linux and macOS. On other platforms a
+  refresh is coordinated only within one loaded project, the application logs
+  a warning when it loads the file, and the file must serve one loaded project
+  of one application process.
+- Dex Web does not take this lock when it saves a reauthorized credential. A
+  reauthorization saved during another process's write-back, which lasts
+  milliseconds, can be overwritten; reauthorize again if a call still uses the
+  previous authorization.
+- The Python and TypeScript SDKs do not take this lock yet. Do not let them
+  refresh a connection that a Go process also refreshes from the same file.
 
 Tests load a project from an in-memory `ObjectStore` with
 `projectconfigtest.LoadProject(ctx, objects, scope, reference)`, so they can
@@ -451,6 +511,12 @@ view must exclude `CredentialMaterial`, `Object.Contents`, and storage targets.
 include the shared connection tests. They run the loaded project against an
 in-process HTTP endpoint that plays the broker, so they cover the wire contract
 and the resolution rules above but not a real broker.
+On Linux and macOS they also start helper processes from the test binary that
+share one `connections.json` and refresh against a fake token endpoint that
+rotates refresh tokens. They check that concurrent processes send one refresh
+request and adopt the rotated token, that a holder killed with `SIGKILL`
+releases the lock, and that a token rotated for a killed holder requires
+reauthorization.
 `make test-projectconfig-s3-integration` calls real AWS S3/KMS using the caller's
 default credential chain. It requires an explicitly configured existing versioned
 bucket and exact KMS key ARN. It creates a unique owned prefix, checks conditional
