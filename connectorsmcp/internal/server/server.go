@@ -93,15 +93,17 @@ func New(ctx context.Context, config *Config) (*Server, error) {
 	if err := validateLimits(config); err != nil {
 		return nil, err
 	}
+	// The executor and the source refer to each other; source is set before any call.
+	var source *toolSetSource
 	executor := newToolCallExecutor(config.Store, config.Clock, executorConfig{
 		serverVersion: config.Version, callTimeBudget: config.CallTimeBudget, callStateRetention: config.CallStateRetention,
 		maxResultBytes: config.MaxResultBytes, maximumInlineAttempts: maximumInlineAttempts,
-	}, config.ToolSet.Logger, config.ObserveProtocolPoint)
+	}, config.ToolSet.Logger, func(ctx context.Context) *ToolSet { return source.Current(ctx) }, config.ObserveProtocolPoint)
 	builder := &toolSetBuilder{registry: config.ToolSet.Registry, logger: config.ToolSet.Logger, newServer: func(toolSet *ToolSet) *mcp.Server {
 		return newMCPServer(config.Version, toolSet, executor)
 	}}
-	source, err := newToolSetSourceFromConfig(ctx, &config.ToolSet, builder, config.OnToolSetChange)
-	if err != nil {
+	var err error
+	if source, err = newToolSetSourceFromConfig(ctx, &config.ToolSet, builder, config.OnToolSetChange); err != nil {
 		return nil, err
 	}
 	server := &Server{config: config, executor: executor, source: source}

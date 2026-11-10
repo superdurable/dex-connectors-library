@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -143,7 +144,7 @@ func TestAnIdempotentWriteThatMayHaveAppliedNeverEndsRejected(t *testing.T) {
 func TestPossiblyAppliedOverridesALaterNotSentProof(t *testing.T) {
 	store, err := callstate.Open(filepath.Join(t.TempDir(), "state"), time.Now)
 	require.NoError(t, err)
-	executor := newToolCallExecutor(store, newFakeClock(), executorConfig{serverVersion: "test", callTimeBudget: time.Minute, callStateRetention: 720 * time.Hour, maxResultBytes: 65536, maximumInlineAttempts: 3}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	executor := newToolCallExecutor(store, newFakeClock(), executorConfig{serverVersion: "test", callTimeBudget: time.Minute, callStateRetention: 720 * time.Hour, maxResultBytes: 65536, maximumInlineAttempts: 3}, slog.New(slog.NewTextHandler(io.Discard, nil)), func(context.Context) *ToolSet { return &ToolSet{} }, nil)
 	for _, testCase := range []struct {
 		name              string
 		isPossiblyApplied bool
@@ -277,7 +278,7 @@ func notSentRecord(stateKey string, isPossiblyApplied bool) callstate.Record {
 	first := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
 	return callstate.Record{
 		SchemaVersion: callstate.FormatVersion, StateKey: stateKey, Request: request, RequestDigest: request.Digest(),
-		Effect: sdkgo.AgentToolEffectIdempotentWrite, CallID: "call-1", FirstAttemptAt: first, RetryWindowEndsAt: first.Add(time.Hour),
+		Effect: sdkgo.AgentToolEffectIdempotentWrite, CallID: "call-1", ConnectionTarget: "sha256:" + strings.Repeat("c", 64), FirstAttemptAt: first, RetryWindowEndsAt: first.Add(time.Hour),
 		Attempt: 3, Checkpoint: marker, PossiblyApplied: isPossiblyApplied, Status: callstate.StatusRunning, ServerVersion: "test",
 	}
 }

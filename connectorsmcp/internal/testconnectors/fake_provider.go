@@ -45,6 +45,7 @@ type FakeProvider struct {
 	recordsByKey      map[string]string
 	appliedRecordKeys map[string]int
 	readRequests      int
+	totalRequests     int
 	scripts           map[string][]ScriptedResponse
 	heldRequests      chan string
 	release           chan struct{}
@@ -143,7 +144,17 @@ func (provider *FakeProvider) ReadRequests() int {
 	return provider.readRequests
 }
 
+// TotalRequests counts every request the provider received.
+func (provider *FakeProvider) TotalRequests() int {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	return provider.totalRequests
+}
+
 func (provider *FakeProvider) serveHTTP(response http.ResponseWriter, request *http.Request) {
+	provider.mu.Lock()
+	provider.totalRequests++
+	provider.mu.Unlock()
 	if request.Header.Get("Authorization") != "Bearer "+ProviderToken {
 		http.Error(response, "unauthorized", http.StatusUnauthorized)
 		return

@@ -52,7 +52,9 @@ type toolBinding struct {
 	connectionName string
 	effect         sdkgo.AgentToolEffect
 	inputSchema    *jsonschema.Resolved
-	mcpTool        *mcp.Tool
+	// connectionTarget is connectionTargetDigest of the connection's configuration.
+	connectionTarget string
+	mcpTool          *mcp.Tool
 }
 
 // ToolNames returns the offered tool names, sorted.
@@ -236,6 +238,11 @@ func (builder *toolSetBuilder) bindConnection(project *projectconfig.LoadedProje
 	for _, unknown := range unknownTools {
 		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: tool %s is skipped: no exposed operation of %s has that name", label, unknown, connection.connector.ConnectorID))
 	}
+	connectionTarget, hasTarget := connectionTargetOf(project, connection.connector.ConnectorID, connection.connectionName)
+	if !hasTarget {
+		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s is skipped: it has no configuration", label))
+		return nil
+	}
 	tools, err := connection.connector.OpenAgentTools(project, connection.connectionName)
 	if err != nil {
 		builder.logger.Warn("connection cannot be opened", "connection", label, "error", err)
@@ -259,7 +266,7 @@ func (builder *toolSetBuilder) bindConnection(project *projectconfig.LoadedProje
 			toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: operation %s is bound to another connection and is skipped", label, metadata.Operation.OperationID))
 			continue
 		}
-		binding, err := newToolBinding(tool, metadata, connection, isQualified)
+		binding, err := newToolBinding(tool, metadata, connection, isQualified, connectionTarget)
 		if err != nil {
 			toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: operation %s is skipped: %v", label, metadata.Operation.OperationID, err))
 			continue
@@ -292,7 +299,7 @@ func resolveToolList(connector registry.LinkedConnector, tools []string) (map[st
 	return allowed, unknown
 }
 
-func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, connection enabledConnection, isQualified bool) (*toolBinding, error) {
+func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, connection enabledConnection, isQualified bool, connectionTarget string) (*toolBinding, error) {
 	var schemaObject map[string]any
 	if err := json.Unmarshal(metadata.InputSchema, &schemaObject); err != nil || schemaObject["type"] != "object" {
 		return nil, fmt.Errorf("its input schema is not a JSON Schema of type object")
@@ -321,13 +328,14 @@ func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, conn
 		meta[metaKeyApproval] = approvalRecommended
 	}
 	return &toolBinding{
-		name:           name,
-		tool:           tool,
-		metadata:       metadata,
-		connector:      connection.connector,
-		connectionName: connection.connectionName,
-		effect:         effect,
-		inputSchema:    resolved,
+		name:             name,
+		tool:             tool,
+		metadata:         metadata,
+		connector:        connection.connector,
+		connectionName:   connection.connectionName,
+		effect:           effect,
+		inputSchema:      resolved,
+		connectionTarget: connectionTarget,
 		mcpTool: &mcp.Tool{
 			Meta:        meta,
 			Name:        name,

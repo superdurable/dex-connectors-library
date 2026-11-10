@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 	"unicode/utf8"
 
@@ -62,6 +63,9 @@ type Record struct {
 	Effect sdkgo.AgentToolEffect `json:"effect"`
 	// CallID is the connector Call ID every attempt derives.
 	CallID string `json:"callId"`
+	// ConnectionTarget fingerprints the connection's non-secret target at the
+	// first attempt; no attempt runs against another target.
+	ConnectionTarget string `json:"connectionTarget"`
 	// FirstAttemptAt is when attempt one started.
 	FirstAttemptAt time.Time `json:"firstAttemptAt"`
 	// RetryWindowEndsAt is fixed at the first attempt and never extended; no
@@ -82,6 +86,8 @@ type Record struct {
 	// UpdatedAt is when the record was last written; retention counts from it.
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+var connectionTargetPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
 // errRecordUnreadable is wrapped by KeyLock.Read for a record that exists but
 // cannot be trusted: corrupt, of another format, or inconsistent.
@@ -139,6 +145,8 @@ func (record Record) validate(stateKey string) error {
 		return fmt.Errorf("effect %q is not a write", record.Effect)
 	case record.CallID == "":
 		return errors.New("the call ID is empty")
+	case !connectionTargetPattern.MatchString(record.ConnectionTarget):
+		return errors.New("the connection target is not a sha256 digest")
 	case record.Attempt < 1:
 		return fmt.Errorf("attempt %d is below one", record.Attempt)
 	case record.FirstAttemptAt.IsZero() || record.RetryWindowEndsAt.Before(record.FirstAttemptAt):

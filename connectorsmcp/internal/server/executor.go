@@ -56,18 +56,20 @@ type toolCallExecutor struct {
 	config               executorConfig
 	logger               *slog.Logger
 	observeProtocolPoint func(point ProtocolPoint, operationID string)
-	isDraining           atomic.Bool
-	inflightCalls        sync.WaitGroup
+	// currentToolSet returns the tool set for the files as they are now.
+	currentToolSet func(context.Context) *ToolSet
+	isDraining     atomic.Bool
+	inflightCalls  sync.WaitGroup
 }
 
-func newToolCallExecutor(store *callstate.Store, clock Clock, config executorConfig, logger *slog.Logger, observeProtocolPoint func(ProtocolPoint, string)) *toolCallExecutor {
-	if store == nil || clock == nil || logger == nil {
-		panic("tool call executor requires a store, a clock, and a logger")
+func newToolCallExecutor(store *callstate.Store, clock Clock, config executorConfig, logger *slog.Logger, currentToolSet func(context.Context) *ToolSet, observeProtocolPoint func(ProtocolPoint, string)) *toolCallExecutor {
+	if store == nil || clock == nil || logger == nil || currentToolSet == nil {
+		panic("tool call executor requires a store, a clock, a logger, and the current tool set")
 	}
 	if observeProtocolPoint == nil {
 		observeProtocolPoint = func(ProtocolPoint, string) {}
 	}
-	return &toolCallExecutor{store: store, clock: clock, config: config, logger: logger, observeProtocolPoint: observeProtocolPoint}
+	return &toolCallExecutor{store: store, clock: clock, config: config, logger: logger, currentToolSet: currentToolSet, observeProtocolPoint: observeProtocolPoint}
 }
 
 // beginDrain makes new calls answer that the server is stopping.
@@ -118,6 +120,9 @@ const (
 	recordIdentityDiffers
 	recordIdentityUndetermined
 )
+
+// connectionRetargetedReason settles a key whose connection was rebound.
+const connectionRetargetedReason = "the connection now points to a different target"
 
 // errRetryWindowPassed ends an attempt that would start at or after the retry window.
 var errRetryWindowPassed = errors.New("the retry window has passed")
@@ -324,6 +329,9 @@ func (call *toolCall) resumeRecordedCall(ctx context.Context, lock *callstate.Ke
 	if recordBinding == nil {
 		return call.finalizeFromCheckpoint(lock, record, "its tool is no longer offered for this connection")
 	}
+	if recordBinding.connectionTarget != record.ConnectionTarget {
+		return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
+	}
 	if limit := attemptLimit(retryPolicyOf(recordBinding.metadata), call.executor.config.maximumInlineAttempts); record.Attempt >= limit {
 		return call.finalizeFromCheckpoint(lock, record, fmt.Sprintf("it already made %d attempts", record.Attempt))
 	}
@@ -362,6 +370,7 @@ func (call *toolCall) startWrite(ctx context.Context, lock *callstate.KeyLock, k
 		RequestDigest:     request.Digest(),
 		Effect:            binding.effect,
 		CallID:            string(deriveCallID(localFlowID, key, binding.metadata.Operation)),
+		ConnectionTarget:  binding.connectionTarget,
 		FirstAttemptAt:    now,
 		RetryWindowEndsAt: now.Add(retryWindow(retryPolicyOf(binding.metadata), call.executor.config.callStateRetention)),
 		Attempt:           1,
@@ -422,6 +431,15 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 		if !call.executor.clock.Now().Before(record.RetryWindowEndsAt) {
 			return call.finalizeFromCheckpoint(lock, record, "its retry window passed while it waited to retry ("+detail+")")
 		}
+		// The connections file may have changed during the delay.
+		current := call.executor.currentToolSet(context.WithoutCancel(ctx)).toolForRequest(record.Request)
+		if current == nil {
+			return call.finalizeFromCheckpoint(lock, record, "its tool is no longer offered for this connection")
+		}
+		if current.connectionTarget != record.ConnectionTarget {
+			return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
+		}
+		binding = current
 		record.Attempt++
 		call.attempt = record.Attempt
 		if err := lock.Write(record); err != nil {

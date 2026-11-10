@@ -33,6 +33,8 @@ type fakeClock struct {
 	sleeps []time.Duration
 	// oversleep is added to every Sleep, as scheduling delay would.
 	oversleep time.Duration
+	// onSleep runs during every Sleep, as changes during a delay would.
+	onSleep func()
 }
 
 func newFakeClock() *fakeClock {
@@ -50,10 +52,22 @@ func (clock *fakeClock) Sleep(ctx context.Context, duration time.Duration) bool 
 		return false
 	}
 	clock.mu.Lock()
+	onSleep := clock.onSleep
+	clock.mu.Unlock()
+	if onSleep != nil {
+		onSleep()
+	}
+	clock.mu.Lock()
 	defer clock.mu.Unlock()
 	clock.now = clock.now.Add(duration + clock.oversleep)
 	clock.sleeps = append(clock.sleeps, duration)
 	return true
+}
+
+func (clock *fakeClock) setOnSleep(onSleep func()) {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	clock.onSleep = onSleep
 }
 
 func (clock *fakeClock) setOversleep(oversleep time.Duration) {
@@ -174,6 +188,12 @@ func (harness *testHarness) writeConnections(names ...string) {
 	for _, name := range names {
 		connections = append(connections, testconnectors.NotesConnection(name, harness.provider))
 	}
+	harness.writeConnectionRecords(connections...)
+}
+
+// writeConnectionRecords writes exactly these connection records, plus chat when linked.
+func (harness *testHarness) writeConnectionRecords(connections ...testconnectors.ConnectionsFileConnection) {
+	harness.t.Helper()
 	if harness.isChatLinked {
 		connections = append(connections, testconnectors.ChatConnection("work"))
 	}
