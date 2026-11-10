@@ -425,6 +425,28 @@ spec:
 	require.Equal(t, "bot_token", manifest.Spec.Studio.Commands[0].Request.Credential.Field)
 }
 
+func TestDecodeRequiresDeclaredOAuthPKCE(t *testing.T) {
+	contents, err := os.ReadFile("testdata/google-oauth.yaml")
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "      pkce: true\n")
+	withoutPKCE := strings.Replace(string(contents), "      pkce: true\n", "", 1)
+	_, err = schema.Decode(strings.NewReader(withoutPKCE))
+	require.ErrorContains(t, err, "spec.auth oauth2 requires pkce")
+	released, err := schema.DecodeReleasedManifest(strings.NewReader(withoutPKCE))
+	require.NoError(t, err, "a released manifest without pkce stays readable")
+	require.False(t, released.Spec.Auth.OAuth2.PKCE)
+	declaredFalse := strings.Replace(string(contents), "      pkce: true\n", "      pkce: false\n", 1)
+	manifest, err := schema.Decode(strings.NewReader(declaredFalse))
+	require.NoError(t, err)
+	require.False(t, manifest.Spec.Auth.OAuth2.PKCE)
+
+	multiAuth, err := os.ReadFile("testdata/multi-auth.yaml")
+	require.NoError(t, err)
+	require.Contains(t, string(multiAuth), "          pkce: true\n")
+	_, err = schema.Decode(strings.NewReader(strings.Replace(string(multiAuth), "          pkce: true\n", "", 1)))
+	require.ErrorContains(t, err, "oauth2 requires pkce")
+}
+
 func TestDecodeOAuthManifestFixture(t *testing.T) {
 	file, err := os.Open("testdata/google-oauth.yaml")
 	require.NoError(t, err)

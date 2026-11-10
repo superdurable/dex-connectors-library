@@ -10,11 +10,11 @@ spec:
   provider: stripe
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
       triggers: []
     typescript:
-      version: v0.1.1
+      version: v0.2.0
       operations: [createCardCheckoutSession, createACHCheckoutSession, getCheckoutSession, getPaymentIntent, createRefund]
       triggers: []
   codegen:

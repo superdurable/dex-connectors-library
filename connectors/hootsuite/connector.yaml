@@ -75,6 +75,7 @@ spec:
       clientIDCredential: oauth_client_id
       clientSecretCredential: oauth_client_secret
       scopes: [offline]
+      pkce: false
       credentialMappings:
         - {credential: access_token, source: access_token}
         - {credential: refresh_token, source: refresh_token}
