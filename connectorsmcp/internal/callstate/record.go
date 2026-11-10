@@ -71,8 +71,7 @@ type Record struct {
 	Attempt int32 `json:"attempt"`
 	// Checkpoint is the last heartbeat recorded, as JSON or null, for the next attempt.
 	Checkpoint json.RawMessage `json:"checkpoint"`
-	// PossiblyApplied is set once any attempt may have reached the provider and
-	// never cleared; the call can then never end rejected.
+	// PossiblyApplied, once set, is never cleared and forbids a rejected outcome.
 	PossiblyApplied bool `json:"possiblyApplied"`
 	// Status says whether Result is final.
 	Status Status `json:"status"`

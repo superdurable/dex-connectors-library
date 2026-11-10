@@ -136,8 +136,8 @@ func TestConnectionsConfigDigestIsIdenticalForFlagsAndFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "sha256:bbdcd6b32401259c4e60d24b74c477a9c76d1010ba6fc707d1656ac59ea114a7", *empty.ConnectionsConfigDigest())
 
-	// Go escapes U+2028 as   even without HTML escaping; dexcli computes it in Go too.
-	separator, err := NewConnectionSelection([]SelectedConnection{{ConnectorID: "slack", ConnectionName: "a b"}})
+	// Go escapes U+2028 as \u2028 even without HTML escaping; dexcli computes it in Go too.
+	separator, err := NewConnectionSelection([]SelectedConnection{{ConnectorID: "slack", ConnectionName: "a\u2028b"}})
 	require.NoError(t, err)
 	require.Equal(t, "sha256:65295181c87728372b6ca46160e7a6021f3244f88ecbd1291964e6fab1da1632", *separator.ConnectionsConfigDigest())
 }

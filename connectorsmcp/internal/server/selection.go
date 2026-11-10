@@ -81,8 +81,7 @@ func NewConnectionSelection(entries []SelectedConnection) (*ConnectionSelection,
 	return selection, nil
 }
 
-// ParseConnectionFlag splits at the first slash, the first equals sign, then
-// commas; an equals sign with no tools is an error.
+// ParseConnectionFlag splits at the first slash, first equals sign, then commas; "=" needs tools.
 func ParseConnectionFlag(value string) (SelectedConnection, error) {
 	connectorID, rest, hasSlash := strings.Cut(value, "/")
 	if !hasSlash {

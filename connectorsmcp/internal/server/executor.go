@@ -258,8 +258,7 @@ func (call *toolCall) answerUnreadableState(err error) callAnswer {
 	return callAnswer{result: unknownResult("tool " + call.name + " may have taken effect: its call state cannot be read; do not repeat it")}
 }
 
-// matchRecordIdentity compares the call's full request identity with the
-// record's; a vanished tool name matches only a name the record's tool had.
+// matchRecordIdentity compares full request identity; a vanished name matches only the record tool's names.
 func (call *toolCall) matchRecordIdentity(record *callstate.Record) recordIdentityMatch {
 	request := record.Request
 	if request.ArgumentsDigest != digestArguments(call.arguments) || request.ProjectIdentity != call.toolSet.projectIdentity {
@@ -504,8 +503,7 @@ func (call *toolCall) finalizeRetryLater(lock *callstate.KeyLock, record *callst
 	return call.finalize(lock, record, unknownResult(recordLabel(record)+" may have taken effect: the provider asked to retry later ("+detail+"); do not repeat it"))
 }
 
-// finalizeFromCheckpoint ends a call without another attempt: rejected only
-// with notSent proof for the current attempt and no attempt that may have applied.
+// finalizeFromCheckpoint answers rejected only with notSent proof and nothing possibly applied.
 func (call *toolCall) finalizeFromCheckpoint(lock *callstate.KeyLock, record *callstate.Record, reason string) callAnswer {
 	if isProvenNotSent(record) && !record.PossiblyApplied {
 		return call.finalize(lock, record, rejectedResult(recordLabel(record)+" did not take effect: "+reason+"; nothing was sent"))
@@ -524,8 +522,7 @@ func (call *toolCall) finalize(lock *callstate.KeyLock, record *callstate.Record
 	return callAnswer{result: result}
 }
 
-// attemptMayHaveApplied reports an attempt that may have reached the provider:
-// unknown, an error after Invoke, or a Retry without notSent proof.
+// attemptMayHaveApplied: unknown, an error after Invoke, or a Retry without notSent proof.
 func attemptMayHaveApplied(attempt sdkgo.AgentToolAttempt, runErr error, record *callstate.Record) bool {
 	if runErr != nil {
 		return attempt.HasInvokedOperation
