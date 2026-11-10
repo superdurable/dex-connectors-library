@@ -31,7 +31,9 @@ HTML.
 
 Both Queries set `agent.exposed` in the package's `dex-connector.json`, so an
 agent host can offer `client.list_story_ids()` and `client.get_item()` as read
-tools. Every optional branch is classified `rejected`: a read changes nothing.
+tools. Every optional branch except `invalidResponse` is classified `rejected`:
+a read changes nothing. `invalidResponse` is a provider malfunction the model
+cannot fix, so it stays unlisted and agent hosts record it as a failure.
 
 ## Example
 

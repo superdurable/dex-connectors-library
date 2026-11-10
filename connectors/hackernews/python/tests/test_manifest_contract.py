@@ -122,7 +122,9 @@ def test_identity_and_agent_metadata_match_manifest() -> None:
         agent = factories[operation_id]["agent"]
         assert agent["exposed"] is True
         assert "retry" not in agent and "approval" not in agent
+        # invalidResponse is a provider malfunction the model cannot fix, so hosts record it as a failure.
         optional = {branch.id for branch in definition.branches or () if branch.optional}
+        optional.discard("invalidResponse")
         assert agent["branches"] == dict.fromkeys(optional, "rejected")
 
 

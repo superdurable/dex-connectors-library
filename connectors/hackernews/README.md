@@ -51,8 +51,10 @@ application networking.
 
 Both Queries are exposed to agent hosts through the `agent` block in
 `connector.yaml`, which each language package carries in `dex-connector.json`.
-They are public reads, so neither asks for approval, and every optional branch
-is classified `rejected` because a read changes nothing.
+They are public reads, so neither asks for approval. Every optional branch except
+`invalidResponse` is classified `rejected` because a read changes nothing;
+`invalidResponse` is a provider malfunction the model cannot fix, so it stays
+unlisted and agent hosts record it as a failure.
 
 ## Mocks
 

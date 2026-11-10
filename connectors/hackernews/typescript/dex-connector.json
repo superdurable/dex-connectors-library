@@ -17,7 +17,6 @@
         "exposed": true,
         "branches": {
           "defect": "rejected",
-          "invalidResponse": "rejected",
           "providerRejected": "rejected"
         }
       },
@@ -79,7 +78,6 @@
         "exposed": true,
         "branches": {
           "defect": "rejected",
-          "invalidResponse": "rejected",
           "notFound": "rejected",
           "providerRejected": "rejected"
         }
