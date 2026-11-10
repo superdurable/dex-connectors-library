@@ -11,7 +11,7 @@ private channels, not direct messages.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.1.0` implements the four thread read and
+`@superdurable/connector-slack@0.2.0` implements the four thread read and
 message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
 Go-only. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
 uses the static `slack-thread-reader` connection name and obtains OAuth bot and

@@ -284,6 +284,10 @@ await fence.recordProviderId(result.providerId);
 
 ## Release notes
 
+### 0.9.0
+
+`throwDexRetry` is exported. A Step that calls `runQuery` or `runMutation` directly catches `RetryError` and calls it to get the same Dex retry behavior as the Step factories. This addition is not breaking.
+
 ### 0.8.0
 
 Manifest OAuth refresh and client-credentials minting honor `tokenExchangeTimeout` in addition to the caller's deadline; a timeout is retryable, matching Go's credential refresh drivers. The declaration accepts a fixed Go duration of at most one hour or `{fromSetting: "requestTimeout"}`; pass the pinned setting as a Go duration string or integer nanoseconds within the same bound. Provider HTTP preserves response metadata on interrupted body reads, and `encodeQueryValues` supplies Go-compatible query encoding for connector ports. These additions are not breaking; existing connectors keep their current query serialization until migrated.

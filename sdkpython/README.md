@@ -2,7 +2,7 @@
 
 `dex-connectors-sdk` is the Python core for Dex-native provider connectors. It
 uses the PEP 420 `dex_connectors` namespace and imports as `dex_connectors.sdk`.
-Version `0.8.0` supplies the models, provider operation contracts, credential
+Version `0.9.0` supplies the models, provider operation contracts, credential
 helpers, OAuth token exchanges, portable text generation, and single-dispatch
 checkpoint values below, plus opt-in provider address policies. Query and
 Mutation Step factories use the released Dex SDK's instance-addressed async Steps.
@@ -262,6 +262,7 @@ The core example sends through an in-process HTTP transport.
 
 ## Version history
 
+- `0.9.0`: `raise_dex_retry` is exported. A Step that calls `run_query` or `run_mutation` directly catches `RetryError` and calls it to get the same Dex retry behavior as the Step factories. This addition is not breaking.
 - `0.8.0`: Manifest OAuth refresh and client-credentials minting honor `tokenExchangeTimeout` independently of the caller's deadline; timeout is retryable. The declaration accepts a fixed Go duration of at most one hour or `{fromSetting: "requestTimeout"}`; pass the pinned setting as a Go duration string or integer nanoseconds within the same bound. The private network token client uses the same configured timeout. Interrupted body reads preserve response status and headers, and `encode_query_values` provides Go-compatible query serialization for connector ports. These additions are not breaking; existing ports keep their current encoding until migrated.
 
 - `0.7.0`: Manifest token endpoint templates apply declared
