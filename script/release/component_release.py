@@ -686,24 +686,86 @@ def verify_pypi_artifacts_once(
             raise ValueError(f"PyPI artifact {asset.name} has different SHA256 from the local release")
 
 
+PYTHON_SDK_DISTRIBUTION = "dex-connectors-sdk"
+PYTHON_SDK_SEMANTIC_VERSION = r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+PYTHON_SDK_EXACT_REQUIREMENT = re.compile(r"dex-connectors-sdk==" + PYTHON_SDK_SEMANTIC_VERSION)
+# A floor of 1.0.0 or later cannot satisfy <1; SDK v1 needs a tooling change to the accepted bound.
+PYTHON_SDK_FLOOR_REQUIREMENT = re.compile(r"dex-connectors-sdk>=(0)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*),<1")
+PYTHON_DISTRIBUTION_NAME = re.compile(r"\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)")
+
+
+@dataclass(frozen=True)
+class PythonSDKRequirement:
+    """The SDK release a connector package requires: an exact pin, or its lowest tested floor."""
+
+    version: str
+    is_floor: bool
+
+
+def python_package_dependencies(pyproject: dict) -> list[str]:
+    """Return a pyproject's runtime, optional, and dependency-group requirements."""
+    project = pyproject.get("project", {})
+    dependencies = list(project.get("dependencies", []))
+    for optional in project.get("optional-dependencies", {}).values():
+        dependencies.extend(optional)
+    for group in pyproject.get("dependency-groups", {}).values():
+        dependencies.extend(group)
+    return dependencies
+
+
+def parse_python_sdk_requirement(component_path: str, dependencies: list[str]) -> PythonSDKRequirement:
+    """Return the package's one SDK requirement: `==X.Y.Z` (legacy) or `>=X.Y.Z,<1`, written without spaces."""
+    sdk_dependencies = [dependency for dependency in dependencies if is_python_sdk_dependency(dependency)]
+    if len(sdk_dependencies) != 1:
+        raise ValueError(f"{component_path} must require {PYTHON_SDK_DISTRIBUTION} exactly once, "
+                         f"found {len(sdk_dependencies)}")
+    dependency = sdk_dependencies[0]
+    if match := PYTHON_SDK_EXACT_REQUIREMENT.fullmatch(dependency):
+        return PythonSDKRequirement(".".join(match.groups()), is_floor=False)
+    if match := PYTHON_SDK_FLOOR_REQUIREMENT.fullmatch(dependency):
+        return PythonSDKRequirement(".".join(match.groups()), is_floor=True)
+    raise ValueError(f"{component_path} must require {PYTHON_SDK_DISTRIBUTION}>=X.Y.Z,<1 "
+                     f"(or a legacy {PYTHON_SDK_DISTRIBUTION}==X.Y.Z), not {dependency!r}")
+
+
+def is_python_sdk_dependency(dependency: str) -> bool:
+    match = PYTHON_DISTRIBUTION_NAME.match(dependency) if isinstance(dependency, str) else None
+    return match is not None and re.sub(r"[-_.]+", "-", match.group(1)).lower() == PYTHON_SDK_DISTRIBUTION
+
+
+def validate_python_sdk_lock_at_floor(path: Path, requirement: PythonSDKRequirement) -> None:
+    """Require uv.lock to resolve the SDK floor, so the locked test run proves the floor works."""
+    lock_path = path / "uv.lock"
+    if not lock_path.is_file():
+        raise ValueError(f"{path} must contain uv.lock")
+    locked_versions = [package.get("version") for package in tomllib.loads(lock_path.read_text(encoding="utf-8")).get("package", [])
+                       if package.get("name") == PYTHON_SDK_DISTRIBUTION]
+    if locked_versions != [requirement.version]:
+        raise ValueError(f"{lock_path} must lock {PYTHON_SDK_DISTRIBUTION} at its floor {requirement.version}, "
+                         f"found {locked_versions}; run uv lock --upgrade-package "
+                         f"{PYTHON_SDK_DISTRIBUTION}=={requirement.version}")
+
+
 def validate_language_package(
     component_path: str, language: str, lookup: DependencyReleaseLookup, require_go_release: bool = True,
     allow_pending_go_release: bool = False,
 ) -> str:
-    """Require a registry-ready package with an exact, released SDK dependency."""
+    """Require a registry-ready package whose SDK requirement names a released SDK version.
+
+    A Python package requires the SDK as a legacy exact pin or a version floor; see
+    parse_python_sdk_requirement. A TypeScript package names one version, optionally with >=, ^, or ~.
+    """
     path = Path(component_path)
     if language == "python":
         manifest = tomllib.loads((path / "pyproject.toml").read_text(encoding="utf-8"))
         if manifest.get("tool", {}).get("uv", {}).get("sources"):
             raise ValueError("Python package cannot use tool.uv.sources overrides")
-        project = manifest.get("project", {})
-        dependencies = list(project.get("dependencies", []))
-        for optional in project.get("optional-dependencies", {}).values():
-            dependencies.extend(optional)
-        for group in manifest.get("dependency-groups", {}).values():
-            dependencies.extend(group)
-        sdk_name = "dex-connectors-sdk"
-        sdk_versions = [match.group(1) for dependency in dependencies if (match := re.fullmatch(r"dex-connectors-sdk(?:==|>=)([0-9]+\.[0-9]+\.[0-9]+)", dependency))]
+        dependencies = python_package_dependencies(manifest)
+        sdk_name = PYTHON_SDK_DISTRIBUTION
+        sdk_requirement = parse_python_sdk_requirement(component_path, dependencies)
+        if sdk_requirement.is_floor:
+            validate_python_sdk_lock_at_floor(path, sdk_requirement)
+        sdk_versions = [sdk_requirement.version]
         if any(re.search(r"(?:file:|git\+|git@|https?://|ssh://|\.\./|workspace:|path\s*=)", dependency, re.IGNORECASE) for dependency in dependencies):
             raise ValueError("Python package cannot use path, file, git, or workspace dependencies")
         tag_prefix = "sdkpython/"
@@ -724,7 +786,7 @@ def validate_language_package(
     else:
         raise ValueError(f"unsupported language: {language}")
     if len(sdk_versions) != 1:
-        raise ValueError(f"{component_path} must require one exact {sdk_name} release")
+        raise ValueError(f"{component_path} must require one {sdk_name} release")
     tag = tag_prefix + "v" + sdk_versions[0]
     if not lookup.has_tag(tag) or not lookup.is_tag_reachable_from_main(tag):
         raise ValueError(f"required SDK release tag is missing or not on main: {tag}")
