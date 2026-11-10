@@ -29,6 +29,8 @@ type ScriptedResponse struct {
 	IsHeld bool
 	// IsHeldAfterEffect applies the write, then holds: the answer may be lost.
 	IsHeldAfterEffect bool
+	// IsEffectAppliedFirst applies the write, then answers Status anyway.
+	IsEffectAppliedFirst bool
 }
 
 // FakeProvider counts requests; notes are not idempotent, and records
@@ -198,7 +200,7 @@ func (provider *FakeProvider) servePostNote(response http.ResponseWriter, reques
 	noteID := "n-" + strconv.Itoa(len(provider.createdNotes)+1)
 	provider.createdNotes[noteID] = body.Text
 	provider.mu.Unlock()
-	if !provider.holdAfterEffect(request, "postNote") {
+	if provider.answerAfterEffect(response, request, "postNote") {
 		return
 	}
 	writeJSON(response, map[string]string{"id": noteID})
@@ -245,7 +247,7 @@ func (provider *FakeProvider) serveSaveRecord(response http.ResponseWriter, requ
 	}
 	value := provider.recordsByKey[idempotencyKey]
 	provider.mu.Unlock()
-	if !provider.holdAfterEffect(request, "saveRecord") {
+	if provider.answerAfterEffect(response, request, "saveRecord") {
 		return
 	}
 	writeJSON(response, map[string]string{"value": value})
@@ -260,7 +262,7 @@ func (provider *FakeProvider) answerScripted(response http.ResponseWriter, reque
 		return false
 	}
 	scripted := queue[0]
-	if scripted.IsHeldAfterEffect {
+	if scripted.IsHeldAfterEffect || scripted.IsEffectAppliedFirst {
 		provider.mu.Unlock()
 		return false
 	}
@@ -285,24 +287,29 @@ func (provider *FakeProvider) answerScripted(response http.ResponseWriter, reque
 	return true
 }
 
-// holdAfterEffect consumes a queued IsHeldAfterEffect response and holds the
-// request; it reports false when the client went away while held.
-func (provider *FakeProvider) holdAfterEffect(request *http.Request, operationID string) bool {
+// answerAfterEffect consumes an after-effect script entry, holding or
+// answering its status, and reports whether it answered.
+func (provider *FakeProvider) answerAfterEffect(response http.ResponseWriter, request *http.Request, operationID string) bool {
 	provider.mu.Lock()
 	queue := provider.scripts[operationID]
-	if len(queue) == 0 || !queue[0].IsHeldAfterEffect {
+	if len(queue) == 0 || (!queue[0].IsHeldAfterEffect && !queue[0].IsEffectAppliedFirst) {
 		provider.mu.Unlock()
-		return true
+		return false
 	}
+	scripted := queue[0]
 	provider.scripts[operationID] = queue[1:]
 	release := provider.release
 	provider.mu.Unlock()
+	if scripted.IsEffectAppliedFirst {
+		http.Error(response, fmt.Sprintf("scripted status %d after the effect", scripted.Status), scripted.Status)
+		return true
+	}
 	provider.heldRequests <- operationID
 	select {
 	case <-request.Context().Done():
-		return false
-	case <-release:
 		return true
+	case <-release:
+		return false
 	}
 }
 

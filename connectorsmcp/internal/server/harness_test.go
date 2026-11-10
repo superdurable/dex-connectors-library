@@ -31,6 +31,8 @@ type fakeClock struct {
 	mu     sync.Mutex
 	now    time.Time
 	sleeps []time.Duration
+	// oversleep is added to every Sleep, as scheduling delay would.
+	oversleep time.Duration
 }
 
 func newFakeClock() *fakeClock {
@@ -49,9 +51,15 @@ func (clock *fakeClock) Sleep(ctx context.Context, duration time.Duration) bool 
 	}
 	clock.mu.Lock()
 	defer clock.mu.Unlock()
-	clock.now = clock.now.Add(duration)
+	clock.now = clock.now.Add(duration + clock.oversleep)
 	clock.sleeps = append(clock.sleeps, duration)
 	return true
+}
+
+func (clock *fakeClock) setOversleep(oversleep time.Duration) {
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	clock.oversleep = oversleep
 }
 
 func (clock *fakeClock) advance(duration time.Duration) {
@@ -95,6 +103,8 @@ type testHarness struct {
 	server          *Server
 	httpServer      *httptest.Server
 	toolSetChanges  []string
+	chatSends       *testconnectors.ChatSends
+	isChatLinked    bool
 }
 
 type harnessOptions struct {
@@ -105,6 +115,10 @@ type harnessOptions struct {
 	extraConnectors []registry.LinkedConnector
 	allowedHosts    []string
 	observe         func(ProtocolPoint, string)
+	// stateDirectory shares another harness's call state; empty uses a new one.
+	stateDirectory string
+	// isChatLinked links the chat connector and authorizes example-chat/work.
+	isChatLinked bool
 }
 
 func newTestHarness(t *testing.T, options harnessOptions) *testHarness {
@@ -115,6 +129,13 @@ func newTestHarness(t *testing.T, options harnessOptions) *testHarness {
 	harness := &testHarness{
 		t: t, provider: provider, connectionsFile: filepath.Join(directory, "connectors", "connections.json"),
 		stateDirectory: filepath.Join(directory, "state"), clock: newFakeClock(), logs: &synchronizedBuffer{},
+		chatSends: &testconnectors.ChatSends{}, isChatLinked: options.isChatLinked,
+	}
+	if options.stateDirectory != "" {
+		harness.stateDirectory = options.stateDirectory
+	}
+	if options.isChatLinked {
+		options.extraConnectors = append(options.extraConnectors, testconnectors.ChatConnector(harness.chatSends))
 	}
 	require.NoError(t, os.MkdirAll(filepath.Dir(harness.connectionsFile), 0o700))
 	if options.connectionNames == nil {
@@ -152,6 +173,9 @@ func (harness *testHarness) writeConnections(names ...string) {
 	connections := make([]testconnectors.ConnectionsFileConnection, 0, len(names))
 	for _, name := range names {
 		connections = append(connections, testconnectors.NotesConnection(name, harness.provider))
+	}
+	if harness.isChatLinked {
+		connections = append(connections, testconnectors.ChatConnection("work"))
 	}
 	require.NoError(harness.t, testconnectors.WriteConnectionsFile(harness.connectionsFile, connections...))
 }

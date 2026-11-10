@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"slices"
@@ -37,8 +38,8 @@ type ConnectionSelection struct {
 	warnings    []string
 }
 
-// NewConnectionSelection refuses repeated connections and de-duplicates
-// repeated tools with a warning.
+// NewConnectionSelection refuses repeated connections and empty tool lists;
+// it de-duplicates repeated tools with a warning.
 func NewConnectionSelection(entries []SelectedConnection) (*ConnectionSelection, error) {
 	selection := &ConnectionSelection{}
 	seen := map[string]bool{}
@@ -54,6 +55,9 @@ func NewConnectionSelection(entries []SelectedConnection) (*ConnectionSelection,
 			return nil, fmt.Errorf("connection %s is listed twice", label)
 		}
 		seen[label] = true
+		if entry.Tools != nil && len(entry.Tools) == 0 {
+			return nil, fmt.Errorf("connection %s lists no tools; omit the list to offer every exposed tool", label)
+		}
 		if entry.Tools != nil {
 			tools := make([]string, 0, len(entry.Tools))
 			for _, tool := range entry.Tools {
@@ -67,9 +71,6 @@ func NewConnectionSelection(entries []SelectedConnection) (*ConnectionSelection,
 				tools = append(tools, tool)
 			}
 			slices.Sort(tools)
-			if len(tools) == 0 {
-				tools = nil
-			}
 			entry.Tools = tools
 		}
 		selection.connections = append(selection.connections, entry)
@@ -81,7 +82,7 @@ func NewConnectionSelection(entries []SelectedConnection) (*ConnectionSelection,
 }
 
 // ParseConnectionFlag splits at the first slash, the first equals sign, then
-// commas; a trailing equals sign means all tools.
+// commas; an equals sign with no tools is an error.
 func ParseConnectionFlag(value string) (SelectedConnection, error) {
 	connectorID, rest, hasSlash := strings.Cut(value, "/")
 	if !hasSlash {
@@ -92,7 +93,10 @@ func ParseConnectionFlag(value string) (SelectedConnection, error) {
 		return SelectedConnection{}, fmt.Errorf("--connection %q: a connection name with a comma needs --connections-config", value)
 	}
 	entry := SelectedConnection{ConnectorID: connectorID, ConnectionName: connectionName}
-	if hasTools && toolList != "" {
+	if hasTools && toolList == "" {
+		return SelectedConnection{}, fmt.Errorf("--connection %q lists no tools after '='; omit '=' to offer every exposed tool", value)
+	}
+	if hasTools {
 		for _, tool := range strings.Split(toolList, ",") {
 			if strings.TrimSpace(tool) == "" {
 				return SelectedConnection{}, fmt.Errorf("--connection %q lists an empty tool", value)
@@ -112,7 +116,7 @@ func ReadConnectionsConfigFile(path string) (*ConnectionSelection, error) {
 	return ParseConnectionsConfig(contents)
 }
 
-// ParseConnectionsConfig parses a --connections-config document; an empty tools list means all.
+// ParseConnectionsConfig parses one --connections-config document; only an absent tools list means all.
 func ParseConnectionsConfig(contents []byte) (*ConnectionSelection, error) {
 	var document struct {
 		SchemaVersion string `json:"schemaVersion"`
@@ -125,6 +129,9 @@ func ParseConnectionsConfig(contents []byte) (*ConnectionSelection, error) {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&document); err != nil {
 		return nil, errors.New("connections config is not a valid connections config document")
+	}
+	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
+		return nil, errors.New("connections config has data after its JSON document")
 	}
 	if document.SchemaVersion != ConnectionsConfigSchemaVersion {
 		return nil, fmt.Errorf("connections config schemaVersion %q is not %q", document.SchemaVersion, ConnectionsConfigSchemaVersion)

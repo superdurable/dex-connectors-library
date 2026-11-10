@@ -26,6 +26,7 @@ const defaultAttemptTimeout = 60 * time.Second
 
 // ToolSet is immutable; in-flight calls keep the set they started with.
 type ToolSet struct {
+	registry        *registry.Registry
 	projectIdentity string
 	tools           []*toolBinding
 	byName          map[string]*toolBinding
@@ -113,6 +114,24 @@ func (toolSet *ToolSet) toolForRequest(request callstate.Request) *toolBinding {
 	return toolSet.byIdentity[toolIdentity{connectorID: request.ConnectorID, operationID: request.OperationID, connectionName: request.ConnectionName}]
 }
 
+// possibleToolNames returns the names a request's tool has with and without
+// connection qualification; false when this build cannot name it.
+func (toolSet *ToolSet) possibleToolNames(request callstate.Request) ([]string, bool) {
+	connector, isLinked := toolSet.registry.Connector(request.ConnectorID)
+	if !isLinked {
+		return nil, false
+	}
+	metadata, isExposed := connector.ExposedOperation(request.OperationID)
+	if !isExposed {
+		return nil, false
+	}
+	operationName := registry.OperationName(metadata)
+	return []string{
+		toolName(request.ConnectorID, request.ConnectionName, operationName, false),
+		toolName(request.ConnectorID, request.ConnectionName, operationName, true),
+	}, true
+}
+
 // projectSnapshot is one load of the project configuration.
 type projectSnapshot struct {
 	// project is nil when no connections file exists yet or it failed to load.
@@ -136,7 +155,7 @@ type enabledConnection struct {
 }
 
 func (builder *toolSetBuilder) build(snapshot projectSnapshot, selection *ConnectionSelection) *ToolSet {
-	toolSet := &ToolSet{projectIdentity: snapshot.identity, warnings: slices.Clone(snapshot.warnings)}
+	toolSet := &ToolSet{registry: builder.registry, projectIdentity: snapshot.identity, warnings: slices.Clone(snapshot.warnings)}
 	toolSet.warnings = append(toolSet.warnings, selection.Warnings()...)
 	enabled, namingCounts := builder.enableConnections(snapshot, selection, toolSet)
 	var bindings []*toolBinding
@@ -318,6 +337,10 @@ func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, conn
 			Annotations: toolAnnotations(effect),
 		},
 	}, nil
+}
+
+func (binding *toolBinding) executionIdentity() executionIdentity {
+	return executionIdentity{connectorID: binding.connector.ConnectorID, connectionName: binding.connectionName, operationID: binding.metadata.Operation.OperationID}
 }
 
 func (binding *toolBinding) identity() toolIdentity {

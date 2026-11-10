@@ -174,7 +174,7 @@ func TestNonIdempotentWriteSendsOnceAndReplays(t *testing.T) {
 
 	reused := harness.mustCallResult("example-notes_post_note", map[string]any{"text": "other"}, "flow/turn/post-1")
 	require.Equal(t, "rejected", reused.outcome())
-	require.Contains(t, reused.text(), "already used for a different call; nothing was sent")
+	require.Contains(t, reused.text(), "was used for a different call; nothing was sent")
 	require.Equal(t, 1, harness.provider.NoteRequests())
 }
 
