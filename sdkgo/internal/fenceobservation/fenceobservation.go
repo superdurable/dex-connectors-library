@@ -6,15 +6,10 @@ package fenceobservation
 
 import "sync"
 
-// AttemptIdentity names one call attempt on one connection. The Call ID covers the Flow, Step
-// execution, and operation; the connection separates calls that share them.
+// AttemptIdentity names one call attempt. It omits the connection, which an operation can rewrite in its Call.
 type AttemptIdentity struct {
 	// CallID is the stable connector call identity.
 	CallID string
-	// ConnectionProvider is the provider of the connection the call runs with.
-	ConnectionProvider string
-	// ConnectionName is the name of the connection the call runs with.
-	ConnectionName string
 	// Attempt is the one-based Dex Execute attempt.
 	Attempt int32
 }

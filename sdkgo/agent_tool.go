@@ -155,10 +155,11 @@ type AgentTool interface {
 	//
 	// A connector Retry is AgentToolAttemptRetry. Rule 4 observes only the
 	// singledispatch Fence, which reports its own claims and decisions for the
-	// call's Call ID, connection, and attempt, so heartbeats the operation
-	// records itself cannot change it. Concurrent attempts with the same Call
-	// ID, connection, and attempt share one observation; because nothing
-	// clears a possible dispatch, sharing can only make the result unknown. A Mutation with its own checkpoint mechanism relies on its
+	// call's Call ID and attempt, so heartbeats the operation records itself
+	// cannot change it. Concurrent attempts with the same Call ID and attempt,
+	// including ones on other connections, share one observation; because
+	// nothing clears a possible dispatch, sharing can only make the result
+	// unknown. A Mutation with its own checkpoint mechanism relies on its
 	// manifest listing: a branch the operation can select after the request
 	// may have been sent must be listed unknown. The operation receives ctx
 	// itself, so every Dex API behaves as it does in a Step.
@@ -333,10 +334,7 @@ func (tool mutationAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments jso
 	if ctx != nil {
 		callID := deriveCallID(ctx.FlowID(), ctx.StepExecutionID(), tool.metadata.Operation)
 		var endObservation func()
-		observation, endObservation = fenceobservation.Begin(fenceobservation.AttemptIdentity{
-			CallID: string(callID), ConnectionProvider: tool.connection.Provider,
-			ConnectionName: tool.connection.Name, Attempt: ctx.Attempt(),
-		})
+		observation, endObservation = fenceobservation.Begin(fenceobservation.AttemptIdentity{CallID: string(callID), Attempt: ctx.Attempt()})
 		defer endObservation()
 	}
 	result, runErr := runMutationWithTrace(ctx, tool.operation, tool.connection, input, trace)

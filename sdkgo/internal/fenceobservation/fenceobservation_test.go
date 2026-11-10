@@ -10,23 +10,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var workAttemptTwo = AttemptIdentity{CallID: "call-1", ConnectionProvider: "chat", ConnectionName: "work", Attempt: 2}
+var workAttemptTwo = AttemptIdentity{CallID: "call-1", Attempt: 2}
 
 func TestObservationFollowsFenceEventsOfItsIdentity(t *testing.T) {
 	observation, endObservation := Begin(workAttemptTwo)
 	defer endObservation()
 	require.False(t, observation.MayHaveDispatched())
 
-	for _, other := range []AttemptIdentity{
-		{CallID: "call-1", ConnectionProvider: "chat", ConnectionName: "work", Attempt: 1},
-		{CallID: "call-2", ConnectionProvider: "chat", ConnectionName: "work", Attempt: 2},
-		{CallID: "call-1", ConnectionProvider: "chat", ConnectionName: "personal", Attempt: 2},
-		{CallID: "call-1", ConnectionProvider: "mail", ConnectionName: "work", Attempt: 2},
-	} {
+	for _, other := range []AttemptIdentity{{CallID: "call-1", Attempt: 1}, {CallID: "call-2", Attempt: 2}} {
 		ReportClaimed(other)
 		ReportDecision(other, false)
 	}
-	require.False(t, observation.MayHaveDispatched(), "another attempt, call, or connection does not change it")
+	require.False(t, observation.MayHaveDispatched(), "another attempt or call does not change it")
 
 	ReportDecision(workAttemptTwo, true)
 	require.False(t, observation.MayHaveDispatched())

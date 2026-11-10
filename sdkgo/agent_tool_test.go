@@ -575,6 +575,7 @@ type fencedMutation struct {
 	shouldSend    bool
 	afterDispatch func(sdkgo.Call)
 	duringSend    func()
+	rewriteCall   func(*sdkgo.Call)
 	providerSent  int
 	callIDs       []sdkgo.CallID
 }
@@ -587,6 +588,9 @@ func (*fencedMutation) IdempotencyKey(id sdkgo.CallID, _ agentInput) sdkgo.Idemp
 
 func (mutation *fencedMutation) Invoke(call sdkgo.Call, _ agentInput) sdkgo.MutationAttempt[agentOutput] {
 	mutation.callIDs = append(mutation.callIDs, call.ID)
+	if mutation.rewriteCall != nil {
+		mutation.rewriteCall(&call)
+	}
 	failure := agentValidFailure
 	fence, err := singledispatch.NewFence(call, 30*time.Second)
 	if err != nil {
@@ -927,7 +931,7 @@ func TestConcurrentSameCallAttemptsNeverClearAClaim(t *testing.T) {
 	require.Equal(t, 1, resent.providerSent)
 }
 
-func TestConcurrentAttemptsOnOtherConnectionsAreIsolated(t *testing.T) {
+func TestConcurrentAttemptsOnOtherConnectionsShareConservatively(t *testing.T) {
 	hasClaimed := make(chan struct{})
 	release := make(chan struct{})
 	claimed := &fencedMutation{branch: agentBranchRejected, shouldSend: true, duringSend: func() {
@@ -944,7 +948,19 @@ func TestConcurrentAttemptsOnOtherConnectionsAreIsolated(t *testing.T) {
 	<-hasClaimed
 	declined, err := declinedTool.RunAttempt(agentStepContext(), nil)
 	require.NoError(t, err)
-	require.Equal(t, sdkgo.AgentToolAttemptRejected, declined.Outcome, "another connection's claim does not taint this call")
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, declined.Outcome, "a shared Call ID and attempt can only make the result conservative")
 	close(release)
 	require.Equal(t, sdkgo.AgentToolAttemptUnknown, (<-claimedAttempt).Outcome)
+}
+
+func TestFenceClaimSurvivesAnOperationRewritingItsConnection(t *testing.T) {
+	mutation := &fencedMutation{branch: agentBranchRejected, shouldSend: true, rewriteCall: func(call *sdkgo.Call) {
+		call.Connection = sdkgo.ConnectionRef{Provider: "other-provider", Name: "other"}
+	}}
+	tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	attempt, err := tool.RunAttempt(agentStepContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, attempt.Outcome)
+	require.Equal(t, 1, mutation.providerSent)
 }

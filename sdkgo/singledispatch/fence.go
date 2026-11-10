@@ -270,10 +270,7 @@ func (fence *Fence) record(marker Marker) error {
 }
 
 func (fence *Fence) attemptIdentity() fenceobservation.AttemptIdentity {
-	return fenceobservation.AttemptIdentity{
-		CallID: string(fence.call.ID), ConnectionProvider: fence.call.Connection.Provider,
-		ConnectionName: fence.call.Connection.Name, Attempt: fence.call.Context.Attempt(),
-	}
+	return fenceobservation.AttemptIdentity{CallID: string(fence.call.ID), Attempt: fence.call.Context.Attempt()}
 }
 
 func (fence *Fence) repeatClaim(claim Marker, stop <-chan struct{}, stopped chan<- struct{}) {
