@@ -487,6 +487,31 @@ different target. A rebound key settles from its evidence and nothing runs:
 
 A new key after a rebind runs normally against the new target.
 
+The check uses the tool set as it is when the call holds the key's lock, never
+the one in effect when the request arrived. A request that waited on the lock
+while the connection was rebound therefore sees the new target. Before every
+attempt the call resolves the tool from a current snapshot, compares that
+binding's target with `connectionTarget`, and runs the attempt with the tool
+from the same snapshot:
+
+- **New key.** The record's `connectionTarget` and the first attempt come from
+  the snapshot taken after the lock.
+- **Resumed key.** The binding comes from the snapshot taken after the lock.
+- **Inline retry.** A new snapshot is taken after each retry delay.
+
+A tool that is gone, or a different target, settles the key as above.
+
+**Residual window.** A Dex Web rebind can land during an attempt's own
+execution, after the target check passed and before the connector sends. The
+server does not close this window. sdkgo `projectconfig` reads the credential
+from `connections.json` when the connector resolves it, so such an attempt can
+combine the checked target and settings with the new account's credential.
+
+The planned fix is a guard in sdkgo `projectconfig`. It would resolve the
+credential and the connection target, including Dex Web's upcoming
+`authorizationId`, from one snapshot, and refuse a credential whose target no
+longer matches. It is tracked in superdurable/dex-connectors-library#655.
+
 Detected, because the fingerprint changes:
 
 - any change to the connection's non-secret settings: endpoint or base URL,
@@ -513,7 +538,9 @@ To detect the first case:
 
 - Dex Web would store a non-secret, provider-verified account identity in each
   connection record, captured at authorization: the OAuth or OIDC `sub`, Slack
-  `team_id` and `user_id`, or a Google account `sub`.
+  `team_id` and `user_id`, or a Google account `sub`. The planned Dex Web
+  `authorizationId` may serve this purpose if it changes only when the account
+  changes.
   - Keep it across credential refresh and write-back.
   - Change it only when re-authorization yields another account.
 - `projectconfig` would expose that identity, and `authMethodIds`, on

@@ -207,8 +207,7 @@ func (call *toolCall) runKeyed(ctx context.Context, key string) callAnswer {
 	return call.resumeRecordedCall(ctx, lock, &record, key)
 }
 
-// useCurrentToolSet replaces the tool set pinned at request entry with the
-// current one, so a key's attempts use the binding that holds now.
+// useCurrentToolSet replaces the request-entry tool set so a key's attempts use today's binding.
 func (call *toolCall) useCurrentToolSet(ctx context.Context) {
 	call.toolSet = call.executor.currentToolSet(context.WithoutCancel(ctx))
 	call.binding = call.toolSet.toolByName(call.name)
