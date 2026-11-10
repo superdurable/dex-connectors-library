@@ -9,13 +9,13 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Query
 
 from ..client import (
-    CONNECTOR_ID,
     FAILURE_PROVIDER,
     FOUND,
     GET_ITEM_DEFINITION,
     LIST_STORY_IDS_DEFINITION,
     LISTED,
     NOT_FOUND,
+    PROVIDER,
     PROVIDER_REJECTED,
 )
 from ..connection import Connection, new_connection_with_operations
@@ -99,7 +99,7 @@ class Mock:
         self.get_item_script: Query[GetItemInput, Item] = Query(GET_ITEM_DEFINITION)
         self.get_item_script.default(get_item_compiler_story())
         self._connection = new_connection_with_operations(
-            self.list_story_ids_script, self.get_item_script, ConnectionRef(CONNECTOR_ID, connection_name)
+            self.list_story_ids_script, self.get_item_script, ConnectionRef(PROVIDER, connection_name)
         )
 
     def connection(self) -> Connection:

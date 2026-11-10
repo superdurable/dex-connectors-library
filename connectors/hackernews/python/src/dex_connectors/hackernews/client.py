@@ -15,7 +15,6 @@ from dex_connectors.sdk import (
     Call,
     Failure,
     FailureKind,
-    OperationRef,
     QueryAttempt,
     QueryDefinition,
     Receipt,
@@ -44,24 +43,17 @@ from ._generated.definitions import NOT_FOUND as NOT_FOUND
 from ._generated.definitions import PROVIDER_REJECTED as PROVIDER_REJECTED
 from .models import GetItemInput, Item, ListStoryIDsInput, StoryIDs
 
-CONNECTOR_ID = "hackernews"
-FAILURE_PROVIDER = "hacker-news"
+CONNECTOR_ID = _generated_definitions.CONNECTOR_ID
+PROVIDER = _generated_definitions.PROVIDER
+FAILURE_PROVIDER = PROVIDER
 FEEDS = ("top", "best", "new", "ask", "show")
 ITEM_TYPES = ("story", "comment", "job", "poll", "pollopt")
 _DEFAULT_BASE_URL = "https://hacker-news.firebaseio.com/v0"
 _DEFAULT_TIMEOUT_SECONDS = 15
 _DEFAULT_MAX_RESPONSE_BYTES = 1_048_576
 
-LIST_STORY_IDS_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, LIST_STORY_IDS_OPERATION_ID),
-    _generated_definitions.LIST_STORY_IDS_DEFINITION.branches or (),
-    _generated_definitions.LIST_STORY_IDS_DEFINITION.step_defaults,
-)
-GET_ITEM_DEFINITION = QueryDefinition(
-    OperationRef(CONNECTOR_ID, GET_ITEM_OPERATION_ID),
-    _generated_definitions.GET_ITEM_DEFINITION.branches or (),
-    _generated_definitions.GET_ITEM_DEFINITION.step_defaults,
-)
+LIST_STORY_IDS_DEFINITION: QueryDefinition = _generated_definitions.LIST_STORY_IDS_DEFINITION
+GET_ITEM_DEFINITION: QueryDefinition = _generated_definitions.GET_ITEM_DEFINITION
 
 Output = TypeVar("Output")
 
