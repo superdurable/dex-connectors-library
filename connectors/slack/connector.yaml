@@ -15,7 +15,7 @@ spec:
       operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: "@superdurable/connector-slack"
       operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
