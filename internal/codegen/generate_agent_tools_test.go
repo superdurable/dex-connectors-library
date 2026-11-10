@@ -31,8 +31,7 @@ func TestGenerateAgentToolsMatchesGolden(t *testing.T) {
 	require.Equal(t, string(golden), string(generated), "run go test ./internal/codegen -run MatchesGolden -update-golden")
 }
 
-// TestGeneratedAgentToolsBehave compiles the generated connector, mock package, and agent tools against the
-// local SDK source, so the SDK constructors validate every generated metadata value against its definition.
+// TestGeneratedAgentToolsBehave compiles against local sdkgo, whose constructors check every generated metadata value.
 func TestGeneratedAgentToolsBehave(t *testing.T) {
 	manifest, operations := loadAgentToolsFixture(t)
 	agentTools, err := codegen.GenerateAgentTools(manifest, operations)

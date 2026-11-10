@@ -21,9 +21,7 @@ const AgentToolsOutputFile = "zz_generated_agent_tools.go"
 // defines sdkgo.AgentToolMetadata and the agent tool constructors.
 const AgentToolsMinimumSDKVersion = "v0.35.0"
 
-// AgentToolOperation is the reviewed agent surface of one exposed operation.
-// connectorctl derives it from the manifest and the connector's Go models;
-// GenerateAgentTools only renders it.
+// AgentToolOperation is one exposed operation's agent surface; connectorctl derives it and GenerateAgentTools renders it.
 type AgentToolOperation struct {
 	// Operation is the manifest operation; its agent block must expose it.
 	Operation schema.Operation

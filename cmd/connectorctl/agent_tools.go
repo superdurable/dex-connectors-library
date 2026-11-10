@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
 	"github.com/superdurable/dex-connectors-library/internal/codegen"
+	"github.com/superdurable/dex-connectors-library/internal/codegen/gomodel"
 	"github.com/superdurable/dex-connectors-library/schema"
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/semver"
@@ -18,7 +20,7 @@ import (
 
 const connectorSDKModulePath = "github.com/superdurable/dex-connectors-library/sdkgo"
 
-// generatedAgentToolFiles returns the Go agent tools file of a connector that has adopted agent tools.
+// generatedAgentToolFiles returns the agent tools file of a Go module that has adopted them.
 func generatedAgentToolFiles(manifestPath string, manifest schema.Manifest) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	hasAdopted, err := hasAdoptedGoAgentTools(manifestPath, manifest)
@@ -37,7 +39,7 @@ func generatedAgentToolFiles(manifestPath string, manifest schema.Manifest) (map
 	return files, nil
 }
 
-// staleAgentToolFiles lists an agent tools file that a connector which has not adopted agent tools must not keep.
+// staleAgentToolFiles lists an agent tools file left in a Go module that has not adopted them.
 func staleAgentToolFiles(manifestPath string, manifest schema.Manifest) ([]string, error) {
 	hasAdopted, err := hasAdoptedGoAgentTools(manifestPath, manifest)
 	if err != nil || hasAdopted {
@@ -52,10 +54,7 @@ func staleAgentToolFiles(manifestPath string, manifest schema.Manifest) ([]strin
 	return nil, nil
 }
 
-// hasAdoptedGoAgentTools reports whether the Go module offers agent tools: the manifest exposes an
-// operation and go/go.mod requires a Connector Go SDK that defines them. Until the module raises its
-// SDK requirement, exposure reaches only the Python and TypeScript packages, and the generated code
-// never references SDK API the module cannot compile against.
+// hasAdoptedGoAgentTools requires an exposed operation and a go.mod SDK release that defines agent tools.
 func hasAdoptedGoAgentTools(manifestPath string, manifest schema.Manifest) (bool, error) {
 	if len(codegen.ExposedAgentOperations(manifest)) == 0 {
 		return false, nil
@@ -68,6 +67,7 @@ func hasAdoptedGoAgentTools(manifestPath string, manifest schema.Manifest) (bool
 	return semver.Compare(sdkVersion, codegen.AgentToolsMinimumSDKVersion) >= 0, nil
 }
 
+// requiredConnectorSDKVersion rejects a replace or non-release version, which the gate cannot trust to compile.
 func requiredConnectorSDKVersion(goModulePath string) (string, error) {
 	contents, err := os.ReadFile(goModulePath)
 	if err != nil {
@@ -77,19 +77,25 @@ func requiredConnectorSDKVersion(goModulePath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse connector module %s: %w", goModulePath, err)
 	}
-	for _, requirement := range module.Require {
-		if requirement.Mod.Path == connectorSDKModulePath {
-			if !semver.IsValid(requirement.Mod.Version) {
-				return "", fmt.Errorf("connector module %s requires %s at invalid version %q", goModulePath, connectorSDKModulePath, requirement.Mod.Version)
-			}
-			return requirement.Mod.Version, nil
+	for _, replacement := range module.Replace {
+		if replacement.Old.Path == connectorSDKModulePath {
+			return "", fmt.Errorf("connector module %s replaces %s; require a released version instead", goModulePath, connectorSDKModulePath)
 		}
+	}
+	for _, requirement := range module.Require {
+		if requirement.Mod.Path != connectorSDKModulePath {
+			continue
+		}
+		version := requirement.Mod.Version
+		if !semver.IsValid(version) || semver.Prerelease(version) != "" || semver.Build(version) != "" {
+			return "", fmt.Errorf("connector module %s requires %s at %q, which is not a released version", goModulePath, connectorSDKModulePath, version)
+		}
+		return version, nil
 	}
 	return "", fmt.Errorf("connector module %s exposes operations to agents but does not require %s", goModulePath, connectorSDKModulePath)
 }
 
-// agentToolOperations derives every exposed operation's agent surface from the manifest and the Go models.
-// It does not depend on the SDK requirement, so parity tests cover connectors that have not adopted Go agent tools.
+// agentToolOperations ignores the SDK requirement, so parity tests also cover modules that have not adopted.
 func agentToolOperations(manifestPath string, manifest schema.Manifest) ([]codegen.AgentToolOperation, error) {
 	exposedOperations := codegen.ExposedAgentOperations(manifest)
 	if len(exposedOperations) == 0 {
@@ -103,18 +109,10 @@ func agentToolOperations(manifestPath string, manifest schema.Manifest) ([]codeg
 	if !hasAuthoredGoTypes {
 		return nil, fmt.Errorf("agent tools require authored Go operation types in %s", goDirectory)
 	}
-	// The language package roots come first, so an exposed operation they list gets their exact schema.
-	selectedOperations := languageSelectedOperations(manifest)
-	for _, operation := range exposedOperations {
-		selectedOperations[operation.Name] = true
-	}
-	inputModels, err := loadOperationInputModels(goDirectory, manifest, selectedOperations)
-	if err != nil {
-		return nil, err
-	}
+	schemas := agentToolInputSchemas{goDirectory: goDirectory, manifest: manifest, languageOperations: languageSelectedOperations(manifest)}
 	operations := make([]codegen.AgentToolOperation, 0, len(exposedOperations))
 	for _, operation := range exposedOperations {
-		inputSchema, err := inputModels.JSONSchema(operation.InputType)
+		inputSchema, err := schemas.inputSchema(operation)
 		if err != nil {
 			return nil, fmt.Errorf("agent tool %s input schema: %w", operation.Name, err)
 		}
@@ -130,6 +128,35 @@ func agentToolOperations(manifestPath string, manifest schema.Manifest) ([]codeg
 		})
 	}
 	return operations, nil
+}
+
+// agentToolInputSchemas loads graphs whose roots never differ from the language packages' roots.
+type agentToolInputSchemas struct {
+	goDirectory        string
+	manifest           schema.Manifest
+	languageOperations map[string]bool
+	languageModels     *gomodel.Graph
+}
+
+// inputSchema reuses the language graph for listed operations, because an extra root can rename shared models.
+func (schemas *agentToolInputSchemas) inputSchema(operation schema.Operation) (map[string]any, error) {
+	if schemas.languageOperations[operation.Name] {
+		if schemas.languageModels == nil {
+			languageModels, err := loadOperationInputModels(schemas.goDirectory, schemas.manifest, schemas.languageOperations)
+			if err != nil {
+				return nil, err
+			}
+			schemas.languageModels = languageModels
+		}
+		return schemas.languageModels.JSONSchema(operation.InputType)
+	}
+	roots := maps.Clone(schemas.languageOperations)
+	roots[operation.Name] = true
+	models, err := loadOperationInputModels(schemas.goDirectory, schemas.manifest, roots)
+	if err != nil {
+		return nil, err
+	}
+	return models.JSONSchema(operation.InputType)
 }
 
 // agentToolName uses the snake case of pythonStepFactoryName, which sdkgo also requires.

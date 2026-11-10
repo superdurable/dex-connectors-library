@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -36,8 +37,7 @@ func TestAgentToolNamesMatchPythonFactoriesAndSDKVectors(t *testing.T) {
 	}
 }
 
-// Every exposed operation in the catalog, whether or not its Go module has adopted agent tools, carries the
-// same reviewed metadata in Go as in the Python and TypeScript dex-connector.json that list it.
+// Exposed catalog operations match each dex-connector.json listing them, whether or not Go adopted agent tools.
 func TestCatalogAgentToolMetadataMatchesLanguagePackageManifests(t *testing.T) {
 	comparedFactories := 0
 	for _, directory := range registeredConnectorDirectories(t) {
@@ -121,6 +121,89 @@ func TestAgentToolsRequireTheModuleToDeclareTheSDK(t *testing.T) {
 	require.ErrorContains(t, generate([]string{manifestPath}), "exposes operations to agents but does not require github.com/superdurable/dex-connectors-library/sdkgo")
 }
 
+// The gate trusts only a released sdkgo requirement; AGENTS.md forbids replace and non-release versions anyway.
+func TestAgentToolsRejectAReplacedOrUnreleasedSDK(t *testing.T) {
+	for name, test := range map[string]struct {
+		version string
+		replace string
+		problem string
+	}{
+		"replace by path":    {version: "v0.35.0", replace: " => ../../../sdkgo", problem: "replaces github.com/superdurable/dex-connectors-library/sdkgo"},
+		"replace by version": {version: "v0.35.0", replace: " => " + connectorSDKModulePath + " v0.30.0", problem: "replaces github.com/superdurable/dex-connectors-library/sdkgo"},
+		"pseudo-version":     {version: "v0.35.1-0.20261101000000-abcdefabcdef", problem: "is not a released version"},
+		"prerelease":         {version: "v0.35.0-rc.1", problem: "is not a released version"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			manifestPath, _ := copyTypeScriptGoldenConnector(t)
+			goDirectory := filepath.Join(filepath.Dir(manifestPath), "go")
+			source, err := os.ReadFile(manifestPath)
+			require.NoError(t, err)
+			exposed := strings.Replace(string(source), "      inputType: ListStoryIDsInput\n", "      inputType: ListStoryIDsInput\n      agent: {exposed: true}\n", 1)
+			require.NoError(t, os.WriteFile(manifestPath, []byte(exposed), 0o600))
+			setConnectorSDKRequirement(t, goDirectory, test.version)
+			if test.replace != "" {
+				goModulePath := filepath.Join(goDirectory, "go.mod")
+				contents, err := os.ReadFile(goModulePath)
+				require.NoError(t, err)
+				contents = append(contents, []byte("\nreplace "+connectorSDKModulePath+test.replace+"\n")...)
+				require.NoError(t, os.WriteFile(goModulePath, contents, 0o600))
+			}
+
+			require.ErrorContains(t, generate([]string{manifestPath}), test.problem)
+			require.ErrorContains(t, run([]string{"validate", manifestPath}), test.problem)
+			require.NoFileExists(t, filepath.Join(goDirectory, codegen.AgentToolsOutputFile))
+		})
+	}
+}
+
+// A Go-only exposed operation must not rename the models that language-listed operations publish.
+func TestGoOnlyAgentToolKeepsLanguageInputSchemas(t *testing.T) {
+	t.Setenv("GOWORK", "off")
+	connectorDirectory := t.TempDir()
+	goDirectory := filepath.Join(connectorDirectory, "go")
+	for path, contents := range map[string]string{
+		"go.mod": "module example.com/acme\n\ngo 1.24.0\n",
+		"models.go": "package acme\n\nimport (\n\tfirst \"example.com/acme/first/provider\"\n\tsecond \"example.com/acme/second/provider\"\n)\n\n" +
+			"// ListedInput is listed by the language packages.\ntype ListedInput struct {\n\tItem first.Item `json:\"item\"`\n}\n\n" +
+			"// GoOnlyInput is exposed only from Go.\ntype GoOnlyInput struct {\n\tItem second.Item `json:\"item\"`\n}\n",
+		filepath.Join("first", "provider", "item.go"):  "package provider\n\n// Item is the first provider item.\ntype Item struct {\n\tName string `json:\"name\"`\n}\n",
+		filepath.Join("second", "provider", "item.go"): "package provider\n\n// Item is the second provider item.\ntype Item struct {\n\tCount int `json:\"count\"`\n}\n",
+	} {
+		require.NoError(t, os.MkdirAll(filepath.Dir(filepath.Join(goDirectory, path)), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(goDirectory, path), []byte(contents), 0o600))
+	}
+	exposed := true
+	operation := func(name, inputType string) schema.Operation {
+		return schema.Operation{Name: name, GoName: "X" + name, InputType: inputType, Kind: "query", Description: "Read " + name + ".", Agent: &schema.OperationAgent{Exposed: &exposed}}
+	}
+	manifest := schema.Manifest{Metadata: schema.Metadata{Name: "acme"}}
+	manifest.Spec.Operations = []schema.Operation{operation("getListed", "ListedInput"), operation("getGoOnly", "GoOnlyInput")}
+	manifest.Spec.Languages = &schema.Languages{Python: &schema.LanguagePackage{Operations: []string{"getListed"}}}
+	manifestPath := filepath.Join(connectorDirectory, "connector.yaml")
+
+	operations, err := agentToolOperations(manifestPath, manifest)
+
+	require.NoError(t, err)
+	require.Len(t, operations, 2)
+	languageModels, err := languageOperationInputModels(manifestPath, manifest)
+	require.NoError(t, err)
+	languageSchema, err := languageModels.JSONSchema("ListedInput")
+	require.NoError(t, err)
+	encodedLanguageSchema, err := encodeCompactJSON(languageSchema)
+	require.NoError(t, err)
+	require.Equal(t, string(encodedLanguageSchema), string(operations[0].InputSchema))
+	require.Contains(t, string(operations[0].InputSchema), `"$defs":{"providerItem":`, "the language schema keeps the short model name")
+	combinedModels, err := loadOperationInputModels(goDirectory, manifest, map[string]bool{"getListed": true, "getGoOnly": true})
+	require.NoError(t, err)
+	combinedSchema, err := combinedModels.JSONSchema("ListedInput")
+	require.NoError(t, err)
+	encodedCombinedSchema, err := encodeCompactJSON(combinedSchema)
+	require.NoError(t, err)
+	require.NotEqual(t, string(encodedLanguageSchema), string(encodedCombinedSchema), "the fixture's model names collide when both are roots")
+	require.Contains(t, string(operations[1].InputSchema), `"count"`)
+	require.NotContains(t, string(operations[1].InputSchema), `"name"`)
+}
+
 // requireAgentToolsMatchLanguageManifest compares every listed exposed operation and returns how many it compared.
 func requireAgentToolsMatchLanguageManifest(t *testing.T, path string, contents []byte, manifest schema.Manifest, operations []codegen.AgentToolOperation) int {
 	t.Helper()
@@ -172,19 +255,26 @@ func pythonFactoryOperationName(t *testing.T, factoryName string) string {
 	return operationName
 }
 
-// requireLocalSDKRelease makes a copied connector require version of sdkgo, served from the local source.
+// requireLocalSDKRelease requires an unpublished sdkgo version and serves it through a temporary go.work replace.
 func requireLocalSDKRelease(t *testing.T, goDirectory, version string) {
 	t.Helper()
 	sdkDirectory, err := filepath.Abs(filepath.Join("..", "..", "sdkgo"))
 	require.NoError(t, err)
+	setConnectorSDKRequirement(t, goDirectory, version)
+	workspacePath := filepath.Join(t.TempDir(), "go.work")
+	workspace := "go 1.24.0\n\nuse " + strconv.Quote(goDirectory) + "\n\nreplace " + connectorSDKModulePath + " => " + strconv.Quote(sdkDirectory) + "\n"
+	require.NoError(t, os.WriteFile(workspacePath, []byte(workspace), 0o600))
+	t.Setenv("GOWORK", workspacePath)
+	t.Setenv("GOFLAGS", "")
+}
+
+func setConnectorSDKRequirement(t *testing.T, goDirectory, version string) {
+	t.Helper()
 	goModulePath := filepath.Join(goDirectory, "go.mod")
 	contents, err := os.ReadFile(goModulePath)
 	require.NoError(t, err)
 	required, err := requiredConnectorSDKVersion(goModulePath)
 	require.NoError(t, err)
 	updated := strings.Replace(string(contents), connectorSDKModulePath+" "+required, connectorSDKModulePath+" "+version, 1)
-	updated += "\nreplace " + connectorSDKModulePath + " => " + sdkDirectory + "\n"
 	require.NoError(t, os.WriteFile(goModulePath, []byte(updated), 0o600))
-	t.Setenv("GOWORK", "off")
-	t.Setenv("GOFLAGS", "-mod=mod")
 }

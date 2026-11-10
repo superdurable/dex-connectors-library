@@ -653,7 +653,10 @@ again.
 A module that requires an earlier `sdkgo` gets no file, and its exposure reaches
 only the Python and TypeScript packages. `connectorctl generate --check` and
 `connectorctl validate` reject a leftover file there, or in a module whose
-manifest no longer exposes an operation.
+manifest no longer exposes an operation. Once a manifest exposes an operation,
+both commands also reject a `go/go.mod` that replaces `sdkgo` or requires a
+pseudo-version or prerelease of it, because the version gate cannot tell
+whether such a module compiles the generated code.
 
 To offer the tools from Go:
 

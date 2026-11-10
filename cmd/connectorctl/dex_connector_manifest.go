@@ -186,8 +186,7 @@ func languageSelectedOperations(manifest schema.Manifest) map[string]bool {
 	return selectedOperations
 }
 
-// loadOperationInputModels loads the input models of the selected operations as roots in manifest order.
-// Model names depend on the root set, so every caller that must agree on a schema selects the same roots.
+// loadOperationInputModels roots the graph at selected inputs in manifest order; the root set decides model names.
 func loadOperationInputModels(goDirectory string, manifest schema.Manifest, selectedOperations map[string]bool) (*gomodel.Graph, error) {
 	var inputTypes []string
 	for _, operation := range manifest.Spec.Operations {
