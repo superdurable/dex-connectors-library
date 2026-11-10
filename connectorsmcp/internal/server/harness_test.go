@@ -102,6 +102,7 @@ type harnessOptions struct {
 	callTimeBudget  time.Duration
 	maxResultBytes  int
 	extraConnectors []registry.LinkedConnector
+	allowedHosts    []string
 	observe         func(ProtocolPoint, string)
 }
 
@@ -133,9 +134,11 @@ func newTestHarness(t *testing.T, options harnessOptions) *testHarness {
 	harness.server, err = New(context.Background(), &Config{
 		Version: "0.1.0-test", InstanceID: "instance-test",
 		ToolSet: ToolSetConfig{Registry: linked, ConnectionsFile: harness.connectionsFile, Selection: options.selection, Logger: logger},
-		Store:   store, CallTimeBudget: options.callTimeBudget, CallStateRetention: 720 * time.Hour,
+		Store:   store, AllowedHosts: options.allowedHosts, CallTimeBudget: options.callTimeBudget, CallStateRetention: 720 * time.Hour,
 		MaxResultBytes: options.maxResultBytes, Clock: harness.clock, ObserveProtocolPoint: options.observe,
-		OnToolSetChange: func(toolSet *ToolSet, _ *string) { harness.toolSetChanges = append(harness.toolSetChanges, toolSet.Digest()) },
+		OnToolSetChange: func(toolSet *ToolSet, _ *string) {
+			harness.toolSetChanges = append(harness.toolSetChanges, toolSet.Digest())
+		},
 	})
 	require.NoError(t, err)
 	harness.httpServer = httptest.NewServer(harness.server.Handler())
