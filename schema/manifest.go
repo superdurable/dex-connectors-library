@@ -5,6 +5,7 @@
 package schema
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/url"
@@ -498,11 +499,18 @@ var studioCommandReservedHeaders = map[string]bool{
 }
 
 func Decode(reader io.Reader) (Manifest, error) {
-	decoder := yaml.NewDecoder(reader)
+	contents, err := io.ReadAll(reader)
+	if err != nil {
+		return Manifest{}, fmt.Errorf("read manifest: %w", err)
+	}
+	decoder := yaml.NewDecoder(bytes.NewReader(contents))
 	decoder.KnownFields(true)
 	var manifest Manifest
 	if err := decoder.Decode(&manifest); err != nil {
 		return Manifest{}, fmt.Errorf("decode manifest: %w", err)
+	}
+	if err := requireDeclaredOAuthPKCE(contents); err != nil {
+		return Manifest{}, err
 	}
 	manifest.setImplicitAuthDefaults()
 	if err := manifest.Validate(); err != nil {
@@ -512,6 +520,51 @@ func Decode(reader io.Reader) (Manifest, error) {
 		sort.Strings(manifest.Spec.Operations[index].Progress)
 	}
 	return manifest, nil
+}
+
+// requireDeclaredOAuthPKCE rejects an oauth2 block without pkce, as the JSON Schema does; the bool field cannot
+// distinguish an omitted pkce from false.
+func requireDeclaredOAuthPKCE(contents []byte) error {
+	var document yaml.Node
+	if err := yaml.Unmarshal(contents, &document); err != nil {
+		return fmt.Errorf("decode manifest: %w", err)
+	}
+	if len(document.Content) == 0 {
+		return nil
+	}
+	auth := yamlMappingValue(yamlMappingValue(document.Content[0], "spec"), "auth")
+	var problems []string
+	if oauth := yamlMappingValue(auth, "oauth2"); oauth != nil && yamlMappingValue(oauth, "pkce") == nil {
+		problems = append(problems, "spec.auth oauth2 requires pkce")
+	}
+	if methods := yamlMappingValue(auth, "methods"); methods != nil && methods.Kind == yaml.SequenceNode {
+		for index, method := range methods.Content {
+			if oauth := yamlMappingValue(method, "oauth2"); oauth != nil && yamlMappingValue(oauth, "pkce") == nil {
+				methodID := ""
+				if idNode := yamlMappingValue(method, "id"); idNode != nil {
+					methodID = idNode.Value
+				}
+				problems = append(problems, fmt.Sprintf("spec.auth method %s (index %d) oauth2 requires pkce", methodID, index))
+			}
+		}
+	}
+	if len(problems) > 0 {
+		return fmt.Errorf("invalid connector manifest: %s", strings.Join(problems, "; "))
+	}
+	return nil
+}
+
+// yamlMappingValue returns the value node for key, or nil when node is not a mapping or lacks key.
+func yamlMappingValue(node *yaml.Node, key string) *yaml.Node {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return nil
+	}
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		if node.Content[index].Value == key {
+			return node.Content[index+1]
+		}
+	}
+	return nil
 }
 
 func (manifest *Manifest) setImplicitAuthDefaults() {
