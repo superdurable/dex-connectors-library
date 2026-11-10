@@ -992,6 +992,99 @@ pass it. Generated mock packages decode their manifest fixtures with it.
 Mocks never write progress or text Streams and never resolve credentials. The
 package imports `testing`; keep it in test code.
 
+## Agent tools
+
+An agent host, such as an MCP server, can offer a reviewed connector operation
+to a model as a tool. This needs `sdkgo` v0.35.0 or later. Generated connector
+code supplies an `AgentToolMetadata` per operation whose manifest sets
+`agent.exposed: true`; see
+[Agent tool metadata](../docs/manifest-authoring.md#agent-tool-metadata).
+`NewQueryAgentTool` and `NewMutationAgentTool` bind the operation to one
+connection and return a sealed `AgentTool`. They reject metadata that does not
+match the operation definition: another operation or kind, branches or Step
+defaults that differ, an `agent.branches` key that is not an optional branch,
+`unknown` on a Query, `uncertain` listed as `rejected`, `IsRetrySafe` on a
+Query, or a `ToolName` other than the connector ID, an underscore, and the
+operation ID in connectorctl's snake case (`listStoryIDs` is
+`list_story_ids`). The vectors in `testdata/agent_tool_names.json` hold the
+SDK and connectorctl to the same snake case.
+
+`Effect()` gives the Dex MCP effect class: `read` for a Query,
+`idempotent_write` for a Mutation with `agent.retry: safe`, and
+`non_idempotent_write` otherwise.
+
+`RunAttempt(ctx, arguments)` decodes the JSON arguments strictly into the
+operation input (one object, no unknown fields or trailing data; empty means
+`{}`) and runs exactly one attempt through `RunQuery` or `RunMutation`. The
+host supplies a Dex Step context whose Flow ID and Step execution ID stay the
+same for every attempt of one tool call, because the Call ID and the provider
+idempotency key derive from them. The attempt is classified in this order:
+
+1. `uncertain` is `unknown`.
+2. A Mutation `defect` is `unknown`, whatever `agent.branches` says and
+   whether the connector or the SDK selected it.
+3. A required branch other than `defect` is `succeeded`.
+4. On a Mutation that uses the `singledispatch` Fence, any other branch is
+   `unknown` when the Fence cannot prove that no request reached the
+   provider: this attempt recorded a `claimed` checkpoint, even when
+   `canResend` followed, or `Decide` withheld a send because of the prior
+   checkpoint.
+5. A branch listed in `agent.branches` takes its listed outcome.
+6. An unlisted Mutation branch is `unknown`.
+7. An unlisted Query branch, including `defect`, is `failed`: the read changed
+   nothing, but correcting the input is not known to help. A listed `rejected`
+   Query branch, including `defect`, is `rejected`.
+
+Rules 1, 2, 5, 6, and 7 match the in-process classification of Dex agents, so
+a tool behaves the same in process and through an MCP server. Rule 4 is a
+safety net, not a substitute for the listing. Dex shows a recorded
+heartbeat only to the next attempt, so the Fence itself reports its decision
+and its `claimed` checkpoints for the call's Call ID and attempt while
+RunAttempt runs. Heartbeats that the operation records itself do not
+change the result, and the operation receives the host's own context, so
+every Dex API behaves as in a Step. Nothing clears a possible dispatch: an
+attempt that sent, saw `canResend`, and then selected a `rejected` branch is
+`unknown`, and concurrent attempts with the same Call ID and attempt, which
+share one observation even on other connections, can only become more
+conservative. A Mutation with its own checkpoint, or
+none, is classified by its listing alone: list every branch the operation can
+select after the request may have been sent as `unknown`.
+
+A connector Retry returns the outcome `retry` with the Failure and any
+`RetryAfter`, and the host decides whether to repeat. `HasInvokedOperation`
+is false when the attempt ended before `Invoke`, so the provider was not
+called. RunAttempt returns an error instead of an attempt when arguments do
+not decode (`ErrAgentToolArgumentsInvalid`), the operation panics
+(`ErrAgentToolPanicked`), or the result value does not encode as JSON
+(`ErrAgentToolResultUnencodable`); only `HasInvokedOperation` is meaningful
+then. Error text names a category or a Go type, never argument or result
+content, so a host may log it.
+
+From [`agent_tool_example_test.go`](agent_tool_example_test.go):
+
+```go
+tool, err := sdkgo.NewMutationAgentTool(postReplyMutation{}, sdkgo.ConnectionRef{Provider: "example-chat", Name: "work"}, metadata)
+if err != nil {
+	fmt.Println(err)
+	return
+}
+fmt.Println(tool.Metadata().ToolName, tool.Metadata().Effect())
+
+ctx := singledispatchtest.NewContext("agent-host", "tool-call-1")
+for _, arguments := range []string{`{"text":"On it."}`, `{"text":""}`, `{"text":"hi","channel":"C1"}`} {
+	attempt, err := tool.RunAttempt(ctx, json.RawMessage(arguments))
+	if err != nil {
+		fmt.Println("error:", err)
+		continue
+	}
+	fmt.Println(attempt.Outcome, attempt.Branch, string(attempt.Value))
+}
+```
+
+The example uses the `singledispatchtest` fake context; a host runs attempts
+with its own Step context. An agent host loads a Dex Web `connections.json`
+by path with `projectconfig.LoadDexWebConnectionsFile`.
+
 ## Trigger bindings
 
 Project configuration stores named connections and named Trigger bindings

@@ -70,7 +70,7 @@ func LoadFromEnvironment(ctx context.Context) (*LoadedProject, error) {
 				return nil, errors.New(LocalConnectionsFileEnvironment + " and " + name + " select different project configurations; set only one of them")
 			}
 		}
-		return loadDexWebProject(ctx, path)
+		return LoadDexWebConnectionsFile(ctx, path)
 	}
 	scope := Scope{ProjectID: os.Getenv(projectIDEnvironment), Kind: os.Getenv(projectScopeEnvironment)}
 	if _, err := scope.Prefix(); err != nil {
@@ -107,6 +107,20 @@ func LoadFromEnvironment(ctx context.Context) (*LoadedProject, error) {
 	}
 	reference := SnapshotRef{Key: os.Getenv(projectConfigKeyEnvironment), Version: os.Getenv(projectConfigVersionEnvironment), Digest: os.Getenv(projectConfigDigestEnvironment), MediaType: "application/json"}
 	return loadProject(ctx, objects, scope, reference, brokerClientOptions{})
+}
+
+// LoadDexWebConnectionsFile loads the connections.json file that Dex Web writes under dexcli dev, by path. It
+// behaves as LoadFromEnvironment does when DEX_CONNECTOR_CONFIG_FILE names path, and reads the
+// use-configurations.json file and the trigger-inboxes directory beside it; see the README's Local development
+// section. It ignores DEX_CONNECTOR_CONFIG_FILE and every DEX_PROJECT_* variable, so a process that serves a
+// connections file it was given, such as an agent tool server, need not change its environment.
+// A relative path resolves against the working directory. It returns an error when path is empty, a file is
+// missing, malformed, or not a regular file with mode 0600, or the configuration is invalid.
+func LoadDexWebConnectionsFile(ctx context.Context, path string) (*LoadedProject, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, errors.New("Dex Web connections file path is required")
+	}
+	return loadDexWebProject(ctx, path)
 }
 
 // loadProjectFromObjectStore serves projectconfigtest.LoadProject. It skips LoadFromEnvironment's storage-target
