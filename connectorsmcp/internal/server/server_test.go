@@ -119,6 +119,8 @@ func TestUnknownToolIsInvalidParamsWithRejectedOutcome(t *testing.T) {
 		require.NotNil(t, response.Error)
 		require.Equal(t, int64(jsonrpc.CodeInvalidParams), response.Error.Code)
 		require.JSONEq(t, `{"_meta":{"io.superdurable.dex/outcome":"rejected"}}`, string(response.Error.Data))
+		// MCP 2026-07-28 (SEP-2575) sends -32602 with HTTP 400; the MCP Python SDK reads the JSON-RPC body.
+		require.Equal(t, http.StatusBadRequest, response.HTTPStatus)
 	}
 }
 

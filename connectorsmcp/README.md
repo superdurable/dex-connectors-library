@@ -249,7 +249,7 @@ Results use these shapes:
 
 | Situation | `read` | `idempotent_write` | `non_idempotent_write` |
 | --- | --- | --- | --- |
-| Unknown tool, and the key has no state | JSON-RPC `-32602` with `error.data._meta` outcome `rejected` | same | same |
+| Unknown tool, and the key has no state | JSON-RPC `-32602` with `error.data._meta` outcome `rejected` (HTTP 400 under MCP 2026-07-28, which the MCP Python SDK reads as the JSON-RPC error) | same | same |
 | Arguments fail `inputSchema` | `rejected`, no state written | same | same |
 | Arguments pass `inputSchema` but fail strict decoding | `rejected` | `rejected`, stored as the key's result | same |
 | No key | runs, with inline retry | `rejected`, nothing sent | same |

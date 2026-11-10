@@ -159,9 +159,7 @@ func NotesExposedAgentTools() []sdkgo.AgentToolMetadata {
 	}
 }
 
-// NotesConnector returns the notes connector as the release registry would
-// link it. Its connections read baseUrl from connections.json and resolve the
-// token through the project's credential store on every call.
+// NotesConnector links the notes connector as a release registry would.
 func NotesConnector() registry.LinkedConnector {
 	return registry.LinkedConnector{
 		ConnectorID:       NotesConnectorID,
@@ -388,8 +386,7 @@ func (saveRecordMutation) IdempotencyKey(id sdkgo.CallID, _ SaveRecordInput) sdk
 	return sdkgo.IdempotencyKey(id)
 }
 
-// Invoke reads back a record an earlier attempt may have saved, then saves with
-// the provider idempotency key, so repeating it never applies a second write.
+// Invoke reads back an earlier save, then saves with the provider idempotency key.
 func (mutation saveRecordMutation) Invoke(call sdkgo.Call, input SaveRecordInput) sdkgo.MutationAttempt[SavedRecord] {
 	retryFailure := notesFailure(sdkgo.FailureAvailability, "saveRecord", "the record store is unavailable")
 	if call.Context.Attempt() > 1 {

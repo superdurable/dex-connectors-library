@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	// orphanFileAge is how old a temporary file, or a lock file without a
-	// record, must be before the pruner removes it.
+	// orphanFileAge is the age at which temporary and record-less lock files are removed.
 	orphanFileAge = time.Hour
 	// pruneLockWait bounds the pruner's wait for a key in use; it skips the key.
 	pruneLockWait = 50 * time.Millisecond
@@ -33,12 +32,8 @@ type PruneResult struct {
 	RemovedTemporaryFiles int
 }
 
-// Prune removes records whose UpdatedAt is older than retention, lock files
-// without a record that are older than an hour, and temporary files older
-// than an hour. It deletes a key's files only while holding the key's lock,
-// re-reading the record first, and skips a key whose lock stays busy. A
-// record that cannot be read ages by its file modification time. Errors on
-// single files are joined into the returned error after the walk.
+// Prune removes expired records, orphan lock files, and temporary files, under
+// each key's lock; it skips busy keys.
 func (store *Store) Prune(ctx context.Context, retention time.Duration) (PruneResult, error) {
 	var result PruneResult
 	shards, err := os.ReadDir(store.callsDirectory)

@@ -1,9 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package server serves the agent-exposed operations of the linked connectors
-// as MCP tools over stateless Streamable HTTP, following the Dex MCP
-// conventions, with keyed writes fenced by the call-state store.
+// Package server serves exposed connector operations as MCP tools under the Dex conventions.
 package server
 
 import (
@@ -87,9 +85,7 @@ type Server struct {
 	handler  http.Handler
 }
 
-// New validates config, loads the first tool set, and returns the server.
-// It returns an error for invalid limits, a retention shorter than 24 hours
-// or than an exposed operation's retry window, or an unreadable selection.
+// New validates limits and the retention, then loads the first tool set.
 func New(ctx context.Context, config *Config) (*Server, error) {
 	if config == nil || config.ToolSet.Registry == nil || config.ToolSet.Logger == nil || config.Store == nil || config.Clock == nil {
 		panic("server.New requires a config with a registry, a logger, a store, and a clock")
@@ -258,8 +254,7 @@ func (server *Server) serveHealth(response http.ResponseWriter, request *http.Re
 	}
 }
 
-// newMCPServer returns the MCP server of one tool set. tools/call never
-// reaches the go-sdk dispatch: the middleware looks the key up first.
+// newMCPServer routes tools/call through the executor, which reads key state first.
 func newMCPServer(version string, toolSet *ToolSet, executor *toolCallExecutor) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: ImplementationName, Version: version}, &mcp.ServerOptions{
 		Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}},

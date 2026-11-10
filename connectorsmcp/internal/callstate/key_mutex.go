@@ -9,8 +9,7 @@ import (
 	"sync"
 )
 
-// keyMutexRegistry serializes goroutines of one process per state key; flock
-// alone does not, because one process may share an open file description.
+// keyMutexRegistry serializes goroutines per key; flock may not, within one process.
 type keyMutexRegistry struct {
 	mu      sync.Mutex
 	entries map[string]*keyMutex

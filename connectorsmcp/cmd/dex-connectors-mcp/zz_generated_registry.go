@@ -6,9 +6,7 @@ package main
 
 import "github.com/superdurable/dex-connectors-library/connectorsmcp/internal/registry"
 
-// linkedConnectors lists the connectors linked into this build. On main it is
-// empty; a release commit replaces this file and go.mod with the included
-// connectors at their latest complete Go releases.
+// linkedConnectors is empty on main; a release commit replaces this file and go.mod.
 func linkedConnectors() []registry.LinkedConnector {
 	return nil
 }

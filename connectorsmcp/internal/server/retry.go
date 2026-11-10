@@ -47,10 +47,7 @@ func retryPolicyOf(metadata sdkgo.AgentToolMetadata) *dex.RetryPolicy {
 	return sdkgo.DefaultConnectorStepExecuteRetryPolicy()
 }
 
-// retryDelay returns the delay before the attempt after completedAttempt:
-// InitialInterval times BackoffCoefficient^(completedAttempt-1), capped at
-// MaximumInterval, or the connector's RetryAfter when that is longer. Zero
-// policy fields take the connector defaults.
+// retryDelay is exponential backoff, capped, or RetryAfter when longer.
 func retryDelay(policy *dex.RetryPolicy, completedAttempt int32, retryAfter time.Duration) time.Duration {
 	defaults := sdkgo.DefaultConnectorStepExecuteRetryPolicy()
 	initial := policy.InitialInterval
@@ -82,8 +79,7 @@ func attemptLimit(policy *dex.RetryPolicy, maximumInlineAttempts int32) int32 {
 	return maximumInlineAttempts
 }
 
-// retryWindow is how long after the first attempt a write may start another:
-// the policy's TotalDuration, or one hour, and never beyond retention.
+// retryWindow is TotalDuration, or one hour, capped at retention.
 func retryWindow(policy *dex.RetryPolicy, retention time.Duration) time.Duration {
 	window := policy.TotalDuration
 	if window <= 0 {

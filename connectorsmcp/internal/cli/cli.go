@@ -137,9 +137,8 @@ func (selectionFlags *connectionSelectionFlags) resolve(environment *Environment
 	return config, nil
 }
 
-// resolveConnectionsFile applies flag over DEX_CONNECTOR_CONFIG_FILE over the
-// $HOME default when it exists over the hosted project. It returns "" for the
-// hosted project, and the $HOME default when nothing is configured yet.
+// resolveConnectionsFile: flag, DEX_CONNECTOR_CONFIG_FILE, existing $HOME default,
+// hosted (""), else the $HOME default.
 func resolveConnectionsFile(flagValue string, environment *Environment) (string, error) {
 	if flagValue != "" {
 		return absoluteCleanPath(flagValue)
@@ -213,8 +212,7 @@ func validateOutputFormat(format string) error {
 	return nil
 }
 
-// reportError prints err as a JSON error line on stdout for --output json,
-// or as text on stderr, and returns its exit code.
+// reportError prints err for the output format and returns exitCode.
 func reportError(environment *Environment, outputFormat string, err error, exitCode int) int {
 	if outputFormat == "json" {
 		encoded, encodeErr := json.Marshal(struct {

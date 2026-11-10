@@ -18,8 +18,7 @@ import (
 // truncatedNoteFormat matches dex-agents CONNECTOR_RESULT_TRUNCATED_NOTE.
 const truncatedNoteFormat = "[Dex] truncated, %d bytes"
 
-// toolResult is an MCP tools/call result in its wire shape. Write records
-// store it exactly as returned, so a replay differs only in the replayed key.
+// toolResult is stored exactly as returned, so a replay differs only in replayed.
 type toolResult struct {
 	Content           []textContent   `json:"content"`
 	IsError           bool            `json:"isError,omitempty"`
@@ -70,8 +69,7 @@ func rejectedResult(text string) toolResult { return newErrorResult(resultReject
 
 func unknownResult(text string) toolResult { return newErrorResult(resultUnknown, text, "") }
 
-// newSuccessResult returns the value as canonical JSON text, and as
-// structured content when it is a JSON object, cut to maxResultBytes.
+// newSuccessResult returns canonical JSON text, structured when an object, truncated if long.
 func newSuccessResult(value json.RawMessage, branch sdkgo.BranchID, maxResultBytes int) toolResult {
 	canonical, err := canonicaljson.Canonicalize(value)
 	if err != nil {
@@ -167,9 +165,8 @@ func unknownToolError(name string) error {
 	return &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: fmt.Sprintf("unknown tool %q; nothing was sent", name), Data: data}
 }
 
-// interruptedError is a bare internal error: Dex re-issues read and
-// idempotent_write calls with the same key and records outcome_unknown for
-// any other effect, so it is never returned for a non_idempotent_write.
+// interruptedError is a bare -32603, which Dex re-issues; never used for
+// non_idempotent_write.
 func interruptedError(message string) error {
 	return &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: message}
 }

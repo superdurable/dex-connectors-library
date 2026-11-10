@@ -3,10 +3,7 @@
 
 // Package registry lists the connector modules linked into the server binary.
 //
-// The release workflow generates the binary's list from the generated
-// ExposedAgentTools and Connection.AgentTools code of each included connector;
-// tests list fake connectors built with sdkgo.NewQueryAgentTool and
-// sdkgo.NewMutationAgentTool.
+// Release builds generate the list; tests list fake connectors.
 package registry
 
 import (
@@ -35,9 +32,7 @@ type LinkedConnector struct {
 	// ExposedAgentTools is the connector's generated ExposedAgentTools()
 	// result: the metadata of every agent.exposed operation, in manifest order.
 	ExposedAgentTools []sdkgo.AgentToolMetadata
-	// OpenAgentTools opens connectionName from project, for example with the
-	// generated NewProjectConnection, and returns its Connection.AgentTools().
-	// Credentials stay inside the connector and are resolved per call.
+	// OpenAgentTools returns the AgentTools of one project connection.
 	OpenAgentTools func(project *projectconfig.LoadedProject, connectionName string) ([]sdkgo.AgentTool, error)
 }
 
@@ -46,11 +41,7 @@ type Registry struct {
 	connectors []LinkedConnector
 }
 
-// New validates connectors and returns their registry. It returns an error for
-// an invalid or repeated connector ID, a missing OpenAgentTools or module
-// version, or exposed metadata that names another connector, repeats an
-// operation, or has a tool name other than the connector ID, an underscore,
-// and a snake-case operation name.
+// New validates connector IDs, module identity, and exposed metadata, then sorts the connectors.
 func New(connectors []LinkedConnector) (*Registry, error) {
 	seen := map[string]bool{}
 	for _, connector := range connectors {
@@ -92,9 +83,7 @@ func (connector LinkedConnector) ExposedOperation(operationID string) (sdkgo.Age
 	return sdkgo.AgentToolMetadata{}, false
 }
 
-// OperationName returns the snake-case operation name of metadata: its tool
-// name without the connector ID prefix, such as list_story_ids. It is the
-// form Dex CLI configuration writes.
+// OperationName is the tool name without its connector prefix, such as list_story_ids.
 func OperationName(metadata sdkgo.AgentToolMetadata) string {
 	return strings.TrimPrefix(metadata.ToolName, metadata.Operation.ConnectorID+"_")
 }

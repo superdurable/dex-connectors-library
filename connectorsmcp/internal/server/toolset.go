@@ -24,9 +24,7 @@ import (
 // defaultAttemptTimeout bounds an attempt whose operation sets no Execute timeout.
 const defaultAttemptTimeout = 60 * time.Second
 
-// ToolSet is the immutable set of tools offered for one load of the project
-// configuration and the selection. In-flight calls keep the set they started
-// with.
+// ToolSet is immutable; in-flight calls keep the set they started with.
 type ToolSet struct {
 	projectIdentity string
 	tools           []*toolBinding
@@ -339,8 +337,7 @@ func (binding *toolBinding) operationLabel() string {
 	return binding.connector.ConnectorID + " " + binding.metadata.Operation.OperationID
 }
 
-// validateArguments checks arguments against the input schema and returns a
-// problem the model can act on, or "" when they conform.
+// validateArguments returns a schema problem the model can act on, or "".
 func (binding *toolBinding) validateArguments(arguments json.RawMessage) string {
 	var instance any
 	if err := json.Unmarshal(arguments, &instance); err != nil {

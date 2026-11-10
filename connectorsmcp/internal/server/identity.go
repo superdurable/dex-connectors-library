@@ -10,16 +10,13 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-// LaunchContract is the integer dexcli keys on: it changes only when flags,
-// the ready line, server.json, /healthz, or the state directory format change.
+// LaunchContract changes only with an incompatible dexcli-facing contract.
 const LaunchContract = 1
 
 // ImplementationName is the MCP server name.
 const ImplementationName = "dex-connectors-mcp"
 
-// localFlowID is the Flow ID of every attempt context. With the idempotency
-// key as Step execution ID it fixes the connector Call ID, from which provider
-// idempotency keys derive, so it never changes within call-state v1.
+// localFlowID fixes connector Call IDs and so provider idempotency keys; frozen within v1.
 const localFlowID = "dex-connectors-mcp"
 
 // Dex MCP convention keys (superdurable/dex agents/python/core README, "Dex MCP conventions").

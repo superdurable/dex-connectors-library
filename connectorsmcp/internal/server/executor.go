@@ -115,7 +115,7 @@ func (executor *toolCallExecutor) callTool(ctx context.Context, toolSet *ToolSet
 	executor.inflightCalls.Add(1)
 	defer executor.inflightCalls.Done()
 	call := &toolCall{
-		executor: executor, toolSet: toolSet, name: params.Name, arguments: normalizeArguments(params.Arguments),
+		executor: executor, toolSet: toolSet, name: params.Name, arguments: argumentsOrEmptyObject(params.Arguments),
 		binding: toolSet.toolByName(params.Name), startedAt: executor.clock.Now(), knownEffect: sdkgo.AgentToolEffectNonIdempotentWrite,
 	}
 	if call.binding != nil {
@@ -159,8 +159,7 @@ func (call *toolCall) run(ctx context.Context, meta mcp.Meta) callAnswer {
 	}
 }
 
-// runKeyed looks the key's state up before anything else, so a call with
-// state is answered from it even after its tool was renamed or withdrawn.
+// runKeyed reads the key's state first, so renamed or withdrawn tools still answer.
 func (call *toolCall) runKeyed(ctx context.Context, key string) callAnswer {
 	call.stateKey = callstate.StateKey(key)
 	lock, err := call.executor.store.Lock(ctx, call.stateKey)
@@ -313,8 +312,7 @@ func (call *toolCall) startWrite(ctx context.Context, lock *callstate.KeyLock, k
 	return call.runWriteAttempts(ctx, lock, &record, binding, key)
 }
 
-// runWriteAttempts runs the attempt the record names and, for an idempotent
-// write, further attempts while the cap, the window, and the budget allow.
+// runWriteAttempts retries an idempotent write while the cap, window, and budget allow.
 func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, key string) callAnswer {
 	policy := retryPolicyOf(binding.metadata)
 	limit := attemptLimit(policy, call.executor.config.maximumInlineAttempts)
@@ -354,8 +352,7 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 	}
 }
 
-// runWriteAttempt runs one attempt whose number the record already holds
-// durably. A client disconnect never cancels it; the attempt timeout bounds it.
+// runWriteAttempt ignores client cancellation; the attempt timeout bounds it.
 func (call *toolCall) runWriteAttempt(ctx context.Context, lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, key string) (sdkgo.AgentToolAttempt, error) {
 	checkpoints := &keyedCheckpointWriter{lock: lock, record: record, attempt: record.Attempt}
 	attemptContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), binding.attemptTimeout())
@@ -402,8 +399,7 @@ func (call *toolCall) finalizeFromCheckpoint(lock *callstate.KeyLock, record *ca
 	return call.finalize(lock, record, unknownResult(recordLabel(record)+" may have taken effect: "+reason+"; do not repeat it"))
 }
 
-// finalize stores result as the key's final answer. A failed store still
-// answers: the record stays running and a repeated call never sends blind.
+// finalize answers even when storing fails; the running record never sends blind.
 func (call *toolCall) finalize(lock *callstate.KeyLock, record *callstate.Record, result toolResult) callAnswer {
 	record.Status = callstate.StatusCompleted
 	record.Result = result.encode()
@@ -414,8 +410,7 @@ func (call *toolCall) finalize(lock *callstate.KeyLock, record *callstate.Record
 	return callAnswer{result: result}
 }
 
-// runRead runs a read with up to the attempt cap of inline retries. It keeps
-// no state and honors client cancellation.
+// runRead keeps no state and honors client cancellation.
 func (call *toolCall) runRead(ctx context.Context, stepExecutionID string) callAnswer {
 	binding := call.binding
 	call.knownEffect = sdkgo.AgentToolEffectRead
@@ -518,8 +513,7 @@ func (call *toolCall) logAnswer(answer callAnswer) {
 	call.executor.logger.Info("tool call", attributes...)
 }
 
-// keyedCheckpointWriter stores each checkpoint of one attempt durably before
-// the attempt continues, only while that attempt is the record's current one.
+// keyedCheckpointWriter persists checkpoints only while its attempt is the record's current one.
 type keyedCheckpointWriter struct {
 	mu       sync.Mutex
 	lock     *callstate.KeyLock
@@ -617,8 +611,8 @@ func idempotencyKeyOf(meta mcp.Meta) (string, bool, string) {
 	return key, true, ""
 }
 
-// normalizeArguments treats absent and null arguments as {}.
-func normalizeArguments(arguments json.RawMessage) json.RawMessage {
+// argumentsOrEmptyObject treats absent and null arguments as {}.
+func argumentsOrEmptyObject(arguments json.RawMessage) json.RawMessage {
 	trimmed := bytes.TrimSpace(arguments)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
 		return json.RawMessage("{}")

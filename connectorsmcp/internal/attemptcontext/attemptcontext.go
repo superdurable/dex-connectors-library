@@ -1,12 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package attemptcontext creates the dex.Context of one tool call attempt
-// outside a Dex Worker.
-//
-// It mirrors dex.NewStandaloneContext, which Dex Go SDK 1.41.0 adds
-// (superdurable/dex#1521). Until that release, New implements the same
-// contract here; afterwards New calls the SDK and nothing else changes.
+// Package attemptcontext builds one attempt's dex.Context outside a Worker, mirroring
+// dex.NewStandaloneContext until Dex Go SDK 1.41.0.
 package attemptcontext
 
 import (
@@ -21,9 +17,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-// Options supplies the identity, the checkpoint, and the heartbeat hook of one
-// attempt. The fields have the meaning of the dex.StandaloneContextOptions
-// fields of the same names.
+// Options mirrors the dex.StandaloneContextOptions fields of the same names.
 type Options struct {
 	// FlowID is returned by FlowID and RunID.
 	FlowID string
@@ -37,27 +31,13 @@ type Options struct {
 	// LastHeartbeat is the JSON checkpoint as of the attempt start, which
 	// GetLastHeartbeatValue decodes. Nil or JSON null means no checkpoint.
 	LastHeartbeat json.RawMessage
-	// OnRecordHeartbeat receives every checkpoint RecordHeartbeat records,
-	// encoded as JSON, or nil for a cleared checkpoint. RecordHeartbeat returns
-	// only after it returns, so it can store the checkpoint durably first. Nil
-	// discards checkpoints.
+	// OnRecordHeartbeat receives each checkpoint as JSON, nil when cleared,
+	// before RecordHeartbeat returns. Nil discards checkpoints.
 	OnRecordHeartbeat func(checkpoint json.RawMessage) error
 }
 
-// New returns the Context of one attempt. It carries the cancellation,
-// deadline, and values of parent.
-//
-// GetLastHeartbeatValue decodes options.LastHeartbeat; RecordHeartbeat calls
-// options.OnRecordHeartbeat and does not change what GetLastHeartbeatValue
-// returns. Step execution locals are validated and discarded, so
-// GetStepExecutionLocal always reports false. RecordEvent rejects an empty or
-// repeated name and keeps nothing. HasTimerFired, HasTimerFiredByIndex, and
-// WaitForMethodFailed return false. After parent is done, RecordHeartbeat,
-// SetStepExecutionLocal, and RecordEvent return an error wrapping the
-// parent's error and never call the hook. Hooks run one at a time.
-//
-// New panics when parent is nil and returns an error when options.Attempt is
-// below 1 or options.LastHeartbeat is not JSON.
+// New follows dex.NewStandaloneContext: heartbeats reach only the next attempt,
+// locals are discarded, and hooks stop once parent is done.
 func New(parent context.Context, options Options) (dex.Context, error) {
 	if parent == nil {
 		panic("attemptcontext: New requires a non-nil parent context")

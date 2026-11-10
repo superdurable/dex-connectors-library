@@ -14,9 +14,8 @@ import (
 // maximumRequestBodyBytes limits every request body.
 const maximumRequestBodyBytes = 4 << 20
 
-// requestHostPolicy accepts only requests that name a loopback host or an
-// allowed host, which stops DNS rebinding; a non-loopback IP literal is
-// refused because it arrives only through forwarding the user did not intend.
+// requestHostPolicy stops DNS rebinding; non-loopback IP literals arrive only
+// through unintended forwarding.
 type requestHostPolicy struct {
 	allowedHosts map[string]bool
 }
@@ -36,8 +35,7 @@ func (policy requestHostPolicy) allowsHost(hostHeader string) bool {
 	return host != "" && (isLoopbackHostName(host) || policy.allowedHosts[host])
 }
 
-// allowsOrigin accepts a request without Origin, or with an http origin whose
-// host the Host check accepts. No CORS headers are ever sent.
+// allowsOrigin accepts no Origin, or an http origin whose host passes the Host check.
 func (policy requestHostPolicy) allowsOrigin(origin string) bool {
 	if origin == "" {
 		return true

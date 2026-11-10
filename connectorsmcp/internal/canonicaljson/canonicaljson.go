@@ -1,8 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package canonicaljson encodes JSON with sorted object keys, no insignificant
-// whitespace, and no HTML escaping, so equal values always have equal bytes.
+// Package canonicaljson encodes JSON with sorted keys and no whitespace or HTML escaping.
 package canonicaljson
 
 import (
@@ -15,10 +14,8 @@ import (
 	"io"
 )
 
-// Canonicalize re-encodes one JSON value canonically. Numbers keep their
-// original text, because their meaning to a provider can depend on it. Go
-// always escapes U+2028 and U+2029, so canonical text contains   and
-//   for them. It returns an error when raw is not exactly one JSON value.
+// Canonicalize keeps number text, which providers may read literally; Go
+// always escapes U+2028 and U+2029.
 func Canonicalize(raw []byte) ([]byte, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()

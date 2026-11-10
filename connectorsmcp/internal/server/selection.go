@@ -27,23 +27,18 @@ type SelectedConnection struct {
 	ConnectorID string
 	// ConnectionName is the Dex Web connection name.
 	ConnectionName string
-	// Tools lists the tools the connection may offer, each as the snake-case
-	// operation name or the operationId, sorted and without repeats. Nil
-	// offers every exposed tool.
+	// Tools are snake-case operation names or operationIds; nil offers every exposed tool.
 	Tools []string
 }
 
-// ConnectionSelection is the set of enabled connections, in the shape of the
-// Dex CLI configuration. A nil *ConnectionSelection means no selection: every
-// authorized connection of every linked connector, with all exposed tools.
+// ConnectionSelection is the enabled connections; nil means every authorized connection.
 type ConnectionSelection struct {
 	connections []SelectedConnection
 	warnings    []string
 }
 
-// NewConnectionSelection validates entries and returns their selection. A
-// repeated connection is an error; a tool listed twice is kept once with a
-// warning, as the connectionsConfigDigest algorithm de-duplicates it.
+// NewConnectionSelection refuses repeated connections and de-duplicates
+// repeated tools with a warning.
 func NewConnectionSelection(entries []SelectedConnection) (*ConnectionSelection, error) {
 	selection := &ConnectionSelection{}
 	seen := map[string]bool{}
@@ -85,10 +80,8 @@ func NewConnectionSelection(entries []SelectedConnection) (*ConnectionSelection,
 	return selection, nil
 }
 
-// ParseConnectionFlag parses connectorId/connectionName[=tool,tool...]. It
-// splits at the first slash, then at the first equals sign, then on commas,
-// so a connection name with a comma needs --connections-config. A trailing
-// equals sign with no tools means every exposed tool.
+// ParseConnectionFlag splits at the first slash, the first equals sign, then
+// commas; a trailing equals sign means all tools.
 func ParseConnectionFlag(value string) (SelectedConnection, error) {
 	connectorID, rest, hasSlash := strings.Cut(value, "/")
 	if !hasSlash {
@@ -119,10 +112,7 @@ func ReadConnectionsConfigFile(path string) (*ConnectionSelection, error) {
 	return ParseConnectionsConfig(contents)
 }
 
-// ParseConnectionsConfig parses the JSON of a --connections-config file:
-// {"schemaVersion": ConnectionsConfigSchemaVersion, "connections":
-// [{"connection": "connectorId/connectionName", "tools": [...]}]}. An empty
-// tools list means every exposed tool, like an absent one.
+// ParseConnectionsConfig parses a --connections-config document; an empty tools list means all.
 func ParseConnectionsConfig(contents []byte) (*ConnectionSelection, error) {
 	var document struct {
 		SchemaVersion string `json:"schemaVersion"`
@@ -166,24 +156,21 @@ func (selection *ConnectionSelection) Warnings() []string {
 	return slices.Clone(selection.warnings)
 }
 
-// ConnectionsConfigDigest returns the digest that server.json records and
-// dexcli compares, or nil for no selection: "sha256:" and the lowercase hex
-// SHA-256 of the canonical JSON {"connections":[{"connection":
-// "connectorId/connectionName","tools":[...]|null}]}, entries sorted by
-// connection, tools sorted and without repeats.
+// ConnectionsConfigDigest is the connectionsConfigDigest from the README, or nil
+// without a selection.
 func (selection *ConnectionSelection) ConnectionsConfigDigest() *string {
 	if selection == nil {
 		return nil
 	}
-	type normalizedEntry struct {
+	type selectionDigestEntry struct {
 		Connection string   `json:"connection"`
 		Tools      []string `json:"tools"`
 	}
-	entries := make([]normalizedEntry, 0, len(selection.connections))
+	entries := make([]selectionDigestEntry, 0, len(selection.connections))
 	for _, connection := range selection.connections {
-		entries = append(entries, normalizedEntry{Connection: connection.ConnectorID + "/" + connection.ConnectionName, Tools: connection.Tools})
+		entries = append(entries, selectionDigestEntry{Connection: connection.ConnectorID + "/" + connection.ConnectionName, Tools: connection.Tools})
 	}
-	slices.SortFunc(entries, func(left, right normalizedEntry) int { return strings.Compare(left.Connection, right.Connection) })
+	slices.SortFunc(entries, func(left, right selectionDigestEntry) int { return strings.Compare(left.Connection, right.Connection) })
 	canonical, err := canonicaljson.Marshal(map[string]any{"connections": entries})
 	if err != nil {
 		panic(fmt.Sprintf("encode connection selection: %v", err))

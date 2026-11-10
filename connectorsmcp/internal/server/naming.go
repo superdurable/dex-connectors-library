@@ -16,11 +16,8 @@ const (
 	shortenedToolNamePrefixLength = 55
 )
 
-// toolName names one tool. A connector with one enabled connection offers
-// <connectorId>_<operationName>; with several, every tool of the connector
-// becomes <connectorId>_<connectionSlug>__<operationName>, so several accounts
-// can be used at once. A name over 64 characters keeps its first 55, then an
-// underscore and 8 hex characters of the SHA-256 of the full name.
+// toolName qualifies names when a connector has several enabled connections
+// and shortens names over 64 characters.
 func toolName(connectorID string, connectionName string, operationName string, isQualified bool) string {
 	name := connectorID + "_" + operationName
 	if isQualified {

@@ -1,22 +1,8 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package callstate keeps the durable state of keyed agent tool write calls in
-// the dex-connectors-mcp/call-state/v1 format.
-//
-// Layout under the state directory (mode 0700):
-//
-//	calls/v1/FORMAT          FormatVersion and a newline
-//	calls/v1/<k[0:2]>/<k>.json  one Record per key, mode 0600
-//	calls/v1/<k[0:2]>/<k>.lock  the key's lock file, mode 0600
-//
-// k is StateKey of the idempotency key. A caller holds a key's lock, from Lock
-// until KeyLock.Release, for the whole call. The lock is an in-process mutex
-// plus flock on the lock file, re-verified against the path after locking, so
-// goroutines, processes sharing the state directory, and the pruner exclude
-// one another. Every record write is durable before it returns: a temporary
-// file is written, synced, and renamed, and the directory is synced. On darwin
-// os.File.Sync issues F_FULLFSYNC.
+// Package callstate keeps keyed write call state (dex-connectors-mcp/call-state/v1);
+// connectorsmcp/README.md documents the protocol.
 package callstate
 
 import (
@@ -46,8 +32,7 @@ var callsDirectoryPath = filepath.Join("calls", "v1")
 
 var stateKeyPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// ErrLockWaitCanceled is wrapped by Lock when ctx ended before the key's lock
-// was acquired. The caller did nothing under the key.
+// ErrLockWaitCanceled means ctx ended before the key's lock was acquired.
 var ErrLockWaitCanceled = errors.New("call state lock wait ended before the lock was acquired")
 
 // Store reads and writes the records of one state directory. It is safe for
@@ -59,11 +44,8 @@ type Store struct {
 	keyMutexes       *keyMutexRegistry
 }
 
-// Open prepares stateDirectory and returns its Store. It creates the
-// directory with mode 0700 when missing, and refuses a state directory that is
-// a symbolic link, not a directory, or writable by group or others. It writes
-// the FORMAT file when missing and refuses a FORMAT of another format. now
-// supplies the time recorded in UpdatedAt and compared during pruning.
+// Open prepares stateDirectory, writes or checks FORMAT, and returns its Store;
+// now stamps UpdatedAt.
 func Open(stateDirectory string, now func() time.Time) (*Store, error) {
 	if now == nil {
 		return nil, errors.New("call state store clock is required")
@@ -89,9 +71,8 @@ func Open(stateDirectory string, now func() time.Time) (*Store, error) {
 	}, nil
 }
 
-// PrepareStateDirectory creates stateDirectory with mode 0700 when it is
-// missing, and returns an error when it is a symbolic link, not a directory,
-// or writable by group or others.
+// PrepareStateDirectory creates stateDirectory 0700 and refuses symlinks,
+// non-directories, and group- or world-writable modes.
 func PrepareStateDirectory(stateDirectory string) error {
 	if !filepath.IsAbs(stateDirectory) {
 		return fmt.Errorf("state directory %q must be an absolute path", stateDirectory)
@@ -132,8 +113,7 @@ func ensureFormatFile(callsDirectory string) error {
 	return nil
 }
 
-// KeyLock is the held lock of one state key. Its methods are not safe for
-// concurrent use; the call that took it owns it.
+// KeyLock is one held key lock, owned by the call that took it.
 type KeyLock struct {
 	store           *Store
 	stateKey        string
@@ -141,9 +121,8 @@ type KeyLock struct {
 	releaseKeyMutex func()
 }
 
-// Lock takes the lock of stateKey, waiting while another goroutine or process
-// holds it. A wait that ctx ends returns an error wrapping
-// ErrLockWaitCanceled; any other error is a failed file operation.
+// Lock waits for stateKey's lock; an ended ctx wraps ErrLockWaitCanceled, other
+// errors are file failures.
 func (store *Store) Lock(ctx context.Context, stateKey string) (*KeyLock, error) {
 	if !stateKeyPattern.MatchString(stateKey) {
 		return nil, fmt.Errorf("call state key %q is not a lowercase SHA-256", stateKey)
@@ -165,8 +144,7 @@ func (store *Store) Lock(ctx context.Context, stateKey string) (*KeyLock, error)
 	return &KeyLock{store: store, stateKey: stateKey, file: file, releaseKeyMutex: releaseKeyMutex}, nil
 }
 
-// Read returns the key's record and whether one exists. A record that exists
-// but cannot be trusted returns an error for which IsRecordUnreadable is true.
+// Read returns the key's record, if any; IsRecordUnreadable marks untrustworthy ones.
 func (lock *KeyLock) Read() (Record, bool, error) {
 	contents, err := os.ReadFile(lock.recordPath())
 	if errors.Is(err, fs.ErrNotExist) {
@@ -185,8 +163,7 @@ func (lock *KeyLock) Read() (Record, bool, error) {
 	return record, true, nil
 }
 
-// Write stores record durably as the key's record, setting UpdatedAt. When it
-// returns an error the stored record may be the old or the new one.
+// Write stores record durably; after an error either version may be stored.
 func (lock *KeyLock) Write(record *Record) error {
 	record.UpdatedAt = lock.store.now().UTC()
 	if err := record.validate(lock.stateKey); err != nil {
@@ -207,10 +184,8 @@ func (lock *KeyLock) Release() error {
 	return err
 }
 
-// removeRecordAndLockFile deletes the record, then the lock file, while the
-// lock is held. A waiter on the deleted lock file re-verifies the path and
-// locks a new file, and a new caller may lock a new file at once, so the
-// caller must only release the lock afterwards.
+// removeRecordAndLockFile must be the last act under the lock: new
+// callers may lock a new file at once.
 func (lock *KeyLock) removeRecordAndLockFile() error {
 	if err := os.Remove(lock.recordPath()); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
@@ -229,8 +204,7 @@ func (lock *KeyLock) lockPath() string {
 	return filepath.Join(lock.store.callsDirectory, lock.stateKey[:2], lock.stateKey+lockFileSuffix)
 }
 
-// HasRecordFile reports whether a record file may exist for stateKey without
-// taking its lock. It reports false only when the file is provably absent.
+// HasRecordFile is false only when the key's record is provably absent.
 func (store *Store) HasRecordFile(stateKey string) bool {
 	if !stateKeyPattern.MatchString(stateKey) {
 		return true

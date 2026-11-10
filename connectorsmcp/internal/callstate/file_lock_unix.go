@@ -15,9 +15,8 @@ import (
 	"time"
 )
 
-// lockKeyFile opens path and takes flock(LOCK_EX) on it, polling so ctx can end
-// the wait. After locking, the open file must still be the file at path; the
-// pruner deletes lock files while holding them, so a mismatch reopens path.
+// lockKeyFile polls flock so ctx can end the wait; the pruner deletes held
+// lock files, so it re-verifies the path.
 func lockKeyFile(ctx context.Context, path string, pollInterval time.Duration) (*os.File, error) {
 	for {
 		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)

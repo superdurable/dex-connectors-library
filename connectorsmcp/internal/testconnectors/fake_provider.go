@@ -25,18 +25,14 @@ type ScriptedResponse struct {
 	Status int
 	// RetryAfter is sent as the Retry-After header in whole seconds.
 	RetryAfter time.Duration
-	// IsHeld keeps the request open, after counting it, until the client goes
-	// away or Release is called; HeldRequests reports its arrival.
+	// IsHeld counts the request, then holds it until the client leaves or Release.
 	IsHeld bool
-	// IsHeldAfterEffect applies a postNote or saveRecord write first, then
-	// holds like IsHeld: the provider acted but its answer may be lost.
+	// IsHeldAfterEffect applies the write, then holds: the answer may be lost.
 	IsHeldAfterEffect bool
 }
 
-// FakeProvider is an HTTP provider for the notes connector. It counts every
-// request it receives, so tests can assert how often a write was sent, and
-// applies writes like a real provider: notes are not idempotent, records are
-// deduplicated by the Idempotency-Key header. It is safe for concurrent use.
+// FakeProvider counts requests; notes are not idempotent, and records
+// deduplicate by Idempotency-Key.
 type FakeProvider struct {
 	server *httptest.Server
 
@@ -255,8 +251,7 @@ func (provider *FakeProvider) serveSaveRecord(response http.ResponseWriter, requ
 	writeJSON(response, map[string]string{"value": value})
 }
 
-// answerScripted answers with the next scripted response of operationID and
-// reports whether it did; a held request then gets its normal answer.
+// answerScripted answers the next scripted response and reports whether it did.
 func (provider *FakeProvider) answerScripted(response http.ResponseWriter, request *http.Request, operationID string) bool {
 	provider.mu.Lock()
 	queue := provider.scripts[operationID]

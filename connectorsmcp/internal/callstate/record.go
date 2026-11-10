@@ -15,8 +15,7 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo"
 )
 
-// FormatVersion names this persistent format. It is the record schemaVersion
-// and the content of the FORMAT file. It never changes within v1.
+// FormatVersion is the record schemaVersion and the FORMAT content; frozen within v1.
 const FormatVersion = "dex-connectors-mcp/call-state/v1"
 
 // MaximumIdempotencyKeyBytes is the longest idempotency key a call may carry.
@@ -33,8 +32,7 @@ const (
 	StatusCompleted Status = "completed"
 )
 
-// Request identifies the call a key was first used for. It omits the tool
-// name, which can change when connections are added or removed.
+// Request identifies a key's call; it omits the tool name, which renames change.
 type Request struct {
 	// ConnectorID is the manifest connector ID.
 	ConnectorID string `json:"connectorId"`
@@ -69,11 +67,9 @@ type Record struct {
 	// RetryWindowEndsAt is fixed at the first attempt and never extended; no
 	// attempt starts at or after it.
 	RetryWindowEndsAt time.Time `json:"retryWindowEndsAt"`
-	// Attempt is the number of the last attempt started; it grows by one per
-	// attempt and is written before that attempt runs.
+	// Attempt is the last attempt started, written before that attempt runs.
 	Attempt int32 `json:"attempt"`
-	// Checkpoint is the last heartbeat any attempt recorded, as JSON, or null.
-	// It is handed to the next attempt as its last heartbeat value.
+	// Checkpoint is the last heartbeat recorded, as JSON or null, for the next attempt.
 	Checkpoint json.RawMessage `json:"checkpoint"`
 	// Status says whether Result is final.
 	Status Status `json:"status"`
@@ -89,14 +85,12 @@ type Record struct {
 // cannot be trusted: corrupt, of another format, or inconsistent.
 var errRecordUnreadable = errors.New("call state record is unreadable")
 
-// IsRecordUnreadable reports whether err came from a record that exists but
-// cannot be trusted, as opposed to a failed file operation.
+// IsRecordUnreadable reports an existing but untrustworthy record, not a file error.
 func IsRecordUnreadable(err error) bool {
 	return errors.Is(err, errRecordUnreadable)
 }
 
-// StateKey returns the hexadecimal SHA-256 of the format name, a NUL byte,
-// and idempotencyKey. The raw key never becomes a file name.
+// StateKey hashes the format name, NUL, and the key; raw keys never name files.
 func StateKey(idempotencyKey string) string {
 	payload := make([]byte, 0, len(FormatVersion)+1+len(idempotencyKey))
 	payload = append(payload, FormatVersion...)
