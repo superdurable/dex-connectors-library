@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -56,7 +57,13 @@ func TestKeyReuseOnAnotherToolWithEqualArgumentsIsRejectedAndLeavesState(t *test
 	harness.provider.Script("saveRecord", testconnectors.ScriptedResponse{Status: http.StatusServiceUnavailable})
 	arguments := map[string]any{"name": "a", "value": "1"}
 	require.NotNil(t, harness.callTool("example-notes_save_record", arguments, "flow/turn/running-key").Error)
+	recordPath := recordFilePath(harness.stateDirectory, "flow/turn/running-key")
+	before, err := os.ReadFile(recordPath)
+	require.NoError(t, err)
 	runningReuse := harness.mustCallResult("example-chat_set_topic", arguments, "flow/turn/running-key")
+	after, err := os.ReadFile(recordPath)
+	require.NoError(t, err)
+	require.Equal(t, string(before), string(after), "the refused call left the record's bytes untouched")
 	require.Equal(t, outcomeRejected, runningReuse.outcome())
 	require.Zero(t, harness.chatSends.Count())
 	require.Equal(t, 1, harness.provider.RecordRequests(), "the running write did not run for the other tool")
@@ -130,7 +137,7 @@ func TestAnIdempotentWriteThatMayHaveAppliedNeverEndsRejected(t *testing.T) {
 	result := harness.mustCallResult("example-notes_save_record", map[string]any{"name": "a", "value": "1"}, "flow/turn/applied-then-rejected")
 	require.Equal(t, outcomeUnknown, result.outcome(), "attempt 1 applied before its retryable answer, so attempt 2's rejection proves nothing")
 	require.Contains(t, result.text(), "an earlier attempt may have applied it")
-	require.Equal(t, 1, harness.provider.AppliedRecordWrites(harness.recordIdempotencyKey("flow/turn/applied-then-rejected")))
+	require.Equal(t, 1, harness.provider.AppliedRecordWrites(saveRecordIdempotencyKey("flow/turn/applied-then-rejected")))
 }
 
 func TestPossiblyAppliedOverridesALaterNotSentProof(t *testing.T) {
@@ -251,9 +258,14 @@ func TestEmptyToolListsFailClosed(t *testing.T) {
 	require.ErrorContains(t, err, "data after its JSON document")
 }
 
-// recordIdempotencyKey is the provider idempotency key saveRecord sends for an MCP key.
-func (harness *testHarness) recordIdempotencyKey(key string) string {
+// saveRecordIdempotencyKey is the provider idempotency key saveRecord sends for an MCP key.
+func saveRecordIdempotencyKey(key string) string {
 	return string(deriveCallID(localFlowID, key, sdkgo.OperationRef{ConnectorID: testconnectors.NotesConnectorID, OperationID: "saveRecord"}))
+}
+
+func recordFilePath(stateDirectory string, key string) string {
+	stateKey := callstate.StateKey(key)
+	return filepath.Join(stateDirectory, "calls", "v1", stateKey[:2], stateKey+".json")
 }
 
 func notSentRecord(stateKey string, isPossiblyApplied bool) callstate.Record {
