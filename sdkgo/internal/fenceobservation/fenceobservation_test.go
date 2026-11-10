@@ -4,44 +4,67 @@
 package fenceobservation
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestObservationFollowsFenceEventsOfItsAttempt(t *testing.T) {
-	observation, endObservation := Begin("call-1", 2)
+var workAttemptTwo = AttemptIdentity{CallID: "call-1", ConnectionProvider: "chat", ConnectionName: "work", Attempt: 2}
+
+func TestObservationFollowsFenceEventsOfItsIdentity(t *testing.T) {
+	observation, endObservation := Begin(workAttemptTwo)
 	defer endObservation()
 	require.False(t, observation.MayHaveDispatched())
 
-	ReportClaimed("call-1", 1)
-	ReportClaimed("call-2", 2)
-	require.False(t, observation.MayHaveDispatched(), "another attempt or call does not change it")
+	for _, other := range []AttemptIdentity{
+		{CallID: "call-1", ConnectionProvider: "chat", ConnectionName: "work", Attempt: 1},
+		{CallID: "call-2", ConnectionProvider: "chat", ConnectionName: "work", Attempt: 2},
+		{CallID: "call-1", ConnectionProvider: "chat", ConnectionName: "personal", Attempt: 2},
+		{CallID: "call-1", ConnectionProvider: "mail", ConnectionName: "work", Attempt: 2},
+	} {
+		ReportClaimed(other)
+		ReportDecision(other, false)
+	}
+	require.False(t, observation.MayHaveDispatched(), "another attempt, call, or connection does not change it")
 
-	ReportClaimed("call-1", 2)
-	require.True(t, observation.MayHaveDispatched())
-	ReportCanResend("call-1", 2)
-	require.False(t, observation.MayHaveDispatched(), "canResend proves the claimed request was not processed")
-
-	ReportDecision("call-1", 2, true)
+	ReportDecision(workAttemptTwo, true)
 	require.False(t, observation.MayHaveDispatched())
-	ReportDecision("call-1", 2, false)
-	ReportCanResend("call-1", 2)
-	require.True(t, observation.MayHaveDispatched(), "a withheld send stays possible dispatch")
+	ReportClaimed(workAttemptTwo)
+	require.True(t, observation.MayHaveDispatched())
+	ReportDecision(workAttemptTwo, true)
+	require.True(t, observation.MayHaveDispatched(), "nothing clears a possible dispatch")
 }
 
-func TestConcurrentObserversShareAnObservationUntilBothEnd(t *testing.T) {
-	first, endFirst := Begin("call-1", 1)
-	second, endSecond := Begin("call-1", 1)
+func TestWithheldSendMarksPossibleDispatch(t *testing.T) {
+	observation, endObservation := Begin(workAttemptTwo)
+	defer endObservation()
+	ReportDecision(workAttemptTwo, false)
+	require.True(t, observation.MayHaveDispatched())
+}
+
+func TestConcurrentObserversShareAnObservationUntilAllEnd(t *testing.T) {
+	first, endFirst := Begin(workAttemptTwo)
+	second, endSecond := Begin(workAttemptTwo)
 	require.Same(t, first, second)
-	ReportClaimed("call-1", 1)
+
+	var group sync.WaitGroup
+	for range 8 {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			ReportClaimed(workAttemptTwo)
+			_ = first.MayHaveDispatched()
+		}()
+	}
+	group.Wait()
 	endFirst()
 	require.True(t, second.MayHaveDispatched())
 	endSecond()
 
-	fresh, endFresh := Begin("call-1", 1)
+	fresh, endFresh := Begin(workAttemptTwo)
 	defer endFresh()
 	require.NotSame(t, first, fresh)
 	require.False(t, fresh.MayHaveDispatched())
-	require.NotPanics(t, func() { ReportClaimed("unobserved", 1) })
+	require.NotPanics(t, func() { ReportClaimed(AttemptIdentity{CallID: "unobserved", Attempt: 1}) })
 }

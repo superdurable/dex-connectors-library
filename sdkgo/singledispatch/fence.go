@@ -147,7 +147,7 @@ func (fence *Fence) Decide() Decision {
 	}
 	fence.hasDecision = true
 	defer func() {
-		fenceobservation.ReportDecision(string(fence.call.ID), fence.call.Context.Attempt(), fence.decision.Kind == SendAllowed)
+		fenceobservation.ReportDecision(fence.attemptIdentity(), fence.decision.Kind == SendAllowed)
 	}()
 	var previous Marker
 	hasPrevious, err := fence.call.Context.GetLastHeartbeatValue(&previous)
@@ -263,13 +263,17 @@ func (fence *Fence) record(marker Marker) error {
 		return err
 	}
 	fence.marker = marker
-	switch marker.State {
-	case StateClaimed:
-		fenceobservation.ReportClaimed(string(marker.CallID), marker.Attempt)
-	case StateCanResend:
-		fenceobservation.ReportCanResend(string(marker.CallID), marker.Attempt)
+	if marker.State == StateClaimed {
+		fenceobservation.ReportClaimed(fence.attemptIdentity())
 	}
 	return nil
+}
+
+func (fence *Fence) attemptIdentity() fenceobservation.AttemptIdentity {
+	return fenceobservation.AttemptIdentity{
+		CallID: string(fence.call.ID), ConnectionProvider: fence.call.Connection.Provider,
+		ConnectionName: fence.call.Connection.Name, Attempt: fence.call.Context.Attempt(),
+	}
 }
 
 func (fence *Fence) repeatClaim(claim Marker, stop <-chan struct{}, stopped chan<- struct{}) {

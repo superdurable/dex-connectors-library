@@ -1023,8 +1023,9 @@ idempotency key derive from them. The attempt is classified in this order:
 3. A required branch other than `defect` is `succeeded`.
 4. On a Mutation that uses the `singledispatch` Fence, any other branch is
    `unknown` when the Fence cannot prove that no request reached the
-   provider: this attempt recorded a `claimed` checkpoint and no `canResend`
-   followed, or `Decide` withheld a send because of the prior checkpoint.
+   provider: this attempt recorded a `claimed` checkpoint, even when
+   `canResend` followed, or `Decide` withheld a send because of the prior
+   checkpoint.
 5. A branch listed in `agent.branches` takes its listed outcome.
 6. An unlisted Mutation branch is `unknown`.
 7. An unlisted Query branch, including `defect`, is `failed`: the read changed
@@ -1035,10 +1036,13 @@ Rules 1, 2, 5, 6, and 7 match the in-process classification of Dex agents, so
 a tool behaves the same in process and through an MCP server. Rule 4 is a
 safety net, not a substitute for the listing. Dex shows a recorded
 heartbeat only to the next attempt, so the Fence itself reports its decision
-and its `claimed` and `canResend` checkpoints for the call's Call ID and
-attempt while RunAttempt runs. Heartbeats that the operation records itself do
-not change the result, and the operation receives the host's own context, so
-every Dex API behaves as in a Step. A Mutation with its own checkpoint, or
+and its `claimed` checkpoints for the call's Call ID, connection, and attempt
+while RunAttempt runs. Heartbeats that the operation records itself do not
+change the result, and the operation receives the host's own context, so
+every Dex API behaves as in a Step. Nothing clears a possible dispatch: an
+attempt that sent, saw `canResend`, and then selected a `rejected` branch is
+`unknown`, and concurrent attempts with the same Call ID, connection, and
+attempt, which share one observation, can only become more conservative. A Mutation with its own checkpoint, or
 none, is classified by its listing alone: list every branch the operation can
 select after the request may have been sent as `unknown`.
 

@@ -574,7 +574,9 @@ type fencedMutation struct {
 	sendErr       error
 	shouldSend    bool
 	afterDispatch func(sdkgo.Call)
+	duringSend    func()
 	providerSent  int
+	callIDs       []sdkgo.CallID
 }
 
 func (*fencedMutation) Definition() sdkgo.MutationDefinition { return agentMutationDefinition() }
@@ -584,6 +586,7 @@ func (*fencedMutation) IdempotencyKey(id sdkgo.CallID, _ agentInput) sdkgo.Idemp
 }
 
 func (mutation *fencedMutation) Invoke(call sdkgo.Call, _ agentInput) sdkgo.MutationAttempt[agentOutput] {
+	mutation.callIDs = append(mutation.callIDs, call.ID)
 	failure := agentValidFailure
 	fence, err := singledispatch.NewFence(call, 30*time.Second)
 	if err != nil {
@@ -593,6 +596,9 @@ func (mutation *fencedMutation) Invoke(call sdkgo.Call, _ agentInput) sdkgo.Muta
 	if mutation.shouldSend && decision.Kind == singledispatch.SendAllowed {
 		dispatchErr := fence.Dispatch(func(context.Context) error {
 			mutation.providerSent++
+			if mutation.duringSend != nil {
+				mutation.duringSend()
+			}
 			return mutation.sendErr
 		})
 		if errors.Is(dispatchErr, errProviderOverloaded) {
@@ -626,8 +632,9 @@ func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true}, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantProvider: 1,
 		},
 		{
-			name:     "claimed send proven unprocessed keeps the listed rejected outcome",
-			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true, sendErr: errProviderOverloaded}, wantOutcome: sdkgo.AgentToolAttemptRejected, wantProvider: 1,
+			// A claim stays a possible dispatch even after canResend proves the request unprocessed.
+			name:     "claimed send proven unprocessed is still unknown",
+			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true, sendErr: errProviderOverloaded}, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantProvider: 1,
 		},
 		{
 			name:     "fence decided without a send keeps the listed rejected outcome",
@@ -700,12 +707,25 @@ func TestMutationAgentToolReadsPriorFenceCheckpoint(t *testing.T) {
 	ctx = agentStepContext()
 	_, err = tool.RunAttempt(ctx, nil)
 	require.NoError(t, err)
-	// Attempt two finds canResend, sends again, and is proven unprocessed again.
+	// Attempt two finds canResend, may send again, and claims again, so it is unknown.
 	ctx.AdvanceAttempt()
 	attempt, err = tool.RunAttempt(ctx, nil)
 	require.NoError(t, err)
-	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, attempt.Outcome)
 	require.Equal(t, 2, overloaded.providerSent)
+
+	declined := &fencedMutation{branch: agentBranchRejected}
+	tool, err = sdkgo.NewMutationAgentTool(declined, agentConnection, metadata)
+	require.NoError(t, err)
+	ctx = agentStepContext()
+	require.NoError(t, ctx.SetPersistedCheckpoint(singledispatch.Marker{
+		CallID: firstCallID(t, overloaded), Attempt: 1, State: singledispatch.StateCanResend,
+	}))
+	ctx.AdvanceAttempt()
+	// Attempt two may send after canResend, declines to, and keeps the listed rejected outcome.
+	attempt, err = tool.RunAttempt(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
 }
 
 func TestMutationAgentToolIgnoresNonFenceHeartbeats(t *testing.T) {
@@ -862,4 +882,69 @@ func TestQueryAgentToolDefectFollowsItsListing(t *testing.T) {
 	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome, "a listed defect is rejected before Invoke too")
 	require.False(t, attempt.HasInvokedOperation)
 	require.Equal(t, "failed", string(sdkgo.AgentToolAttemptFailed))
+}
+
+func firstCallID(t *testing.T, mutation *fencedMutation) sdkgo.CallID {
+	t.Helper()
+	require.NotEmpty(t, mutation.callIDs)
+	return mutation.callIDs[0]
+}
+
+func runAgentToolAttemptAsync(tool sdkgo.AgentTool, ctx dex.Context) <-chan sdkgo.AgentToolAttempt {
+	attempts := make(chan sdkgo.AgentToolAttempt, 1)
+	go func() {
+		attempt, err := tool.RunAttempt(ctx, nil)
+		if err != nil {
+			panic(err)
+		}
+		attempts <- attempt
+	}()
+	return attempts
+}
+
+func TestConcurrentSameCallAttemptsNeverClearAClaim(t *testing.T) {
+	hasClaimed := make(chan struct{})
+	release := make(chan struct{})
+	claimed := &fencedMutation{branch: agentBranchRejected, shouldSend: true, duringSend: func() {
+		close(hasClaimed)
+		<-release
+	}}
+	resent := &fencedMutation{branch: agentBranchRejected, shouldSend: true, sendErr: errProviderOverloaded, afterDispatch: func(sdkgo.Call) {
+		close(release)
+	}}
+	claimedTool, err := sdkgo.NewMutationAgentTool(claimed, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	resentTool, err := sdkgo.NewMutationAgentTool(resent, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+
+	claimedAttempt := runAgentToolAttemptAsync(claimedTool, agentStepContext())
+	<-hasClaimed
+	// The second attempt shares the Call ID, connection, and attempt, and records canResend mid-send.
+	resentAttempt := runAgentToolAttemptAsync(resentTool, agentStepContext())
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, (<-claimedAttempt).Outcome)
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, (<-resentAttempt).Outcome)
+	require.Equal(t, 1, claimed.providerSent)
+	require.Equal(t, 1, resent.providerSent)
+}
+
+func TestConcurrentAttemptsOnOtherConnectionsAreIsolated(t *testing.T) {
+	hasClaimed := make(chan struct{})
+	release := make(chan struct{})
+	claimed := &fencedMutation{branch: agentBranchRejected, shouldSend: true, duringSend: func() {
+		close(hasClaimed)
+		<-release
+	}}
+	claimedTool, err := sdkgo.NewMutationAgentTool(claimed, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	otherConnection := sdkgo.ConnectionRef{Provider: agentConnection.Provider, Name: "personal"}
+	declinedTool, err := sdkgo.NewMutationAgentTool(&fencedMutation{branch: agentBranchRejected}, otherConnection, agentMutationMetadata())
+	require.NoError(t, err)
+
+	claimedAttempt := runAgentToolAttemptAsync(claimedTool, agentStepContext())
+	<-hasClaimed
+	declined, err := declinedTool.RunAttempt(agentStepContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptRejected, declined.Outcome, "another connection's claim does not taint this call")
+	close(release)
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, (<-claimedAttempt).Outcome)
 }

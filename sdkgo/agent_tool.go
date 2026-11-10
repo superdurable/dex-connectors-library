@@ -144,8 +144,8 @@ type AgentTool interface {
 	//  3. a required branch other than defect is succeeded;
 	//  4. on a Mutation that uses the singledispatch Fence, any other branch is
 	//     unknown when the Fence cannot prove that no request reached the
-	//     provider: this attempt recorded a claimed checkpoint (Dispatch ran
-	//     and no RecordCanResend followed), or Decide withheld a send because
+	//     provider: this attempt recorded a claimed checkpoint (Dispatch ran),
+	//     even if RecordCanResend followed, or Decide withheld a send because
 	//     the prior checkpoint was missing after attempt one, unreadable,
 	//     foreign, invalid, claimed, carried a provider ID, or came from an
 	//     attempt other than the previous one;
@@ -154,9 +154,11 @@ type AgentTool interface {
 	//  7. an unlisted Query branch, including defect, is failed.
 	//
 	// A connector Retry is AgentToolAttemptRetry. Rule 4 observes only the
-	// singledispatch Fence, which reports its own transitions for the call's
-	// Call ID and attempt, so heartbeats the operation records itself cannot
-	// change it. A Mutation with its own checkpoint mechanism relies on its
+	// singledispatch Fence, which reports its own claims and decisions for the
+	// call's Call ID, connection, and attempt, so heartbeats the operation
+	// records itself cannot change it. Concurrent attempts with the same Call
+	// ID, connection, and attempt share one observation; because nothing
+	// clears a possible dispatch, sharing can only make the result unknown. A Mutation with its own checkpoint mechanism relies on its
 	// manifest listing: a branch the operation can select after the request
 	// may have been sent must be listed unknown. The operation receives ctx
 	// itself, so every Dex API behaves as it does in a Step.
@@ -331,7 +333,10 @@ func (tool mutationAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments jso
 	if ctx != nil {
 		callID := deriveCallID(ctx.FlowID(), ctx.StepExecutionID(), tool.metadata.Operation)
 		var endObservation func()
-		observation, endObservation = fenceobservation.Begin(string(callID), ctx.Attempt())
+		observation, endObservation = fenceobservation.Begin(fenceobservation.AttemptIdentity{
+			CallID: string(callID), ConnectionProvider: tool.connection.Provider,
+			ConnectionName: tool.connection.Name, Attempt: ctx.Attempt(),
+		})
 		defer endObservation()
 	}
 	result, runErr := runMutationWithTrace(ctx, tool.operation, tool.connection, input, trace)
