@@ -5,6 +5,7 @@ metadata:
   displayName: Deel
   description: Read selected Deel contract status through the stable API.
   company: Deel
+  categories: [hr-recruiting]
   version: v0.1.0
 spec:
   provider: deel

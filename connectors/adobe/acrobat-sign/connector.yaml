@@ -5,6 +5,7 @@ metadata:
   displayName: Adobe Acrobat Sign
   description: Read an agreement's name and status through Acrobat Sign REST API v6.
   company: Adobe
+  categories: [files-documents]
   version: v0.1.0
 spec:
   provider: adobe-acrobat-sign

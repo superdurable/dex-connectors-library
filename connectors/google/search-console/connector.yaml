@@ -5,6 +5,7 @@ metadata:
   displayName: Google Search Console
   description: List Search Console properties accessible to the connected Google account.
   company: Google
+  categories: [marketing, analytics]
   version: v0.1.0
 spec:
   provider: google-search-console

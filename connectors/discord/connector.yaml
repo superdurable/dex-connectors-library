@@ -5,6 +5,7 @@ metadata:
   displayName: Discord
   description: Read Discord channels and bounded pages of channel messages, send nonce-deduplicated bot messages, and add reactions.
   company: Discord
+  categories: [communication]
   version: v0.3.0
 spec:
   provider: discord

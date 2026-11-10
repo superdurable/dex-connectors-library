@@ -5,6 +5,7 @@ metadata:
   displayName: Telegram Bot
   description: Read chat metadata and send text messages through a Telegram bot.
   company: Telegram
+  categories: [communication]
   version: v0.1.0
 spec:
   provider: telegram

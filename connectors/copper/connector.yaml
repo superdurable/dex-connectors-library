@@ -5,6 +5,7 @@ metadata:
   displayName: Copper CRM
   description: Read Copper lead statuses and lead identity without custom fields.
   company: Copper
+  categories: [crm-sales]
   version: v0.1.0
 spec:
   languages:

@@ -5,6 +5,7 @@ metadata:
   displayName: Twilio Messaging
   description: Send SMS, MMS, and WhatsApp messages through Twilio Programmable Messaging and read their delivery status.
   company: Twilio
+  categories: [communication]
   version: v0.23.0
 spec:
   provider: twilio

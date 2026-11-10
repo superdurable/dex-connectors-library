@@ -5,6 +5,7 @@ metadata:
   displayName: Google Cloud Storage
   description: List, download, and upload objects in Google Cloud Storage buckets.
   company: Google
+  categories: [databases-storage, files-documents]
   version: v0.2.0
 spec:
   provider: google-cloud-storage

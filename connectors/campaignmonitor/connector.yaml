@@ -5,6 +5,7 @@ metadata:
   displayName: Campaign Monitor
   description: Discover Campaign Monitor clients accessible to an account API key.
   company: Campaign Monitor
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: campaignmonitor

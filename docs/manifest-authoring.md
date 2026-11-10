@@ -1,8 +1,9 @@
 # Connector manifest and code generation
 
-Each connector module owns `connector.yaml`. Its `metadata.company` and
-`metadata.version` fields feed the public Connector catalog and declarative
-release workflow. A version change requests a release of that connector only
+Each connector module owns `connector.yaml`. Its `metadata.company`,
+`metadata.categories`, and `metadata.version` fields feed the public Connector
+catalog and declarative release workflow; see
+[Directory categories](#directory-categories). A version change requests a release of that connector only
 after merge; leaving it unchanged explicitly defers release. See
 [Choosing a connector version](versioning-and-releases.md#choosing-a-connector-version).
 
@@ -516,6 +517,60 @@ module from this repository may be required; see
 [Connector dependencies](versioning-and-releases.md#connector-dependencies).
 The Dex Go SDK requirement is a minimum; see
 [Dex versions](versioning-and-releases.md#dex-versions).
+
+## Directory categories
+
+`metadata.categories` places the connector in the directory site's category
+navigation at connectors.superdurable.io. It is required and lists one or two
+category IDs with no duplicates:
+
+```yaml
+metadata:
+  name: hubspot
+  displayName: HubSpot
+  description: Search, read, upsert, and update HubSpot CRM contacts, companies, and deals.
+  company: HubSpot
+  categories: [crm-sales, marketing]
+  version: v0.24.0
+```
+
+The first ID is the primary category, shown on the connector's card. Choose the
+category a user would browse first to find the provider's main job. Add a
+second ID only when the connector is just as useful for another job, such as
+HubSpot's marketing contacts or Pinecone's vector storage. A connector appears
+under both categories, and each category count includes it. Changing
+categories does not change generated code and needs no version change.
+
+`schema/connector_categories.go` owns the taxonomy. `connectorctl validate`
+and `connectorctl catalog --check` reject unknown IDs, and the generated catalog
+carries every category's ID, name, and description to the site.
+
+| ID | Name | Use for |
+| --- | --- | --- |
+| `ai` | AI & Machine Learning | Model inference, embeddings, speech, and vector search. |
+| `communication` | Communication | Team chat, email, SMS, messaging apps, and meetings. |
+| `marketing` | Marketing | Email marketing, marketing automation, advertising, SEO, and websites. |
+| `social-media` | Social Media | Social networks, publishing, and video platforms. |
+| `crm-sales` | CRM & Sales | Contacts, leads, deals, and sales pipelines. |
+| `customer-support` | Customer Support | Help desks, shared inboxes, tickets, and support conversations. |
+| `productivity` | Productivity & Collaboration | Docs, notes, calendars, spreadsheets, tasks, forms, and whiteboards. |
+| `project-management` | Project Management | Projects, issues, boards, and work tracking. |
+| `files-documents` | Files, Documents & E-signature | File storage and sharing, documents, and electronic signatures. |
+| `developer-tools` | Developer Tools & DevOps | Code hosting, cloud infrastructure, deployment, monitoring, queues, and HTTP APIs. |
+| `databases-storage` | Databases & Storage | SQL and NoSQL databases, data warehouses, search indexes, and object storage. |
+| `analytics` | Analytics & BI | Product analytics, web analytics, event tracking, and business intelligence. |
+| `finance-payments` | Finance, Payments & Accounting | Payments, billing, subscriptions, invoicing, accounting, and banking. |
+| `ecommerce` | E-commerce | Online stores, orders, and commerce platforms. |
+| `hr-recruiting` | HR & Recruiting | Employees, payroll, time off, and applicant tracking. |
+| `security-identity` | Security & Identity | Identity providers, user directories, and access management. |
+| `data-search` | Search & Data APIs | News, market data, weather, media catalogs, and other public data APIs. |
+
+Adding, renaming, or removing a category is a tooling change: update
+`schema/connector_categories.go`, the `metadata.categories` enum in
+`schema/connector-manifest.schema.json`, and this table together, and give the
+category an icon in `site/src/Icons.tsx`; the site shows a generic icon until
+then. A test fails when the schema enum and the Go taxonomy differ. Keep IDs stable,
+because directory links such as `/#/?category=crm-sales` use them.
 
 ## Agent tool metadata
 

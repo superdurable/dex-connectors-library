@@ -5,6 +5,7 @@ metadata:
   displayName: Amazon SES
   description: Read SES email identity verification status with AWS Signature Version 4.
   company: Amazon
+  categories: [communication, developer-tools]
   version: v0.1.0
 spec:
   provider: amazon-ses

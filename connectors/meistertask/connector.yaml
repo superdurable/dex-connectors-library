@@ -5,6 +5,7 @@ metadata:
   displayName: MeisterTask
   description: Read a task's name and status from MeisterTask.
   company: MeisterTask
+  categories: [project-management]
   version: v0.1.0
 spec:
   provider: meistertask

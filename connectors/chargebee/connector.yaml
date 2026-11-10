@@ -5,6 +5,7 @@ metadata:
   displayName: Chargebee
   description: Read selected Chargebee subscription status through the v2 API.
   company: Chargebee
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: chargebee

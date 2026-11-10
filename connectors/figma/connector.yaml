@@ -5,6 +5,7 @@ metadata:
   displayName: Figma
   description: Read Figma records with a connection-owned API key.
   company: Figma
+  categories: [productivity]
   version: v0.2.0
 spec:
   provider: figma

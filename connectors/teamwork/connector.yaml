@@ -5,6 +5,7 @@ metadata:
   displayName: Teamwork.com
   description: Read task identity and state from Teamwork.com Projects.
   company: Teamwork
+  categories: [project-management]
   version: v0.1.0
 spec:
   provider: teamwork

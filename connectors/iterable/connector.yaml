@@ -5,6 +5,7 @@ metadata:
   displayName: Iterable
   description: Read selected Iterable user identity by email.
   company: Iterable
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: iterable

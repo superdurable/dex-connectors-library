@@ -5,6 +5,7 @@ metadata:
   displayName: Webflow
   description: Webflow REST connector with two bounded operations.
   company: Webflow
+  categories: [marketing]
   version: v0.2.0
 spec:
   provider: webflow

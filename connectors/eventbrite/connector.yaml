@@ -5,6 +5,7 @@ metadata:
   displayName: Eventbrite
   description: Read organization and event metadata through Eventbrite API v3.
   company: Eventbrite
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: eventbrite

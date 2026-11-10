@@ -38,12 +38,21 @@ export function catalogDocumentUrl(isDev, baseUrl) {
   return `${base}catalog.yaml`;
 }
 
-export function readCatalog(text) {
+/** Category value meaning no category filter. */
+export const allCategories = "all";
+
+/** URL search parameter that holds the selected category ID. */
+export const categorySearchParameter = "category";
+
+/** Reads the generated catalog: the category taxonomy in display order and every connector. */
+export function readCatalogDocument(text) {
   const document = parse(text);
   if (!document || !Array.isArray(document.connectors)) {
     throw new Error("catalog is missing connectors");
   }
-  return document.connectors.map((connector) => {
+  const categories = readCategoryTaxonomy(document.categories);
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const connectors = document.connectors.map((connector) => {
     const directory = requiredText(connector.directory, "directory");
     const languages = readLanguages(connector.languages, connector.version);
     return {
@@ -51,6 +60,7 @@ export function readCatalog(text) {
       id: requiredText(connector.id, "id"),
       name: requiredText(connector.name, "name"),
       description: requiredText(connector.description, "description"),
+      categories: readConnectorCategories(connector.categories, categoriesById),
       version: requiredText(connector.version, "version"),
       languages,
       pythonPackage: readPythonPackage(connector.pythonPackage, directory, languages.python),
@@ -61,6 +71,68 @@ export function readCatalog(text) {
       operations: readCapabilities(connector.operations, ""),
     };
   });
+  return { categories, connectors };
+}
+
+/** Reads only the connectors of the generated catalog. */
+export function readCatalog(text) {
+  return readCatalogDocument(text).connectors;
+}
+
+function readCategoryTaxonomy(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error("catalog is missing categories");
+  }
+  const goldenAngleDegrees = 137.508;
+  const seen = new Set();
+  return value.map((category, index) => {
+    const id = requiredText(category?.id, "category id");
+    if (!/^[a-z]+(-[a-z]+)*$/.test(id) || seen.has(id)) {
+      throw new Error(`catalog category ID is invalid or repeated: ${id}`);
+    }
+    seen.add(id);
+    return {
+      id,
+      name: requiredText(category.name, "category name"),
+      description: requiredText(category.description, "category description"),
+      // Golden-angle steps keep neighboring categories visually distinct.
+      hue: Math.round((280 + index * goldenAngleDegrees) % 360),
+    };
+  });
+}
+
+function readConnectorCategories(value, categoriesById) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 2 || new Set(value).size !== value.length) {
+    throw new Error("catalog connector categories must list 1 or 2 distinct category IDs");
+  }
+  return value.map((id) => {
+    const category = categoriesById.get(id);
+    if (!category) {
+      throw new Error(`catalog connector names unknown category: ${id}`);
+    }
+    return category;
+  });
+}
+
+/** Returns the category ID from a URL parameter, or "all" when it is absent or unknown. */
+export function selectedCategoryID(parameterValue, categories) {
+  return categories.some((category) => category.id === parameterValue) ? parameterValue : allCategories;
+}
+
+/** Reports whether the connector belongs to the category, as primary or secondary. */
+export function connectorMatchesCategory(connector, categoryID) {
+  return categoryID === allCategories || connector.categories.some((category) => category.id === categoryID);
+}
+
+/** Counts connectors per category ID, plus "all"; a connector counts once in each of its categories. */
+export function categoryConnectorCounts(categories, connectors) {
+  const counts = new Map([[allCategories, connectors.length], ...categories.map((category) => [category.id, 0])]);
+  for (const connector of connectors) {
+    for (const category of connector.categories) {
+      counts.set(category.id, counts.get(category.id) + 1);
+    }
+  }
+  return counts;
 }
 
 function readLanguages(value, goVersion) {
@@ -109,6 +181,11 @@ export function pythonInstall(connector) {
   };
 }
 
+/** Returns the GitHub release page of the connector's listed Go version. */
+export function goReleaseUrl(connector) {
+  return `${connectorLibraryRepositoryUrl}/releases/tag/${connector.directory}/go/${connector.version}`;
+}
+
 export function connectorMatchesQuery(connector, query) {
   const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) {
@@ -119,6 +196,7 @@ export function connectorMatchesQuery(connector, query) {
     connector.name,
     connector.description,
     connector.id,
+    ...connector.categories.map((category) => category.name),
     ...connector.uiUnits.flatMap((capability) => [capability.name, capability.description, capability.kind]),
     ...connector.triggers.flatMap((capability) => [capability.name, capability.description, capability.kind]),
     ...connector.operations.flatMap((capability) => [capability.name, capability.description, capability.kind]),

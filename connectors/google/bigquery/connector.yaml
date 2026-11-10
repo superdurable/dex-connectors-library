@@ -5,6 +5,7 @@ metadata:
   displayName: Google BigQuery
   description: Discover accessible datasets in one Google Cloud project.
   company: Google
+  categories: [databases-storage, analytics]
   version: v0.1.0
 spec:
   provider: google-bigquery

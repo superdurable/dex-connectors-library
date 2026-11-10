@@ -5,6 +5,7 @@ metadata:
   displayName: WordPress
   description: Read published posts and create drafts or published posts through WordPress REST API.
   company: WordPress
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: wordpress

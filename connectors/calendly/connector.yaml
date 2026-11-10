@@ -5,6 +5,7 @@ metadata:
   displayName: Calendly
   description: "Read Calendly scheduled events and invitees, cancel events, create single-use scheduling links, register webhook subscriptions, and receive signed invitee.created and invitee.canceled webhooks."
   company: Calendly
+  categories: [productivity]
   version: v0.24.0
 spec:
   provider: calendly

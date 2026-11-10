@@ -5,6 +5,7 @@ metadata:
   displayName: X
   description: Retrieve a public X Post by its numeric ID.
   company: X
+  categories: [social-media]
   version: v0.1.0
 spec:
   provider: x-twitter

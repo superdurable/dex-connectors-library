@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/schema"
+	"gopkg.in/yaml.v3"
 )
 
 func TestValidateConnectorDirectoryAllowsAnyDepth(t *testing.T) {
@@ -507,6 +508,31 @@ func TestCatalogIncludesUIUnitsOperationsAndTriggers(t *testing.T) {
 	require.Contains(t, catalog, "kind: mutation")
 }
 
+func TestCatalogJSONCarriesCategoryTaxonomyAndConnectorCategories(t *testing.T) {
+	repositoryRoot := t.TempDir()
+	directory := "connectors/acme/chat"
+	writeConnectorFixture(t, repositoryRoot, directory, "example.com/connectors/acme/chat")
+	replaceInFile(t, filepath.Join(repositoryRoot, directory, "connector.yaml"),
+		"  categories: [developer-tools]\n", "  categories: [communication, ai]\n")
+	catalogPath := filepath.Join(repositoryRoot, "catalog.yaml")
+	require.NoError(t, os.WriteFile(catalogPath, []byte("apiVersion: connectors.dex.dev/catalog-source/v1alpha1\nkind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n"), 0o600))
+	outputDirectory := t.TempDir()
+	jsonPath := filepath.Join(outputDirectory, "catalog.json")
+	require.NoError(t, catalogCommand([]string{"--catalog", catalogPath, "--output", filepath.Join(outputDirectory, "catalog.yaml"),
+		"--json-output", jsonPath}))
+	contents, err := os.ReadFile(jsonPath)
+	require.NoError(t, err)
+	var document struct {
+		Categories []schema.ConnectorCategory `json:"categories"`
+		Connectors []struct {
+			Categories []string `json:"categories"`
+		} `json:"connectors"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &document))
+	require.Equal(t, schema.ConnectorCategories(), document.Categories)
+	require.Equal(t, []string{"communication", "ai"}, document.Connectors[0].Categories)
+}
+
 func TestCatalogJSONListsLanguageVersions(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	directory := "connectors/acme/chat"
@@ -619,18 +645,27 @@ func TestCatalogJSONReportsPendingAndPublishedPyPIPackages(t *testing.T) {
 
 func TestGoOnlyCatalogCapabilityBytesStayUnchanged(t *testing.T) {
 	entry := connectorDirectoryEntry{Directory: "connectors/example", Manifest: schema.Manifest{
-		Metadata: schema.Metadata{Name: "example", DisplayName: "Example", Description: "Example.", Company: "Example", Version: "v0.1.0"},
-		Spec:     schema.Spec{Operations: []schema.Operation{{Name: "getThing", Kind: "query", Description: "Get a thing."}}},
+		Metadata: schema.Metadata{
+			Name: "example", DisplayName: "Example", Description: "Example.", Company: "Example",
+			Categories: []string{"productivity"}, Version: "v0.1.0",
+		},
+		Spec: schema.Spec{Operations: []schema.Operation{{Name: "getThing", Kind: "query", Description: "Get a thing."}}},
 	}}
 	baseline, err := encodeConnectorCatalog([]connectorDirectoryEntry{entry}, nil, nil, "")
 	require.NoError(t, err)
+	encodedTaxonomy, err := yaml.Marshal(struct {
+		Categories []schema.ConnectorCategory `yaml:"categories"`
+	}{Categories: schema.ConnectorCategories()})
+	require.NoError(t, err)
 	require.Equal(t, `apiVersion: connectors.dex.dev/catalog/v1alpha1
 kind: ConnectorCatalog
-connectors:
+`+string(encodedTaxonomy)+`connectors:
     - company: Example
       id: example
       name: Example
       description: Example.
+      categories:
+        - productivity
       version: v0.1.0
       directory: connectors/example
       uiUnits: []

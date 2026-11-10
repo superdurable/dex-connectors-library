@@ -5,6 +5,7 @@ metadata:
   displayName: Ashby
   description: Read selected candidate profile fields from Ashby.
   company: Ashby
+  categories: [hr-recruiting]
   version: v0.1.0
 spec:
   provider: ashby

@@ -5,6 +5,7 @@ metadata:
   displayName: Amazon Redshift
   description: Fetch a page of SQL statement results through the Redshift Data API.
   company: Amazon
+  categories: [databases-storage, analytics]
   version: v0.1.0
 spec:
   provider: amazon-redshift

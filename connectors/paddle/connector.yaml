@@ -5,6 +5,7 @@ metadata:
   displayName: Paddle
   description: Read selected Paddle transaction status through the Paddle Billing API.
   company: Paddle
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: paddle

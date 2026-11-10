@@ -5,6 +5,7 @@ metadata:
   displayName: Sentry
   description: Read and act through the Sentry public API.
   company: Sentry
+  categories: [developer-tools]
   version: v0.2.0
 spec:
   provider: sentry

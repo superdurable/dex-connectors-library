@@ -5,6 +5,7 @@ metadata:
   displayName: Kit
   description: List and inspect subscriber metadata through the Kit API v4.
   company: Kit
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: kit

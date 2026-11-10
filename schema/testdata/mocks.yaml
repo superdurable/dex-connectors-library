@@ -5,6 +5,7 @@ metadata:
   displayName: Mock Fixture
   description: Code generation fixture for connector mocks.
   company: Example
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: example

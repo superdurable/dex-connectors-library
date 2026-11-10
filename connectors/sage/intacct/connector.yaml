@@ -5,6 +5,7 @@ metadata:
   displayName: Sage Intacct
   description: Read an accounts receivable invoice from Sage Intacct REST API.
   company: Sage
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: sage-intacct

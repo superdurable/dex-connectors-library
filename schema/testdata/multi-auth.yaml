@@ -5,6 +5,7 @@ metadata:
   displayName: Multi Auth Fixture
   description: Deterministic multi-authentication fixture.
   company: Example
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: example

@@ -5,6 +5,7 @@ metadata:
   displayName: Amazon Lambda
   description: Read Lambda function configuration with AWS Signature Version 4.
   company: Amazon
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: amazon-lambda

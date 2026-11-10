@@ -5,6 +5,7 @@ metadata:
   displayName: Google Contacts
   description: Read and create contacts through the Google People API.
   company: Google
+  categories: [productivity]
   version: v0.2.0
 spec:
   provider: google-contacts

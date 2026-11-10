@@ -5,6 +5,7 @@ metadata:
   displayName: Productboard
   description: List feature IDs and names through Productboard REST API v2.
   company: Productboard
+  categories: [project-management]
   version: v0.2.0
 spec:
   provider: productboard

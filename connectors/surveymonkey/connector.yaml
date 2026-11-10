@@ -5,6 +5,7 @@ metadata:
   displayName: SurveyMonkey
   description: List surveys and inspect response metadata through the SurveyMonkey API.
   company: SurveyMonkey
+  categories: [productivity, marketing]
   version: v0.1.0
 spec:
   provider: surveymonkey

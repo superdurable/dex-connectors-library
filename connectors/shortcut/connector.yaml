@@ -5,6 +5,7 @@ metadata:
   displayName: Shortcut
   description: Read story metadata from Shortcut REST API v3.
   company: Shortcut
+  categories: [project-management, developer-tools]
   version: v0.1.0
 spec:
   provider: shortcut

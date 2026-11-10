@@ -5,6 +5,7 @@ metadata:
   displayName: GitLab
   description: "Use the GitLab REST API through typed Dex connector Steps."
   company: GitLab
+  categories: [developer-tools]
   version: v0.2.0
 spec:
   provider: gitlab

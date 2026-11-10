@@ -5,6 +5,7 @@ metadata:
   displayName: Wise Platform
   description: Read selected Wise transfer status through the Platform API.
   company: Wise
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: wise

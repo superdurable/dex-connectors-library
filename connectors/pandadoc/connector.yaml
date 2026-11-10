@@ -5,6 +5,7 @@ metadata:
   displayName: PandaDoc
   description: Read a document's name and status through the PandaDoc Public API.
   company: PandaDoc
+  categories: [files-documents, crm-sales]
   version: v0.1.0
 spec:
   provider: pandadoc

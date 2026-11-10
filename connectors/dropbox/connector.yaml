@@ -5,6 +5,7 @@ metadata:
   displayName: Dropbox
   description: List folders, read metadata, download bounded files, and overwrite bounded files through typed Dex operations.
   company: Dropbox
+  categories: [files-documents]
   version: v0.2.0
 spec:
   provider: dropbox

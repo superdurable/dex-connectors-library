@@ -5,6 +5,7 @@ metadata:
   displayName: Google Tag Manager
   description: Read accounts, containers, and workspace tags from the Google Tag Manager v2 API.
   company: Google
+  categories: [marketing, analytics]
   version: v0.2.0
 spec:
   provider: google-tag-manager

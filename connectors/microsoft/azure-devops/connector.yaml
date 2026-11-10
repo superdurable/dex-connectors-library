@@ -5,6 +5,7 @@ metadata:
   displayName: Azure DevOps
   description: Read Azure DevOps projects and work item identity.
   company: Microsoft
+  categories: [developer-tools, project-management]
   version: v0.2.0
 spec:
   languages:

@@ -5,6 +5,7 @@ metadata:
   displayName: Personio
   description: Read selected Personio v2 person profile fields.
   company: Personio
+  categories: [hr-recruiting]
   version: v0.1.0
 spec:
   provider: personio

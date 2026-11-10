@@ -5,6 +5,7 @@ metadata:
   displayName: Drip
   description: Discover Drip accounts and read subscriber identity and status.
   company: Drip
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: drip

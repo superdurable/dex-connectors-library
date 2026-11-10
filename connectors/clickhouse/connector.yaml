@@ -5,6 +5,7 @@ metadata:
   displayName: ClickHouse
   description: List tables in one ClickHouse database over the read-only HTTP interface.
   company: ClickHouse
+  categories: [databases-storage, analytics]
   version: v0.1.0
 spec:
   provider: clickhouse

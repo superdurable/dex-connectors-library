@@ -5,6 +5,7 @@ metadata:
   displayName: Twilio Segment
   description: Read a Segment Public API source by ID.
   company: Twilio
+  categories: [analytics, marketing]
   version: v0.1.0
 spec:
   provider: segment

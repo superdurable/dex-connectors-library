@@ -5,6 +5,7 @@ metadata:
   displayName: Recurly
   description: Read selected Recurly account identity through the Subscriptions API.
   company: Recurly
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: recurly

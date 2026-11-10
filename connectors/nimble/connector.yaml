@@ -5,6 +5,7 @@ metadata:
   displayName: Nimble CRM
   description: Read Nimble contact IDs and selected contact identity.
   company: Nimble
+  categories: [crm-sales]
   version: v0.1.0
 spec:
   languages:

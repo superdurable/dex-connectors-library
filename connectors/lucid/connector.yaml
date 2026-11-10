@@ -5,6 +5,7 @@ metadata:
   displayName: Lucid
   description: List document IDs and titles through Lucid REST API v1.
   company: Lucid
+  categories: [productivity]
   version: v0.2.0
 spec:
   provider: lucid
