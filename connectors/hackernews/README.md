@@ -47,6 +47,13 @@ Use the generated factories in [the runnable Flow](go/examples/daily-digest/flow
 connection for tests. `WithHTTPClient` supplies a transport for tests or
 application networking.
 
+## Agent tools
+
+Both Queries are exposed to agent hosts through the `agent` block in
+`connector.yaml`, which each language package carries in `dex-connector.json`.
+They are public reads, so neither asks for approval, and every optional branch
+is classified `rejected` because a read changes nothing.
+
 ## Mocks
 
 The generated `hackernewsmock` package supplies a public compiler story for

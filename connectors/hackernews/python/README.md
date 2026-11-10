@@ -1,10 +1,16 @@
 # Hacker News connector for Python
 
-Install with `pip install dex-connector-hackernews==0.1.0`. The package
-requires `dex-connectors-sdk==0.1.0` and `dex-python-sdk>=1.28.0`, and
+Install with `pip install dex-connector-hackernews==0.2.0`. The package
+requires `dex-connectors-sdk>=0.8.0,<1` and `dex-python-sdk>=1.28.0`, and
 implements the manifest Queries `listStoryIDs` and `getItem` with the same
 branches, defaults, and failure classification as the Go module. The public
 API needs no credentials.
+
+Operations use the manifest identity: connector ID `hacker-news-daily` and
+provider `hacker-news`, as `CONNECTOR_ID` and `PROVIDER`. `new_project_connection`
+selects the Dex Web connection with that connector ID and provider, and Call IDs
+match the Go module. Version 0.1.0 used `hackernews` for both, so it could not
+open a Dex Web connection; 0.2.0 changes that identity (breaking).
 
 ## Operations
 
@@ -20,6 +26,12 @@ option with its discussion URL; a missing, deleted, or dead item selects
 `notFound`. 408, 429, 5xx, and transport failures retry; other non-200
 responses select `providerRejected`. Item `text_html` is untrusted provider
 HTML.
+
+## Agent tools
+
+Both Queries set `agent.exposed` in the package's `dex-connector.json`, so an
+agent host can offer `client.list_story_ids()` and `client.get_item()` as read
+tools. Every optional branch is classified `rejected`: a read changes nothing.
 
 ## Example
 

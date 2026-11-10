@@ -12,6 +12,7 @@ from .client import (
     LIST_STORY_IDS_DEFINITION,
     LISTED,
     NOT_FOUND,
+    PROVIDER,
     PROVIDER_REJECTED,
     Client,
     Config,
@@ -46,5 +47,6 @@ __all__ = [
     "LIST_STORY_IDS_DEFINITION",
     "LISTED",
     "NOT_FOUND",
+    "PROVIDER",
     "PROVIDER_REJECTED",
 ]

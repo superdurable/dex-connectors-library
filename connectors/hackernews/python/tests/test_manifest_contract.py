@@ -107,6 +107,25 @@ def test_factory_parameters_match_declared_branch_fields() -> None:
         assert parameters - common == {branch["field"] for branch in factory["branches"]}
 
 
+def test_identity_and_agent_metadata_match_manifest() -> None:
+    manifest = yaml.safe_load((CONNECTOR_DIRECTORY / "connector.yaml").read_text())
+    document = json.loads((Path(package.__file__).parent / "dex-connector.json").read_text())
+    assert package.CONNECTOR_ID == manifest["metadata"]["name"] == document["connectorId"]
+    assert package.PROVIDER == manifest["spec"]["provider"]
+    assert Mock().connection().reference.provider == manifest["spec"]["provider"]
+    operations = {operation["name"]: operation for operation in manifest["spec"]["operations"]}
+    factories = {factory["operationId"]: factory for factory in document["factories"]}
+    for definition in (LIST_STORY_IDS_DEFINITION, GET_ITEM_DEFINITION):
+        operation_id = definition.operation.operation_id
+        assert definition.operation.connector_id == document["connectorId"]
+        assert factories[operation_id]["description"] == operations[operation_id]["agent"]["description"]
+        agent = factories[operation_id]["agent"]
+        assert agent["exposed"] is True
+        assert "retry" not in agent and "approval" not in agent
+        optional = {branch.id for branch in definition.branches or () if branch.optional}
+        assert agent["branches"] == dict.fromkeys(optional, "rejected")
+
+
 def test_example_registers_with_mock_connection() -> None:
     flow = TopStoryFlow(Mock().connection())
     assert flow.get_flow_type() == FLOW_TYPE
