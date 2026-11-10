@@ -290,6 +290,7 @@ Results use these shapes:
 | Key reused for another call (other tool, connection, project, or arguments) | runs (reads keep no state), `rejected` if the key holds a write record | `rejected`, nothing sent, state untouched | same |
 | Expected-identity key mismatch | JSON-RPC `-32602` with outcome `rejected`, not run | same | same |
 | Key's record names a tool this build cannot name, under a vanished name | n/a | `unknown`, state untouched | same |
+| Running key whose connection now points to another target | n/a | no attempt: `rejected` if proven not sent, else `unknown` | finalized from its checkpoint (never runs again) |
 | Completed record | n/a | replay | replay |
 | Required branch | success | success | success |
 | Listed `rejected` branch | `rejected` | `rejected`; `unknown` once an earlier attempt may have applied | `rejected` |
@@ -371,6 +372,7 @@ never logged.
   "requestDigest": "<sha256 of the canonical request object>",
   "effect": "non_idempotent_write",
   "callId": "<sdkgo Call ID>",
+  "connectionTarget": "sha256:<digest of the connection's non-secret target>",
   "firstAttemptAt": "2026-11-20T10:00:00.123456789Z",
   "retryWindowEndsAt": "2026-11-20T11:00:00.123456789Z",
   "attempt": 1,
@@ -387,6 +389,13 @@ never logged.
   - `projectIdentity` is `file:` plus the real path of `connections.json`, or
     `project:<id>/<scope>` when hosted.
   - `argumentsDigest` treats absent or `null` arguments as `{}`.
+  - `connectionTarget` is `"sha256:"` plus the hex SHA-256 of canonical JSON
+    built from the connection's non-secret target fields:
+    `{"authMethodId", "configuration", "connectionName", "connectorId",
+    "provider", "sharedConnectionId"}`. `configuration` is the connection's
+    settings as canonical JSON, or `null`. Credentials, their expiry, and the
+    module path never enter it, so a credential refresh keeps it. See
+    [Connection rebinding](#connection-rebinding).
   - `effect` is frozen at the first attempt. When a later build reclassifies
     the operation, the stricter effect applies.
   - `checkpoint` is the last heartbeat any attempt recorded. The next attempt
@@ -427,8 +436,11 @@ Protocol for a keyed call:
    - `running`: set `possiblyApplied` unless the current attempt proved
      `notSent`.
    - `running` idempotent: finalize when the window passed, the cap was
-     reached, or the tool is no longer offered for that connection. Otherwise
-     increment `attempt`, write the record durably, then run.
+     reached, the tool is no longer offered for that connection, or the
+     connection's current target differs from `connectionTarget`. Otherwise
+     increment `attempt`, write the record durably, then run. Before each
+     inline retry, the same tool and target checks run against the tool set
+     as it is then.
 3. No record: resolve the tool, validate the arguments, write a new record with
    `attempt: 1` durably, then run.
 4. A durable write writes a temporary file in the same directory, syncs it,
@@ -460,6 +472,57 @@ Retention:
 - It also removes temporary files older than an hour.
 - A key reused after retention is a new call.
 - Stored write results can contain personal data. They stay in `0600` files.
+
+### Connection rebinding
+
+Dex Web keeps one record per connection name in `connections.json`, so a
+connection of the same name can later point somewhere else. Each record stores
+`connectionTarget`, and no attempt of an existing key ever runs against a
+different target. A rebound key settles from its evidence and nothing runs:
+
+- `rejected` ("the connection now points to a different target; nothing was
+  sent") when the current attempt proved `notSent` and nothing possibly
+  applied;
+- `unknown` otherwise.
+
+A new key after a rebind runs normally against the new target.
+
+Detected, because the fingerprint changes:
+
+- any change to the connection's non-secret settings: endpoint or base URL,
+  tenant, workspace, region, and account identifiers that a connector derives
+  into its settings from OAuth or OIDC claims or setup commands;
+- another provider, another single authorization method (`authMethodId`), or
+  another shared connection (`sharedConnectionId`);
+- a removed connection: its tool is no longer offered, so the key settles. A
+  re-added connection is compared like any other;
+- another connections file: `projectIdentity` differs, so the key's call is
+  treated as a different call.
+
+Not detected:
+
+- **Same settings, another account.** Re-authorizing the same connection name
+  to a different account when the account exists only in the credentials, for
+  example OAuth tokens of another user or workspace, or another API key, while
+  the settings stay identical. Dex Web stores no non-secret account identity
+  in `connections.json`, and credentials are deliberately never fingerprinted.
+- **Method selection.** A change of the selected method set of a multi-method
+  connector (`authMethodIds`), which `projectconfig` does not expose.
+
+To detect the first case:
+
+- Dex Web would store a non-secret, provider-verified account identity in each
+  connection record, captured at authorization: the OAuth or OIDC `sub`, Slack
+  `team_id` and `user_id`, or a Google account `sub`.
+  - Keep it across credential refresh and write-back.
+  - Change it only when re-authorization yields another account.
+- `projectconfig` would expose that identity, and `authMethodIds`, on
+  `ConnectionConfiguration`.
+- This server would then add both to the fingerprint.
+
+The fingerprint is conservative: settings re-saved with a new default field
+after a connector upgrade also change it, and a running key then settles
+`unknown`.
 
 ## Security
 
