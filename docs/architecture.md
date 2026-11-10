@@ -14,6 +14,9 @@
 - `site/` is the static directory published with the generated public catalog.
 - `cmd/connectorctl/` validates and generates connectors, selects CI shards,
   plans releases, and creates release artifacts.
+- `connectorsmcp/` is the separately released Go module of the
+  `dex-connectors-mcp` server, which offers agent-exposed operations as MCP
+  tools. Connector modules never require it.
 
 The first directory below `connectors/` is the company, matches
 `metadata.company`, and contains `logo.svg`. Every connector has a separate Go
@@ -137,6 +140,36 @@ The SDK and connectors use independent Go modules and directory-prefixed tags.
 An SDK contract change is released first; connectors require that exact
 release in later PRs. Git tags, not the source catalog, define published
 versions.
+
+## Agent tools over MCP
+
+`dex-connectors-mcp` (`connectorsmcp/`) serves every `agent.exposed: true`
+operation of the connections that Dex Web authorized as an MCP tool over
+loopback-only, stateless Streamable HTTP. It is built from three parts:
+
+- **Tool metadata.** It comes from the generated `ExposedAgentTools()` and
+  `Connection.AgentTools()` code of each linked connector module. Tools run
+  through `sdkgo.AgentTool.RunAttempt`, which also classifies each attempt's
+  branch.
+- **Results.** Tool `_meta` and results follow the Dex MCP conventions:
+  - `io.superdurable.dex/effect` and `io.superdurable.dex/approval` describe
+    each tool.
+  - `io.superdurable.dex/outcome` is `rejected` or `unknown`.
+  - `io.superdurable.connectors/*` identity keys name the connector,
+    connection, and operation, so Dex CLI can filter tools by them.
+- **Write state.** A declared write runs only under its
+  `io.superdurable.dex/idempotencyKey`. Its state lives in a per-key record
+  under the state directory (`dex-connectors-mcp/call-state/v1`). The record
+  is written durably before each attempt, and each heartbeat checkpoint is
+  written before the attempt continues. A crash or a Dex re-issue therefore
+  replays the stored result, reads back, or answers `unknown`; it never sends
+  blind.
+
+On `main` the server links no connector. Its tests use fake connectors. A
+release commit generates the registry of included connectors at their latest
+complete Go releases. dexcli finds a compatible release by its integer launch
+contract. See the [server README](../connectorsmcp/README.md) for flags, the
+ready line, the outcome mapping, and the state format.
 
 ## CI and release topology
 
