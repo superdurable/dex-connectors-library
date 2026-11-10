@@ -239,6 +239,28 @@ jobs:
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         run: python3 script/connector_conformance.py --mutation-self-test
 
+  python-connectors-latest-sdk:
+    # Floor-range Python packages also pass against the newest sdkpython source; their uv.lock tests the floor.
+    needs: connector-plan
+    if: needs.connector-plan.outputs.count != '0' || needs.connector-plan.outputs.sdkpython == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # A Python SDK change, schedule, or manual run checks every package; other runs check affected connectors.
+      CONNECTOR_SCOPE: ${{ needs.connector-plan.outputs.sdkpython != 'true' && (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
+      CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      CONNECTOR_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          check-latest: false
+          token: ''
+      - uses: astral-sh/setup-uv@v7
+      - run: make test-python-connectors-latest-sdk
+
   database-language-plan:
     runs-on: ubuntu-latest
     outputs:
@@ -910,6 +932,7 @@ jobs:
       - sdkts
       - sdkts-integration
       - language-connectors
+      - python-connectors-latest-sdk
       - database-language-plan
       - database-language-integration
       - email-language-plan
@@ -963,6 +986,8 @@ jobs:
               expected.add('sdkpython-integration')
           if event_name != 'schedule' and os.environ['RUN_SDKTS'] == 'true':
               expected.add('sdkts-integration')
+          if connector_count or os.environ['RUN_SDKPYTHON'] == 'true':
+              expected.add('python-connectors-latest-sdk')
           if connector_count or os.environ['RUN_SDKPYTHON'] == 'true' or os.environ['RUN_SDKTS'] == 'true' or os.environ['RUN_SDKGO_INTEGRATION'] == 'true':
               expected.add('dex-version-plan')
           if connector_count:
