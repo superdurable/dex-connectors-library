@@ -618,7 +618,11 @@ copy the check runs:
 1. `go get github.com/superdurable/dex/sdk-go@<latest>` and `go mod tidy`;
 2. `go build ./...`;
 3. `go vet ./...` with no build tags and with each of `integration` and
-   `live`, so tagged test files compile too.
+   `live`, so tagged test files compile too;
+4. for a module whose `//go:build` lines name an operating system, such as
+   the Connector SDK's file-lock sources, `go vet ./...` with no build tags
+   and `GOOS` set to each of `linux`, `darwin` and `windows`, so every
+   platform's files compile too.
 
 The check only compiles code. It needs no Dex Server or provider credentials
 and never edits the checkout. CI runs it for affected connectors on pull
