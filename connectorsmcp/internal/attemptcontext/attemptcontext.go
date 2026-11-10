@@ -103,7 +103,9 @@ func (attemptContext *standaloneAttemptContext) FirstAttemptAt() time.Time {
 	return attemptContext.options.FirstAttemptAt
 }
 
-func (attemptContext *standaloneAttemptContext) Attempt() int32 { return attemptContext.options.Attempt }
+func (attemptContext *standaloneAttemptContext) Attempt() int32 {
+	return attemptContext.options.Attempt
+}
 
 func (*standaloneAttemptContext) HasTimerFired() bool { return false }
 

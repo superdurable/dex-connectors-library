@@ -165,12 +165,12 @@ func TestWriteRejectsAnInconsistentRecord(t *testing.T) {
 
 func TestReadReportsUntrustworthyRecordsAsUnreadable(t *testing.T) {
 	cases := map[string]func(record map[string]any){
-		"unknown schema version":  func(record map[string]any) { record["schemaVersion"] = "dex-connectors-mcp/call-state/v2" },
-		"tampered request":        func(record map[string]any) { record["request"].(map[string]any)["connectionName"] = "other" },
-		"foreign state key":       func(record map[string]any) { record["stateKey"] = StateKey("another key") },
-		"unknown status":          func(record map[string]any) { record["status"] = "paused" },
-		"read effect":             func(record map[string]any) { record["effect"] = "read" },
-		"attempt zero":            func(record map[string]any) { record["attempt"] = 0 },
+		"unknown schema version":   func(record map[string]any) { record["schemaVersion"] = "dex-connectors-mcp/call-state/v2" },
+		"tampered request":         func(record map[string]any) { record["request"].(map[string]any)["connectionName"] = "other" },
+		"foreign state key":        func(record map[string]any) { record["stateKey"] = StateKey("another key") },
+		"unknown status":           func(record map[string]any) { record["status"] = "paused" },
+		"read effect":              func(record map[string]any) { record["effect"] = "read" },
+		"attempt zero":             func(record map[string]any) { record["attempt"] = 0 },
 		"completed without result": func(record map[string]any) { record["status"] = "completed" },
 	}
 	for name, corrupt := range cases {

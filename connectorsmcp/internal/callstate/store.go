@@ -229,6 +229,16 @@ func (lock *KeyLock) lockPath() string {
 	return filepath.Join(lock.store.callsDirectory, lock.stateKey[:2], lock.stateKey+lockFileSuffix)
 }
 
+// HasRecordFile reports whether a record file may exist for stateKey without
+// taking its lock. It reports false only when the file is provably absent.
+func (store *Store) HasRecordFile(stateKey string) bool {
+	if !stateKeyPattern.MatchString(stateKey) {
+		return true
+	}
+	_, err := os.Stat(filepath.Join(store.callsDirectory, stateKey[:2], stateKey+recordFileSuffix))
+	return !errors.Is(err, fs.ErrNotExist)
+}
+
 func (store *Store) ensureShardDirectory(stateKey string) (string, error) {
 	shardDirectory := filepath.Join(store.callsDirectory, stateKey[:2])
 	if _, err := os.Stat(shardDirectory); err == nil {
