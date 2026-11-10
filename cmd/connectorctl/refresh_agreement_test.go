@@ -71,6 +71,49 @@ func TestLanguageRefreshAgreementTimeoutRequiresConnectorSDKZeroEight(t *testing
 	}
 }
 
+func TestLanguageRefreshAgreementTimeoutFollowsThePythonSDKFloor(t *testing.T) {
+	cases := []byte(`[{"name":"refresh","tokenExchangeTimeout":"8s","tokenExchangeTimeoutNanoseconds":8000000000}]`)
+	for _, test := range []struct {
+		requirement    string
+		includeTimeout bool
+	}{
+		{requirement: `"dex-connectors-sdk>=0.7.0,<1"`, includeTimeout: false},
+		{requirement: `"dex-connectors-sdk>=0.8.0,<1"`, includeTimeout: true},
+		{requirement: `'dex-connectors-sdk>=0.9.1,<1'`, includeTimeout: true},
+	} {
+		t.Run(test.requirement, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "pyproject.toml")
+			contents := "[project]\ndependencies = [" + test.requirement + `, "dex-python-sdk>=1.28.0"]` + "\n"
+			require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
+			generated, err := languageRefreshAgreementCases(cases, path, "python")
+			require.NoError(t, err)
+			require.Equal(t, test.includeTimeout, strings.Contains(string(generated), `"tokenExchangeTimeout":"8s"`))
+		})
+	}
+}
+
+func TestLanguageRefreshAgreementRejectsOtherPythonSDKRequirements(t *testing.T) {
+	cases := []byte(`[{"name":"refresh"}]`)
+	for _, dependencies := range []string{
+		`"dex-connectors-sdk>=0.8.0"`,
+		`"dex-connectors-sdk>=0.8.0,<2"`,
+		`"dex-connectors-sdk>=0.8.0,<1.0"`,
+		`"dex-connectors-sdk>=0.8.0, <1"`,
+		`"dex-connectors-sdk~=0.8"`,
+		`"dex-connectors-sdk>=1.0.0,<1"`,
+		`"dex-connectors-sdk>=0.8.0rc1,<1"`,
+		`"dex-connectors-sdk==0.8.0", "dex-connectors-sdk>=0.8.0,<1"`,
+		`"dex-python-sdk>=1.28.0"`,
+	} {
+		t.Run(dependencies, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "pyproject.toml")
+			require.NoError(t, os.WriteFile(path, []byte("[project]\ndependencies = ["+dependencies+"]\n"), 0o600))
+			_, err := languageRefreshAgreementCases(cases, path, "python")
+			require.ErrorContains(t, err, "must require dex-connectors-sdk once")
+		})
+	}
+}
+
 func TestGeneratedRefreshAgreementFilesIncludeLanguageTests(t *testing.T) {
 	manifestPath := filepath.Join("..", "..", "connectors", "google", "gmail", "connector.yaml")
 	manifest, err := load(manifestPath)
