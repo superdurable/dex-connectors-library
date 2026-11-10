@@ -522,8 +522,7 @@ func Decode(reader io.Reader) (Manifest, error) {
 	return manifest, nil
 }
 
-// requireDeclaredOAuthPKCE rejects an oauth2 block without pkce, as the JSON Schema does; the bool field cannot
-// distinguish an omitted pkce from false.
+// requireDeclaredOAuthPKCE rejects oauth2 without pkce, matching the JSON Schema; a bool cannot tell omitted from false.
 func requireDeclaredOAuthPKCE(contents []byte) error {
 	var document yaml.Node
 	if err := yaml.Unmarshal(contents, &document); err != nil {
