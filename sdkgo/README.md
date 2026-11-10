@@ -1000,8 +1000,11 @@ code supplies an `AgentToolMetadata` per operation whose manifest sets
 connection and return a sealed `AgentTool`. They reject metadata that does not
 match the operation definition: another operation or kind, branches or Step
 defaults that differ, an `agent.branches` key that is not an optional branch,
-`unknown` on a Query, `uncertain` listed as `rejected`, or `IsRetrySafe` on a
-Query.
+`unknown` on a Query, `uncertain` listed as `rejected`, `IsRetrySafe` on a
+Query, or a `ToolName` other than the connector ID, an underscore, and the
+operation ID in connectorctl's snake case (`listStoryIDs` is
+`list_story_ids`). The vectors in `testdata/agent_tool_names.json` hold the
+SDK and connectorctl to the same snake case.
 
 `Effect()` gives the Dex MCP effect class: `read` for a Query,
 `idempotent_write` for a Mutation with `agent.retry: safe`, and
@@ -1019,9 +1022,21 @@ idempotency key derive from them. The attempt is classified in this order:
    the attempt the operation returned was invalid, is `unknown`, whatever
    `agent.branches` says.
 3. A required branch other than `defect` is `succeeded`.
-4. A branch listed in `agent.branches` takes its listed outcome.
-5. An unlisted Mutation branch, including `defect`, is `unknown`.
-6. An unlisted Query branch, including `defect`, is `rejected`.
+4. On a Mutation that uses the `singledispatch` Fence, any other branch is
+   `unknown` when the Fence's checkpoint cannot prove that no request reached
+   the provider: this attempt recorded a `claimed` checkpoint and no
+   `canResend` followed, or the prior checkpoint was unreadable, foreign, or
+   invalid, or did not allow this attempt to send.
+5. A branch listed in `agent.branches` takes its listed outcome.
+6. An unlisted Mutation branch, including `defect`, is `unknown`.
+7. An unlisted Query branch, including `defect`, is `rejected`.
+
+Rule 4 is a safety net, not a substitute for the listing. RunAttempt sees the
+Fence through the heartbeat calls on the context it passes the operation, a
+wrapper of the host's context, so SubFlow reads, which need Dex's own context,
+fail inside it. A Mutation with its own checkpoint, or none, is classified by
+its listing alone: list every branch the operation can select after the
+request may have been sent as `unknown`.
 
 A connector Retry returns the outcome `retry` with the Failure and any
 `RetryAfter`, and the host decides whether to repeat. `HasInvokedOperation`
@@ -1029,8 +1044,10 @@ is false when the attempt ended before `Invoke`, so the provider was not
 called; a host may use it to answer `rejected` for a write that never left the
 process. RunAttempt returns an error instead of an attempt when arguments do
 not decode (`ErrAgentToolArgumentsInvalid`), the operation panics
-(`ErrAgentToolPanicked`), or the result value does not encode as JSON; only
-`HasInvokedOperation` is meaningful then.
+(`ErrAgentToolPanicked`), or the result value does not encode as JSON
+(`ErrAgentToolResultUnencodable`); only `HasInvokedOperation` is meaningful
+then. Error text names a category or a Go type, never argument or result
+content, so a host may log it.
 
 From [`agent_tool_example_test.go`](agent_tool_example_test.go):
 

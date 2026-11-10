@@ -597,6 +597,14 @@ List every optional branch of a reviewed Mutation, so the map records each
 decision rather than leaving it to the default. If one branch is selected both
 before and after the request is sent, it is `unknown`.
 
+The listing is the contract, and a host trusts a `rejected` entry. The Go
+Connector SDK adds one safety net for Go agent hosts (`sdkgo` v0.35.0 and
+later): when a Mutation uses the `singledispatch` Fence and its checkpoint
+cannot prove that no request reached the provider, any branch other than the
+happy path is `unknown`, whatever the listing says. A Mutation with its own
+checkpoint, or none, gets no such check, and a `rejected` entry on a branch it
+selects after sending invites a duplicate write.
+
 Write `agent.description` for a model, not a Connector author. State what the
 operation does and what the model must supply. Leave out durability, retry, and
 fence details. Do not name credentials or secrets.

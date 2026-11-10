@@ -11,14 +11,11 @@ import (
 	"io"
 	"maps"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/superdurable/dex/sdk-go/dex"
 )
-
-var agentToolOperationNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
 // AgentToolEffect is how an agent host may repeat a tool call. The values are
 // the Dex MCP effect conventions, so a host can copy them into tool metadata.
@@ -69,8 +66,10 @@ type AgentToolMetadata struct {
 	// Kind says whether the operation is a Query or a Mutation.
 	Kind AgentOperationKind
 	// ToolName is the connector ID, an underscore, and the operation ID in
-	// snake case, such as hacker-news-daily_list_story_ids. It names the
-	// tool before a host adds any connection qualifier.
+	// snake case, such as hacker-news-daily_list_story_ids for listStoryIDs.
+	// The snake case is connectorctl's, which also names the Python Step
+	// factories. It names the tool before a host adds any connection
+	// qualifier.
 	ToolName string
 	// Description is the text a model reads to choose the tool: the
 	// manifest's agent.description, or else the operation description.
@@ -136,18 +135,38 @@ type AgentTool interface {
 	// any provider idempotency key, derives from them. Attempt must count the
 	// attempts of that call from one.
 	//
-	// The selected branch is classified in this order: uncertain is unknown;
-	// on a Mutation, a defect that sdkgo selected after Invoke because the
-	// returned attempt was invalid is unknown whatever BranchOutcomes says; a
-	// required branch other than defect is succeeded; a listed branch takes
-	// its listed outcome; an unlisted Mutation branch is unknown; an unlisted
-	// Query branch is rejected. A connector Retry is AgentToolAttemptRetry.
+	// The selected branch is classified in this order:
+	//
+	//  1. uncertain is unknown;
+	//  2. on a Mutation, a defect that sdkgo selected after Invoke because the
+	//     returned attempt was invalid is unknown, whatever BranchOutcomes says;
+	//  3. a required branch other than defect is succeeded;
+	//  4. on a Mutation that uses the singledispatch Fence, any other branch is
+	//     unknown when the Fence's checkpoint cannot prove that no request
+	//     reached the provider: this attempt recorded a claimed checkpoint
+	//     (Dispatch ran and no RecordCanResend followed), or the prior
+	//     checkpoint was unreadable, foreign, or invalid, or did not grant this
+	//     attempt a send;
+	//  5. a listed branch takes its listed outcome;
+	//  6. an unlisted Mutation branch is unknown;
+	//  7. an unlisted Query branch is rejected.
+	//
+	// A connector Retry is AgentToolAttemptRetry. Rule 4 observes only the
+	// singledispatch Fence, through the heartbeat calls on ctx, so a Mutation
+	// with its own checkpoint mechanism relies on its manifest listing: a
+	// branch the operation can select after the request may have been sent
+	// must be listed unknown. To observe the Fence, RunAttempt passes the
+	// operation a wrapper of ctx; Dex functions that require Dex's own
+	// invocation context, such as SubFlow reads, fail with it.
 	//
 	// A nil error returns a classified attempt. A non-nil error means the
-	// attempt ended without a branch: arguments did not decode, the operation
-	// or IdempotencyKey panicked (ErrAgentToolPanicked), or the result value
-	// did not encode as JSON. Only the returned HasInvokedOperation is
+	// attempt ended without a branch: arguments did not decode
+	// (ErrAgentToolArgumentsInvalid), the operation or IdempotencyKey panicked
+	// (ErrAgentToolPanicked), or the result value did not encode as JSON
+	// (ErrAgentToolResultUnencodable). Only the returned HasInvokedOperation is
 	// meaningful then; when it is true the provider may have been called.
+	// Error text names only an error category or type, never argument or
+	// result content.
 	RunAttempt(ctx dex.Context, arguments json.RawMessage) (AgentToolAttempt, error)
 	isAgentTool()
 }
@@ -194,6 +213,10 @@ type AgentToolAttempt struct {
 // decode into the operation input. Nothing was invoked.
 var ErrAgentToolArgumentsInvalid = errors.New("agent tool arguments do not decode into the operation input")
 
+// ErrAgentToolResultUnencodable is wrapped by RunAttempt when the operation's
+// result value does not encode as JSON. The operation was invoked.
+var ErrAgentToolResultUnencodable = errors.New("agent tool result value does not encode as JSON")
+
 // ErrAgentToolPanicked is wrapped by RunAttempt when the operation panicked.
 // The returned attempt's HasInvokedOperation says whether Invoke had started.
 var ErrAgentToolPanicked = errors.New("agent tool operation panicked")
@@ -215,9 +238,9 @@ type mutationAgentTool[IN, OUT any] struct {
 // definition is invalid, or metadata does not match the definition: another
 // OperationRef, a Kind other than query, IsRetrySafe set, a BranchOutcomes key
 // that is not an optional branch or a value other than rejected, Branches or
-// StepDefaults that differ from the definition, a blank ToolName or
-// Description, a ToolName that does not start with the connector ID and an
-// underscore, or an InputSchema that is not a JSON object. The tool keeps its
+// StepDefaults that differ from the definition, a ToolName other than the
+// connector ID, an underscore, and the snake case operation ID, a blank
+// Description, or an InputSchema that is not a JSON object. The tool keeps its
 // own copy of metadata.
 func NewQueryAgentTool[IN, OUT any](operation Query[IN, OUT], connection ConnectionRef, metadata AgentToolMetadata) (AgentTool, error) {
 	if isNilValue(operation) {
@@ -239,9 +262,9 @@ func NewQueryAgentTool[IN, OUT any](operation Query[IN, OUT], connection Connect
 // another OperationRef, a Kind other than mutation, a BranchOutcomes key that
 // is not an optional branch, a value other than rejected or unknown, the
 // uncertain branch mapped to rejected, Branches or StepDefaults that differ
-// from the definition, a blank ToolName or Description, a ToolName that does
-// not start with the connector ID and an underscore, or an InputSchema that is
-// not a JSON object. The tool keeps its own copy of metadata.
+// from the definition, a ToolName other than the connector ID, an underscore,
+// and the snake case operation ID, a blank Description, or an InputSchema that
+// is not a JSON object. The tool keeps its own copy of metadata.
 func NewMutationAgentTool[IN, OUT any](operation Mutation[IN, OUT], connection ConnectionRef, metadata AgentToolMetadata) (AgentTool, error) {
 	if isNilValue(operation) {
 		return nil, errors.New("agent tool Mutation operation is required")
@@ -276,7 +299,7 @@ func (tool queryAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments json.R
 	if runErr != nil {
 		return agentToolRetryAttempt(tool.metadata.Operation, trace, runErr)
 	}
-	return classifyAgentToolResult(tool.metadata, trace, result.Branch, result.Value, result.Failure)
+	return classifyAgentToolResult(tool.metadata, trace, false, result.Branch, result.Value, result.Failure)
 }
 
 func (queryAgentTool[IN, OUT]) isAgentTool() {}
@@ -297,11 +320,18 @@ func (tool mutationAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments jso
 	}
 	trace := &operationRunTrace{}
 	defer recoverAgentToolPanic(tool.metadata.Operation, trace, &attempt, &err)
-	result, runErr := runMutationWithTrace(ctx, tool.operation, tool.connection, input, trace)
+	runContext := ctx
+	var observer *dispatchObservingContext
+	if ctx != nil {
+		observer = newDispatchObservingContext(ctx, tool.metadata.Operation)
+		runContext = observer
+	}
+	result, runErr := runMutationWithTrace(runContext, tool.operation, tool.connection, input, trace)
 	if runErr != nil {
 		return agentToolRetryAttempt(tool.metadata.Operation, trace, runErr)
 	}
-	return classifyAgentToolResult(tool.metadata, trace, result.Branch, result.Value, result.Failure)
+	mayHaveDispatched := observer != nil && observer.mayHaveDispatched()
+	return classifyAgentToolResult(tool.metadata, trace, mayHaveDispatched, result.Branch, result.Value, result.Failure)
 }
 
 func (mutationAgentTool[IN, OUT]) isAgentTool() {}
@@ -331,13 +361,14 @@ func agentToolRetryAttempt(operation OperationRef, trace *operationRunTrace, run
 	return attempt, nil
 }
 
-func classifyAgentToolResult(metadata AgentToolMetadata, trace *operationRunTrace, branch BranchID, value any, failure *Failure) (AgentToolAttempt, error) {
+// classifyAgentToolResult reports only the encoding error's type: its text may carry result data.
+func classifyAgentToolResult(metadata AgentToolMetadata, trace *operationRunTrace, mayHaveDispatched bool, branch BranchID, value any, failure *Failure) (AgentToolAttempt, error) {
 	encoded, err := json.Marshal(value)
 	if err != nil {
-		return AgentToolAttempt{HasInvokedOperation: trace.hasInvokedOperation}, fmt.Errorf("encode %s %s result value: %w", metadata.Operation.ConnectorID, metadata.Operation.OperationID, err)
+		return AgentToolAttempt{HasInvokedOperation: trace.hasInvokedOperation}, fmt.Errorf("%w: %s %s result value failed with %T", ErrAgentToolResultUnencodable, metadata.Operation.ConnectorID, metadata.Operation.OperationID, err)
 	}
 	return AgentToolAttempt{
-		Outcome:             classifyAgentToolBranch(metadata, branch, trace.isDefectCreatedAfterInvoke),
+		Outcome:             classifyAgentToolBranch(metadata, branch, trace.isDefectCreatedAfterInvoke, mayHaveDispatched),
 		Branch:              branch,
 		Value:               encoded,
 		Failure:             failure,
@@ -346,7 +377,7 @@ func classifyAgentToolResult(metadata AgentToolMetadata, trace *operationRunTrac
 }
 
 // classifyAgentToolBranch follows Dex's listing-first rule; sdkgo's own knowledge may only tighten it to unknown.
-func classifyAgentToolBranch(metadata AgentToolMetadata, branch BranchID, isDefectCreatedAfterInvoke bool) AgentToolAttemptOutcome {
+func classifyAgentToolBranch(metadata AgentToolMetadata, branch BranchID, isDefectCreatedAfterInvoke, mayHaveDispatched bool) AgentToolAttemptOutcome {
 	isMutation := metadata.Kind == AgentOperationKindMutation
 	if branch == UncertainBranchID {
 		return AgentToolAttemptUnknown
@@ -356,6 +387,9 @@ func classifyAgentToolBranch(metadata AgentToolMetadata, branch BranchID, isDefe
 	}
 	if branch != DefectBranchID && isRequiredBranch(metadata.Branches, branch) {
 		return AgentToolAttemptSucceeded
+	}
+	if isMutation && mayHaveDispatched {
+		return AgentToolAttemptUnknown
 	}
 	switch metadata.BranchOutcomes[branch] {
 	case AgentBranchOutcomeRejected:
@@ -390,12 +424,28 @@ func decodeAgentToolArguments[IN any](toolName string, arguments json.RawMessage
 	decoder := json.NewDecoder(bytes.NewReader(trimmed))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&input); err != nil {
-		return input, fmt.Errorf("%w: %s: %w", ErrAgentToolArgumentsInvalid, toolName, err)
+		return input, fmt.Errorf("%w: %s: %s", ErrAgentToolArgumentsInvalid, toolName, describeArgumentDecodingError(err))
 	}
 	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
 		return input, fmt.Errorf("%w: %s: arguments contain data after the JSON object", ErrAgentToolArgumentsInvalid, toolName)
 	}
 	return input, nil
+}
+
+// describeArgumentDecodingError names only a category: decoder and custom Unmarshaler text may quote argument values.
+func describeArgumentDecodingError(err error) string {
+	var syntaxErr *json.SyntaxError
+	var typeErr *json.UnmarshalTypeError
+	switch {
+	case errors.As(err, &syntaxErr), errors.Is(err, io.ErrUnexpectedEOF), errors.Is(err, io.EOF):
+		return "arguments are not valid JSON"
+	case errors.As(err, &typeErr):
+		return "an argument has the wrong JSON type"
+	case strings.HasPrefix(err.Error(), "json: unknown field "):
+		return "arguments contain a field the operation input does not accept"
+	default:
+		return fmt.Sprintf("an argument was refused by the operation input type (%T)", err)
+	}
 }
 
 func validateAgentToolMetadata(metadata AgentToolMetadata, kind AgentOperationKind, operation OperationRef, branches []BranchDefinition, defaults StepDefaults, connection ConnectionRef) error {
@@ -409,9 +459,8 @@ func validateAgentToolMetadata(metadata AgentToolMetadata, kind AgentOperationKi
 	if metadata.Kind != kind {
 		return fmt.Errorf("agent tool metadata kind %q does not match the operation kind %q", metadata.Kind, kind)
 	}
-	operationName, hasConnectorPrefix := strings.CutPrefix(metadata.ToolName, operation.ConnectorID+"_")
-	if !hasConnectorPrefix || !agentToolOperationNamePattern.MatchString(operationName) {
-		return fmt.Errorf("agent tool name %q must be %q, an underscore, and the snake case operation ID", metadata.ToolName, operation.ConnectorID)
+	if wantToolName := operation.ConnectorID + "_" + lowerCamelToSnake(operation.OperationID); metadata.ToolName != wantToolName {
+		return fmt.Errorf("agent tool name %q must be %q", metadata.ToolName, wantToolName)
 	}
 	if strings.TrimSpace(metadata.Description) == "" {
 		return fmt.Errorf("agent tool %s description is required", metadata.ToolName)
@@ -464,4 +513,27 @@ func cloneAgentToolMetadata(metadata AgentToolMetadata) AgentToolMetadata {
 	metadata.Branches = append([]BranchDefinition(nil), metadata.Branches...)
 	metadata.StepDefaults.ExecuteRetry = cloneRetryPolicy(metadata.StepDefaults.ExecuteRetry)
 	return metadata
+}
+
+// lowerCamelToSnake mirrors connectorctl's function of the same name, which names Python factories.
+// testdata/agent_tool_names.json pins both to the same vectors.
+func lowerCamelToSnake(name string) string {
+	var converted strings.Builder
+	characters := []rune(name)
+	for index, character := range characters {
+		if character >= 'A' && character <= 'Z' {
+			isPreviousLowerOrDigit := index > 0 && ((characters[index-1] >= 'a' && characters[index-1] <= 'z') || (characters[index-1] >= '0' && characters[index-1] <= '9'))
+			isEndOfAcronym := index > 0 && index+1 < len(characters) && characters[index-1] >= 'A' && characters[index-1] <= 'Z' && characters[index+1] >= 'a' && characters[index+1] <= 'z'
+			// A trailing lowercase s pluralizes the acronym, as in listStoryIDs.
+			isAcronymPlural := index+1 < len(characters) && characters[index+1] == 's' && (index+2 == len(characters) || characters[index+2] < 'a' || characters[index+2] > 'z')
+			isEndOfAcronym = isEndOfAcronym && !isAcronymPlural
+			if isPreviousLowerOrDigit || isEndOfAcronym {
+				converted.WriteByte('_')
+			}
+			converted.WriteRune(character + ('a' - 'A'))
+		} else {
+			converted.WriteRune(character)
+		}
+	}
+	return converted.String()
 }

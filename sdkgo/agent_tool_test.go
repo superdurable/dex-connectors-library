@@ -4,13 +4,16 @@
 package sdkgo_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatch"
 	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
@@ -440,7 +443,8 @@ func TestAgentToolReportsUnencodableResultAfterInvoke(t *testing.T) {
 	tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, agentMutationMetadata())
 	require.NoError(t, err)
 	attempt, err := tool.RunAttempt(agentStepContext(), nil)
-	require.ErrorContains(t, err, "encode agent-provider postReply result value")
+	require.ErrorIs(t, err, sdkgo.ErrAgentToolResultUnencodable)
+	require.ErrorContains(t, err, "agent-provider postReply result value failed with")
 	require.Equal(t, sdkgo.AgentToolAttempt{HasInvokedOperation: true}, attempt)
 	require.Equal(t, 1, mutation.invocations)
 }
@@ -451,15 +455,16 @@ func TestAgentToolConstructorsValidateMetadata(t *testing.T) {
 		connection  sdkgo.ConnectionRef
 		wantMessage string
 	}{
-		"other operation":           {change: func(m *sdkgo.AgentToolMetadata) { m.Operation.OperationID = "deleteReply" }, wantMessage: "does not match the operation definition"},
-		"query kind":                {change: func(m *sdkgo.AgentToolMetadata) { m.Kind = sdkgo.AgentOperationKindQuery }, wantMessage: "kind"},
-		"blank tool name":           {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "" }, wantMessage: "agent tool name"},
-		"tool name without prefix":  {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "post_reply" }, wantMessage: "agent tool name"},
-		"tool name with camel case": {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "agent-provider_postReply" }, wantMessage: "agent tool name"},
-		"blank description":         {change: func(m *sdkgo.AgentToolMetadata) { m.Description = " " }, wantMessage: "description is required"},
-		"branches differ":           {change: func(m *sdkgo.AgentToolMetadata) { m.Branches = m.Branches[:2] }, wantMessage: "branches do not match"},
-		"step defaults differ":      {change: func(m *sdkgo.AgentToolMetadata) { m.StepDefaults.ExecuteMethodTimeout = time.Minute }, wantMessage: "Step defaults do not match"},
-		"retry policy differs":      {change: func(m *sdkgo.AgentToolMetadata) { m.StepDefaults.ExecuteRetry = nil }, wantMessage: "Step defaults do not match"},
+		"other operation":                   {change: func(m *sdkgo.AgentToolMetadata) { m.Operation.OperationID = "deleteReply" }, wantMessage: "does not match the operation definition"},
+		"query kind":                        {change: func(m *sdkgo.AgentToolMetadata) { m.Kind = sdkgo.AgentOperationKindQuery }, wantMessage: "kind"},
+		"blank tool name":                   {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "" }, wantMessage: "agent tool name"},
+		"tool name without prefix":          {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "post_reply" }, wantMessage: "agent tool name"},
+		"tool name with camel case":         {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "agent-provider_postReply" }, wantMessage: "agent tool name"},
+		"tool name with another snake case": {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "agent-provider_postreply" }, wantMessage: `must be "agent-provider_post_reply"`},
+		"blank description":                 {change: func(m *sdkgo.AgentToolMetadata) { m.Description = " " }, wantMessage: "description is required"},
+		"branches differ":                   {change: func(m *sdkgo.AgentToolMetadata) { m.Branches = m.Branches[:2] }, wantMessage: "branches do not match"},
+		"step defaults differ":              {change: func(m *sdkgo.AgentToolMetadata) { m.StepDefaults.ExecuteMethodTimeout = time.Minute }, wantMessage: "Step defaults do not match"},
+		"retry policy differs":              {change: func(m *sdkgo.AgentToolMetadata) { m.StepDefaults.ExecuteRetry = nil }, wantMessage: "Step defaults do not match"},
 		"required branch listed": {change: func(m *sdkgo.AgentToolMetadata) {
 			m.BranchOutcomes[agentBranchSucceeded] = sdkgo.AgentBranchOutcomeRejected
 		}, wantMessage: "not an optional branch"},
@@ -504,8 +509,9 @@ func TestAgentToolConstructorsValidateMetadata(t *testing.T) {
 		change      func(*sdkgo.AgentToolMetadata)
 		wantMessage string
 	}{
-		"mutation kind":    {change: func(m *sdkgo.AgentToolMetadata) { m.Kind = sdkgo.AgentOperationKindMutation }, wantMessage: "kind"},
-		"retry safe query": {change: func(m *sdkgo.AgentToolMetadata) { m.IsRetrySafe = true }, wantMessage: "only a Mutation may be retry safe"},
+		"mutation kind":              {change: func(m *sdkgo.AgentToolMetadata) { m.Kind = sdkgo.AgentOperationKindMutation }, wantMessage: "kind"},
+		"dex-agents style tool name": {change: func(m *sdkgo.AgentToolMetadata) { m.ToolName = "agent-provider_list_story_i_d_s" }, wantMessage: `must be "agent-provider_list_story_ids"`},
+		"retry safe query":           {change: func(m *sdkgo.AgentToolMetadata) { m.IsRetrySafe = true }, wantMessage: "only a Mutation may be retry safe"},
 		"unknown query outcome": {change: func(m *sdkgo.AgentToolMetadata) {
 			m.BranchOutcomes[agentBranchRateLimited] = sdkgo.AgentBranchOutcomeUnknown
 		}, wantMessage: "a Query branch may only be rejected"},
@@ -558,4 +564,226 @@ func TestAgentToolMetadataIsIsolatedFromCallers(t *testing.T) {
 	require.Equal(t, "agent-provider_post_reply", fresh.ToolName)
 	require.True(t, fresh.IsApprovalRecommended)
 	require.Equal(t, "PostReplyInput", fresh.InputType)
+}
+
+// fencedMutation sends through the singledispatch Fence and then selects branch, as a connector that
+// misclassifies a post-send outcome would.
+type fencedMutation struct {
+	branch       sdkgo.BranchID
+	sendErr      error
+	shouldSend   bool
+	providerSent int
+}
+
+func (*fencedMutation) Definition() sdkgo.MutationDefinition { return agentMutationDefinition() }
+
+func (*fencedMutation) IdempotencyKey(id sdkgo.CallID, _ agentInput) sdkgo.IdempotencyKey {
+	return sdkgo.IdempotencyKey(id)
+}
+
+func (mutation *fencedMutation) Invoke(call sdkgo.Call, _ agentInput) sdkgo.MutationAttempt[agentOutput] {
+	failure := agentValidFailure
+	fence, err := singledispatch.NewFence(call, 30*time.Second)
+	if err != nil {
+		panic(err)
+	}
+	decision := fence.Decide()
+	if mutation.shouldSend && decision.Kind == singledispatch.SendAllowed {
+		dispatchErr := fence.Dispatch(func(context.Context) error {
+			mutation.providerSent++
+			return mutation.sendErr
+		})
+		if errors.Is(dispatchErr, errProviderOverloaded) {
+			if err := fence.RecordCanResend(); err != nil {
+				panic(err)
+			}
+		}
+	}
+	return sdkgo.NewMutationBranch(mutation.branch, agentOutput{}, &failure, sdkgo.Receipt{})
+}
+
+var errProviderOverloaded = errors.New("provider answered 503")
+
+func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
+	cases := []struct {
+		name         string
+		mutation     *fencedMutation
+		prepare      func(*testing.T, *singledispatchtest.Context)
+		wantOutcome  sdkgo.AgentToolAttemptOutcome
+		wantProvider int
+	}{
+		{
+			name:     "claimed send then a listed rejected defect is unknown",
+			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true}, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantProvider: 1,
+		},
+		{
+			name:     "claimed send then a listed rejected provider branch is unknown",
+			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true}, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantProvider: 1,
+		},
+		{
+			name:     "claimed send proven unprocessed keeps the listed rejected outcome",
+			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true, sendErr: errProviderOverloaded}, wantOutcome: sdkgo.AgentToolAttemptRejected, wantProvider: 1,
+		},
+		{
+			name:     "fence decided without a send keeps the listed rejected outcome",
+			mutation: &fencedMutation{branch: sdkgo.DefectBranchID}, wantOutcome: sdkgo.AgentToolAttemptRejected,
+		},
+		{
+			name:     "unreadable fence checkpoint is unknown",
+			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true},
+			prepare: func(_ *testing.T, ctx *singledispatchtest.Context) {
+				ctx.SetReadError(errors.New("heartbeat unavailable"))
+			},
+			wantOutcome: sdkgo.AgentToolAttemptUnknown,
+		},
+		{
+			name:     "foreign fence checkpoint is unknown",
+			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true},
+			prepare: func(t *testing.T, ctx *singledispatchtest.Context) {
+				foreign := singledispatch.Marker{CallID: "4f1c6f4e-0000-5000-8000-000000000000", Attempt: 1, State: singledispatch.StateNotSent}
+				require.NoError(t, ctx.SetPersistedCheckpoint(foreign))
+				ctx.AdvanceAttempt()
+			},
+			wantOutcome: sdkgo.AgentToolAttemptUnknown,
+		},
+		{
+			name:     "lost checkpoint after attempt one is unknown",
+			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true},
+			prepare: func(_ *testing.T, ctx *singledispatchtest.Context) {
+				ctx.AdvanceAttempt()
+			},
+			wantOutcome: sdkgo.AgentToolAttemptUnknown,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			metadata := agentMutationMetadata()
+			metadata.BranchOutcomes[sdkgo.DefectBranchID] = sdkgo.AgentBranchOutcomeRejected
+			tool, err := sdkgo.NewMutationAgentTool(testCase.mutation, agentConnection, metadata)
+			require.NoError(t, err)
+			ctx := agentStepContext()
+			if testCase.prepare != nil {
+				testCase.prepare(t, ctx)
+			}
+			attempt, err := tool.RunAttempt(ctx, nil)
+			require.NoError(t, err)
+			require.Equal(t, testCase.wantOutcome, attempt.Outcome)
+			require.Equal(t, testCase.wantProvider, testCase.mutation.providerSent)
+		})
+	}
+}
+
+func TestMutationAgentToolReadsPriorFenceCheckpoint(t *testing.T) {
+	metadata := agentMutationMetadata()
+	metadata.BranchOutcomes[sdkgo.DefectBranchID] = sdkgo.AgentBranchOutcomeRejected
+
+	claimed := &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true}
+	tool, err := sdkgo.NewMutationAgentTool(claimed, agentConnection, metadata)
+	require.NoError(t, err)
+	ctx := agentStepContext()
+	attempt, err := tool.RunAttempt(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, attempt.Outcome)
+
+	// Attempt two finds the claim, may not send, and its listed rejected defect stays unknown.
+	ctx.AdvanceAttempt()
+	attempt, err = tool.RunAttempt(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, attempt.Outcome)
+	require.Equal(t, 1, claimed.providerSent)
+
+	overloaded := &fencedMutation{branch: agentBranchRejected, shouldSend: true, sendErr: errProviderOverloaded}
+	tool, err = sdkgo.NewMutationAgentTool(overloaded, agentConnection, metadata)
+	require.NoError(t, err)
+	ctx = agentStepContext()
+	_, err = tool.RunAttempt(ctx, nil)
+	require.NoError(t, err)
+	// Attempt two finds canResend, sends again, and is proven unprocessed again.
+	ctx.AdvanceAttempt()
+	attempt, err = tool.RunAttempt(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
+	require.Equal(t, 2, overloaded.providerSent)
+}
+
+func TestMutationAgentToolIgnoresNonFenceHeartbeats(t *testing.T) {
+	mutation := &agentMutation{invoke: func(call sdkgo.Call, _ agentInput) sdkgo.MutationAttempt[agentOutput] {
+		if err := call.Context.RecordHeartbeat(map[string]string{"state": "claimed"}); err != nil {
+			panic(err)
+		}
+		failure := agentValidFailure
+		return sdkgo.NewMutationBranch(agentBranchRejected, agentOutput{}, &failure, sdkgo.Receipt{})
+	}}
+	tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	attempt, err := tool.RunAttempt(agentStepContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
+}
+
+const agentSecret = "sk-live-agent-secret"
+
+type secretRefusingInput struct {
+	Token secretRefusingToken `json:"token"`
+}
+
+type secretRefusingToken string
+
+func (*secretRefusingToken) UnmarshalJSON(contents []byte) error {
+	return fmt.Errorf("token %s is not accepted", contents)
+}
+
+type secretRefusingQuery struct{ invocations int }
+
+func (*secretRefusingQuery) Definition() sdkgo.QueryDefinition { return agentQueryDefinition() }
+
+func (query *secretRefusingQuery) Invoke(sdkgo.Call, secretRefusingInput) sdkgo.QueryAttempt[agentOutput] {
+	query.invocations++
+	return sdkgo.NewQueryBranch(agentBranchSucceeded, agentOutput{}, nil, sdkgo.Receipt{})
+}
+
+type secretLeakingOutput struct{}
+
+func (secretLeakingOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("response held " + agentSecret)
+}
+
+type secretLeakingQuery struct{}
+
+func (secretLeakingQuery) Definition() sdkgo.QueryDefinition { return agentQueryDefinition() }
+
+func (secretLeakingQuery) Invoke(sdkgo.Call, agentInput) sdkgo.QueryAttempt[secretLeakingOutput] {
+	return sdkgo.NewQueryBranch(agentBranchSucceeded, secretLeakingOutput{}, nil, sdkgo.Receipt{})
+}
+
+func TestAgentToolErrorsNeverQuoteArgumentsOrResults(t *testing.T) {
+	refusing := &secretRefusingQuery{}
+	tool, err := sdkgo.NewQueryAgentTool(refusing, agentConnection, agentQueryMetadata())
+	require.NoError(t, err)
+	_, err = tool.RunAttempt(agentStepContext(), json.RawMessage(`{"token":"`+agentSecret+`"}`))
+	require.ErrorIs(t, err, sdkgo.ErrAgentToolArgumentsInvalid)
+	require.NotContains(t, err.Error(), agentSecret)
+	require.Contains(t, err.Error(), "refused by the operation input type")
+	require.Zero(t, refusing.invocations)
+
+	plain, err := sdkgo.NewQueryAgentTool(&agentQuery{}, agentConnection, agentQueryMetadata())
+	require.NoError(t, err)
+	for _, arguments := range []string{
+		`{"text":"` + agentSecret + `"`,
+		`{"text":"` + agentSecret + `",}`,
+		`{"limit":"` + agentSecret + `"}`,
+		`{"` + agentSecret + `":1}`,
+		`{"text":"ok"} "` + agentSecret + `"`,
+	} {
+		_, err = plain.RunAttempt(agentStepContext(), json.RawMessage(arguments))
+		require.ErrorIs(t, err, sdkgo.ErrAgentToolArgumentsInvalid, arguments)
+		require.NotContains(t, err.Error(), agentSecret, arguments)
+	}
+
+	leaking, err := sdkgo.NewQueryAgentTool[agentInput, secretLeakingOutput](secretLeakingQuery{}, agentConnection, agentQueryMetadata())
+	require.NoError(t, err)
+	attempt, err := leaking.RunAttempt(agentStepContext(), nil)
+	require.ErrorIs(t, err, sdkgo.ErrAgentToolResultUnencodable)
+	require.NotContains(t, err.Error(), agentSecret)
+	require.True(t, attempt.HasInvokedOperation)
 }

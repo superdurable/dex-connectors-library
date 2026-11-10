@@ -84,5 +84,5 @@ func Example_agentTools() {
 	// example-chat_post_reply idempotent_write
 	// succeeded posted {"messageId":"m-1"}
 	// rejected providerRejected {"messageId":""}
-	// error: agent tool arguments do not decode into the operation input: example-chat_post_reply: json: unknown field "channel"
+	// error: agent tool arguments do not decode into the operation input: example-chat_post_reply: arguments contain a field the operation input does not accept
 }
