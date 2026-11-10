@@ -29,6 +29,8 @@ import (
 type ProtocolPoint string
 
 const (
+	// ProtocolPointBeforeKeyLock is just before a keyed call waits for its key's lock.
+	ProtocolPointBeforeKeyLock ProtocolPoint = "before-key-lock"
 	// ProtocolPointBeforeRecordCreate is just before a new key's first record write.
 	ProtocolPointBeforeRecordCreate ProtocolPoint = "before-record-create"
 	// ProtocolPointAfterRecordCreate is after that write, before the attempt runs.
@@ -184,10 +186,12 @@ func (call *toolCall) run(ctx context.Context, meta mcp.Meta) callAnswer {
 // runKeyed reads the key's state first, so renamed or withdrawn tools still answer.
 func (call *toolCall) runKeyed(ctx context.Context, key string) callAnswer {
 	call.stateKey = callstate.StateKey(key)
+	call.executor.observeProtocolPoint(ProtocolPointBeforeKeyLock, call.operationIDForObservation())
 	lock, err := call.executor.store.Lock(ctx, call.stateKey)
 	if err != nil {
 		return call.answerLockFailure(ctx, key, err)
 	}
+	call.useCurrentToolSet(ctx)
 	record, isFound, readErr := lock.Read()
 	if readErr == nil && !isFound {
 		return call.runWithoutRecord(ctx, lock, key)
@@ -201,6 +205,23 @@ func (call *toolCall) runKeyed(ctx context.Context, key string) callAnswer {
 		return callAnswer{err: err}
 	}
 	return call.resumeRecordedCall(ctx, lock, &record, key)
+}
+
+// useCurrentToolSet replaces the tool set pinned at request entry with the
+// current one, so a key's attempts use the binding that holds now.
+func (call *toolCall) useCurrentToolSet(ctx context.Context) {
+	call.toolSet = call.executor.currentToolSet(context.WithoutCancel(ctx))
+	call.binding = call.toolSet.toolByName(call.name)
+	if call.binding != nil {
+		call.knownEffect = call.binding.effect
+	}
+}
+
+func (call *toolCall) operationIDForObservation() string {
+	if call.binding == nil {
+		return ""
+	}
+	return call.binding.metadata.Operation.OperationID
 }
 
 // runWithoutRecord starts a key's first call; reads release the lock and keep no state.
