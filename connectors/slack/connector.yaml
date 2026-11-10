@@ -10,7 +10,7 @@ spec:
   provider: slack
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-slack
       operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
