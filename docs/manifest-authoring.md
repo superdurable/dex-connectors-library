@@ -241,6 +241,8 @@ defaults to `oauth2` for existing manifests. An `oidc` manifest must also
 declare HTTPS issuer, discovery, and UserInfo endpoints and require a nonce.
 The application owns state, PKCE verifier, nonce, callback validation, and
 one-time token lifecycle; connector credentials remain typed secret fields.
+Every `oauth2` block declares `pkce` explicitly: `true` when the provider
+supports PKCE for the authorization code flow, `false` otherwise.
 
 Providers that issue more than one OAuth token declare `userScopes` and map
 token-response JSON paths to credential fields. Fields without a mapping are
