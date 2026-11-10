@@ -277,8 +277,6 @@ func (call Call) HasTextStream() bool { return call.text != nil }
 type operationRunTrace struct {
 	// hasInvokedOperation is set immediately before Invoke, so it also holds when Invoke panics.
 	hasInvokedOperation bool
-	// isDefectCreatedAfterInvoke means sdkgo replaced the operation's attempt with the defect branch.
-	isDefectCreatedAfterInvoke bool
 }
 
 type runConfig struct {
@@ -347,9 +345,7 @@ func runQueryWithTrace[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], c
 		return failedQueryForCall[OUT](definition, call, err.Error()), nil
 	}
 	trace.hasInvokedOperation = true
-	result, isDefectCreatedBySDK, err := queryResult(call, definition, operation.Invoke(call, input))
-	trace.isDefectCreatedAfterInvoke = isDefectCreatedBySDK
-	return result, err
+	return queryResult(call, definition, operation.Invoke(call, input))
 }
 
 // RunMutation invokes a mutation inside a Dex Step using a stable idempotency key.
@@ -381,82 +377,78 @@ func runMutationWithTrace[IN, OUT any](ctx dex.Context, operation Mutation[IN, O
 		return failedMutationForCall[OUT](definition, call, err.Error()), nil
 	}
 	trace.hasInvokedOperation = true
-	result, isDefectCreatedBySDK, err := mutationResult(call, definition, operation.Invoke(call, input))
-	trace.isDefectCreatedAfterInvoke = isDefectCreatedBySDK
-	return result, err
+	return mutationResult(call, definition, operation.Invoke(call, input))
 }
 
-// queryResult validates an attempt; the boolean reports that sdkgo replaced it with the defect branch.
-func queryResult[T any](call Call, definition QueryDefinition, attempt QueryAttempt[T]) (QueryResult[T], bool, error) {
+func queryResult[T any](call Call, definition QueryDefinition, attempt QueryAttempt[T]) (QueryResult[T], error) {
 	switch attempt.kind {
 	case queryAttemptBranch:
 		if !definition.hasBranch(attempt.branch) {
-			return failedQueryForCall[T](definition, call, "query returned an unknown branch"), true, nil
+			return failedQueryForCall[T](definition, call, "query returned an unknown branch"), nil
 		}
 		if attempt.hasFailure {
 			if err := attempt.failure.validate(); err != nil {
-				return failedQueryForCall[T](definition, call, "query returned an invalid failure: "+err.Error()), true, nil
+				return failedQueryForCall[T](definition, call, "query returned an invalid failure: "+err.Error()), nil
 			}
 		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return failedQueryForCall[T](definition, call, err.Error()), true, nil
+			return failedQueryForCall[T](definition, call, err.Error()), nil
 		}
 		result := QueryResult[T]{Branch: attempt.branch, Value: attempt.value, Receipt: receipt}
 		if attempt.hasFailure {
 			result.Failure = &attempt.failure
 		}
-		return result, false, nil
+		return result, nil
 	case queryAttemptRetry:
 		if err := attempt.failure.validate(); err != nil || attempt.retryAfter < 0 {
-			return failedQueryForCall[T](definition, call, "query returned an invalid retry attempt"), true, nil
+			return failedQueryForCall[T](definition, call, "query returned an invalid retry attempt"), nil
 		}
-		return QueryResult[T]{}, false, retryError(attempt.failure, attempt.retryAfter)
+		return QueryResult[T]{}, retryError(attempt.failure, attempt.retryAfter)
 	default:
-		return failedQueryForCall[T](definition, call, "query returned an invalid attempt"), true, nil
+		return failedQueryForCall[T](definition, call, "query returned an invalid attempt"), nil
 	}
 }
 
-// mutationResult validates an attempt; the boolean reports that sdkgo replaced it with the defect branch.
-func mutationResult[T any](call Call, definition MutationDefinition, attempt MutationAttempt[T]) (MutationResult[T], bool, error) {
+func mutationResult[T any](call Call, definition MutationDefinition, attempt MutationAttempt[T]) (MutationResult[T], error) {
 	switch attempt.kind {
 	case mutationAttemptBranch:
 		if !definition.hasBranch(attempt.branch) {
-			return failedMutationForCall[T](definition, call, "mutation returned an unknown branch"), true, nil
+			return failedMutationForCall[T](definition, call, "mutation returned an unknown branch"), nil
 		}
 		if attempt.hasFailure {
 			if err := attempt.failure.validate(); err != nil {
-				return failedMutationForCall[T](definition, call, "mutation returned an invalid failure: "+err.Error()), true, nil
+				return failedMutationForCall[T](definition, call, "mutation returned an invalid failure: "+err.Error()), nil
 			}
 		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return failedMutationForCall[T](definition, call, err.Error()), true, nil
+			return failedMutationForCall[T](definition, call, err.Error()), nil
 		}
 		result := MutationResult[T]{Branch: attempt.branch, Value: attempt.value, Receipt: receipt}
 		if attempt.hasFailure {
 			result.Failure = &attempt.failure
 		}
-		return result, false, nil
+		return result, nil
 	case mutationAttemptUncertain:
 		if !definition.hasBranch(UncertainBranchID) {
-			return failedMutationForCall[T](definition, call, "mutation returned uncertainty without declaring the uncertain branch"), true, nil
+			return failedMutationForCall[T](definition, call, "mutation returned uncertainty without declaring the uncertain branch"), nil
 		}
 		if err := attempt.failure.validate(); err != nil {
-			return failedMutationForCall[T](definition, call, "mutation returned an invalid uncertainty failure: "+err.Error()), true, nil
+			return failedMutationForCall[T](definition, call, "mutation returned an invalid uncertainty failure: "+err.Error()), nil
 		}
 		receipt, err := completeReceipt(attempt.receipt, call)
 		if err != nil {
-			return failedMutationForCall[T](definition, call, err.Error()), true, nil
+			return failedMutationForCall[T](definition, call, err.Error()), nil
 		}
-		return MutationResult[T]{Branch: UncertainBranchID, Value: attempt.value, Receipt: receipt, Failure: &attempt.failure}, false, nil
+		return MutationResult[T]{Branch: UncertainBranchID, Value: attempt.value, Receipt: receipt, Failure: &attempt.failure}, nil
 	case mutationAttemptRetry:
 		if err := attempt.failure.validate(); err != nil || attempt.retryAfter < 0 {
-			return failedMutationForCall[T](definition, call, "mutation returned an invalid retry attempt"), true, nil
+			return failedMutationForCall[T](definition, call, "mutation returned an invalid retry attempt"), nil
 		}
-		return MutationResult[T]{}, false, retryError(attempt.failure, attempt.retryAfter)
+		return MutationResult[T]{}, retryError(attempt.failure, attempt.retryAfter)
 	default:
-		return failedMutationForCall[T](definition, call, "mutation returned an invalid attempt"), true, nil
+		return failedMutationForCall[T](definition, call, "mutation returned an invalid attempt"), nil
 	}
 }
 

@@ -215,15 +215,15 @@ func TestMutationAgentToolClassifiesEveryBranch(t *testing.T) {
 		{name: "uncertain listed unknown", invoke: validUncertainty, changeMetadata: func(metadata *sdkgo.AgentToolMetadata) {
 			metadata.BranchOutcomes[sdkgo.UncertainBranchID] = sdkgo.AgentBranchOutcomeUnknown
 		}, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.UncertainBranchID, wantHasInvoked: true},
-		{name: "connector defect listed rejected", invoke: mutationBranchAttempt(sdkgo.DefectBranchID), changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true},
+		{name: "connector defect is unknown despite a rejected listing", invoke: mutationBranchAttempt(sdkgo.DefectBranchID), changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true},
 		{name: "connector defect unlisted is unknown", invoke: mutationBranchAttempt(sdkgo.DefectBranchID), wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true},
 		{name: "post-Invoke invalid uncertainty defect is unknown despite a rejected listing", invoke: invalidUncertainty, changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true, wantFailureKind: sdkgo.FailureLocalDefect, wantFailureMessagePart: "invalid uncertainty failure"},
 		{name: "post-Invoke undeclared branch defect is unknown despite a rejected listing", invoke: mutationBranchAttempt(agentBranchUndeclared), changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true, wantFailureMessagePart: "unknown branch"},
 		{name: "post-Invoke invalid retry defect is unknown despite a rejected listing", invoke: invalidRetry, changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true, wantFailureMessagePart: "invalid retry attempt"},
 		{name: "post-Invoke foreign receipt defect is unknown despite a rejected listing", invoke: foreignReceipt, changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true, wantFailureMessagePart: "another idempotency key"},
-		{name: "pre-Invoke RPC context defect listed rejected", isRPCContext: true, changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: false, wantFailureMessagePart: "RPC invocation is not allowed"},
+		{name: "pre-Invoke RPC context defect is unknown despite a rejected listing", isRPCContext: true, changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: false, wantFailureMessagePart: "RPC invocation is not allowed"},
 		{name: "pre-Invoke RPC context defect unlisted is unknown", isRPCContext: true, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: false},
-		{name: "pre-Invoke blank idempotency key defect listed rejected", idempotencyKey: func(sdkgo.CallID) sdkgo.IdempotencyKey { return "  " }, changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: false, wantFailureMessagePart: "invalid idempotency key"},
+		{name: "pre-Invoke blank idempotency key defect is unknown despite a rejected listing", idempotencyKey: func(sdkgo.CallID) sdkgo.IdempotencyKey { return "  " }, changeMetadata: defectListedRejected, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: false, wantFailureMessagePart: "invalid idempotency key"},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -273,10 +273,10 @@ func TestQueryAgentToolClassifiesEveryBranch(t *testing.T) {
 	}{
 		{name: "required branch succeeds", wantOutcome: sdkgo.AgentToolAttemptSucceeded, wantBranch: agentBranchSucceeded, wantHasInvoked: true},
 		{name: "listed rejected branch", invoke: queryBranchAttempt(agentBranchNotFound), wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: agentBranchNotFound, wantHasInvoked: true},
-		{name: "unlisted optional branch is rejected", invoke: queryBranchAttempt(agentBranchRateLimited), wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: agentBranchRateLimited, wantHasInvoked: true},
-		{name: "connector defect unlisted is rejected", invoke: queryBranchAttempt(sdkgo.DefectBranchID), wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true},
-		{name: "post-Invoke sdkgo defect is rejected", invoke: undeclared, wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true},
-		{name: "pre-Invoke defect is rejected", isRPCContext: true, wantOutcome: sdkgo.AgentToolAttemptRejected, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: false},
+		{name: "unlisted optional branch is failed", invoke: queryBranchAttempt(agentBranchRateLimited), wantOutcome: sdkgo.AgentToolAttemptFailed, wantBranch: agentBranchRateLimited, wantHasInvoked: true},
+		{name: "connector defect unlisted is failed", invoke: queryBranchAttempt(sdkgo.DefectBranchID), wantOutcome: sdkgo.AgentToolAttemptFailed, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true},
+		{name: "post-Invoke sdkgo defect unlisted is failed", invoke: undeclared, wantOutcome: sdkgo.AgentToolAttemptFailed, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: true},
+		{name: "pre-Invoke defect unlisted is failed", isRPCContext: true, wantOutcome: sdkgo.AgentToolAttemptFailed, wantBranch: sdkgo.DefectBranchID, wantHasInvoked: false},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -354,6 +354,7 @@ func TestAgentToolRunsThroughStableCallIdentity(t *testing.T) {
 	require.Equal(t, sdkgo.IdempotencyKey("key-"+string(first.ID)), first.IdempotencyKey)
 	require.Equal(t, first.IdempotencyKey, second.IdempotencyKey)
 	require.Equal(t, agentConnection, first.Connection)
+	require.True(t, first.Context == dex.Context(ctx), "the operation receives the caller's own Dex context")
 	require.Equal(t, agentMutationRef, first.Operation)
 	require.Equal(t, int32(2), second.Context.Attempt())
 }
@@ -569,10 +570,11 @@ func TestAgentToolMetadataIsIsolatedFromCallers(t *testing.T) {
 // fencedMutation sends through the singledispatch Fence and then selects branch, as a connector that
 // misclassifies a post-send outcome would.
 type fencedMutation struct {
-	branch       sdkgo.BranchID
-	sendErr      error
-	shouldSend   bool
-	providerSent int
+	branch        sdkgo.BranchID
+	sendErr       error
+	shouldSend    bool
+	afterDispatch func(sdkgo.Call)
+	providerSent  int
 }
 
 func (*fencedMutation) Definition() sdkgo.MutationDefinition { return agentMutationDefinition() }
@@ -599,6 +601,9 @@ func (mutation *fencedMutation) Invoke(call sdkgo.Call, _ agentInput) sdkgo.Muta
 			}
 		}
 	}
+	if mutation.afterDispatch != nil {
+		mutation.afterDispatch(call)
+	}
 	return sdkgo.NewMutationBranch(mutation.branch, agentOutput{}, &failure, sdkgo.Receipt{})
 }
 
@@ -613,7 +618,7 @@ func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 		wantProvider int
 	}{
 		{
-			name:     "claimed send then a listed rejected defect is unknown",
+			name:     "claimed send then a defect is unknown",
 			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true}, wantOutcome: sdkgo.AgentToolAttemptUnknown, wantProvider: 1,
 		},
 		{
@@ -626,11 +631,11 @@ func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 		},
 		{
 			name:     "fence decided without a send keeps the listed rejected outcome",
-			mutation: &fencedMutation{branch: sdkgo.DefectBranchID}, wantOutcome: sdkgo.AgentToolAttemptRejected,
+			mutation: &fencedMutation{branch: agentBranchRejected}, wantOutcome: sdkgo.AgentToolAttemptRejected,
 		},
 		{
 			name:     "unreadable fence checkpoint is unknown",
-			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true},
+			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true},
 			prepare: func(_ *testing.T, ctx *singledispatchtest.Context) {
 				ctx.SetReadError(errors.New("heartbeat unavailable"))
 			},
@@ -638,7 +643,7 @@ func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 		},
 		{
 			name:     "foreign fence checkpoint is unknown",
-			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true},
+			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true},
 			prepare: func(t *testing.T, ctx *singledispatchtest.Context) {
 				foreign := singledispatch.Marker{CallID: "4f1c6f4e-0000-5000-8000-000000000000", Attempt: 1, State: singledispatch.StateNotSent}
 				require.NoError(t, ctx.SetPersistedCheckpoint(foreign))
@@ -648,7 +653,7 @@ func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 		},
 		{
 			name:     "lost checkpoint after attempt one is unknown",
-			mutation: &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true},
+			mutation: &fencedMutation{branch: agentBranchRejected, shouldSend: true},
 			prepare: func(_ *testing.T, ctx *singledispatchtest.Context) {
 				ctx.AdvanceAttempt()
 			},
@@ -657,9 +662,7 @@ func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			metadata := agentMutationMetadata()
-			metadata.BranchOutcomes[sdkgo.DefectBranchID] = sdkgo.AgentBranchOutcomeRejected
-			tool, err := sdkgo.NewMutationAgentTool(testCase.mutation, agentConnection, metadata)
+			tool, err := sdkgo.NewMutationAgentTool(testCase.mutation, agentConnection, agentMutationMetadata())
 			require.NoError(t, err)
 			ctx := agentStepContext()
 			if testCase.prepare != nil {
@@ -675,9 +678,8 @@ func TestMutationAgentToolTreatsFenceClaimAsPossibleSend(t *testing.T) {
 
 func TestMutationAgentToolReadsPriorFenceCheckpoint(t *testing.T) {
 	metadata := agentMutationMetadata()
-	metadata.BranchOutcomes[sdkgo.DefectBranchID] = sdkgo.AgentBranchOutcomeRejected
 
-	claimed := &fencedMutation{branch: sdkgo.DefectBranchID, shouldSend: true}
+	claimed := &fencedMutation{branch: agentBranchRejected, shouldSend: true}
 	tool, err := sdkgo.NewMutationAgentTool(claimed, agentConnection, metadata)
 	require.NoError(t, err)
 	ctx := agentStepContext()
@@ -685,7 +687,7 @@ func TestMutationAgentToolReadsPriorFenceCheckpoint(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, sdkgo.AgentToolAttemptUnknown, attempt.Outcome)
 
-	// Attempt two finds the claim, may not send, and its listed rejected defect stays unknown.
+	// Attempt two finds the claim, may not send, and its listed rejected branch stays unknown.
 	ctx.AdvanceAttempt()
 	attempt, err = tool.RunAttempt(ctx, nil)
 	require.NoError(t, err)
@@ -786,4 +788,78 @@ func TestAgentToolErrorsNeverQuoteArgumentsOrResults(t *testing.T) {
 	require.ErrorIs(t, err, sdkgo.ErrAgentToolResultUnencodable)
 	require.NotContains(t, err.Error(), agentSecret)
 	require.True(t, attempt.HasInvokedOperation)
+}
+
+func TestMutationAgentToolKeepsClaimDespiteLaterHeartbeats(t *testing.T) {
+	var typedNilMarker *singledispatch.Marker
+	overwrites := map[string]func(sdkgo.Call) any{
+		"zero marker":      func(sdkgo.Call) any { return singledispatch.Marker{} },
+		"typed nil marker": func(sdkgo.Call) any { return typedNilMarker },
+		"nil heartbeat":    func(sdkgo.Call) any { return nil },
+		"foreign marker": func(call sdkgo.Call) any {
+			return singledispatch.Marker{CallID: "4f1c6f4e-0000-5000-8000-000000000000", Attempt: call.Context.Attempt(), State: singledispatch.StateCanResend}
+		},
+		"own canResend marker written directly": func(call sdkgo.Call) any {
+			return singledispatch.Marker{CallID: call.ID, Attempt: call.Context.Attempt(), State: singledispatch.StateCanResend}
+		},
+		"own notSent marker written directly": func(call sdkgo.Call) any {
+			return singledispatch.Marker{CallID: call.ID, Attempt: call.Context.Attempt(), State: singledispatch.StateNotSent}
+		},
+	}
+	for name, heartbeat := range overwrites {
+		t.Run(name, func(t *testing.T) {
+			mutation := &fencedMutation{branch: agentBranchRejected, shouldSend: true, afterDispatch: func(call sdkgo.Call) {
+				if err := call.Context.RecordHeartbeat(heartbeat(call)); err != nil {
+					panic(err)
+				}
+			}}
+			tool, err := sdkgo.NewMutationAgentTool(mutation, agentConnection, agentMutationMetadata())
+			require.NoError(t, err)
+			attempt, err := tool.RunAttempt(agentStepContext(), nil)
+			require.NoError(t, err)
+			require.Equal(t, sdkgo.AgentToolAttemptUnknown, attempt.Outcome)
+			require.Equal(t, 1, mutation.providerSent)
+		})
+	}
+}
+
+func TestMutationAgentToolObservesOnlyItsOwnAttempt(t *testing.T) {
+	claimed := &fencedMutation{branch: agentBranchRejected, shouldSend: true}
+	tool, err := sdkgo.NewMutationAgentTool(claimed, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	attempt, err := tool.RunAttempt(agentStepContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptUnknown, attempt.Outcome)
+
+	// The same Call ID and attempt in a fresh context starts a fresh observation.
+	declined := &fencedMutation{branch: agentBranchRejected}
+	tool, err = sdkgo.NewMutationAgentTool(declined, agentConnection, agentMutationMetadata())
+	require.NoError(t, err)
+	attempt, err = tool.RunAttempt(agentStepContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
+
+	// A Fence used outside RunAttempt reports to no observer.
+	fence, err := singledispatch.NewFence(sdkgo.Call{Context: agentStepContext(), ID: "4f1c6f4e-0000-5000-8000-000000000001"}, 30*time.Second)
+	require.NoError(t, err)
+	require.Equal(t, singledispatch.SendAllowed, fence.Decide().Kind)
+	require.NoError(t, fence.Dispatch(func(context.Context) error { return nil }))
+}
+
+func TestQueryAgentToolDefectFollowsItsListing(t *testing.T) {
+	metadata := agentQueryMetadata()
+	metadata.BranchOutcomes[sdkgo.DefectBranchID] = sdkgo.AgentBranchOutcomeRejected
+	tool, err := sdkgo.NewQueryAgentTool(&agentQuery{invoke: queryBranchAttempt(sdkgo.DefectBranchID)}, agentConnection, metadata)
+	require.NoError(t, err)
+	attempt, err := tool.RunAttempt(agentStepContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome)
+
+	tool, err = sdkgo.NewQueryAgentTool(&agentQuery{}, agentConnection, metadata)
+	require.NoError(t, err)
+	attempt, err = tool.RunAttempt(agentRPCContext(), nil)
+	require.NoError(t, err)
+	require.Equal(t, sdkgo.AgentToolAttemptRejected, attempt.Outcome, "a listed defect is rejected before Invoke too")
+	require.False(t, attempt.HasInvokedOperation)
+	require.Equal(t, "failed", string(sdkgo.AgentToolAttemptFailed))
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/fenceobservation"
 )
 
 // State describes the last known dispatch state of one attempt.
@@ -145,6 +146,9 @@ func (fence *Fence) Decide() Decision {
 		return fence.decision
 	}
 	fence.hasDecision = true
+	defer func() {
+		fenceobservation.ReportDecision(string(fence.call.ID), fence.call.Context.Attempt(), fence.decision.Kind == SendAllowed)
+	}()
 	var previous Marker
 	hasPrevious, err := fence.call.Context.GetLastHeartbeatValue(&previous)
 	if err != nil {
@@ -259,6 +263,12 @@ func (fence *Fence) record(marker Marker) error {
 		return err
 	}
 	fence.marker = marker
+	switch marker.State {
+	case StateClaimed:
+		fenceobservation.ReportClaimed(string(marker.CallID), marker.Attempt)
+	case StateCanResend:
+		fenceobservation.ReportCanResend(string(marker.CallID), marker.Attempt)
+	}
 	return nil
 }
 

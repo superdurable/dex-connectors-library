@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/superdurable/dex-connectors-library/sdkgo/internal/fenceobservation"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -138,26 +139,27 @@ type AgentTool interface {
 	// The selected branch is classified in this order:
 	//
 	//  1. uncertain is unknown;
-	//  2. on a Mutation, a defect that sdkgo selected after Invoke because the
-	//     returned attempt was invalid is unknown, whatever BranchOutcomes says;
+	//  2. a Mutation defect is unknown, whatever BranchOutcomes says and
+	//     whether the connector or sdkgo selected it;
 	//  3. a required branch other than defect is succeeded;
 	//  4. on a Mutation that uses the singledispatch Fence, any other branch is
-	//     unknown when the Fence's checkpoint cannot prove that no request
-	//     reached the provider: this attempt recorded a claimed checkpoint
-	//     (Dispatch ran and no RecordCanResend followed), or the prior
-	//     checkpoint was unreadable, foreign, or invalid, or did not grant this
-	//     attempt a send;
+	//     unknown when the Fence cannot prove that no request reached the
+	//     provider: this attempt recorded a claimed checkpoint (Dispatch ran
+	//     and no RecordCanResend followed), or Decide withheld a send because
+	//     the prior checkpoint was missing after attempt one, unreadable,
+	//     foreign, invalid, claimed, carried a provider ID, or came from an
+	//     attempt other than the previous one;
 	//  5. a listed branch takes its listed outcome;
 	//  6. an unlisted Mutation branch is unknown;
-	//  7. an unlisted Query branch is rejected.
+	//  7. an unlisted Query branch, including defect, is failed.
 	//
 	// A connector Retry is AgentToolAttemptRetry. Rule 4 observes only the
-	// singledispatch Fence, through the heartbeat calls on ctx, so a Mutation
-	// with its own checkpoint mechanism relies on its manifest listing: a
-	// branch the operation can select after the request may have been sent
-	// must be listed unknown. To observe the Fence, RunAttempt passes the
-	// operation a wrapper of ctx; Dex functions that require Dex's own
-	// invocation context, such as SubFlow reads, fail with it.
+	// singledispatch Fence, which reports its own transitions for the call's
+	// Call ID and attempt, so heartbeats the operation records itself cannot
+	// change it. A Mutation with its own checkpoint mechanism relies on its
+	// manifest listing: a branch the operation can select after the request
+	// may have been sent must be listed unknown. The operation receives ctx
+	// itself, so every Dex API behaves as it does in a Step.
 	//
 	// A nil error returns a classified attempt. A non-nil error means the
 	// attempt ended without a branch: arguments did not decode
@@ -178,9 +180,14 @@ const (
 	// AgentToolAttemptSucceeded means the operation selected a required
 	// (happy-path) branch.
 	AgentToolAttemptSucceeded AgentToolAttemptOutcome = "succeeded"
-	// AgentToolAttemptRejected means nothing took effect; the model may
+	// AgentToolAttemptRejected means nothing took effect: the branch is listed
+	// rejected, so the provider or connector refused the call. The model may
 	// correct its input and call again.
 	AgentToolAttemptRejected AgentToolAttemptOutcome = "rejected"
+	// AgentToolAttemptFailed means a Query ended on a branch that its listing
+	// does not classify: the read failed and changed nothing, but correcting
+	// the input is not known to help. Only a Query attempt has this outcome.
+	AgentToolAttemptFailed AgentToolAttemptOutcome = "failed"
 	// AgentToolAttemptUnknown means a write may have taken effect; a host must
 	// not let the model repeat the call as if it had failed.
 	AgentToolAttemptUnknown AgentToolAttemptOutcome = "unknown"
@@ -320,17 +327,18 @@ func (tool mutationAgentTool[IN, OUT]) RunAttempt(ctx dex.Context, arguments jso
 	}
 	trace := &operationRunTrace{}
 	defer recoverAgentToolPanic(tool.metadata.Operation, trace, &attempt, &err)
-	runContext := ctx
-	var observer *dispatchObservingContext
+	var observation *fenceobservation.Observation
 	if ctx != nil {
-		observer = newDispatchObservingContext(ctx, tool.metadata.Operation)
-		runContext = observer
+		callID := deriveCallID(ctx.FlowID(), ctx.StepExecutionID(), tool.metadata.Operation)
+		var endObservation func()
+		observation, endObservation = fenceobservation.Begin(string(callID), ctx.Attempt())
+		defer endObservation()
 	}
-	result, runErr := runMutationWithTrace(runContext, tool.operation, tool.connection, input, trace)
+	result, runErr := runMutationWithTrace(ctx, tool.operation, tool.connection, input, trace)
 	if runErr != nil {
 		return agentToolRetryAttempt(tool.metadata.Operation, trace, runErr)
 	}
-	mayHaveDispatched := observer != nil && observer.mayHaveDispatched()
+	mayHaveDispatched := observation != nil && observation.MayHaveDispatched()
 	return classifyAgentToolResult(tool.metadata, trace, mayHaveDispatched, result.Branch, result.Value, result.Failure)
 }
 
@@ -368,7 +376,7 @@ func classifyAgentToolResult(metadata AgentToolMetadata, trace *operationRunTrac
 		return AgentToolAttempt{HasInvokedOperation: trace.hasInvokedOperation}, fmt.Errorf("%w: %s %s result value failed with %T", ErrAgentToolResultUnencodable, metadata.Operation.ConnectorID, metadata.Operation.OperationID, err)
 	}
 	return AgentToolAttempt{
-		Outcome:             classifyAgentToolBranch(metadata, branch, trace.isDefectCreatedAfterInvoke, mayHaveDispatched),
+		Outcome:             classifyAgentToolBranch(metadata, branch, mayHaveDispatched),
 		Branch:              branch,
 		Value:               encoded,
 		Failure:             failure,
@@ -376,13 +384,13 @@ func classifyAgentToolResult(metadata AgentToolMetadata, trace *operationRunTrac
 	}, nil
 }
 
-// classifyAgentToolBranch follows Dex's listing-first rule; sdkgo's own knowledge may only tighten it to unknown.
-func classifyAgentToolBranch(metadata AgentToolMetadata, branch BranchID, isDefectCreatedAfterInvoke, mayHaveDispatched bool) AgentToolAttemptOutcome {
+// classifyAgentToolBranch follows Dex's agent classification; the Fence may only tighten a Mutation to unknown.
+func classifyAgentToolBranch(metadata AgentToolMetadata, branch BranchID, mayHaveDispatched bool) AgentToolAttemptOutcome {
 	isMutation := metadata.Kind == AgentOperationKindMutation
 	if branch == UncertainBranchID {
 		return AgentToolAttemptUnknown
 	}
-	if isMutation && branch == DefectBranchID && isDefectCreatedAfterInvoke {
+	if isMutation && branch == DefectBranchID {
 		return AgentToolAttemptUnknown
 	}
 	if branch != DefectBranchID && isRequiredBranch(metadata.Branches, branch) {
@@ -400,7 +408,7 @@ func classifyAgentToolBranch(metadata AgentToolMetadata, branch BranchID, isDefe
 	if isMutation {
 		return AgentToolAttemptUnknown
 	}
-	return AgentToolAttemptRejected
+	return AgentToolAttemptFailed
 }
 
 func isRequiredBranch(branches []BranchDefinition, branch BranchID) bool {

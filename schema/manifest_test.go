@@ -323,6 +323,8 @@ func TestOperationAgentReviewValidation(t *testing.T) {
 		"missing branch":     {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"lost": "unknown"}}, "agent.branches.lost is not a branch of the operation"},
 		"happy-path branch":  {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"found": "rejected"}}, "agent.branches.found is the happy-path branch"},
 		"bad classification": {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"defect": "failed"}}, "agent.branches.defect must be rejected or unknown"},
+		"uncertain unknown":  {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"uncertain": "unknown"}}, ""},
+		"uncertain rejected": {&schema.OperationAgent{Exposed: &exposed, Branches: map[string]string{"uncertain": "rejected"}}, "agent.branches.uncertain must be unknown"},
 		"declined branches":  {&schema.OperationAgent{Exposed: &declined, Branches: map[string]string{"defect": "rejected"}}, "require agent.exposed to be true"},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -332,6 +334,8 @@ func TestOperationAgentReviewValidation(t *testing.T) {
 			manifest, err := schema.Decode(file)
 			require.NoError(t, err)
 			manifest.Spec.Operations[0].Kind, manifest.Spec.Operations[0].Idempotency = "mutation", "required"
+			manifest.Spec.Operations[0].Branches = append(manifest.Spec.Operations[0].Branches,
+				schema.OperationBranch{ID: "uncertain", GoName: "Uncertain", Description: "The write may have taken effect.", Optional: true})
 			manifest.Spec.Operations[0].Agent = testCase.agent
 			if testCase.problem == "" {
 				require.NoError(t, manifest.Validate())

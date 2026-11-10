@@ -56,8 +56,7 @@ func Example_agentTools() {
 		Description: "Post a reply in a chat thread.",
 		IsRetrySafe: true,
 		BranchOutcomes: map[sdkgo.BranchID]sdkgo.AgentBranchOutcome{
-			"providerRejected":   sdkgo.AgentBranchOutcomeRejected,
-			sdkgo.DefectBranchID: sdkgo.AgentBranchOutcomeRejected,
+			"providerRejected": sdkgo.AgentBranchOutcomeRejected,
 		},
 		InputType:    "PostReplyInput",
 		InputSchema:  json.RawMessage(`{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}`),

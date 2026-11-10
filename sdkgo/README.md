@@ -1018,31 +1018,34 @@ same for every attempt of one tool call, because the Call ID and the provider
 idempotency key derive from them. The attempt is classified in this order:
 
 1. `uncertain` is `unknown`.
-2. On a Mutation, a `defect` that the SDK selected after `Invoke` ran, because
-   the attempt the operation returned was invalid, is `unknown`, whatever
-   `agent.branches` says.
+2. A Mutation `defect` is `unknown`, whatever `agent.branches` says and
+   whether the connector or the SDK selected it.
 3. A required branch other than `defect` is `succeeded`.
 4. On a Mutation that uses the `singledispatch` Fence, any other branch is
-   `unknown` when the Fence's checkpoint cannot prove that no request reached
-   the provider: this attempt recorded a `claimed` checkpoint and no
-   `canResend` followed, or the prior checkpoint was unreadable, foreign, or
-   invalid, or did not allow this attempt to send.
+   `unknown` when the Fence cannot prove that no request reached the
+   provider: this attempt recorded a `claimed` checkpoint and no `canResend`
+   followed, or `Decide` withheld a send because of the prior checkpoint.
 5. A branch listed in `agent.branches` takes its listed outcome.
-6. An unlisted Mutation branch, including `defect`, is `unknown`.
-7. An unlisted Query branch, including `defect`, is `rejected`.
+6. An unlisted Mutation branch is `unknown`.
+7. An unlisted Query branch, including `defect`, is `failed`: the read changed
+   nothing, but correcting the input is not known to help. A listed `rejected`
+   Query branch, including `defect`, is `rejected`.
 
-Rule 4 is a safety net, not a substitute for the listing. RunAttempt sees the
-Fence through the heartbeat calls on the context it passes the operation, a
-wrapper of the host's context, so SubFlow reads, which need Dex's own context,
-fail inside it. A Mutation with its own checkpoint, or none, is classified by
-its listing alone: list every branch the operation can select after the
-request may have been sent as `unknown`.
+Rules 1, 2, 5, 6, and 7 match the in-process classification of Dex agents, so
+a tool behaves the same in process and through an MCP server. Rule 4 is a
+safety net, not a substitute for the listing. Dex shows a recorded
+heartbeat only to the next attempt, so the Fence itself reports its decision
+and its `claimed` and `canResend` checkpoints for the call's Call ID and
+attempt while RunAttempt runs. Heartbeats that the operation records itself do
+not change the result, and the operation receives the host's own context, so
+every Dex API behaves as in a Step. A Mutation with its own checkpoint, or
+none, is classified by its listing alone: list every branch the operation can
+select after the request may have been sent as `unknown`.
 
 A connector Retry returns the outcome `retry` with the Failure and any
 `RetryAfter`, and the host decides whether to repeat. `HasInvokedOperation`
 is false when the attempt ended before `Invoke`, so the provider was not
-called; a host may use it to answer `rejected` for a write that never left the
-process. RunAttempt returns an error instead of an attempt when arguments do
+called. RunAttempt returns an error instead of an attempt when arguments do
 not decode (`ErrAgentToolArgumentsInvalid`), the operation panics
 (`ErrAgentToolPanicked`), or the result value does not encode as JSON
 (`ErrAgentToolResultUnencodable`); only `HasInvokedOperation` is meaningful

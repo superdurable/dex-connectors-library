@@ -528,7 +528,7 @@ operations:
       exposed: true
       approval: recommended
       retry: safe
-      branches: {providerRejected: rejected, uncertain: unknown, invalidResponse: unknown, defect: rejected}
+      branches: {providerRejected: rejected, uncertain: unknown, invalidResponse: unknown}
       description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
 ```
 
@@ -578,24 +578,28 @@ question for each optional branch:
 
 A host treats an optional Mutation branch that is not listed as `unknown`, and an
 optional Query branch that is not listed as a failure. A missing entry therefore
-fails closed. Keys must be optional branch IDs of the operation; the happy-path
-branch is the success and takes no entry. `connectorctl validate` rejects any
-other key, and a Query may use only `rejected`.
+fails closed. A host also treats a Mutation's `defect` as `unknown` whatever the
+listing says, because the SDK selects `defect` for an invalid attempt after the
+request may have been sent; listing it `rejected` has no effect. A Query's
+`defect` follows the listing. Keys must be optional branch IDs of the operation;
+the happy-path branch is the success and takes no entry. `connectorctl
+validate` rejects any other key, `uncertain: rejected`, and `unknown` on a
+Query.
 
 Classify a branch by reading where the operation selects it, in Go and in each
 language port, and asking whether the request had been sent:
 
 - A branch selected only before the request leaves the process, such as local
-  input validation or missing credentials in `defect`, is `rejected`.
+  input validation, is `rejected`. On a Query this includes `defect`.
 - A branch selected from a definite provider refusal, such as a 4xx in
   `providerRejected`, is `rejected`.
 - A branch selected after the provider may have acted, such as `uncertain`, or
   `invalidResponse` after a 2xx, is `unknown`. Stripe `createRefund` reaches
   `invalidResponse` only after Stripe accepted the refund, so the refund exists.
 
-List every optional branch of a reviewed Mutation, so the map records each
-decision rather than leaving it to the default. If one branch is selected both
-before and after the request is sent, it is `unknown`.
+List every optional branch of a reviewed Mutation other than `defect`, so the
+map records each decision rather than leaving it to the default. If one branch
+is selected both before and after the request is sent, it is `unknown`.
 
 The listing is the contract, and a host trusts a `rejected` entry. The Go
 Connector SDK adds one safety net for Go agent hosts (`sdkgo` v0.35.0 and
