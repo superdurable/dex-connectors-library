@@ -2022,6 +2022,12 @@
       "expected": {
         "branch": "added",
         "failureKind": "",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "providerId": "PLITEM001",
+          "state": "claimed"
+        },
         "output": {
           "item": {
             "addedAt": "2026-10-13T17:00:00Z",
@@ -2305,6 +2311,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2357,6 +2368,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "state": "notSent"
+        },
         "requestCount": 1,
         "retry": true,
         "retryAfterMs": 0,
@@ -2405,6 +2421,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "state": "notSent"
+        },
         "requestCount": 0,
         "retry": true,
         "retryAfterMs": 0,
@@ -2556,6 +2577,11 @@
       "expected": {
         "branch": "invalidResponse",
         "failureKind": "PROTOCOL",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "state": "claimed"
+        },
         "output": {
           "item": {
             "addedAt": "0001-01-01T00:00:00Z",
@@ -2654,6 +2680,11 @@
       "expected": {
         "branch": "",
         "failureKind": "RATE_LIMIT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -2741,6 +2772,11 @@
       "expected": {
         "branch": "",
         "failureKind": "AVAILABILITY",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "state": "canResend"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -2824,6 +2860,11 @@
       "expected": {
         "branch": "",
         "failureKind": "TRANSPORT",
+        "heartbeat": {
+          "attempt": 1,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "state": "claimed"
+        },
         "requestCount": 2,
         "retry": true,
         "retryAfterMs": 0,
@@ -2899,6 +2940,1161 @@
       },
       "name": "addPlaylistItem-not-found",
       "operation": "addPlaylistItem"
+    },
+    {
+      "attempts": 2,
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "item": {
+            "addedAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "playlistId": "",
+            "position": 0,
+            "title": "",
+            "videoId": ""
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "PROTOCOL",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addPlaylistItem-insert-malformed-lagging-readback",
+      "operation": "addPlaylistItem"
+    },
+    {
+      "attempts": 2,
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\":",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 1}, \"items\": [{\"id\": \"PLITEM001\", \"snippet\": {\"playlistId\": \"PLexample123\", \"title\": \"Launch\", \"position\": 0, \"publishedAt\": \"2026-10-13T17:00:00Z\", \"resourceId\": {\"kind\": \"youtube#video\", \"videoId\": \"dQw4w9WgXcQ\"}}, \"contentDetails\": {\"videoPublishedAt\": \"2026-10-01T16:00:00Z\"}}]}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "item": {
+            "addedAt": "2026-10-13T17:00:00Z",
+            "id": "PLITEM001",
+            "playlistId": "PLexample123",
+            "position": 0,
+            "title": "Launch",
+            "videoId": "dQw4w9WgXcQ",
+            "videoPublishedAt": "2026-10-01T16:00:00Z"
+          },
+          "wasAlreadyPresent": true
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "PROTOCOL",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addPlaylistItem-insert-malformed-readback-found",
+      "operation": "addPlaylistItem"
+    },
+    {
+      "attempts": 2,
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"PLITEM001\", \"snippet\": {\"playlistId\": \"PLexample123\", \"title\": \"Launch\", \"position\": 0, \"publishedAt\": \"2026-10-13T17:00:00Z\", \"resourceId\": {\"kind\": \"youtube#video\", \"videoId\": \"dQw4w9WgXcQ\"}}, \"contentDetails\": {\"videoPublishedAt\": \"2026-10-01T16:00:00Z\"}}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "item": {
+            "addedAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "playlistId": "",
+            "position": 0,
+            "title": "",
+            "videoId": ""
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "RESPONSE_TOO_LARGE",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addPlaylistItem-insert-lagging-readback-oversized",
+      "operation": "addPlaylistItem"
+    },
+    {
+      "attempts": 2,
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\": {\"code\": 500, \"errors\": [{\"reason\": \"backendError\"}]}}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 500
+        },
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "item": {
+            "addedAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "playlistId": "",
+            "position": 0,
+            "title": "",
+            "videoId": ""
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addPlaylistItem-insert-server-error-lagging-readback",
+      "operation": "addPlaylistItem"
+    },
+    {
+      "attempts": 2,
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "after-send"
+        },
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "item": {
+            "addedAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "playlistId": "",
+            "position": 0,
+            "title": "",
+            "videoId": ""
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addPlaylistItem-insert-after-send-lagging-readback",
+      "operation": "addPlaylistItem"
+    },
+    {
+      "attempts": 2,
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "transportFailure": "before-send"
+        },
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"id\": \"PLITEM001\", \"snippet\": {\"playlistId\": \"PLexample123\", \"title\": \"Launch\", \"position\": 0, \"publishedAt\": \"2026-10-13T17:00:00Z\", \"resourceId\": {\"kind\": \"youtube#video\", \"videoId\": \"dQw4w9WgXcQ\"}}, \"contentDetails\": {\"videoPublishedAt\": \"2026-10-01T16:00:00Z\"}}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "heartbeat": {
+          "attempt": 2,
+          "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+          "providerId": "PLITEM001",
+          "state": "claimed"
+        },
+        "output": {
+          "item": {
+            "addedAt": "2026-10-13T17:00:00Z",
+            "id": "PLITEM001",
+            "playlistId": "PLexample123",
+            "position": 0,
+            "title": "Launch",
+            "videoId": "dQw4w9WgXcQ",
+            "videoPublishedAt": "2026-10-01T16:00:00Z"
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "TRANSPORT",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+            "state": "canResend"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addPlaylistItem-insert-before-send-resends",
+      "operation": "addPlaylistItem"
+    },
+    {
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "item": {
+            "addedAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "playlistId": "",
+            "position": 0,
+            "title": "",
+            "videoId": ""
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "name": "addPlaylistItem-prior-claim-lagging-readback",
+      "operation": "addPlaylistItem",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 1}, \"items\": [{\"id\": \"PLITEM001\", \"snippet\": {\"playlistId\": \"PLexample123\", \"title\": \"Launch\", \"position\": 0, \"publishedAt\": \"2026-10-13T17:00:00Z\", \"resourceId\": {\"kind\": \"youtube#video\", \"videoId\": \"dQw4w9WgXcQ\"}}, \"contentDetails\": {\"videoPublishedAt\": \"2026-10-01T16:00:00Z\"}}]}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "added",
+        "failureKind": "",
+        "output": {
+          "item": {
+            "addedAt": "2026-10-13T17:00:00Z",
+            "id": "PLITEM001",
+            "playlistId": "PLexample123",
+            "position": 0,
+            "title": "Launch",
+            "videoId": "dQw4w9WgXcQ",
+            "videoPublishedAt": "2026-10-01T16:00:00Z"
+          },
+          "wasAlreadyPresent": true
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "name": "addPlaylistItem-prior-claim-readback-found",
+      "operation": "addPlaylistItem",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"error\": {\"errors\": [{\"reason\": \"quotaExceeded\"}]}}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 403
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "QUOTA_EXHAUSTED",
+        "output": {
+          "item": {
+            "addedAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "playlistId": "",
+            "position": 0,
+            "title": "",
+            "videoId": ""
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 1,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "name": "addPlaylistItem-prior-claim-readback-quota",
+      "operation": "addPlaylistItem",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+        "state": "claimed"
+      }
+    },
+    {
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"error\": {\"errors\": [{\"reason\": \"rateLimitExceeded\"}]}}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 429
+        }
+      ],
+      "expected": {
+        "branch": "",
+        "failureKind": "RATE_LIMIT",
+        "requestCount": 1,
+        "retry": true,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "name": "addPlaylistItem-prior-claim-readback-rate-limit",
+      "operation": "addPlaylistItem",
+      "priorHeartbeat": {
+        "attempt": 1,
+        "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+        "state": "claimed"
+      }
     }
   ],
   "schemaVersion": 1

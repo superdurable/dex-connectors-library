@@ -3,12 +3,12 @@
 
 import { expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
-import { loadScenarios, scenarioCall } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
+import { HeartbeatContext, loadScenarios, scenarioCall } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
 import { YouTubeClient } from '../src/client.js';
 
 const connection = { provider: 'google', name: 'youtube' };
 const recorded = loadScenarios(new URL('../../../../../conformance/connectors/google/youtube/scenarios.json', import.meta.url));
-const call = scenarioCall(recorded[0]!, connection, 'google-youtube', { flowId: 'youtube-unit', cancellationSignal: new AbortController().signal }, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+const call = scenarioCall(recorded.find(scenario => scenario.operation === 'addPlaylistItem')!, connection, 'google-youtube', new HeartbeatContext(undefined, undefined, 'youtube-unit'), { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
 const credentials = { authMethodId: 'google-oauth-readonly', accessToken: new SecretString('one-use-token'), oauthClientId: 'client.apps.googleusercontent.com', oauthClientSecret: new SecretString('secret'), refreshToken: new SecretString('refresh') };
 
 it('rejects playlist mutation with a read-only grant before contacting YouTube', async () => {

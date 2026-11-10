@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	youtube "github.com/superdurable/dex-connectors-library/connectors/google/youtube/go"
 	"github.com/superdurable/dex-connectors-library/sdkgo"
+	"github.com/superdurable/dex-connectors-library/sdkgo/singledispatchtest"
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
@@ -35,10 +36,16 @@ type fakeYouTube struct {
 	items        []map[string]any
 	inserts      int
 	failInsert   int // status returned by the insert after it stores the item
-	errorStatus  int
-	errorReason  string
-	lastQuery    map[string]string
-	requestCount int
+	refuseInsert int // status returned by the insert without storing the item
+	// isInsertMalformed stores the item and returns a body that is not JSON.
+	isInsertMalformed bool
+	// listLag is how many listings after an insert omit the new item, as a lagging index would.
+	listLag        int
+	hiddenListings int
+	errorStatus    int
+	errorReason    string
+	lastQuery      map[string]string
+	requestCount   int
 }
 
 func newFakeYouTube(t *testing.T) (*fakeYouTube, *httptest.Server) {
@@ -102,7 +109,12 @@ func (fake *fakeYouTube) serve(response http.ResponseWriter, request *http.Reque
 			return
 		}
 		matches := []any{}
-		for _, item := range fake.items {
+		visibleItems := fake.items
+		if fake.hiddenListings > 0 {
+			fake.hiddenListings--
+			visibleItems = nil
+		}
+		for _, item := range visibleItems {
 			if video := query.Get("videoId"); video == "" || item["snippet"].(map[string]any)["resourceId"].(map[string]any)["videoId"] == video {
 				matches = append(matches, item)
 			}
@@ -121,6 +133,13 @@ func (fake *fakeYouTube) serve(response http.ResponseWriter, request *http.Reque
 		require.NoError(fake.t, json.NewDecoder(request.Body).Decode(&payload))
 		require.Equal(fake.t, "youtube#video", payload.Snippet.ResourceID.Kind)
 		fake.inserts++
+		if fake.refuseInsert != 0 {
+			status := fake.refuseInsert
+			fake.refuseInsert = 0
+			response.WriteHeader(status)
+			return
+		}
+		fake.hiddenListings = fake.listLag
 		item := map[string]any{
 			"id": fmt.Sprintf("UExpdGVt%d", len(fake.items)),
 			"snippet": map[string]any{
@@ -134,6 +153,10 @@ func (fake *fakeYouTube) serve(response http.ResponseWriter, request *http.Reque
 			status := fake.failInsert
 			fake.failInsert = 0
 			response.WriteHeader(status)
+			return
+		}
+		if fake.isInsertMalformed {
+			_, _ = response.Write([]byte(`{"id":`))
 			return
 		}
 		write(item)
@@ -235,24 +258,129 @@ func TestListPlaylistItemsNotFoundPlaylist(t *testing.T) {
 	require.Equal(t, youtube.ListPlaylistItemsBranchNotFound, result.Branch)
 }
 
-func TestAddPlaylistItemIsIdempotentAcrossAmbiguousInsert(t *testing.T) {
-	fake, server := newFakeYouTube(t)
-	client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
-	fake.failInsert = http.StatusServiceUnavailable
-	ctx := newDexContext("add")
+// addPlaylistItemAttempts runs one Step call's attempts on a context that keeps fence checkpoints between them.
+func addPlaylistItemAttempts(t *testing.T, client *youtube.Client, attempts int) (sdkgo.MutationResult[youtube.AddedPlaylistItem], []error) {
+	t.Helper()
+	ctx := singledispatchtest.NewContext("youtube-flow", "add-"+t.Name())
 	input := youtube.AddPlaylistItemInput{PlaylistID: testPlaylistID, VideoID: testVideoID}
+	var result sdkgo.MutationResult[youtube.AddedPlaylistItem]
+	var errs []error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		if attempt > 1 {
+			ctx.AdvanceAttempt()
+		}
+		var err error
+		result, err = sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+		errs = append(errs, err)
+	}
+	return result, errs
+}
 
-	_, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+func requireRetry(t *testing.T, err error, kind sdkgo.FailureKind) {
+	t.Helper()
 	var retry *sdkgo.RetryError
 	require.ErrorAs(t, err, &retry)
-	require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
+	require.Equal(t, kind, retry.Failure.Kind)
+}
 
-	recovered, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+func TestAddPlaylistItemNeverInsertsAgainAfterPossiblyAppliedInsert(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*fakeYouTube)
+		maxBytes  int64
+		kind      sdkgo.FailureKind
+	}{
+		{"server error after storing", func(fake *fakeYouTube) { fake.failInsert = http.StatusInternalServerError }, 0, sdkgo.FailureAvailability},
+		{"malformed insert response", func(fake *fakeYouTube) { fake.isInsertMalformed = true }, 0, sdkgo.FailureProtocol},
+		// An empty listing fits in 120 bytes but the inserted item does not, so the insert response is oversized.
+		{"oversized insert response", func(*fakeYouTube) {}, 120, sdkgo.FailureResponseTooLarge},
+	}
+	for _, test := range tests {
+		t.Run(test.name+" with lagging read-back", func(t *testing.T) {
+			fake, server := newFakeYouTube(t)
+			test.configure(fake)
+			fake.listLag = 1
+			client := newYouTubeClientWithMethod(t, server.URL, test.maxBytes, youtube.ManageAuthMethodID)
+			result, errs := addPlaylistItemAttempts(t, client, 2)
+			requireRetry(t, errs[0], test.kind)
+			require.NoError(t, errs[1])
+			require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
+			require.Equal(t, 1, fake.inserts)
+			require.Len(t, fake.items, 1)
+		})
+	}
+	t.Run("visible read-back confirms the earlier insert", func(t *testing.T) {
+		fake, server := newFakeYouTube(t)
+		fake.failInsert = http.StatusInternalServerError
+		client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+		result, errs := addPlaylistItemAttempts(t, client, 2)
+		requireRetry(t, errs[0], sdkgo.FailureAvailability)
+		require.NoError(t, errs[1])
+		require.Equal(t, youtube.AddPlaylistItemBranchAdded, result.Branch)
+		require.True(t, result.Value.WasAlreadyPresent)
+		require.Equal(t, 1, fake.inserts)
+	})
+	t.Run("read-back failure is uncertain", func(t *testing.T) {
+		fake, server := newFakeYouTube(t)
+		fake.failInsert = http.StatusInternalServerError
+		client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+		ctx := singledispatchtest.NewContext("youtube-flow", "add-readback-failure")
+		input := youtube.AddPlaylistItemInput{PlaylistID: testPlaylistID, VideoID: testVideoID}
+		_, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+		requireRetry(t, err, sdkgo.FailureAvailability)
+		ctx.AdvanceAttempt()
+		fake.errorStatus, fake.errorReason = http.StatusForbidden, "quotaExceeded"
+		result, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+		require.NoError(t, err)
+		require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
+		require.Equal(t, sdkgo.FailureQuotaExhausted, result.Failure.Kind)
+		require.Equal(t, 1, fake.inserts)
+	})
+}
+
+func TestAddPlaylistItemResendsOnlyAfterProvenRefusal(t *testing.T) {
+	for _, status := range []int{http.StatusTooManyRequests, http.StatusServiceUnavailable} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			fake, server := newFakeYouTube(t)
+			fake.refuseInsert = status
+			client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+			result, errs := addPlaylistItemAttempts(t, client, 2)
+			require.Error(t, errs[0])
+			require.NoError(t, errs[1])
+			require.Equal(t, youtube.AddPlaylistItemBranchAdded, result.Branch)
+			require.False(t, result.Value.WasAlreadyPresent)
+			require.Equal(t, 2, fake.inserts)
+			require.Len(t, fake.items, 1)
+		})
+	}
+}
+
+func TestAddPlaylistItemAfterLostAttemptOnlyReadsBack(t *testing.T) {
+	fake, server := newFakeYouTube(t)
+	client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+	ctx := singledispatchtest.NewContext("youtube-flow", "add-lost-attempt")
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, youtube.AddPlaylistItemInput{PlaylistID: testPlaylistID, VideoID: testVideoID})
 	require.NoError(t, err)
-	require.Equal(t, youtube.AddPlaylistItemBranchAdded, recovered.Branch)
-	require.True(t, recovered.Value.WasAlreadyPresent)
+	require.Equal(t, youtube.AddPlaylistItemBranchUncertain, result.Branch)
+	require.Zero(t, fake.inserts)
+	require.Equal(t, 1, fake.requestCount)
+}
+
+func TestAddPlaylistItemRetriedCheckMayStillInsert(t *testing.T) {
+	fake, server := newFakeYouTube(t)
+	client := newYouTubeClientWithMethod(t, server.URL, 0, youtube.ManageAuthMethodID)
+	ctx := singledispatchtest.NewContext("youtube-flow", "add-retried-check")
+	input := youtube.AddPlaylistItemInput{PlaylistID: testPlaylistID, VideoID: testVideoID}
+	fake.errorStatus = http.StatusServiceUnavailable
+	_, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+	requireRetry(t, err, sdkgo.FailureAvailability)
+	fake.errorStatus = 0
+	ctx.AdvanceAttempt()
+	result, err := sdkgo.RunMutation(ctx, client.AddPlaylistItem(), youtubeConnection, input)
+	require.NoError(t, err)
+	require.Equal(t, youtube.AddPlaylistItemBranchAdded, result.Branch)
 	require.Equal(t, 1, fake.inserts)
-	require.Len(t, fake.items, 1)
 }
 
 func TestAddPlaylistItemInsertsWhenAbsent(t *testing.T) {

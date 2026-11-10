@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { branchCase, retryCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
+import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
 import type { SearchVideosInput, VideoSearchResult, VideoSearchPage, GetVideoInput, Video, GetChannelInput, Channel, ListPlaylistItemsInput, PlaylistItem, PlaylistItemPage, AddPlaylistItemInput, AddedPlaylistItem } from './models.js';
 import { SearchVideosInputSchema, VideoSearchResultSchema, VideoSearchPageSchema, GetVideoInputSchema, VideoSchema, GetChannelInputSchema, ChannelSchema, ListPlaylistItemsInputSchema, PlaylistItemSchema, PlaylistItemPageSchema, AddPlaylistItemInputSchema, AddedPlaylistItemSchema } from './models.js';
@@ -235,6 +235,8 @@ export function addPlaylistItemInvalidResponse(value: AddedPlaylistItem, failure
 export function addPlaylistItemDefect(value: AddedPlaylistItem, failure?: Failure): Case<AddedPlaylistItem> { return branchCase("defect", value, failure); }
 /** Script a safe retry of addPlaylistItem. */
 export function addPlaylistItemRetry(failure: Failure, retryAfterMs = 0): Case<AddedPlaylistItem> { return retryCase(failure, retryAfterMs); }
+/** Script an uncertain addPlaylistItem attempt. */
+export function addPlaylistItemUncertain(value: AddedPlaylistItem, failure: Failure): Case<AddedPlaylistItem> { return uncertainCase(value, failure); }
 /** Manifest scenario compilerVideoAdded for addPlaylistItem. */
 export function addPlaylistItemCompilerVideoAdded(): Case<AddedPlaylistItem> {
   const value = AddedPlaylistItemSchema.parse({"item":{"addedAt":"2026-10-26T10:00:00Z","id":"PLITEM001","playlistId":"PLcurated123","position":0,"title":"Compiler release walkthrough","videoId":"AbCdEfGhI12","videoPublishedAt":"2026-10-20T10:00:00Z"},"wasAlreadyPresent":false});
@@ -256,6 +258,11 @@ export function addPlaylistItemQuotaExhaustedFailure(): Case<AddedPlaylistItem> 
 export function addPlaylistItemProviderRejectedFailure(): Case<AddedPlaylistItem> {
   const value = emptyAddedPlaylistItem;
   return branchCase("providerRejected", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "addPlaylistItem", message: "YouTube denied the request." });
+}
+/** Manifest scenario insertOutcomeUnknown for addPlaylistItem. */
+export function addPlaylistItemInsertOutcomeUnknown(): Case<AddedPlaylistItem> {
+  const value = emptyAddedPlaylistItem;
+  return uncertainCase(value, { kind: "TRANSPORT", provider: ConnectorID, operation: "addPlaylistItem", message: "An earlier attempt may have added the video, and the playlist listing does not show it yet; check the playlist before adding the video again." });
 }
 
 /** Scripted operations and manifest defaults for this connector. */

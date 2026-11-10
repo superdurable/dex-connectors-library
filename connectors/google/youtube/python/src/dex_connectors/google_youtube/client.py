@@ -34,6 +34,13 @@ from dex_connectors.sdk.providerhttp import (
     send_traced,
     validate_base_url,
 )
+from dex_connectors.sdk.singledispatch import (
+    CheckpointError,
+    DecisionKind,
+    DispatchNotAllowedError,
+    Fence,
+    InsufficientAttemptTimeError,
+)
 
 from ._generated.config import Config as Config
 from ._generated.config import Credentials as Credentials
@@ -309,7 +316,7 @@ class Client:
         return ListPlaylistItemsOperation(self)
 
     def add_playlist_item(self) -> AddPlaylistItemOperation:
-        """Return the add-once playlist Mutation."""
+        """Return the at-most-once playlist Mutation."""
         return AddPlaylistItemOperation(self)
 
     async def aclose(self) -> None:
@@ -332,6 +339,7 @@ class Client:
         object_id: str,
         body: bytes | None = None,
         requires_manage: bool = False,
+        write_fence: Fence | None = None,
     ) -> tuple[bytes, Receipt, _Outcome | None]:
         try:
             credential = await self.credentials.resolve(call)
@@ -369,6 +377,45 @@ class Client:
         url = self.endpoint + path
         if query:
             url += "?" + encode_query_values(query)
+        if write_fence is None:
+            return await self._send_and_classify(
+                call, operation, method, url, object_id, body, credential, token, is_fenced_write=False
+            )
+        try:
+            return await write_fence.dispatch(
+                lambda _: self._send_and_classify(
+                    call, operation, method, url, object_id, body, credential, token, is_fenced_write=True
+                )
+            )
+        except (CheckpointError, InsufficientAttemptTimeError, DispatchNotAllowedError):
+            receipt = self._receipt(call, object_id)
+            failure = _failure(operation, FailureKind.TRANSPORT, "the YouTube insert was not started")
+            return b"", receipt, _Outcome("retry", failure, receipt)
+        except TimeoutError:
+            receipt = self._receipt(call, object_id)
+            failure = _failure(operation, FailureKind.TRANSPORT, "YouTube did not return a complete response")
+            return b"", receipt, _Outcome("writeUnconfirmed", failure, receipt)
+
+    async def _send_and_classify(
+        self,
+        call: Call,
+        operation: str,
+        method: str,
+        url: str,
+        object_id: str,
+        body: bytes | None,
+        credential: Credentials,
+        token: str,
+        *,
+        is_fenced_write: bool,
+    ) -> tuple[bytes, Receipt, _Outcome | None]:
+        """Send once, resending after one refreshed 401, and classify the response.
+
+        A fenced write retries as unprocessed only after a refusal that proves YouTube did not
+        act, such as 429, 503, or a connection that never opened; any other failure after the
+        claim may have applied the write.
+        """
+        transport_disposition = "writeUnconfirmed" if is_fenced_write else "retry"
         for request_attempt in range(2):
             try:
                 headers = {"Accept": "application/json", "Authorization": f"Bearer {token}"}
@@ -381,17 +428,23 @@ class Client:
                 return b"", receipt, _Outcome("defect", failure, receipt)
             try:
                 response, _ = await send_traced(self.http_client, request)
-            except ProviderTransportError:
+            except ProviderTransportError as error:
                 receipt = self._receipt(call, object_id)
+                if is_fenced_write and error.provably_not_sent:
+                    failure = _failure(
+                        operation, FailureKind.TRANSPORT, "YouTube could not be reached before sending"
+                    )
+                    return b"", receipt, _Outcome("retryUnprocessed", failure, receipt)
                 failure = _failure(
                     operation, FailureKind.TRANSPORT, "YouTube did not return a complete response"
                 )
-                return b"", receipt, _Outcome("retry", failure, receipt)
+                return b"", receipt, _Outcome(transport_disposition, failure, receipt)
             if (
                 response.status_code == 401
                 and request_attempt == 0
                 and hasattr(self.credentials, "resolve_after_rejection")
             ):
+                await response.aclose()
                 try:
                     credential = await self.credentials.resolve_after_rejection(call)
                     token = credential.access_token.reveal() if credential.access_token is not None else ""
@@ -432,11 +485,12 @@ class Client:
                     FailureKind.RESPONSE_TOO_LARGE,
                     "YouTube response exceeds the configured size limit",
                 )
-                return b"", receipt, _Outcome("invalidResponse", failure, receipt)
+                disposition = "writeUnconfirmed" if is_fenced_write else "invalidResponse"
+                return b"", receipt, _Outcome(disposition, failure, receipt)
             response_body = b""
         except ProviderTransportError:
             failure = _failure(operation, FailureKind.TRANSPORT, "YouTube did not return a complete response")
-            return b"", receipt, _Outcome("retry", failure, receipt)
+            return b"", receipt, _Outcome(transport_disposition, failure, receipt)
         if is_success:
             return response_body, receipt, None
         reason = _reason(response_body)
@@ -498,13 +552,16 @@ class Client:
                 FailureKind.PROVIDER_REJECTION,
                 f"YouTube rejected the request (HTTP {status}{suffix})",
             )
+        if disposition == "retry" and is_fenced_write:
+            is_unprocessed = kind == FailureKind.RATE_LIMIT or status == 503
+            disposition = "retryUnprocessed" if is_unprocessed else "writeUnconfirmed"
         failure = _failure(operation, kind, message)
+        is_retry = disposition in ("retry", "retryUnprocessed", "writeUnconfirmed")
         return (
             response_body,
             receipt,
-            _Outcome(disposition, failure, receipt, delay if disposition == "retry" else 0),
+            _Outcome(disposition, failure, receipt, delay if is_retry else 0),
         )
-
 
 @overload
 def _attempt_for_outcome(
@@ -901,7 +958,13 @@ class ListPlaylistItemsOperation:
 
 
 class AddPlaylistItemOperation:
-    """Add a video once after checking the playlist for an existing item."""
+    """Add a video at most once per Step call after checking the playlist for it.
+
+    YouTube has no idempotency key for playlistItems.insert and does not promise that a
+    listing shows a just-inserted item. A single-dispatch fence therefore forbids a second
+    insert after one that may have reached YouTube; such a later attempt only lists the
+    playlist and selects added when the video is shown and uncertain otherwise.
+    """
 
     def __init__(self, client: Client) -> None:
         self.client = client
@@ -911,11 +974,11 @@ class AddPlaylistItemOperation:
         return ADD_PLAYLIST_ITEM_DEFINITION
 
     def idempotency_key(self, call_id: CallID, input: AddPlaylistItemInput) -> IdempotencyKey:
-        """Use the stable Dex Call ID for repeat-safe playlist insertion."""
+        """Use the stable Dex Call ID; YouTube does not accept it."""
         return IdempotencyKey(str(call_id))
 
     async def invoke(self, call: Call, input: AddPlaylistItemInput) -> MutationAttempt[AddedPlaylistItem]:
-        """Check first, then insert only if the video is absent."""
+        """Check first, then insert at most once per Step call."""
         try:
             list_input = ListPlaylistItemsInput(input.playlist_id, input.video_id, 1)
             query = _playlist_query(list_input)
@@ -930,10 +993,40 @@ class AddPlaylistItemOperation:
                 str(error),
                 mutation=True,
             )
+        try:
+            fence = Fence(call, ADD_PLAYLIST_ITEM_DEFINITION.step_defaults.execute_method_timeout)
+        except ValueError:
+            return _branch(
+                "addPlaylistItem",
+                DEFECT,
+                AddedPlaylistItem(),
+                FailureKind.LOCAL_DEFECT,
+                "the YouTube dispatch fence is unavailable",
+                mutation=True,
+            )
+        decision = await fence.decide()
+        if decision.kind == DecisionKind.READ_BACK_REQUIRED:
+            return await self._confirm_earlier_insert(call, list_input, query)
+        if decision.kind != DecisionKind.SEND_ALLOWED:
+            return MutationAttempt.uncertain(
+                AddedPlaylistItem(),
+                _failure(
+                    "addPlaylistItem",
+                    FailureKind.TRANSPORT,
+                    "the YouTube dispatch checkpoint is unreadable, so an earlier insert cannot be "
+                    "ruled out; check the playlist before adding the video again",
+                ),
+                _empty_receipt(),
+            )
         body, receipt, outcome = await self.client._exchange(
             call, "addPlaylistItem", "GET", "/playlistItems", query, input.playlist_id, requires_manage=True
         )
         if outcome is not None:
+            if outcome.disposition == "retry":
+                try:
+                    await fence.record_not_sent()
+                except Exception:
+                    pass  # A lost notSent marker makes the next attempt read back instead of inserting.
             return _attempt_for_outcome(outcome, AddedPlaylistItem(), mutation=True)
         try:
             page = _decode_playlist_page(body, list_input)
@@ -948,16 +1041,9 @@ class AddPlaylistItemOperation:
                 mutation=True,
             )
         if page.items:
-            item = page.items[0]
-            receipt = Receipt(
-                receipt.call_id,
-                receipt.provider,
-                receipt.observed_at,
-                receipt.idempotency_key,
-                item.id,
-                receipt.provider_request_id,
+            return MutationAttempt.branch_result(
+                ADDED, AddedPlaylistItem(page.items[0], True), _with_object_id(receipt, page.items[0].id)
             )
-            return MutationAttempt.branch_result(ADDED, AddedPlaylistItem(item, True), receipt)
         request_body = json.dumps(
             {
                 "snippet": {
@@ -976,9 +1062,17 @@ class AddPlaylistItemOperation:
             input.playlist_id,
             request_body,
             requires_manage=True,
+            write_fence=fence,
         )
         if outcome is not None:
-            if outcome.disposition == "invalidResponse":
+            if outcome.disposition == "retryUnprocessed":
+                try:
+                    await fence.record_can_resend()
+                except Exception:
+                    pass  # A lost canResend marker makes the next attempt read back instead of inserting.
+                return MutationAttempt.retry(outcome.failure, outcome.retry_after)
+            if outcome.disposition == "writeUnconfirmed":
+                # The claim marker stays, so the next attempt only reads the playlist back.
                 return MutationAttempt.retry(outcome.failure)
             return _attempt_for_outcome(outcome, AddedPlaylistItem(), mutation=True)
         try:
@@ -988,11 +1082,13 @@ class AddPlaylistItemOperation:
                 _failure(
                     "addPlaylistItem",
                     FailureKind.PROTOCOL,
-                    "YouTube returned a malformed insert response; the retry checks the playlist",
+                    "YouTube returned a malformed insert response; the next attempt reads the playlist back",
                 )
             )
         try:
             item = _decode_playlist_item(decoded_item, input.playlist_id)
+            if item.video_id != input.video_id:
+                raise ValueError("YouTube returned an item for a different video")
         except ValueError:
             return _branch(
                 "addPlaylistItem",
@@ -1003,22 +1099,75 @@ class AddPlaylistItemOperation:
                 receipt,
                 mutation=True,
             )
-        if item.video_id != input.video_id:
-            return _branch(
-                "addPlaylistItem",
-                INVALID_RESPONSE,
-                AddedPlaylistItem(),
-                FailureKind.PROTOCOL,
-                "YouTube returned an invalid or different inserted item",
-                receipt,
-                mutation=True,
-            )
-        receipt = Receipt(
-            receipt.call_id,
-            receipt.provider,
-            receipt.observed_at,
-            receipt.idempotency_key,
-            item.id,
-            receipt.provider_request_id,
+        try:
+            await fence.record_provider_id(item.id)
+        except Exception:
+            pass  # A lost provider ID marker still forbids another insert.
+        return MutationAttempt.branch_result(
+            ADDED, AddedPlaylistItem(item), _with_object_id(receipt, item.id)
         )
-        return MutationAttempt.branch_result(ADDED, AddedPlaylistItem(item), receipt)
+
+    async def _confirm_earlier_insert(
+        self, call: Call, list_input: ListPlaylistItemsInput, query: dict[str, str]
+    ) -> MutationAttempt[AddedPlaylistItem]:
+        """List the playlist after an attempt that may have inserted; only a shown item confirms."""
+        body, receipt, outcome = await self.client._exchange(
+            call,
+            "addPlaylistItem",
+            "GET",
+            "/playlistItems",
+            query,
+            list_input.playlist_id,
+            requires_manage=True,
+        )
+        if outcome is not None:
+            if outcome.disposition == "retry":
+                return MutationAttempt.retry(outcome.failure, outcome.retry_after)
+            return MutationAttempt.uncertain(
+                AddedPlaylistItem(),
+                _failure(
+                    "addPlaylistItem",
+                    outcome.failure.kind,
+                    "an earlier attempt may have added the video, and the playlist could not be read back: "
+                    + outcome.failure.message,
+                ),
+                outcome.receipt,
+            )
+        try:
+            page = _decode_playlist_page(body, list_input)
+        except ValueError as error:
+            return MutationAttempt.uncertain(
+                AddedPlaylistItem(),
+                _failure(
+                    "addPlaylistItem",
+                    FailureKind.PROTOCOL,
+                    "an earlier attempt may have added the video, and the playlist could not be read back: "
+                    + str(error),
+                ),
+                receipt,
+            )
+        if page.items:
+            return MutationAttempt.branch_result(
+                ADDED, AddedPlaylistItem(page.items[0], True), _with_object_id(receipt, page.items[0].id)
+            )
+        return MutationAttempt.uncertain(
+            AddedPlaylistItem(),
+            _failure(
+                "addPlaylistItem",
+                FailureKind.TRANSPORT,
+                "an earlier attempt may have added the video, and the playlist listing does not show it "
+                "yet; check the playlist before adding the video again",
+            ),
+            receipt,
+        )
+
+
+def _with_object_id(receipt: Receipt, object_id: str) -> Receipt:
+    return Receipt(
+        receipt.call_id,
+        receipt.provider,
+        receipt.observed_at,
+        receipt.idempotency_key,
+        object_id,
+        receipt.provider_request_id,
+    )

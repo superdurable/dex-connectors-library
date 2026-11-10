@@ -99,7 +99,7 @@ func TestPlaylistCuratorAddsOnceWithRealDex(t *testing.T) {
 	})
 }
 
-// youtubeProvider is a stateful local YouTube Data API. Each playlist's first insert stores the item and answers HTTP 503.
+// youtubeProvider is a stateful local YouTube Data API. Each playlist's first insert stores the item and answers HTTP 500.
 type youtubeProvider struct {
 	*httptest.Server
 	mutex    sync.Mutex
@@ -179,7 +179,7 @@ func (provider *youtubeProvider) serveHTTP(response http.ResponseWriter, request
 		provider.inserts[playlistID]++
 		provider.items[playlistID] = append(provider.items[playlistID], payload.Snippet.ResourceID.VideoID)
 		if provider.inserts[playlistID] == 1 {
-			writeProviderResponse(response, http.StatusServiceUnavailable, `{"error":{"errors":[{"reason":"backendError"}],"message":"SENTINEL"}}`)
+			writeProviderResponse(response, http.StatusInternalServerError, `{"error":{"errors":[{"reason":"backendError"}],"message":"SENTINEL"}}`)
 			return
 		}
 		writeProviderResponse(response, http.StatusOK, playlistItemJSON(playlistID, len(provider.items[playlistID])-1, payload.Snippet.ResourceID.VideoID))
