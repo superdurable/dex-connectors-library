@@ -583,20 +583,13 @@ after a connector upgrade also change it, and a running key then settles
 
 ## Development
 
-Until sdkgo v0.35.0 is tagged, build against the repository's `sdkgo` with a
-workspace outside the checkout:
+The module requires released modules only and needs Go 1.25 or later:
 
 ```bash
-cat > /tmp/connectorsmcp.work <<EOF
-go 1.25.0
-use ($PWD/sdkgo $PWD/connectorsmcp)
-replace github.com/superdurable/dex-connectors-library/sdkgo v0.35.0 => $PWD/sdkgo
-EOF
-cd connectorsmcp && GOWORK=/tmp/connectorsmcp.work go test -race ./... && GOWORK=/tmp/connectorsmcp.work go vet ./...
+cd connectorsmcp && GOWORK=off go test -race ./... && GOWORK=off go vet ./...
 ```
 
-After the release, use `GOWORK=off go test -race ./...`. Never commit a
-`replace`.
+Never commit a `replace`.
 
 - **Crash tests.** `internal/server/crash_test.go` re-executes the test binary
   as server processes. Each one kills itself with `SIGKILL` at each protocol
