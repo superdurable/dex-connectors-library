@@ -11,7 +11,10 @@ require a stable `vX.Y.Z` version and explicit `operations` and `triggers`
 name lists; they may specify a distribution `package`
 override. Go remains implied by `go/go.mod` and `metadata.version`. The Python
 package lives in `python/` and declares its matching name and version under
-`[project]` in `pyproject.toml`; the TypeScript package lives in
+`[project]` in `pyproject.toml`, where it requires the Python Connector SDK
+by version floor, `dex-connectors-sdk>=X.Y.Z,<1`, with `uv.lock` resolving
+that floor; see [Release order](versioning-and-releases.md#release-order).
+The TypeScript package lives in
 `typescript/` and declares them in `package.json`. By default their package
 names are `dex-connector-<slug>` and `@superdurable/connector-<slug>`, with
 `<slug>` formed from the connector path below `connectors/` by replacing `/`
