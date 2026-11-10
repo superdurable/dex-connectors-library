@@ -137,6 +137,19 @@ class HeldConnector:
 
 
 @dataclass
+class ReleaseIndexResult:
+    """The index document, with the older releases it reused from the deployed index or dropped."""
+
+    index: dict[str, object]
+    reused_tags: list[str] = field(default_factory=list)
+    dropped_tags: list[str] = field(default_factory=list)
+
+    @property
+    def outcome(self) -> str:
+        return "dropped_versions" if self.dropped_tags else "ok"
+
+
+@dataclass
 class ReleaseSet:
     """The connector set that passed the build, with the changes the hold rule set aside."""
 
@@ -652,10 +665,12 @@ def release_notes(lock: dict[str, object], held: list[HeldConnector], excluded: 
 
 
 def build_release_index(releases: list[dict[str, object]], fetch_bytes: Callable[[str], bytes],
-                        warn: Callable[[str], None] = lambda message: print(f"::warning::{message}", flush=True)) -> dict[str, object]:
+                        warn: Callable[[str], None] = lambda message: print(f"::warning::{message}", flush=True),
+                        deployed_index: object = None) -> ReleaseIndexResult:
     """Builds connectors-mcp/index.json from GitHub releases that carry connectors-mcp-release.complete.
 
-    An older release that cannot be verified is left out with a warning; the newest one fails the index.
+    Any failure of the newest release fails the index. An older release whose download fails keeps its
+    deployed entry when that entry still matches; a mismatched or deleted asset drops it.
     """
     complete = []
     for release in releases:
@@ -667,21 +682,66 @@ def build_release_index(releases: list[dict[str, object]], fetch_bytes: Callable
         if RELEASE_COMPLETE_ASSET in assets:
             complete.append((server_version_key(version), release, assets))
     complete.sort(key=lambda item: item[0], reverse=True)
-    entries = []
+    deployed_entries = deployed_index_entries(deployed_index)
+    result = ReleaseIndexResult(index={"schemaVersion": INDEX_SCHEMA_VERSION, "releases": []})
     for position, (_, release, assets) in enumerate(complete):
         tag = release["tag_name"]
+        lock = None
         try:
-            entries.append(release_index_entry(release, assets, fetch_bytes))
-        except (ConnectorsMCPReleaseError, ReleaseDownloadError) as error:
+            lock = read_release_lock(release, assets, fetch_bytes)
+            result.index["releases"].append(release_index_entry(release, assets, lock, fetch_bytes))
+        except ReleaseDownloadError as error:
+            if position == 0:
+                raise ConnectorsMCPReleaseError(f"the newest Connectors MCP release {tag} cannot be indexed: {error}") from error
+            deployed = deployed_entries.get(tag)
+            if deployed is not None and is_deployed_entry_consistent(deployed, assets, lock):
+                warn(f"Connectors MCP release {tag} keeps its deployed index entry after a failed download: {error}")
+                result.index["releases"].append(deployed)
+                result.reused_tags.append(tag)
+            else:
+                warn(f"Connectors MCP release {tag} is left out of the index: {error}")
+                result.dropped_tags.append(tag)
+        except ConnectorsMCPReleaseError as error:
             if position == 0:
                 raise ConnectorsMCPReleaseError(f"the newest Connectors MCP release {tag} cannot be indexed: {error}") from error
             warn(f"Connectors MCP release {tag} is left out of the index: {error}")
-    return {"schemaVersion": INDEX_SCHEMA_VERSION, "releases": entries}
+            result.dropped_tags.append(tag)
+    return result
 
 
-def release_index_entry(release: dict[str, object], assets: dict[str, dict],
-                        fetch_bytes: Callable[[str], bytes]) -> dict[str, object]:
-    """Returns one index entry after checking each archive against GitHub's digest or its downloaded bytes."""
+def deployed_index_entries(deployed_index: object) -> dict[str, dict[str, object]]:
+    """Returns the deployed index's entries by tag, or none when it is absent or not this schema."""
+    if not isinstance(deployed_index, dict) or deployed_index.get("schemaVersion") != INDEX_SCHEMA_VERSION:
+        return {}
+    releases = deployed_index.get("releases")
+    if not isinstance(releases, list):
+        return {}
+    return {entry["tag"]: entry for entry in releases if isinstance(entry, dict) and isinstance(entry.get("tag"), str)}
+
+
+def is_deployed_entry_consistent(entry: dict[str, object], assets: dict[str, dict], lock: dict[str, object] | None) -> bool:
+    """Reports whether a deployed entry still names this release's assets with every known SHA-256."""
+    tag = entry.get("tag")
+    entry_assets = entry.get("assets")
+    if not isinstance(tag, str) or server_version_of_tag(tag) != entry.get("version") or not isinstance(entry_assets, dict):
+        return False
+    for goos, goarch in PLATFORMS:
+        indexed = entry_assets.get(platform_key(goos, goarch))
+        name = archive_name(str(entry["version"]), goos, goarch)
+        asset = assets.get(name)
+        if not isinstance(indexed, dict) or not isinstance(indexed.get("sha256"), str) or asset is None \
+                or indexed.get("url") != asset.get("browser_download_url"):
+            return False
+        digest = asset.get("digest")
+        if isinstance(digest, str) and digest.startswith("sha256:") and digest.removeprefix("sha256:") != indexed["sha256"]:
+            return False
+        if lock is not None and lock["assets"][platform_key(goos, goarch)]["sha256"] != indexed["sha256"]:
+            return False
+    return True
+
+
+def read_release_lock(release: dict[str, object], assets: dict[str, dict],
+                      fetch_bytes: Callable[[str], bytes]) -> dict[str, object]:
     tag = str(release["tag_name"])
     if RELEASE_LOCK_ASSET not in assets:
         raise ConnectorsMCPReleaseError(f"{tag} has no {RELEASE_LOCK_ASSET}")
@@ -690,6 +750,13 @@ def release_index_entry(release: dict[str, object], assets: dict[str, dict],
     except json.JSONDecodeError as error:
         raise ConnectorsMCPReleaseError(f"{tag} {RELEASE_LOCK_ASSET} is not JSON: {error}") from error
     validate_release_lock(lock, tag)
+    return lock
+
+
+def release_index_entry(release: dict[str, object], assets: dict[str, dict], lock: dict[str, object],
+                        fetch_bytes: Callable[[str], bytes]) -> dict[str, object]:
+    """Returns one index entry after checking each archive against GitHub's digest or its downloaded bytes."""
+    tag = str(release["tag_name"])
     published_at = release.get("published_at")
     if not isinstance(published_at, str) or not published_at:
         raise ConnectorsMCPReleaseError(f"{tag} has no publication time")
@@ -838,10 +905,19 @@ def command_package(args: argparse.Namespace) -> None:
 
 
 def command_index(args: argparse.Namespace) -> None:
-    index = build_release_index(list_github_releases(), download_bytes)
+    deployed_index = None
+    if args.deployed_index is not None and args.deployed_index.exists():
+        try:
+            deployed_index = read_json(args.deployed_index)
+        except json.JSONDecodeError as error:
+            print(f"::warning::The deployed Connectors MCP index is not JSON: {error}", flush=True)
+    result = build_release_index(list_github_releases(), download_bytes, deployed_index=deployed_index)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
-    print(f"Connectors MCP index: {len(index['releases'])} releases", flush=True)
+    args.output.write_text(json.dumps(result.index, indent=2) + "\n", encoding="utf-8")
+    print(f"Connectors MCP index: {len(result.index['releases'])} releases; reused {result.reused_tags or 'none'}; "
+          f"dropped {result.dropped_tags or 'none'}", flush=True)
+    write_github_output(args.github_output, {"outcome": result.outcome, "dropped": " ".join(result.dropped_tags),
+                                             "reused": " ".join(result.reused_tags)})
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -877,6 +953,8 @@ def main(argv: list[str] | None = None) -> None:
     package.set_defaults(handler=command_package)
     index = commands.add_parser("index", help="write connectors-mcp/index.json from complete GitHub releases")
     index.add_argument("--output", type=Path, required=True)
+    index.add_argument("--deployed-index", type=Path, help="the currently deployed index, for older entries a download missed")
+    index.add_argument("--github-output", type=Path)
     index.set_defaults(handler=command_index)
     args = parser.parse_args(argv)
     try:

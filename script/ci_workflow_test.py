@@ -110,6 +110,9 @@ class ConnectorsMCPWorkflowTest(unittest.TestCase):
         self.assertNotIn("release-connectors-mcp", catalog_condition, "a failed server release never blocks the catalog")
         for job_name in ("build-language", "publish-language", "deploy-catalog"):
             self.assertNotIn("release-connectors-mcp", workflow_job(self.release_workflow, job_name))
+        health = workflow_job(self.release_workflow, "check-connectors-mcp-index")
+        self.assertIn("\n    needs: [build-catalog, deploy-catalog]\n", health)
+        self.assertNotIn("check-connectors-mcp-index", workflow_job(self.release_workflow, "deploy-catalog"))
 
     def test_release_tags_an_off_main_commit_and_marks_completion_last(self) -> None:
         job = workflow_job(self.release_workflow, "release-connectors-mcp")
@@ -163,35 +166,67 @@ class ConnectorsMCPWorkflowTest(unittest.TestCase):
         accepted, _ = self.run_release_commit_step(lambda directory: (directory / "connectorsmcp/go.mod").write_text("changed\n"))
         self.assertEqual(0, accepted.returncode, accepted.stderr)
 
-    def run_index_step(self, deployed_index: str | None) -> tuple[subprocess.CompletedProcess, Path]:
+    def run_index_step(self, deployed_index: str | None, rebuild: str = "exit 1") -> tuple[subprocess.CompletedProcess, Path, str]:
         script = step_script(workflow_job(self.release_workflow, "build-catalog"), "Generate the Connectors MCP release index")
         directory = Path(tempfile.mkdtemp())
         stubs = directory / "bin"
         stubs.mkdir()
-        # The index rebuild fails; python3 -c still validates the deployed index.
-        (stubs / "python3").write_text(f'#!/bin/sh\nif [ "$1" = -c ]; then exec {sys.executable} "$@"; fi\nexit 1\n')
+        # python3 -c still validates the deployed index; rebuild stands in for the index command.
+        (stubs / "python3").write_text(f'#!/bin/sh\nif [ "$1" = -c ]; then exec {sys.executable} "$@"; fi\n{rebuild}\n')
         curl = "#!/bin/sh\nexit 22\n" if deployed_index is None else (
             '#!/bin/sh\nwhile [ "$1" != --output ]; do shift; done\n'
             f"cat > \"$2\" <<'JSON'\n{deployed_index}\nJSON\n")
         (stubs / "curl").write_text(curl)
         for stub in stubs.iterdir():
             stub.chmod(0o755)
-        environment = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}"}
+        (directory / "temp").mkdir()
+        environment = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}",
+                       "RUNNER_TEMP": str(directory / "temp"), "GITHUB_OUTPUT": str(directory / "output")}
         result = subprocess.run(["bash", "-e", "-c", script], cwd=directory, env=environment, capture_output=True, text=True)
-        return result, directory / "dist/pages/connectors-mcp/index.json"
+        outputs = (directory / "output").read_text() if (directory / "output").exists() else ""
+        return result, directory / "dist/pages/connectors-mcp/index.json", outputs
 
-    def test_failed_index_rebuild_never_blocks_the_catalog(self) -> None:
-        result, index = self.run_index_step(None)
+    def run_health_step(self, outcome: str, dropped: str = "") -> subprocess.CompletedProcess:
+        script = step_script(workflow_job(self.release_workflow, "check-connectors-mcp-index"),
+                             "Fail when the Connectors MCP index fell back, was omitted, or dropped a version")
+        return subprocess.run(["bash", "-e", "-c", script], env={**os.environ, "INDEX_OUTCOME": outcome, "DROPPED_TAGS": dropped},
+                              capture_output=True, text=True)
+
+    def test_failed_index_rebuild_never_blocks_the_catalog_but_turns_the_health_check_red(self) -> None:
+        result, index, outputs = self.run_index_step(None)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("this catalog deploy omits it", result.stdout)
         self.assertFalse(index.exists())
+        self.assertEqual("outcome=omitted\n", outputs)
         deployed = '{"schemaVersion": "dex-connectors-mcp/release-index/v1", "releases": []}'
-        result, index = self.run_index_step(deployed)
+        result, index, outputs = self.run_index_step(deployed)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(deployed + "\n", index.read_text())
-        result, index = self.run_index_step('{"schemaVersion": "other"}')
+        self.assertEqual("outcome=fell_back\n", outputs)
+        health = self.run_health_step("fell_back")
+        self.assertNotEqual(0, health.returncode, "a newest-release failure is red after the catalog deploys")
+        self.assertIn("deployed index was republished", health.stdout)
+        result, index, outputs = self.run_index_step('{"schemaVersion": "other"}')
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse(index.exists(), "an unrecognized deployed index is not republished")
+
+    def test_index_health_check_reports_each_outcome(self) -> None:
+        self.assertEqual(0, self.run_health_step("ok").returncode)
+        for outcome in ("omitted", "dropped_versions", ""):
+            with self.subTest(outcome):
+                self.assertNotEqual(0, self.run_health_step(outcome, "connectorsmcp/v0.1.1").returncode)
+        self.assertIn("left out connectorsmcp/v0.1.1", self.run_health_step("dropped_versions", "connectorsmcp/v0.1.1").stdout)
+
+    def test_successful_rebuild_passes_the_deployed_index_and_records_its_outcome(self) -> None:
+        deployed = '{"schemaVersion": "dex-connectors-mcp/release-index/v1", "releases": []}'
+        rebuild = ('for argument; do case "$previous" in --deployed-index) cp "$argument" "$OLDPWD/seen";; '
+                   '--output) echo "{}" > "$argument";; --github-output) echo outcome=ok >> "$argument";; esac; '
+                   'previous="$argument"; done')
+        result, index, outputs = self.run_index_step(deployed, rebuild=f'OLDPWD="$PWD"; {rebuild}')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("outcome=ok\n", outputs)
+        self.assertEqual("{}\n", index.read_text())
+        self.assertEqual(deployed + "\n", (index.parents[3] / "seen").read_text(), "older entries can come from the deployed index")
 
     def test_catalog_publishes_the_release_index_with_the_site(self) -> None:
         catalog = workflow_job(self.release_workflow, "build-catalog")

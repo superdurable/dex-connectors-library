@@ -662,10 +662,35 @@ that have the complete marker, newest first. Each entry lists `version`,
 platform, and the linked connectors with their tools. dexcli verifies an
 archive against the index `sha256` alone, so each archive must match the
 lock's SHA-256: by GitHub's asset digest, or by downloading and hashing it when
-GitHub has none. An older release that fails this check is left out with a
-warning; a failing newest release fails the rebuild. The index never blocks
-the catalog: after a failed rebuild the catalog job republishes the deployed
-index, or deploys without one when none is available.
+GitHub has none. The rebuild treats failures by release:
+
+- **Newest release.** Any failure fails the rebuild. The catalog job then
+  republishes the deployed index (`fell_back`), or deploys without one when
+  none is deployed (`omitted`).
+- **Older release, download failed.** It keeps its entry from the deployed
+  index when that entry still names the same assets and SHA-256 values. It
+  was verified when first published.
+- **Older release, asset mismatched or deleted.** It is left out
+  (`dropped_versions`), as is an older release whose download failed and that
+  has no matching deployed entry.
+
+The index never blocks the catalog. After the catalog deploys, the
+`check-connectors-mcp-index` job fails when the outcome is `fell_back`,
+`omitted`, or `dropped_versions`, so a degraded index shows as a red Release
+run. To repair it:
+
+1. Read the job's warnings in `build-catalog` for the release and the reason.
+2. For a transient download failure, rerun the Release workflow manually with
+   no inputs. That rebuilds only the catalog and the index.
+3. For a corrupted or missing archive or lock of the newest release, delete
+   its `connectors-mcp-release.complete` asset. The next run finds the
+   incomplete tag, rebuilds that release from its tag, uploads its assets
+   again, and marks it complete.
+4. For an older release with a mismatched or deleted archive, either upload
+   the original archive again (its SHA-256 is in the lock and
+   `checksums.txt`), or delete that release's
+   `connectors-mcp-release.complete` asset to retire the version from the
+   index on purpose. Then rerun the Release workflow.
 
 **Failures and repair.** The job runs after the Go release shards in every
 Release run, including runs that released nothing, so `GO_RELEASE_LIMIT`

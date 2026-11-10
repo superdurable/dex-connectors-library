@@ -467,7 +467,8 @@ def github_release(version: str, release_lock: dict | None, *, complete: bool = 
 
 class ReleaseIndexTests(unittest.TestCase):
     def build(self, releases: list[dict], locks: dict[str, object], archive_bytes: dict[str, bytes] | None = None,
-              fetched: list[str] | None = None) -> tuple[dict, list[str]]:
+              fetched: list[str] | None = None, unavailable: set[str] = frozenset(),
+              deployed_index: object = None) -> tuple[dict, list[str]]:
         warnings: list[str] = []
         archive_bytes = archive_bytes or {}
         fetched = fetched if fetched is not None else []
@@ -475,13 +476,16 @@ class ReleaseIndexTests(unittest.TestCase):
         def fetch(url: str) -> bytes:
             fetched.append(url)
             name = url.rsplit("/", 1)[-1]
+            if any(url.endswith("/" + item) for item in unavailable):
+                raise release.ReleaseDownloadError(f"download {url} failed: HTTP Error 502")
             if name.endswith(".tar.gz"):
                 _, version, goos, goarch = name.removesuffix(".tar.gz").split("_")
                 return archive_bytes.get(name, f"{version}-{goos}-{goarch}".encode())
             value = locks[url.rsplit("/", 2)[-2]]
             return value if isinstance(value, bytes) else json.dumps(value).encode()
 
-        return release.build_release_index(releases, fetch, warnings.append), warnings
+        self.result = release.build_release_index(releases, fetch, warnings.append, deployed_index=deployed_index)
+        return self.result.index, warnings
 
     def test_index_lists_complete_releases_newest_first_with_archive_digests(self) -> None:
         slack = connector("slack", "v1.4.0", tools=["slack_list_thread_messages", "slack_post_thread_reply"])
@@ -527,6 +531,7 @@ class ReleaseIndexTests(unittest.TestCase):
         self.assertEqual(1, len(warnings))
         self.assertIn("connectorsmcp/v0.1.2", warnings[0])
         self.assertIn("not the locked", warnings[0])
+        self.assertEqual(("dropped_versions", ["connectorsmcp/v0.1.2"]), (self.result.outcome, self.result.dropped_tags))
         self.assertFalse(any("v0.1.3/" in url and url.endswith(".tar.gz") for url in fetched),
                          "a GitHub digest avoids downloading the archive")
         self.assertEqual(4, sum("v0.1.1/" in url and url.endswith(".tar.gz") for url in fetched))
@@ -561,6 +566,55 @@ class ReleaseIndexTests(unittest.TestCase):
         self.assertIn("has no connectors-mcp-release.json", warnings[1])
         self.assertIn("not the locked", warnings[2])
         self.assertIn("v0.1.2", warnings[3])
+
+    def test_a_transient_older_download_failure_keeps_the_deployed_entry(self) -> None:
+        older, newest = lock("0.1.1", connector("slack", "v1.4.0")), lock("0.1.2", connector("slack", "v1.4.0"))
+        releases = [github_release("0.1.1", older), github_release("0.1.2", newest)]
+        locks = {"v0.1.1": older, "v0.1.2": newest}
+        deployed, _ = self.build(releases, locks)
+        flaky = release.archive_name("0.1.1", "darwin", "amd64")
+
+        index, warnings = self.build(releases, locks, unavailable={flaky}, deployed_index=deployed)
+        self.assertEqual(deployed, index, "the entry verified at publication is kept")
+        self.assertEqual((["connectorsmcp/v0.1.1"], [], "ok"),
+                         (self.result.reused_tags, self.result.dropped_tags, self.result.outcome))
+        self.assertIn("keeps its deployed index entry", warnings[0])
+
+        index, _ = self.build(releases, locks, unavailable={"v0.1.1/" + release.RELEASE_LOCK_ASSET}, deployed_index=deployed)
+        self.assertEqual(deployed, index, "an unavailable lock of an older release also keeps the deployed entry")
+        self.assertRaises(release.ConnectorsMCPReleaseError, self.build, releases, {"v0.1.1": older, "v0.1.2": b"{"},
+                          deployed_index=deployed)
+
+    def test_a_transient_failure_without_a_matching_deployed_entry_drops_the_version(self) -> None:
+        older, newest = lock("0.1.1", connector("slack", "v1.4.0")), lock("0.1.2", connector("slack", "v1.4.0"))
+        releases = [github_release("0.1.1", older), github_release("0.1.2", newest)]
+        locks = {"v0.1.1": older, "v0.1.2": newest}
+        deployed, _ = self.build(releases, locks)
+        stale = json.loads(json.dumps(deployed))
+        stale["releases"][1]["assets"]["linux-arm64"]["sha256"] = "f" * 64
+        flaky = {release.archive_name("0.1.1", "darwin", "amd64")}
+        for name, deployed_index in (("no deployed index", None), ("stale deployed entry", stale)):
+            with self.subTest(name):
+                index, _ = self.build(releases, locks, unavailable=flaky, deployed_index=deployed_index)
+                self.assertEqual(["0.1.2"], [entry["version"] for entry in index["releases"]])
+                self.assertEqual((["connectorsmcp/v0.1.1"], "dropped_versions"), (self.result.dropped_tags, self.result.outcome))
+
+    def test_a_mismatched_or_deleted_older_asset_drops_the_version_despite_a_deployed_entry(self) -> None:
+        older, newest = lock("0.1.1", connector("slack", "v1.4.0")), lock("0.1.2", connector("slack", "v1.4.0"))
+        locks = {"v0.1.1": older, "v0.1.2": newest}
+        deployed, _ = self.build([github_release("0.1.1", older), github_release("0.1.2", newest)], locks)
+        deleted = github_release("0.1.1", older)
+        deleted["assets"] = [asset for asset in deleted["assets"] if asset["name"] != release.archive_name("0.1.1", "linux", "amd64")]
+        for name, older_release, archive_bytes in (
+            ("mismatched", github_release("0.1.1", older), {release.archive_name("0.1.1", "linux", "amd64"): b"replaced"}),
+            ("deleted", deleted, {}),
+        ):
+            with self.subTest(name):
+                index, warnings = self.build([older_release, github_release("0.1.2", newest)], locks,
+                                             archive_bytes=archive_bytes, deployed_index=deployed)
+                self.assertEqual(["0.1.2"], [entry["version"] for entry in index["releases"]])
+                self.assertEqual(["connectorsmcp/v0.1.1"], self.result.dropped_tags)
+                self.assertIn("left out of the index", warnings[0])
 
     def test_a_failed_download_of_the_newest_release_fails_the_index(self) -> None:
         def fetch(url: str) -> bytes:
