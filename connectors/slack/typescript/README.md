@@ -1,6 +1,6 @@
 # Slack TypeScript connector
 
-Install `@superdurable/connector-slack@0.1.0` with `@superdurable/connectors-sdk@0.3.0` and `@superdurable/dex` 1.28 or newer. This package implements `listThreadMessages`, `getThreadReply`, `postChannelMessage`, and `postThreadReply`. Socket Mode Triggers remain Go-only.
+Install `@superdurable/connector-slack@0.2.0` with `@superdurable/connectors-sdk@0.7.0` and `@superdurable/dex` 1.28 or newer. This package implements `listThreadMessages`, `getThreadReply`, `postChannelMessage`, and `postThreadReply`. Socket Mode Triggers remain Go-only.
 
 Use `newProjectConnection(project, 'slack-thread-reader')` with a Dex project loaded by `loadFromEnvironment`. The project credential source refreshes the OAuth bot and user tokens using generated manifest declarations. Bot credentials send messages; user credentials read thread replies. The package does not place credentials in Flow state.
 

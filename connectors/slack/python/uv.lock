@@ -298,7 +298,7 @@ wheels = [
 
 [[package]]
 name = "dex-connector-slack"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "dex-connectors-sdk" },
@@ -316,7 +316,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dex-connectors-sdk", specifier = "==0.7.0" },
+    { name = "dex-connectors-sdk", specifier = ">=0.7.0,<1" },
     { name = "dex-python-sdk", specifier = ">=1.28.0" },
     { name = "httpx", specifier = ">=0.27" },
 ]
