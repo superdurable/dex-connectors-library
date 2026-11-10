@@ -25,6 +25,8 @@ const (
 type credentialRefreshLocker interface {
 	// lockCredentialRefresh waits for the exclusive refresh lock until ctx ends.
 	lockCredentialRefresh(ctx context.Context) (*heldRefreshLock, error)
+	// verifyCredentialWriteBack proves, under the lock, that a refreshed credential can be written back.
+	verifyCredentialWriteBack() error
 }
 
 // fileRefreshLock orders one store's goroutines with a semaphore, and processes with flock(2) on a never-replaced lock file.

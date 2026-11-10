@@ -269,6 +269,10 @@ func (provider *CredentialResolver[C]) refreshWhileLocked(ctx context.Context, d
 	if !isRefreshRequired {
 		return state.Credentials, true, nil
 	}
+	// A rotated refresh token that cannot be written back would strand every other process.
+	if err = refreshLocker.verifyCredentialWriteBack(); err != nil {
+		return zero, false, fmt.Errorf("%w: the credential cannot be written back: %w", ErrRefreshFailed, err)
+	}
 	return provider.refreshReady(ctx, record, material, state, driver)
 }
 

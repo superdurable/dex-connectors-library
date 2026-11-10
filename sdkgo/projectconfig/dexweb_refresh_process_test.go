@@ -7,11 +7,13 @@ package projectconfig_test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -485,4 +487,76 @@ func TestDexWebRefreshAcrossStoresInOneProcessSendsOneProviderRequest(t *testing
 		require.Equal(t, localCredentials{AccessToken: "access-1", RefreshToken: "rotated-refresh-1"}, results[index])
 	}
 	require.Equal(t, int32(1), driver.requests.Load())
+}
+
+// requireDirectoryPermissionChecks skips under root, which bypasses the permissions of a read-only directory.
+func requireDirectoryPermissionChecks(t *testing.T) {
+	t.Helper()
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions, so a read-only directory cannot be simulated")
+	}
+}
+
+// An existing lock file still opens in a read-only directory; the write-back check must stop the refresh.
+func TestDexWebRefreshInReadOnlyDirectorySendsNoProviderRequest(t *testing.T) {
+	requireDirectoryPermissionChecks(t)
+	directory := t.TempDir()
+	expired := time.Now().Add(-time.Minute)
+	path := writeDexWebFiles(t, directory, "access-1", &expired)
+	resolver := localResolver(t, loadLocal(t, path))
+	require.NoError(t, os.WriteFile(path+".lock", nil, 0o600))
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.NoError(t, os.Chmod(directory, 0o500))
+	t.Cleanup(func() { _ = os.Chmod(directory, 0o700) }) // Restores removal by t.TempDir.
+
+	driver := &localDriver{}
+	_, err = resolver.ResolveWithRefresh(context.Background(), driver)
+	require.ErrorIs(t, err, projectconfig.ErrRefreshFailed)
+	require.ErrorContains(t, err, "cannot be written back")
+	require.Zero(t, driver.refreshes)
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, before, after)
+}
+
+// readOnlyDuringRefreshDriver makes the directory read-only while the provider answers, after the write-back check.
+type readOnlyDuringRefreshDriver struct {
+	directory string
+}
+
+func (*readOnlyDuringRefreshDriver) RefreshRequired(projectconfig.RefreshState[localCredentials]) bool {
+	return false
+}
+
+func (driver *readOnlyDuringRefreshDriver) Refresh(_ context.Context, state projectconfig.RefreshState[localCredentials]) (projectconfig.RefreshResult[localCredentials], error) {
+	if err := os.Chmod(driver.directory, 0o500); err != nil {
+		return projectconfig.RefreshResult[localCredentials]{}, err
+	}
+	return projectconfig.RefreshResult[localCredentials]{
+		Credentials: localCredentials{AccessToken: "access-rotated-secret", RefreshToken: "refresh-rotated-secret"},
+		ExpiresAt:   state.Now.Add(time.Hour),
+	}, nil
+}
+
+// A rotated credential cannot be un-rotated, so a late write-back failure returns it and logs an error without it.
+func TestDexWebRefreshReturnsRotatedCredentialWhenLateWriteBackFails(t *testing.T) {
+	requireDirectoryPermissionChecks(t)
+	directory := t.TempDir()
+	expired := time.Now().Add(-time.Minute)
+	path := writeDexWebFiles(t, directory, "access-1", &expired)
+	resolver := localResolver(t, loadLocal(t, path))
+	t.Cleanup(func() { _ = os.Chmod(directory, 0o700) }) // Restores removal by t.TempDir.
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	credentials, err := resolver.ResolveWithRefresh(context.Background(), &readOnlyDuringRefreshDriver{directory: directory})
+	require.NoError(t, err)
+	require.Equal(t, localCredentials{AccessToken: "access-rotated-secret", RefreshToken: "refresh-rotated-secret"}, credentials)
+	require.Equal(t, localCredentials{AccessToken: "access-1", RefreshToken: initialRefreshToken}, readFileCredentials(t, path))
+	require.Contains(t, logs.String(), "level=ERROR")
+	require.Contains(t, logs.String(), "local connector credential write-back failed")
+	require.NotContains(t, logs.String(), "rotated-secret")
 }

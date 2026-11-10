@@ -430,25 +430,31 @@ writes that admit one refresh coordinate only the goroutines of one process. A
 refresh of a local connection therefore also holds a file lock:
 
 1. The caller takes an exclusive `flock(2)` lock on `connections.json.lock`
-   beside `connections.json`. The lock file is created with mode `0600`, a
-   symbolic link is refused, and it is never renamed or removed. The lock is
-   on a separate file because the write-back replaces `connections.json`. It
-   covers the whole file, so refreshes of different connections in one file
-   run one at a time.
+   beside `connections.json`. The lock file is created with mode `0600`, and
+   it is never renamed or removed. An existing lock file must be a regular
+   file, not a symbolic link, owned by the current user; group and other
+   permissions are removed from it. The lock is on a separate file because
+   the write-back replaces `connections.json`. It covers the whole file, so
+   refreshes of different connections in one file run one at a time.
 2. Holding the lock, it reads `connections.json` again. When another process
    wrote back a credential that needs no refresh, the caller uses it and sends
    no provider request. This is how a refresh token that the provider rotated
    reaches every process.
-3. Otherwise it sends the one refresh request and writes the result back: a
-   temporary file in the same directory, `fsync`, rename over
-   `connections.json`, then `fsync` of the directory.
+3. Otherwise it first proves that it can write the result back by creating
+   and removing a temporary file beside `connections.json`. Then it sends the
+   one refresh request and writes the result back: a temporary file in the
+   same directory, `fsync`, rename over `connections.json`, then `fsync` of
+   the directory.
 4. It releases the lock. An observer that recovers an unfinished refresh of
    its own process holds the lock in the same way.
 
 The wait for the lock ends with the call's context, and after two minutes at
 most, with an error that wraps `ErrRefreshFailed`; no provider request was
-sent, and the current authorization is kept. When the lock file cannot be
-created, for example in a read-only directory, the refresh fails the same way.
+sent, and the current authorization is kept. The refresh fails the same way,
+before any provider request, when the lock file is unusable or the write-back
+check fails, for example in a read-only directory, even one that already
+holds the lock file. A refresh token that a provider rotated could otherwise
+reach only this process.
 
 Process failures:
 
@@ -462,10 +468,13 @@ Process failures:
   token is lost and the file keeps the old one. The next refresh receives
   `invalid_grant`, and the connection requires reauthorization in Dex Web. No
   lock can recover a provider response that died with its process.
-- A write-back failure is logged without credential values, and the refresh
-  still succeeds in that process. Other processes keep the file's credential;
-  with a provider that rotates refresh tokens, their next refresh can then
-  require reauthorization.
+- A write-back that still fails after the provider answered, because the
+  directory or disk changed during the request, is logged as an error without
+  credential values. The call returns the refreshed credential, and that
+  process keeps using it. Failing the call would not restore the previous
+  refresh token, which a rotating provider has already invalidated. Other
+  processes and a restart keep the file's credential and, with such a
+  provider, require reauthorization in Dex Web.
 
 Limits:
 
@@ -516,7 +525,10 @@ share one `connections.json` and refresh against a fake token endpoint that
 rotates refresh tokens. They check that concurrent processes send one refresh
 request and adopt the rotated token, that a holder killed with `SIGKILL`
 releases the lock, and that a token rotated for a killed holder requires
-reauthorization.
+reauthorization. Other tests check that a read-only directory stops a refresh
+before the provider request, that a late write-back failure returns the
+credential and logs an error, and that an unsafe lock file is refused or
+restricted to `0600`.
 `make test-projectconfig-s3-integration` calls real AWS S3/KMS using the caller's
 default credential chain. It requires an explicitly configured existing versioned
 bucket and exact KMS key ARN. It creates a unique owned prefix, checks conditional

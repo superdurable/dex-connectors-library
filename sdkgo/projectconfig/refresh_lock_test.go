@@ -119,3 +119,30 @@ func TestRefreshLockRefusesSymbolicLink(t *testing.T) {
 	require.ErrorIs(t, err, ErrRefreshFailed)
 	require.ErrorContains(t, err, "open the credential refresh lock file")
 }
+
+func TestRefreshLockRestrictsWidePermissionsOfOwnLockFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "connections.json.lock")
+	require.NoError(t, os.WriteFile(path, nil, 0o600))
+	require.NoError(t, os.Chmod(path, 0o666))
+
+	held, err := newFileRefreshLock(path, time.Minute).acquire(context.Background())
+	require.NoError(t, err)
+	held.release()
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
+
+func TestRefreshLockRefusesLockFileThatIsNotRegular(t *testing.T) {
+	directory := t.TempDir()
+	fifo := filepath.Join(directory, "fifo.lock")
+	require.NoError(t, syscall.Mkfifo(fifo, 0o600))
+	_, err := newFileRefreshLock(fifo, time.Minute).acquire(context.Background())
+	require.ErrorIs(t, err, ErrRefreshFailed)
+	require.ErrorContains(t, err, "the credential refresh lock file is not a regular file")
+
+	nested := filepath.Join(directory, "directory.lock")
+	require.NoError(t, os.Mkdir(nested, 0o700))
+	_, err = newFileRefreshLock(nested, time.Minute).acquire(context.Background())
+	require.ErrorIs(t, err, ErrRefreshFailed)
+}

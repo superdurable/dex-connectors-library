@@ -188,6 +188,16 @@ func copyObject(object Object) Object {
 	return object
 }
 
+// verifyFileReplacement creates and removes the temporary file that writePrivateFile would create beside path.
+func verifyFileReplacement(path string) error {
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".write-*")
+	if err != nil {
+		return fmt.Errorf("create temporary file: %w", err)
+	}
+	closeErr := temporary.Close()
+	return errors.Join(closeErr, os.Remove(temporary.Name()))
+}
+
 // writePrivateFile atomically replaces path with a regular file readable only by its owner.
 // Synchronizing the contents and the rename leaves the prior or new file complete after a crash.
 func writePrivateFile(path string, contents []byte) error {

@@ -31,6 +31,13 @@ const (
 	dexWebDefaultAuthMethod = "local"
 )
 
+var (
+	// errFileHoldsNewerCredential means Dex Web saved a credential after the last read; that credential wins.
+	errFileHoldsNewerCredential = errors.New("the file holds a newer credential")
+	// errConnectionRemovedFromFile means Dex Web removed the connection after the last read.
+	errConnectionRemovedFromFile = errors.New("the connection is no longer in the file")
+)
+
 // dexWebScope is the fixed scope of the single local project that Dex Web's files describe.
 var dexWebScope = Scope{ProjectID: "local", Kind: scopeKindPreview}
 
@@ -309,6 +316,11 @@ func (store *dexWebStore) lockCredentialRefresh(ctx context.Context) (*heldRefre
 	return store.refreshLock.acquire(ctx)
 }
 
+// verifyCredentialWriteBack proves connections.json can be replaced, so a rotated refresh token is never stranded.
+func (store *dexWebStore) verifyCredentialWriteBack() error {
+	return verifyFileReplacement(store.path)
+}
+
 // CompareAndSwapObject replaces a key conditionally; a refreshed connection credential is also written back to connections.json.
 func (store *dexWebStore) CompareAndSwapObject(ctx context.Context, key, expectedETag string, contents []byte) (Object, error) {
 	if !isConnectionHead(key) {
@@ -330,7 +342,7 @@ func (store *dexWebStore) CompareAndSwapObject(ctx context.Context, key, expecte
 // Dex Web see the current refresh token. A CredentialResolver refresh reaches it while holding refreshLock.
 // It writes only while the file still holds the credential that was last synchronized; otherwise Dex Web saved a
 // newer one, which the next read adopts. A failure is logged and does not fail the refresh, whose result is
-// already committed.
+// already committed: failing would not restore a refresh token that the provider already rotated.
 func (store *dexWebStore) writeBack(ctx context.Context, head Object) {
 	var record connectionRecord
 	if json.Unmarshal(head.Contents, &record) != nil || record.Status != CredentialReady || record.Credential == nil {
@@ -346,7 +358,12 @@ func (store *dexWebStore) writeBack(ctx context.Context, head Object) {
 		return
 	}
 	if err = store.replaceInFile(record.Key, material); err != nil {
-		slog.Warn("local connector credential write-back failed", "connector", record.Key.ConnectorID, "connection", record.Key.ConnectionName, "error", err.Error())
+		if errors.Is(err, errFileHoldsNewerCredential) || errors.Is(err, errConnectionRemovedFromFile) {
+			slog.Warn("local connector credential write-back skipped", "connector", record.Key.ConnectorID, "connection", record.Key.ConnectionName, "reason", err.Error())
+			return
+		}
+		slog.Error("local connector credential write-back failed; other processes and a restart keep the previous credential and may require reauthorization",
+			"connector", record.Key.ConnectorID, "connection", record.Key.ConnectionName, "error", err.Error())
 		return
 	}
 	store.imported[record.Key] = digest
@@ -370,7 +387,7 @@ func (store *dexWebStore) replaceInFile(key ConnectionKey, material CredentialMa
 			continue
 		}
 		if credentialDigest(identity.Credentials, identity.CredentialExpiresAt) != store.imported[key] {
-			return errors.New("the file holds a newer credential")
+			return errFileHoldsNewerCredential
 		}
 		raw["credentials"] = material.Credentials
 		if material.ExpiresAt != nil {
@@ -387,5 +404,5 @@ func (store *dexWebStore) replaceInFile(key ConnectionKey, material CredentialMa
 		}
 		return writePrivateFile(store.path, append(updated, '\n'))
 	}
-	return errors.New("the connection is no longer in the file")
+	return errConnectionRemovedFromFile
 }
