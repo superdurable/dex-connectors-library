@@ -420,6 +420,12 @@ needs `sdkgo` v0.28.0 or later; connectors need no change.
 - The connections file holds plaintext secrets for local development. Never
   commit it or use it outside a developer machine.
 
+A process that is given the path of a connections file, such as an agent tool
+server, calls `LoadDexWebConnectionsFile(ctx, path)` instead. It loads the same
+files exactly as `LoadFromEnvironment` does for `DEX_CONNECTOR_CONFIG_FILE`,
+ignores that variable and every `DEX_PROJECT_*` variable, and needs `sdkgo`
+v0.35.0 or later.
+
 Tests load a project from an in-memory `ObjectStore` with
 `projectconfigtest.LoadProject(ctx, objects, scope, reference)`, so they can
 serve shared entries and relayed Triggers from an in-process broker without

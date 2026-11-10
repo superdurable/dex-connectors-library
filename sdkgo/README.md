@@ -989,6 +989,74 @@ pass it. Generated mock packages decode their manifest fixtures with it.
 Mocks never write progress or text Streams and never resolve credentials. The
 package imports `testing`; keep it in test code.
 
+## Agent tools
+
+An agent host, such as an MCP server, can offer a reviewed connector operation
+to a model as a tool. This needs `sdkgo` v0.35.0 or later. Generated connector
+code supplies an `AgentToolMetadata` per operation whose manifest sets
+`agent.exposed: true`; see
+[Agent tool metadata](../docs/manifest-authoring.md#agent-tool-metadata).
+`NewQueryAgentTool` and `NewMutationAgentTool` bind the operation to one
+connection and return a sealed `AgentTool`. They reject metadata that does not
+match the operation definition: another operation or kind, branches or Step
+defaults that differ, an `agent.branches` key that is not an optional branch,
+`unknown` on a Query, `uncertain` listed as `rejected`, or `IsRetrySafe` on a
+Query.
+
+`Effect()` gives the Dex MCP effect class: `read` for a Query,
+`idempotent_write` for a Mutation with `agent.retry: safe`, and
+`non_idempotent_write` otherwise.
+
+`RunAttempt(ctx, arguments)` decodes the JSON arguments strictly into the
+operation input (one object, no unknown fields or trailing data; empty means
+`{}`) and runs exactly one attempt through `RunQuery` or `RunMutation`. The
+host supplies a Dex Step context whose Flow ID and Step execution ID stay the
+same for every attempt of one tool call, because the Call ID and the provider
+idempotency key derive from them. The attempt is classified in this order:
+
+1. `uncertain` is `unknown`.
+2. On a Mutation, a `defect` that the SDK selected after `Invoke` ran, because
+   the attempt the operation returned was invalid, is `unknown`, whatever
+   `agent.branches` says.
+3. A required branch other than `defect` is `succeeded`.
+4. A branch listed in `agent.branches` takes its listed outcome.
+5. An unlisted Mutation branch, including `defect`, is `unknown`.
+6. An unlisted Query branch, including `defect`, is `rejected`.
+
+A connector Retry returns the outcome `retry` with the Failure and any
+`RetryAfter`, and the host decides whether to repeat. `HasInvokedOperation`
+is false when the attempt ended before `Invoke`, so the provider was not
+called; a host may use it to answer `rejected` for a write that never left the
+process. RunAttempt returns an error instead of an attempt when arguments do
+not decode (`ErrAgentToolArgumentsInvalid`), the operation panics
+(`ErrAgentToolPanicked`), or the result value does not encode as JSON; only
+`HasInvokedOperation` is meaningful then.
+
+From [`agent_tool_example_test.go`](agent_tool_example_test.go):
+
+```go
+tool, err := sdkgo.NewMutationAgentTool(postReplyMutation{}, sdkgo.ConnectionRef{Provider: "example-chat", Name: "work"}, metadata)
+if err != nil {
+	fmt.Println(err)
+	return
+}
+fmt.Println(tool.Metadata().ToolName, tool.Metadata().Effect())
+
+ctx := singledispatchtest.NewContext("agent-host", "tool-call-1")
+for _, arguments := range []string{`{"text":"On it."}`, `{"text":""}`, `{"text":"hi","channel":"C1"}`} {
+	attempt, err := tool.RunAttempt(ctx, json.RawMessage(arguments))
+	if err != nil {
+		fmt.Println("error:", err)
+		continue
+	}
+	fmt.Println(attempt.Outcome, attempt.Branch, string(attempt.Value))
+}
+```
+
+The example uses the `singledispatchtest` fake context; a host runs attempts
+with its own Step context. An agent host loads a Dex Web `connections.json`
+by path with `projectconfig.LoadDexWebConnectionsFile`.
+
 ## Trigger bindings
 
 Project configuration stores named connections and named Trigger bindings
