@@ -5,7 +5,7 @@ ACH Checkout Session creation, Checkout Session and PaymentIntent reads, and
 refund creation. Install the released package with:
 
 ```sh
-pip install dex-connector-stripe==0.1.0
+pip install dex-connector-stripe==0.2.0
 ```
 
 Use the `dex_connectors.stripe` import package. The connector requires Python

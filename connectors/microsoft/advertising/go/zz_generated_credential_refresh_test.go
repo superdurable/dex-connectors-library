@@ -537,10 +537,11 @@ func manifestGrants() []manifestGrant {
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2", "scope": "https://ads.microsoft.com/msads.manage", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without refresh_token", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "https://ads.microsoft.com/msads.manage", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:              map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
-			refreshToken:         "refresh_token",
-			terminalErrorCodes:   []string{"invalid_grant", "invalid_client", "unauthorized_client", "interaction_required", "consent_required"},
-			tokenExchangeTimeout: time.Duration(15000000000),
+			updates:                    map[string]string{"access_token": "manifest-access-token-2", "refresh_token": "manifest-refresh-token-2"},
+			refreshToken:               "refresh_token",
+			terminalErrorCodes:         []string{"invalid_grant", "invalid_client", "unauthorized_client", "interaction_required", "consent_required"},
+			tokenExchangeTimeout:       time.Duration(15000000000),
+			deadlineWithSuppliedClient: true,
 		},
 	}
 }

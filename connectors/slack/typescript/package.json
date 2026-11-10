@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-slack",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Slack channel thread operations for Dex Flows",
   "repository": {
     "type": "git",
@@ -45,7 +45,7 @@
     "example:thread:start": "npm run build && tsx examples/list-thread-messages/start.ts"
   },
   "dependencies": {
-    "@superdurable/connectors-sdk": "0.7.0",
+    "@superdurable/connectors-sdk": "0.9.0",
     "@superdurable/dex": ">=1.28.0",
     "zod": "^4.1.0"
   },
