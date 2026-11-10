@@ -5,6 +5,7 @@ metadata:
   displayName: Basecamp
   description: Discover Basecamp accounts accessible to an authorized identity.
   company: Basecamp
+  categories: [project-management]
   version: v0.1.0
 spec:
   provider: basecamp

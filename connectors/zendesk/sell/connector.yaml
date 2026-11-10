@@ -5,6 +5,7 @@ metadata:
   displayName: Zendesk Sell
   description: Read Zendesk Sell lead identity for migration and existing sales workflows.
   company: Zendesk
+  categories: [crm-sales]
   version: v0.1.0
 spec:
   languages:

@@ -5,6 +5,7 @@ metadata:
   displayName: Coda
   description: Coda REST connector with two bounded operations.
   company: Coda
+  categories: [productivity]
   version: v0.2.0
 spec:
   provider: coda

@@ -5,6 +5,7 @@ metadata:
   displayName: Wave
   description: Read a Wave customer by business and customer IDs.
   company: Wave
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: wave

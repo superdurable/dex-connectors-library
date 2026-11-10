@@ -5,6 +5,7 @@ metadata:
   displayName: PostHog
   description: Capture a deduplicated event and list saved insight identities.
   company: PostHog
+  categories: [analytics]
   version: v0.1.0
 spec:
   provider: posthog

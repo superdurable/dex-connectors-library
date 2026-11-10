@@ -286,7 +286,7 @@ func TestGenerateIncludesTypedProviderTriggers(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: messages, displayName: Messages, description: Message events., company: Example, version: v0.1.0}
+metadata: {name: messages, displayName: Messages, description: Message events., company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: messages
   codegen: {go: {package: messages}}

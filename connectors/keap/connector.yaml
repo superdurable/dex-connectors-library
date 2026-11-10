@@ -5,6 +5,7 @@ metadata:
   displayName: Keap
   description: Read one Keap CRM v2 contact by ID.
   company: Keap
+  categories: [crm-sales, marketing]
   version: v0.1.0
 spec:
   provider: keap

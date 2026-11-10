@@ -5,6 +5,7 @@ metadata:
   displayName: Hootsuite
   description: List social profiles, inspect scheduled messages, and schedule text posts.
   company: Hootsuite
+  categories: [social-media, marketing]
   version: v0.1.0
 spec:
   provider: hootsuite

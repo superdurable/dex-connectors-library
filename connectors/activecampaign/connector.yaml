@@ -5,6 +5,7 @@ metadata:
   displayName: ActiveCampaign
   description: List and inspect contact metadata through the ActiveCampaign API.
   company: ActiveCampaign
+  categories: [marketing, crm-sales]
   version: v0.1.0
 spec:
   provider: activecampaign

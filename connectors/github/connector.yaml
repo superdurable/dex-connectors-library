@@ -5,6 +5,7 @@ metadata:
   displayName: GitHub
   description: Read an authenticated GitHub profile, verified primary email, bounded public repositories, releases, and repository changes.
   company: GitHub
+  categories: [developer-tools]
   version: v0.24.0
 spec:
   provider: github

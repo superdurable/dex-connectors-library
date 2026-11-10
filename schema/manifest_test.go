@@ -26,6 +26,7 @@ metadata:
   displayName: Mock Provider
   description: deterministic test provider
   company: Example
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: mock
@@ -362,7 +363,7 @@ func TestDecodeOAuthUserScopesAndCredentialMappings(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: slack, displayName: Slack, description: Slack connector, company: Slack, version: v0.1.0}
+metadata: {name: slack, displayName: Slack, description: Slack connector, company: Slack, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: slack
   codegen: {go: {package: slack}}
@@ -695,7 +696,7 @@ func TestRejectInvalidOIDCAndUnauthorizedOperation(t *testing.T) {
 	_, err = schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: public-provider, displayName: Public, description: public, company: Example, version: v0.1.0}
+metadata: {name: public-provider, displayName: Public, description: public, company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: public
   codegen: {go: {package: publicprovider}}
@@ -721,7 +722,7 @@ func TestDecodeStudioSetupMetadata(t *testing.T) {
 	manifest, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: studio-fixture, displayName: Studio Fixture, description: setup UI fixture, company: Example, version: v0.1.0}
+metadata: {name: studio-fixture, displayName: Studio Fixture, description: setup UI fixture, company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: fixture
   codegen: {go: {package: studiofixture}}
@@ -764,7 +765,7 @@ spec:
 const studioCommandManifestTemplate = `
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: model-provider, displayName: Model Provider, description: model listing fixture, company: Example, version: v0.1.0}
+metadata: {name: model-provider, displayName: Model Provider, description: model listing fixture, company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: models
   codegen: {go: {package: modelprovider}}
@@ -922,7 +923,7 @@ func TestRejectProviderIdempotencyAndInvalidProgress(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: v0.1.0}
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -950,7 +951,7 @@ func TestRejectMutationWithoutIdempotency(t *testing.T) {
 	_, err := schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: v0.1.0}
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -990,7 +991,7 @@ spec:
 	_, err = schema.Decode(strings.NewReader(strings.Replace(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: VERSION}
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, categories: [developer-tools], version: VERSION}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -1003,7 +1004,7 @@ spec:
 	_, err = schema.Decode(strings.NewReader(`
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, version: v0.1.0}
+metadata: {name: bad-provider, displayName: Bad, description: bad, company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: bad
   codegen: {go: {package: badprovider}}
@@ -1187,7 +1188,7 @@ func TestAuthMethodSettingReferencesReadOnlyTheirOwnConfiguration(t *testing.T) 
 		return `
 apiVersion: connectors.dex.dev/v1alpha1
 kind: Connector
-metadata: {name: two-oauth-methods, displayName: Two OAuth Methods, description: Two OAuth methods with their own endpoints., company: Example, version: v0.1.0}
+metadata: {name: two-oauth-methods, displayName: Two OAuth Methods, description: Two OAuth methods with their own endpoints., company: Example, categories: [developer-tools], version: v0.1.0}
 spec:
   provider: example
   codegen: {go: {package: twooauthmethods}}

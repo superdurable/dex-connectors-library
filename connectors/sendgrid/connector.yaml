@@ -5,6 +5,7 @@ metadata:
   displayName: SendGrid
   description: Read SendGrid global statistics and transactional templates.
   company: SendGrid
+  categories: [communication, marketing]
   version: v0.2.0
 spec:
   provider: sendgrid

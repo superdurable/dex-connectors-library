@@ -5,6 +5,7 @@ metadata:
   displayName: WhatsApp Business Platform
   description: Inspect business phone numbers and send text or template messages through the WhatsApp Cloud API.
   company: Meta
+  categories: [communication]
   version: v0.1.0
 spec:
   provider: whatsapp-business

@@ -5,6 +5,7 @@ metadata:
   displayName: API Key Methods Fixture
   description: Deterministic fixture for one connection that selects one of several API-key providers.
   company: Example
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: example

@@ -5,6 +5,7 @@ metadata:
   displayName: Elasticsearch
   description: Search, replace, and delete documents in an Elasticsearch index.
   company: Elastic
+  categories: [databases-storage, data-search]
   version: v0.1.0
 spec:
   provider: elasticsearch

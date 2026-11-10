@@ -5,6 +5,7 @@ metadata:
   displayName: Lever
   description: Read selected Lever opportunity fields from the Data API.
   company: Lever
+  categories: [hr-recruiting]
   version: v0.1.0
 spec:
   provider: lever

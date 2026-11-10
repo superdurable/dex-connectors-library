@@ -5,6 +5,7 @@ metadata:
   displayName: Wrike
   description: Read selected Wrike task fields through API v4.
   company: Wrike
+  categories: [project-management]
   version: v0.1.0
 spec:
   provider: wrike

@@ -5,6 +5,7 @@ metadata:
   displayName: Token Grants Fixture
   description: Deterministic fixture for the refresh and minting declarations of every method type.
   company: Example
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: example

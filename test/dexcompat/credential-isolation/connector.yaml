@@ -5,6 +5,7 @@ metadata:
   displayName: Credential isolation fixture
   description: Dex compatibility fixture whose connection holds two API keys, each bound to one Studio command on its own provider host.
   company: Super Durable
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: credential-isolation

@@ -5,6 +5,7 @@ metadata:
   displayName: Amazon SNS
   description: List SNS topics with AWS Signature Version 4.
   company: Amazon
+  categories: [developer-tools, communication]
   version: v0.1.0
 spec:
   provider: amazon-sns

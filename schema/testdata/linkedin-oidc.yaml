@@ -5,6 +5,7 @@ metadata:
   displayName: LinkedIn OIDC Fixture
   description: OIDC manifest fixture for authenticated profile metadata.
   company: LinkedIn
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: linkedin

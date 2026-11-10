@@ -5,6 +5,7 @@ metadata:
   displayName: Jotform
   description: List forms and inspect submission metadata through the Jotform API.
   company: Jotform
+  categories: [productivity]
   version: v0.1.0
 spec:
   provider: jotform

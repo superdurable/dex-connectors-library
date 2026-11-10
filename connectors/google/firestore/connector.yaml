@@ -5,6 +5,7 @@ metadata:
   displayName: Cloud Firestore
   description: Discover Firestore documents in one Google Cloud project.
   company: Google
+  categories: [databases-storage]
   version: v0.1.0
 spec:
   provider: google-firestore

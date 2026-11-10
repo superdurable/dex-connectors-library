@@ -13,6 +13,7 @@ function catalogText(connectorCount) {
     name: Mail ${index}
     description: Send mail.
     version: v0.1.0
+    categories: [communication]
     directory: connectors/company${index % 7}/mail${index}
     uiUnits:
       - name: channelPicker
@@ -28,7 +29,9 @@ function catalogText(connectorCount) {
         kind: query
         description: Read a message.
 `).join("");
-  return `connectors:${connectors}`;
+  return `categories:
+  - {id: communication, name: Communication, description: Chat and email.}
+connectors:${connectors}`;
 }
 
 function svgDimensions(svg) {

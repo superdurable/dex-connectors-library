@@ -5,6 +5,7 @@ metadata:
   displayName: Odoo
   description: Search company partners through Odoo's JSON-2 API.
   company: Odoo
+  categories: [crm-sales, finance-payments]
   version: v0.1.0
 spec:
   provider: odoo

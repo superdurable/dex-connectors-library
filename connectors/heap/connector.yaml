@@ -5,6 +5,7 @@ metadata:
   displayName: Heap
   description: Set user properties through Heap's server-side API.
   company: Heap
+  categories: [analytics]
   version: v0.1.0
 spec:
   provider: heap

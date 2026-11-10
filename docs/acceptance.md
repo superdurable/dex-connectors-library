@@ -220,7 +220,11 @@ catalog and site. Pages deployment occurs only after every requested release
 succeeds or when no connector release is requested.
 
 The public `ConnectorCatalog`, `dist/pages/catalog.yaml`, URLs, search, and
-connector detail wire format remain unchanged.
+connector detail wire format change only additively. The catalog's top-level
+`categories` lists the category taxonomy in display order, and each connector
+lists its `categories` IDs, primary first. The directory site reads category
+names only from the catalog and keeps the selected category in the
+`category` URL parameter.
 
 ## Documentation and UI/UX
 

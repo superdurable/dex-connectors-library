@@ -5,6 +5,7 @@ metadata:
   displayName: Asana
   description: List and read Asana tasks by project or section, create tasks and comments without silent duplicates, and complete, assign, reschedule, or move tasks between sections.
   company: Asana
+  categories: [project-management]
   version: v0.23.0
 spec:
   languages:

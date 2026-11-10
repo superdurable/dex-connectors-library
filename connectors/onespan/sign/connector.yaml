@@ -5,6 +5,7 @@ metadata:
   displayName: OneSpan Sign
   description: Read a transaction package's name and status through the OneSpan Sign REST API.
   company: OneSpan
+  categories: [files-documents]
   version: v0.1.0
 spec:
   provider: onespan-sign

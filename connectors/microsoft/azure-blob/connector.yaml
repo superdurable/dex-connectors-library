@@ -5,6 +5,7 @@ metadata:
   displayName: Azure Blob Storage
   description: Download a bounded blob from an Azure Storage container with Shared Key authorization.
   company: Microsoft
+  categories: [databases-storage, files-documents]
   version: v0.1.0
 spec:
   provider: microsoft-azure-blob

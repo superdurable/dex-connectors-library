@@ -33,7 +33,9 @@ type Metadata struct {
 	DisplayName string `yaml:"displayName" json:"displayName"`
 	Description string `yaml:"description" json:"description"`
 	Company     string `yaml:"company" json:"company"`
-	Version     string `yaml:"version" json:"version"`
+	// Categories lists one or two connector category IDs; the first is the primary category.
+	Categories []string `yaml:"categories" json:"categories"`
+	Version    string   `yaml:"version" json:"version"`
 }
 
 type Spec struct {
@@ -604,6 +606,7 @@ func (manifest Manifest) Validate() error {
 	if strings.TrimSpace(manifest.Metadata.Company) == "" {
 		problems = append(problems, "metadata.company is required")
 	}
+	problems = append(problems, validateMetadataCategories(manifest.Metadata.Categories)...)
 	if !versionPattern.MatchString(manifest.Metadata.Version) {
 		problems = append(problems, "metadata.version must be a stable semantic version with a v prefix")
 	}

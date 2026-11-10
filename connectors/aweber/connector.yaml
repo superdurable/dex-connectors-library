@@ -5,6 +5,7 @@ metadata:
   displayName: AWeber
   description: Discover the connected AWeber account through its REST API.
   company: AWeber
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: aweber

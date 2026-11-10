@@ -5,6 +5,7 @@ metadata:
   displayName: OAuth Settings Fixture
   description: OIDC manifest fixture whose endpoints and scopes come from connection settings.
   company: Example
+  categories: [developer-tools]
   version: v0.1.0
 spec:
   provider: example

@@ -5,6 +5,7 @@ metadata:
   displayName: Google Ads
   description: Discover Google Ads customers directly accessible to the connected Google identity.
   company: Google
+  categories: [marketing]
   version: v0.1.0
 spec:
   provider: google-ads

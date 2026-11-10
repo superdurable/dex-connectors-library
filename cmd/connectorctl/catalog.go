@@ -41,18 +41,22 @@ type connectorCatalogSource struct {
 }
 
 type connectorCatalog struct {
-	APIVersion string                 `yaml:"apiVersion" json:"apiVersion"`
-	Kind       string                 `yaml:"kind" json:"kind"`
-	Connectors []connectorCatalogItem `yaml:"connectors" json:"connectors"`
+	APIVersion string `yaml:"apiVersion" json:"apiVersion"`
+	Kind       string `yaml:"kind" json:"kind"`
+	// Categories is the full taxonomy in display order, so the site never hard-codes category names.
+	Categories []schema.ConnectorCategory `yaml:"categories" json:"categories"`
+	Connectors []connectorCatalogItem     `yaml:"connectors" json:"connectors"`
 }
 
 type connectorCatalogItem struct {
-	Company     string            `yaml:"company" json:"company"`
-	ID          string            `yaml:"id" json:"id"`
-	Name        string            `yaml:"name" json:"name"`
-	Description string            `yaml:"description" json:"description"`
-	Version     string            `yaml:"version" json:"version"`
-	Languages   map[string]string `yaml:"languages,omitempty" json:"languages,omitempty"`
+	Company     string `yaml:"company" json:"company"`
+	ID          string `yaml:"id" json:"id"`
+	Name        string `yaml:"name" json:"name"`
+	Description string `yaml:"description" json:"description"`
+	// Categories lists the connector's category IDs, primary first.
+	Categories []string          `yaml:"categories" json:"categories"`
+	Version    string            `yaml:"version" json:"version"`
+	Languages  map[string]string `yaml:"languages,omitempty" json:"languages,omitempty"`
 	// PythonPackage locates the listed Python release when the catalog knows which tags PyPI serves.
 	PythonPackage *catalogPythonPackage `yaml:"pythonPackage,omitempty" json:"pythonPackage,omitempty"`
 	Directory     string                `yaml:"directory" json:"directory"`
@@ -610,6 +614,7 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 	catalog := connectorCatalog{
 		APIVersion: connectorCatalogAPIVersion,
 		Kind:       "ConnectorCatalog",
+		Categories: schema.ConnectorCategories(),
 		Connectors: make([]connectorCatalogItem, 0, len(entries)),
 	}
 	for _, entry := range entries {
@@ -649,7 +654,7 @@ func encodeConnectorCatalog(entries []connectorDirectoryEntry, completedLanguage
 		}
 		item := connectorCatalogItem{
 			Company: metadata.Company, ID: metadata.Name, Name: metadata.DisplayName,
-			Description: metadata.Description, Version: metadata.Version, Directory: entry.Directory,
+			Description: metadata.Description, Categories: metadata.Categories, Version: metadata.Version, Directory: entry.Directory,
 			UIUnits: uiUnits, Triggers: triggers, Operations: operations,
 		}
 		if releasedLanguages != nil && (releasedLanguages.Python != nil || releasedLanguages.TypeScript != nil) {

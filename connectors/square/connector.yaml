@@ -5,6 +5,7 @@ metadata:
   displayName: Square
   description: "Read Square resources through typed Dex Query Steps."
   company: Square
+  categories: [finance-payments, ecommerce]
   version: v0.2.0
 spec:
   provider: square

@@ -5,6 +5,7 @@ metadata:
   displayName: Zendesk Support
   description: Search, read, create, and update Zendesk Support tickets, with duplicate-safe ticket creation and follow-up comments.
   company: Zendesk
+  categories: [customer-support]
   version: v0.23.0
 spec:
   provider: zendesk

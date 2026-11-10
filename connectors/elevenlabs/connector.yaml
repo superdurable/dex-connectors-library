@@ -5,6 +5,7 @@ metadata:
   displayName: ElevenLabs
   description: List voices and generate bounded audio through ElevenLabs.
   company: ElevenLabs
+  categories: [ai]
   version: v0.2.0
 spec:
   provider: elevenlabs

@@ -5,6 +5,7 @@ metadata:
   displayName: Instagram Business
   description: Read media from a professional Instagram account linked to a Facebook Page.
   company: Meta
+  categories: [social-media]
   version: v0.1.0
 spec:
   provider: instagram-business

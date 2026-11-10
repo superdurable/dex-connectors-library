@@ -5,6 +5,7 @@ metadata:
   displayName: PayPal
   description: "Read PayPal resources through typed Dex Query Steps."
   company: PayPal
+  categories: [finance-payments]
   version: v0.2.0
 spec:
   provider: paypal

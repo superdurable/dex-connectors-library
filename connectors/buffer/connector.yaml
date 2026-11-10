@@ -5,6 +5,7 @@ metadata:
   displayName: Buffer
   description: Read one connected Buffer channel by ID.
   company: Buffer
+  categories: [social-media, marketing]
   version: v0.1.0
 spec:
   provider: buffer

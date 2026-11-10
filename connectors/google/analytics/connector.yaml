@@ -5,6 +5,7 @@ metadata:
   displayName: Google Analytics 4
   description: Read a GA4 report, property metadata, and one audience page.
   company: Google
+  categories: [analytics, marketing]
   version: v0.1.0
 spec:
   provider: google-analytics-4

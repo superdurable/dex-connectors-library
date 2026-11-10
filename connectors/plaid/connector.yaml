@@ -5,6 +5,7 @@ metadata:
   displayName: Plaid
   description: Read account identifiers and categories for one linked Plaid Item.
   company: Plaid
+  categories: [finance-payments]
   version: v0.1.0
 spec:
   provider: plaid
