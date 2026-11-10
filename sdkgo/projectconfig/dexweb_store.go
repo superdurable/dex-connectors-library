@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -188,25 +189,19 @@ func copyObject(object Object) Object {
 	return object
 }
 
-// verifyFileReplacement creates and removes the temporary file that writePrivateFile would create beside path.
-func verifyFileReplacement(path string) error {
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".write-*")
-	if err != nil {
-		return fmt.Errorf("create temporary file: %w", err)
-	}
-	closeErr := temporary.Close()
-	return errors.Join(closeErr, os.Remove(temporary.Name()))
-}
-
 // writePrivateFile atomically replaces path with a regular file readable only by its owner.
 // Synchronizing the contents and the rename leaves the prior or new file complete after a crash.
 func writePrivateFile(path string, contents []byte) error {
+	return replacePrivateFile(path, contents, os.Rename)
+}
+
+// replacePrivateFile is writePrivateFile with the rename that replaces path; tests substitute a failing one.
+func replacePrivateFile(path string, contents []byte, rename func(oldPath, newPath string) error) error {
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".write-*")
 	if err != nil {
 		return fmt.Errorf("create temporary file: %w", err)
 	}
 	name := temporary.Name()
-	defer os.Remove(name)
 	if err = temporary.Chmod(0o600); err == nil {
 		_, err = temporary.Write(contents)
 	}
@@ -217,13 +212,22 @@ func writePrivateFile(path string, contents []byte) error {
 		err = closeErr
 	}
 	if err != nil {
+		removeTemporaryFile(name)
 		return fmt.Errorf("write temporary file: %w", err)
 	}
-	if err = os.Rename(name, path); err != nil {
+	if err = rename(name, path); err != nil {
+		removeTemporaryFile(name)
 		return fmt.Errorf("replace file: %w", err)
 	}
 	if err = syncDirectory(filepath.Dir(path)); err != nil {
 		return fmt.Errorf("synchronize directory: %w", err)
 	}
 	return nil
+}
+
+// removeTemporaryFile deletes a temporary file that was not renamed. It may hold credentials, so a failure is logged.
+func removeTemporaryFile(name string) {
+	if err := os.Remove(name); err != nil && !errors.Is(err, os.ErrNotExist) {
+		slog.Error("temporary file was not removed and may hold credentials; delete it by hand", "path", name, "error", err.Error())
+	}
 }

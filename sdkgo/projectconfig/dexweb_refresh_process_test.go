@@ -19,10 +19,12 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -559,4 +561,71 @@ func TestDexWebRefreshReturnsRotatedCredentialWhenLateWriteBackFails(t *testing.
 	require.Contains(t, logs.String(), "level=ERROR")
 	require.Contains(t, logs.String(), "local connector credential write-back failed")
 	require.NotContains(t, logs.String(), "rotated-secret")
+}
+
+// requireNoTemporaryFiles checks that no .write-* file, which may hold credentials, remains in directory.
+func requireNoTemporaryFiles(t *testing.T, directory string) {
+	t.Helper()
+	leftovers, err := filepath.Glob(filepath.Join(directory, ".write-*"))
+	require.NoError(t, err)
+	require.Empty(t, leftovers)
+}
+
+// A temporary file that is written but cannot replace connections.json stops the refresh before the provider request.
+func TestDexWebRefreshFailsBeforeProviderWhenFileCannotBeReplaced(t *testing.T) {
+	directory := t.TempDir()
+	expired := time.Now().Add(-time.Minute)
+	path := writeDexWebFiles(t, directory, "access-1", &expired)
+	project := loadLocal(t, path)
+	renames := 0
+	projectconfig.ReplaceDexWebRenameForTest(project, func(oldPath, newPath string) error {
+		renames++
+		return &os.LinkError{Op: "rename", Old: oldPath, New: newPath, Err: syscall.EPERM}
+	})
+	before, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	driver := &localDriver{}
+	_, err = localResolver(t, project).ResolveWithRefresh(context.Background(), driver)
+	require.ErrorIs(t, err, projectconfig.ErrRefreshFailed)
+	require.ErrorIs(t, err, syscall.EPERM)
+	require.ErrorContains(t, err, "cannot be written back")
+	require.Zero(t, driver.refreshes)
+	require.Equal(t, 1, renames)
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, before, after)
+	requireNoTemporaryFiles(t, directory)
+}
+
+// A temporary file that cannot be removed after a failed replacement is reported by path, never by contents.
+func TestDexWebRefreshLogsTemporaryFileThatCannotBeRemoved(t *testing.T) {
+	requireDirectoryPermissionChecks(t)
+	directory := t.TempDir()
+	expired := time.Now().Add(-time.Minute)
+	path := writeDexWebFiles(t, directory, "access-1", &expired)
+	project := loadLocal(t, path)
+	t.Cleanup(func() { _ = os.Chmod(directory, 0o700) }) // Restores removal by t.TempDir.
+	projectconfig.ReplaceDexWebRenameForTest(project, func(oldPath, newPath string) error {
+		if err := os.Chmod(directory, 0o500); err != nil {
+			return err
+		}
+		return &os.LinkError{Op: "rename", Old: oldPath, New: newPath, Err: syscall.EPERM}
+	})
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	driver := &localDriver{}
+	_, err := localResolver(t, project).ResolveWithRefresh(context.Background(), driver)
+	require.ErrorIs(t, err, projectconfig.ErrRefreshFailed)
+	require.Zero(t, driver.refreshes)
+	leftovers, err := filepath.Glob(filepath.Join(directory, ".write-*"))
+	require.NoError(t, err)
+	require.Len(t, leftovers, 1)
+	require.Contains(t, logs.String(), "level=ERROR")
+	require.Contains(t, logs.String(), "temporary file was not removed and may hold credentials")
+	require.Contains(t, logs.String(), leftovers[0])
+	require.NotContains(t, logs.String(), "refresh-1")
 }

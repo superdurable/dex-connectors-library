@@ -117,6 +117,7 @@ type dexWebStore struct {
 	inbox       *versionedStore
 	connections *ConnectionStore
 	refreshLock *fileRefreshLock
+	renameFile  func(oldPath, newPath string) error
 
 	mu       sync.Mutex
 	imported map[ConnectionKey]string
@@ -150,6 +151,7 @@ func loadDexWebProject(ctx context.Context, path string) (*LoadedProject, error)
 	store := &dexWebStore{
 		path: path, memory: memory, inbox: inbox, imported: map[ConnectionKey]string{},
 		refreshLock: newFileRefreshLock(path+refreshLockFileSuffix, refreshLockMaxWait),
+		renameFile:  os.Rename,
 	}
 	if store.connections, err = NewConnectionStore(&ConnectionStoreConfig{Objects: memory, Scope: dexWebScope}); err != nil {
 		return nil, err
@@ -316,9 +318,15 @@ func (store *dexWebStore) lockCredentialRefresh(ctx context.Context) (*heldRefre
 	return store.refreshLock.acquire(ctx)
 }
 
-// verifyCredentialWriteBack proves connections.json can be replaced, so a rotated refresh token is never stranded.
+// verifyCredentialWriteBack rewrites connections.json unchanged through the write-back path, before a provider rotates a token.
 func (store *dexWebStore) verifyCredentialWriteBack() error {
-	return verifyFileReplacement(store.path)
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	contents, err := readDexWebFile(store.path)
+	if err != nil {
+		return err
+	}
+	return replacePrivateFile(store.path, contents, store.renameFile)
 }
 
 // CompareAndSwapObject replaces a key conditionally; a refreshed connection credential is also written back to connections.json.
@@ -402,7 +410,7 @@ func (store *dexWebStore) replaceInFile(key ConnectionKey, material CredentialMa
 		if err != nil {
 			return err
 		}
-		return writePrivateFile(store.path, append(updated, '\n'))
+		return replacePrivateFile(store.path, append(updated, '\n'), store.renameFile)
 	}
 	return errConnectionRemovedFromFile
 }
