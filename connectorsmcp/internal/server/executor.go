@@ -577,11 +577,16 @@ func attemptMayHaveApplied(attempt sdkgo.AgentToolAttempt, runErr error, record 
 
 // runRead keeps no state and honors client cancellation.
 func (call *toolCall) runRead(ctx context.Context, stepExecutionID string) callAnswer {
-	binding := call.binding
 	call.knownEffect = sdkgo.AgentToolEffectRead
 	if call.executor.isDraining.Load() {
 		return callAnswer{err: interruptedError("the server is stopping")}
 	}
+	identity := call.binding.identity()
+	binding := call.currentBinding(ctx, identity)
+	if binding == nil {
+		return callAnswer{result: rejectedResult("tool " + call.name + " is no longer offered for this connection; nothing was read")}
+	}
+	connectionTarget := binding.connectionTarget
 	if problem := binding.validateArguments(call.arguments); problem != "" {
 		return callAnswer{result: rejectedResult("invalid arguments for " + call.name + ": " + problem)}
 	}
@@ -613,7 +618,16 @@ func (call *toolCall) runRead(ctx context.Context, stepExecutionID string) callA
 		if !call.executor.clock.Sleep(ctx, delay) {
 			return callAnswer{err: interruptedError("the call was canceled")}
 		}
+		// Each attempt runs from a current snapshot, and never on another target.
+		if binding = call.currentBinding(ctx, identity); binding == nil || binding.connectionTarget != connectionTarget {
+			return callAnswer{result: rejectedResult(call.name + " stopped: its connection was removed or now points to a different target; nothing was changed")}
+		}
 	}
+}
+
+// currentBinding resolves identity in the tool set as it is now, or nil.
+func (call *toolCall) currentBinding(ctx context.Context, identity toolIdentity) *toolBinding {
+	return call.executor.currentToolSet(context.WithoutCancel(ctx)).byIdentity[identity]
 }
 
 func (call *toolCall) runReadAttempt(ctx context.Context, binding *toolBinding, stepExecutionID string, attemptNumber int32, checkpoints *readCheckpoints) (sdkgo.AgentToolAttempt, error) {

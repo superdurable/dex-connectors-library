@@ -128,3 +128,30 @@ func TestARetargetedKeyWithNotSentProofIsRejected(t *testing.T) {
 		require.Equal(t, testCase.expectedText, answer.result.Content[0].Text)
 	}
 }
+
+func TestARebindDuringAReadRetryDelayStopsTheRead(t *testing.T) {
+	harness := newTestHarness(t, harnessOptions{})
+	otherAccount := testconnectors.NewFakeProvider()
+	t.Cleanup(otherAccount.Close)
+	harness.provider.Script("getNote", testconnectors.ScriptedResponse{Status: http.StatusServiceUnavailable})
+	harness.clock.setOnSleep(func() { harness.writeConnectionRecords(testconnectors.NotesConnection("work", otherAccount)) })
+	result := harness.mustCallResult("example-notes_get_note", map[string]any{"noteId": "welcome"}, "")
+	require.Equal(t, outcomeRejected, result.outcome())
+	require.Contains(t, result.text(), "now points to a different target")
+	require.Equal(t, 1, harness.provider.ReadRequests(), "no attempt reused the old call's settings")
+	require.Zero(t, otherAccount.TotalRequests(), "no attempt ran against the new target")
+}
+
+func TestARefreshDuringAReadRetryDelayKeepsTheRead(t *testing.T) {
+	harness := newTestHarness(t, harnessOptions{})
+	harness.provider.Script("getNote", testconnectors.ScriptedResponse{Status: http.StatusServiceUnavailable})
+	harness.clock.setOnSleep(func() {
+		refreshed := testconnectors.NotesConnection("work", harness.provider)
+		expiresAt := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+		refreshed.CredentialExpiresAt = &expiresAt
+		harness.writeConnectionRecords(refreshed)
+	})
+	result := harness.mustCallResult("example-notes_get_note", map[string]any{"noteId": "welcome"}, "flow/turn/read-refresh")
+	require.False(t, result.IsError, result.text())
+	require.Equal(t, 2, harness.provider.ReadRequests())
+}

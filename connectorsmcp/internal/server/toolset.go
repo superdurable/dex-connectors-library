@@ -24,7 +24,7 @@ import (
 // defaultAttemptTimeout bounds an attempt whose operation sets no Execute timeout.
 const defaultAttemptTimeout = 60 * time.Second
 
-// ToolSet is immutable; in-flight calls keep the set they started with.
+// ToolSet is immutable; keyed calls and read attempts re-resolve their tool from the current set.
 type ToolSet struct {
 	registry        *registry.Registry
 	projectIdentity string

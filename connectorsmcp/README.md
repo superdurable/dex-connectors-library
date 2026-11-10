@@ -204,7 +204,9 @@ by size, modification time, mode, and SHA-256:
 - the `--connections-config` file.
 
 A change builds a new tool set with `projectconfig.LoadDexWebConnectionsFile`.
-In-flight calls keep the tool set they started with. A credential that this
+A keyed call resolves its tool from the tool set current once it holds the
+key's lock. Every attempt, read or write, resolves its tool again before it
+runs; see [Connection rebinding](#connection-rebinding). A credential that this
 process writes back reloads to an equal tool set, so it is not reported.
 
 A hosted project is loaded once and needs a restart for changes.
@@ -425,7 +427,9 @@ Protocol for a keyed call:
 1. Validate the key and take the in-process mutex, then `flock(LOCK_EX)` on
    `<k>.lock`. The wait is bounded by the request context. After locking, the
    open file must still be the file at the path, or the lock is retaken.
-2. Read the record **before** resolving the tool name.
+2. Take the current tool set, not the one in effect when the request arrived.
+   Then read the record **before** resolving the tool name from that tool
+   set.
    - An expected-identity key that differs from the record: refused, state
      untouched.
    - Another call (see [Calls and outcomes](#calls-and-outcomes)): `rejected`,
@@ -498,14 +502,21 @@ from the same snapshot:
   the snapshot taken after the lock.
 - **Resumed key.** The binding comes from the snapshot taken after the lock.
 - **Inline retry.** A new snapshot is taken after each retry delay.
+- **Read.** Reads keep no state, but every attempt resolves the tool from a
+  current snapshot and runs it from that snapshot. That covers the first
+  attempt, each inline retry, and the read that runs when the call state is
+  unavailable. If the tool disappeared, or its target changed, between attempts
+  of one read, the read stops with `rejected` and makes no further attempt.
 
-A tool that is gone, or a different target, settles the key as above.
+A tool that is gone, or a different target, settles a write's key as above.
 
 **Residual window.** A Dex Web rebind can land during an attempt's own
-execution, after the target check passed and before the connector sends. The
-server does not close this window. sdkgo `projectconfig` reads the credential
-from `connections.json` when the connector resolves it, so such an attempt can
-combine the checked target and settings with the new account's credential.
+execution, after the attempt resolved its tool and checked its target, and
+before the connector sends. This holds for read and write attempts alike, and
+the server does not close this window. sdkgo `projectconfig` reads the
+credential from `connections.json` when the connector resolves it, so such an
+attempt can combine the checked target and settings with the new account's
+credential.
 
 The planned fix is a guard in sdkgo `projectconfig`. It would resolve the
 credential and the connection target, including Dex Web's upcoming
