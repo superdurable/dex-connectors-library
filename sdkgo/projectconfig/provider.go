@@ -66,7 +66,8 @@ const refreshTimeout = 30 * time.Second
 
 // CredentialResolver resolves credentials per call and refreshes them during actual use when they are known to be
 // expired or the driver requires a refresh.
-// It coordinates through conditional object writes, not process-local locks, timers, or a broker.
+// It coordinates through conditional object writes, not timers or a broker. A local Dex Web connections file adds
+// its cross-process refresh lock, because its conditional writes coordinate only one process.
 //
 // An entry that the loaded document marks with sharedConnectionId resolves from the credential broker instead:
 // it caches what the broker serves, reads again when the credential is stale, never reads or writes the
@@ -118,6 +119,11 @@ func (provider *CredentialResolver[C]) Resolve(ctx context.Context) (C, error) {
 
 // ResolveWithRefresh admits at most one provider dispatch for a credential generation across application replicas.
 // Observers wait or recover immutable results; abandoned admissions never permit provider replay.
+//
+// With a local Dex Web connections file, a refresh holds the exclusive flock of connections.json.lock beside it
+// from reading the credential again through writing the result back, and so does an observer's recovery. A
+// process that waited for the lock adopts the credential another process wrote back instead of refreshing again.
+// The wait ends with ctx, and after two minutes at most, with an error that wraps ErrRefreshFailed.
 func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, driver RefreshDriver[C]) (C, error) {
 	var zero C
 	if ctx == nil || driver == nil {
@@ -129,6 +135,7 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 	if provider.encode == nil {
 		return zero, errors.New("project credential refresh requires an encoder")
 	}
+	refreshLocker, _ := provider.store.objects.(credentialRefreshLocker)
 	for {
 		if err := ctx.Err(); err != nil {
 			return zero, err
@@ -144,13 +151,13 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 			if provider.store.now().Before(record.Mutation.Deadline) {
 				return zero, ErrExchangePending
 			}
-			_, err = provider.store.RecoverCredentialExchange(ctx, exchangeAdmission(record, false))
+			err = provider.recoverExchange(ctx, record, refreshLocker)
 			if err == nil || errors.Is(err, ErrConflict) {
 				continue
 			}
 			return zero, err
 		case CredentialRefreshing:
-			_, err = provider.store.RecoverCredentialExchange(ctx, exchangeAdmission(record, false))
+			err = provider.recoverExchange(ctx, record, refreshLocker)
 			if err == nil || errors.Is(err, ErrConflict) {
 				continue
 			}
@@ -164,35 +171,13 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 				return zero, err
 			}
 		case CredentialReady:
-			material, err := provider.store.readMaterial(ctx, record)
+			credentials, isResolved, err := provider.resolveReady(ctx, record, driver, refreshLocker)
 			if err != nil {
 				return zero, err
 			}
-			credentials, err := provider.decode(material.Credentials)
-			if err != nil {
-				return zero, errors.New("project credential decoding failed")
-			}
-			now := provider.store.now()
-			state := RefreshState[C]{Credentials: credentials, ExpiresAt: material.ExpiresAt, Now: now}
-			knownExpired := material.ExpiresAt != nil && !material.ExpiresAt.After(now)
-			if !knownExpired && !driver.RefreshRequired(state) {
+			if isResolved {
 				return credentials, nil
 			}
-			attemptID, err := newAttemptID()
-			if err != nil {
-				return zero, err
-			}
-			admission, err := provider.store.beginExchange(ctx, provider.key, record.Revision, attemptID, now.Add(refreshTimeout+10*time.Second), CredentialRefreshing)
-			if errors.Is(err, ErrConflict) {
-				continue
-			}
-			if err != nil {
-				return zero, err
-			}
-			if !admission.ProviderDispatchAllowed {
-				continue
-			}
-			return provider.refreshAdmitted(ctx, admission, material, state, driver)
 		default:
 			return zero, errors.New("project credential status is invalid")
 		}
@@ -244,6 +229,104 @@ func (provider *CredentialResolver[C]) decodeShared(credential brokerCredential)
 		return zero, errors.New("project credential decoding failed: this connector version does not support shared credentials")
 	}
 	return credentials, nil
+}
+
+// resolveReady returns usable credentials of a READY record; isResolved false means read the record again.
+func (provider *CredentialResolver[C]) resolveReady(ctx context.Context, record connectionRecord, driver RefreshDriver[C], refreshLocker credentialRefreshLocker) (credentials C, isResolved bool, err error) {
+	var zero C
+	material, state, isRefreshRequired, err := provider.evaluateReady(ctx, record, driver)
+	if err != nil {
+		return zero, false, err
+	}
+	if !isRefreshRequired {
+		return state.Credentials, true, nil
+	}
+	if refreshLocker == nil {
+		return provider.refreshReady(ctx, record, material, state, driver)
+	}
+	return provider.refreshWhileLocked(ctx, driver, refreshLocker)
+}
+
+// refreshWhileLocked rereads the record under the lock, adopting another process's write-back instead of refreshing again.
+func (provider *CredentialResolver[C]) refreshWhileLocked(ctx context.Context, driver RefreshDriver[C], refreshLocker credentialRefreshLocker) (credentials C, isResolved bool, err error) {
+	var zero C
+	lock, err := refreshLocker.lockCredentialRefresh(ctx)
+	if err != nil {
+		return zero, false, err
+	}
+	defer lock.release()
+	record, _, err := provider.store.readRecord(ctx, provider.key)
+	if err != nil {
+		return zero, false, err
+	}
+	if record.Status != CredentialReady {
+		return zero, false, nil
+	}
+	material, state, isRefreshRequired, err := provider.evaluateReady(ctx, record, driver)
+	if err != nil {
+		return zero, false, err
+	}
+	if !isRefreshRequired {
+		return state.Credentials, true, nil
+	}
+	// A rotated refresh token that cannot be written back would strand every other process.
+	if err = refreshLocker.verifyCredentialWriteBack(); err != nil {
+		return zero, false, fmt.Errorf("%w: the credential cannot be written back: %w", ErrRefreshFailed, err)
+	}
+	return provider.refreshReady(ctx, record, material, state, driver)
+}
+
+// evaluateReady decodes the credentials of a READY record and decides whether they need a refresh now.
+func (provider *CredentialResolver[C]) evaluateReady(ctx context.Context, record connectionRecord, driver RefreshDriver[C]) (material CredentialMaterial, state RefreshState[C], isRefreshRequired bool, err error) {
+	material, err = provider.store.readMaterial(ctx, record)
+	if err != nil {
+		return CredentialMaterial{}, RefreshState[C]{}, false, err
+	}
+	credentials, err := provider.decode(material.Credentials)
+	if err != nil {
+		return CredentialMaterial{}, RefreshState[C]{}, false, errors.New("project credential decoding failed")
+	}
+	now := provider.store.now()
+	state = RefreshState[C]{Credentials: credentials, ExpiresAt: material.ExpiresAt, Now: now}
+	isKnownExpired := material.ExpiresAt != nil && !material.ExpiresAt.After(now)
+	return material, state, isKnownExpired || driver.RefreshRequired(state), nil
+}
+
+// refreshReady admits and performs one refresh; isResolved false means the record changed or another caller won.
+func (provider *CredentialResolver[C]) refreshReady(ctx context.Context, record connectionRecord, material CredentialMaterial, state RefreshState[C], driver RefreshDriver[C]) (credentials C, isResolved bool, err error) {
+	var zero C
+	attemptID, err := newAttemptID()
+	if err != nil {
+		return zero, false, err
+	}
+	admission, err := provider.store.beginExchange(ctx, provider.key, record.Revision, attemptID, state.Now.Add(refreshTimeout+10*time.Second), CredentialRefreshing)
+	if errors.Is(err, ErrConflict) {
+		return zero, false, nil
+	}
+	if err != nil {
+		return zero, false, err
+	}
+	if !admission.ProviderDispatchAllowed {
+		return zero, false, nil
+	}
+	credentials, err = provider.refreshAdmitted(ctx, admission, material, state, driver)
+	if err != nil {
+		return zero, false, err
+	}
+	return credentials, true, nil
+}
+
+// recoverExchange holds the refresh lock, when there is one, because publishing a recovered credential writes the file.
+func (provider *CredentialResolver[C]) recoverExchange(ctx context.Context, record connectionRecord, refreshLocker credentialRefreshLocker) error {
+	if refreshLocker != nil {
+		lock, err := refreshLocker.lockCredentialRefresh(ctx)
+		if err != nil {
+			return err
+		}
+		defer lock.release()
+	}
+	_, err := provider.store.RecoverCredentialExchange(ctx, exchangeAdmission(record, false))
+	return err
 }
 
 func (provider *CredentialResolver[C]) refreshAdmitted(ctx context.Context, admission ExchangeAdmission, prior CredentialMaterial, state RefreshState[C], driver RefreshDriver[C]) (C, error) {

@@ -19,7 +19,7 @@ import connector_scenarios as conformance  # noqa: E402
 SCENARIOS = conformance.load_scenarios(ROOT / "conformance/connectors/hackernews/scenarios.json")
 CONNECTION = sdk.ConnectionRef("hacker-news", "public")
 ADAPTER = conformance.PythonOperationAdapter(
-    "hackernews",
+    "hacker-news-daily",
     CONNECTION,
     connector,
     lambda http_client, recorder: connector.Client(

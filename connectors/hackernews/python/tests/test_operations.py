@@ -7,6 +7,16 @@ from uuid import uuid4
 import httpx
 import pytest
 from dex_connectors.sdk import Call, CallID, ConnectionRef, FailureKind, RetryError, run_query
+from dex_connectors.sdk.projectconfig import (
+    Configuration,
+    ConfigurationStore,
+    ConnectionConfiguration,
+    ConnectionStore,
+    InMemoryObjectStore,
+    LoadedProject,
+    Scope,
+    SnapshotRef,
+)
 
 from dex_connectors.hackernews import (
     DEFECT,
@@ -21,9 +31,10 @@ from dex_connectors.hackernews import (
     Config,
     GetItemInput,
     ListStoryIDsInput,
+    new_project_connection,
 )
 
-CONNECTION = ConnectionRef("hackernews", "hackernews")
+CONNECTION = ConnectionRef("hacker-news", "hackernews")
 STORY = {
     "id": 42001,
     "type": "story",
@@ -144,3 +155,56 @@ async def test_invalid_input_is_defect_without_request(operation: str, value: ob
         result = await run_query(client.get_item(), get_call(), value)  # type: ignore[arg-type]
     assert result.branch == DEFECT
     assert requests == []
+
+
+def make_project(connector_id: str, provider: str) -> LoadedProject:
+    scope = Scope("project-news", "preview")
+    objects = InMemoryObjectStore()
+    entry = ConnectionConfiguration(
+        connector_id,
+        "hacker-news-public",
+        "github.com/superdurable/dex-connectors-library/connectors/hackernews/go",
+        provider,
+        {"baseUrl": "http://localhost:8848/v0", "timeout": 5_000_000_000},
+    )
+    return LoadedProject(
+        Configuration(scope, 1, (entry,)),
+        SnapshotRef("", "", ""),
+        ConnectionStore(objects, scope),
+        ConfigurationStore(objects, scope),
+    )
+
+
+@pytest.mark.asyncio
+async def test_project_connection_matches_dex_web_connection_identity() -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=STORY)
+
+    connection = new_project_connection(
+        make_project("hacker-news-daily", "hacker-news"),
+        "hacker-news-public",
+        httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+    )
+    assert connection.reference == ConnectionRef("hacker-news", "hacker-news-public")
+    operation = connection.get_item()
+    assert operation.definition().operation.connector_id == "hacker-news-daily"
+    call = Call(CallID(str(uuid4())), connection.reference, operation.definition().operation)
+    assert (await run_query(operation, call, GetItemInput(42001))).branch == FOUND
+    assert [str(request.url) for request in requests] == ["http://localhost:8848/v0/item/42001.json"]
+    await connection.aclose()
+
+
+@pytest.mark.parametrize(
+    ("connector_id", "provider", "message"),
+    [
+        ("hackernews", "hacker-news", "Hacker News project connection is missing or duplicated"),
+        ("hacker-news-daily", "hackernews", "Hacker News project connection provider differs"),
+    ],
+)
+def test_project_connection_rejects_other_identities(connector_id: str, provider: str, message: str) -> None:
+    with pytest.raises(ValueError) as error:
+        new_project_connection(make_project(connector_id, provider), "hacker-news-public")
+    assert str(error.value) == message

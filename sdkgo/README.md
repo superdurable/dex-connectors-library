@@ -293,7 +293,10 @@ not create a refresh loop.
 
 The project provider admits one refresh per expired credential across every
 application replica through a conditional write, so concurrent calls refresh
-once. A successful refresh must return a future expiry and the complete
+once. Processes that share a local Dex Web `connections.json` also refresh once:
+from v0.35.0 a refresh holds that file's cross-process lock and adopts a
+credential that another process wrote back. See
+[projectconfig](projectconfig/README.md#refresh-across-processes). A successful refresh must return a future expiry and the complete
 replacement credential value, which is stored before it is returned. A driver
 wraps terminal provider responses such as `invalid_grant` with
 `NewReauthorizationRequiredError`; the connection then requires reauthorization.

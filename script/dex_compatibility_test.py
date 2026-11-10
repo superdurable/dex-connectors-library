@@ -20,8 +20,11 @@ from script.dex_compatibility import (
     CREDENTIAL_ISOLATION_FIXTURE,
     CREDENTIAL_ISOLATION_MODULE_PATH,
     GO_VET_BUILD_TAG_SETS,
+    GO_VET_OPERATING_SYSTEMS,
     GITHUB_REQUEST_ATTEMPTS,
     GITHUB_RATE_LIMIT_MAX_WAIT_SECONDS,
+    build_and_vet_with_dex_go_sdk,
+    build_constraint_names,
     build_current_artifacts,
     connector_releases,
     create_module_proxy,
@@ -595,16 +598,27 @@ class DexWebFixtureTest(unittest.TestCase):
 
 class LatestDexGoSdkTest(unittest.TestCase):
     def test_vet_tag_sets_cover_every_build_constraint_in_the_sdk_and_connectors(self) -> None:
-        constraint_tags: set[str] = set()
-        for directory in (ROOT / CONNECTOR_SDK_DIRECTORY, ROOT / "connectors"):
-            for source in directory.rglob("*.go"):
-                if "node_modules" in source.parts:
-                    continue
-                for line in source.read_text(encoding="utf-8").splitlines():
-                    if line.startswith("//go:build "):
-                        constraint_tags.update(re.findall(r"[A-Za-z_][A-Za-z0-9_.]*", line.removeprefix("//go:build ")))
+        constraint_tags = build_constraint_names(ROOT / CONNECTOR_SDK_DIRECTORY) | build_constraint_names(ROOT / "connectors")
         self.assertTrue(constraint_tags)
-        self.assertLessEqual(constraint_tags, set(GO_VET_BUILD_TAG_SETS) - {""})
+        self.assertLessEqual(constraint_tags, (set(GO_VET_BUILD_TAG_SETS) - {""}) | set(GO_VET_OPERATING_SYSTEMS))
+
+    def test_vets_each_operating_system_only_for_a_module_whose_constraints_name_one(self) -> None:
+        for constraint, expected_operating_systems in (("integration", []), ("darwin || linux", list(GO_VET_OPERATING_SYSTEMS))):
+            with self.subTest(constraint=constraint), tempfile.TemporaryDirectory() as temporary:
+                module = Path(temporary)
+                (module / "lock.go").write_text(f"//go:build {constraint}\n\npackage lock\n")
+                with patch("script.dex_compatibility.run") as run, patch("script.dex_compatibility.module_path", return_value="example.com/lock"):
+                    run.return_value.stdout = "v1.40.0\n"
+                    build_and_vet_with_dex_go_sdk(module, "v1.40.0")
+                vet_calls = [call for call in run.call_args_list if call.args[0][:2] == ["go", "vet"]]
+                self.assertEqual(
+                    [f"-tags={tags}" for tags in GO_VET_BUILD_TAG_SETS],
+                    [call.args[0][2] for call in vet_calls if call.args[0][2].startswith("-tags=")],
+                )
+                self.assertEqual(
+                    expected_operating_systems,
+                    [call.args[2]["GOOS"] for call in vet_calls if "GOOS" in call.args[2]],
+                )
 
 
 
