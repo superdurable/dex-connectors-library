@@ -37,7 +37,7 @@ test-connector-conformance:
 	fi
 
 test-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		python3 script/release/component_release.py validate-connector --component-path "$$module/go" \
 			--sdk-module github.com/superdurable/dex-connectors-library/sdkgo || exit 1; \
@@ -56,7 +56,7 @@ test-sdkts:
 	@if [ -f sdkts/package.json ]; then test -f sdkts/package-lock.json || { echo 'sdkts/package-lock.json is missing' >&2; exit 1; }; npm ci --prefix sdkts && npm run check --prefix sdkts; fi
 
 test-python-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		if [ ! -f "$$module/python/pyproject.toml" ]; then continue; fi; \
 		test -f "$$module/python/uv.lock" || { echo "$$module/python/uv.lock is missing" >&2; exit 1; }; \
@@ -71,7 +71,7 @@ test-python-connectors:
 	@python3 script/python_slice_wire_test.py
 
 test-python-connectors-latest-sdk:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	packages=""; \
 	for module in $$directories; do \
 		if [ -f "$$module/python/pyproject.toml" ]; then packages="$$packages $$module/python"; fi; \
@@ -79,7 +79,7 @@ test-python-connectors-latest-sdk:
 	python3 script/python_latest_sdk.py $$packages
 
 test-typescript-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		if [ ! -f "$$module/typescript/package.json" ]; then continue; fi; \
 		test -f "$$module/typescript/package-lock.json" || { echo "$$module/typescript/package-lock.json is missing" >&2; exit 1; }; \
@@ -103,7 +103,7 @@ test-sdk-integration:
 	cd sdkgo && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
 
 test-connector-integration:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		(cd "$$module/go" && GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v) || exit 1; \
 	done
@@ -121,7 +121,7 @@ test-dex-compat-latest-go-sdk:
 	python3 script/dex_compatibility.py latest-go-sdk --connector-directories "$$directories"
 
 studio-bundle-theme:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	python3 script/studio_bundle_theme_check.py . --selected $$directories
 
 react: react-sdk react-connectors
@@ -130,7 +130,7 @@ react-sdk:
 	cd sdk/react && npm ci && npm test && npm run build
 
 react-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	has_ui=false; \
 	for module in $$directories; do \
 		if [ -f "$$module/ui/package-lock.json" ]; then has_ui=true; break; fi; \

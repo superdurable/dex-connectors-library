@@ -696,10 +696,7 @@ PYTHON_DISTRIBUTION_NAME = re.compile(r"\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z
 
 @dataclass(frozen=True)
 class PythonSDKRequirement:
-    """The Python Connector SDK release a connector package requires.
-
-    version is the exact pin, or the floor: the lowest SDK release the package is tested with.
-    """
+    """The SDK release a connector package requires: an exact pin, or its lowest tested floor."""
 
     version: str
     is_floor: bool

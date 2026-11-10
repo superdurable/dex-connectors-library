@@ -72,8 +72,7 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	return files, nil
 }
 
-// pythonConnectorSDKRequirement matches a legacy exact pin or a version floor below 1; the floor is the lowest SDK
-// release a package supports, so it decides which SDK features the generated cases may assume.
+// pythonConnectorSDKRequirement matches an exact pin or floor; the lowest supported release decides generated cases.
 var pythonConnectorSDKRequirement = regexp.MustCompile(`["']dex-connectors-sdk(?:==([0-9]+\.[0-9]+\.[0-9]+)|>=(0\.[0-9]+\.[0-9]+),<1)["']`)
 
 // languageRefreshAgreementCases checks the package's SDK requirement before emitting timeout enforcement cases.

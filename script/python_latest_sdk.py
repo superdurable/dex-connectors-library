@@ -1,11 +1,6 @@
 # Copyright (c) 2026 Super Durable
 # SPDX-License-Identifier: MIT
-"""Test Python connector packages that require a Connector SDK floor against the repository's SDK source.
-
-Each package's uv.lock tests its floor; this check proves the same package still works with the newest SDK, as
-an application that installs several connectors resolves it. Packages with a legacy exact pin claim no newer
-SDK release and are skipped.
-"""
+"""Test Python connector packages with an SDK floor against the repository's newest SDK; exact pins are skipped."""
 
 from __future__ import annotations
 
