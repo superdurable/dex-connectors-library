@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-connectors-mcp test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-connectors-mcp test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-python-connectors-latest-sdk test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -19,7 +19,7 @@ test: test-common test-connectors catalog-check
 test-common:
 	cd sdkgo && GOWORK=off go test -race -count=1 ./...
 	cd sdkgo && GOWORK=off go vet ./...
-	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py
+	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py script/python_latest_sdk_test.py
 	npm ci --prefix connectors/stripe/typescript
 	connectors/stripe/typescript/node_modules/.bin/tsx --test conformance/runners/typescript/connector_scenarios.test.mjs
 	npm ci --prefix connectors/google/gmail/typescript
@@ -44,7 +44,7 @@ test-connector-conformance:
 	fi
 
 test-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		python3 script/release/component_release.py validate-connector --component-path "$$module/go" \
 			--sdk-module github.com/superdurable/dex-connectors-library/sdkgo || exit 1; \
@@ -63,7 +63,7 @@ test-sdkts:
 	@if [ -f sdkts/package.json ]; then test -f sdkts/package-lock.json || { echo 'sdkts/package-lock.json is missing' >&2; exit 1; }; npm ci --prefix sdkts && npm run check --prefix sdkts; fi
 
 test-python-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		if [ ! -f "$$module/python/pyproject.toml" ]; then continue; fi; \
 		test -f "$$module/python/uv.lock" || { echo "$$module/python/uv.lock is missing" >&2; exit 1; }; \
@@ -77,8 +77,16 @@ test-python-connectors:
 	uv run --project connectors/airtable/python python conformance/runners/python/clock_test.py
 	@python3 script/python_slice_wire_test.py
 
+test-python-connectors-latest-sdk:
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
+	packages=""; \
+	for module in $$directories; do \
+		if [ -f "$$module/python/pyproject.toml" ]; then packages="$$packages $$module/python"; fi; \
+	done; \
+	python3 script/python_latest_sdk.py $$packages
+
 test-typescript-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		if [ ! -f "$$module/typescript/package.json" ]; then continue; fi; \
 		test -f "$$module/typescript/package-lock.json" || { echo "$$module/typescript/package-lock.json is missing" >&2; exit 1; }; \
@@ -102,7 +110,7 @@ test-sdk-integration:
 	cd sdkgo && GOWORK=off go test -tags=integration ./integrationtest/... -count=1 -v
 
 test-connector-integration:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	for module in $$directories; do \
 		(cd "$$module/go" && GOWORK=off go test -p 1 -tags=integration ./... -count=1 -v) || exit 1; \
 	done
@@ -120,7 +128,7 @@ test-dex-compat-latest-go-sdk:
 	python3 script/dex_compatibility.py latest-go-sdk --connector-directories "$$directories"
 
 studio-bundle-theme:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	python3 script/studio_bundle_theme_check.py . --selected $$directories
 
 react: react-sdk react-connectors
@@ -129,7 +137,7 @@ react-sdk:
 	cd sdk/react && npm ci && npm test && npm run build
 
 react-connectors:
-	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))"; \
+	@directories="$$(GOWORK=off go run ./cmd/connectorctl test-matrix $(CONNECTOR_SELECTION_ARGUMENTS))" || exit 1; \
 	has_ui=false; \
 	for module in $$directories; do \
 		if [ -f "$$module/ui/package-lock.json" ]; then has_ui=true; break; fi; \

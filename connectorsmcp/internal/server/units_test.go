@@ -65,10 +65,11 @@ func TestConnectionFlagsParseTheDexCLIShape(t *testing.T) {
 	entry, err = ParseConnectionFlag("slack/personal=post_thread_reply,listThreadMessages")
 	require.NoError(t, err)
 	require.Equal(t, []string{"post_thread_reply", "listThreadMessages"}, entry.Tools)
-	entry, err = ParseConnectionFlag("slack/team/a=")
+	entry, err = ParseConnectionFlag("slack/team/a=b")
 	require.NoError(t, err)
 	require.Equal(t, "team/a", entry.ConnectionName)
-	require.Nil(t, entry.Tools, "a trailing equals sign means every exposed tool")
+	_, err = ParseConnectionFlag("slack/team/a=")
+	require.ErrorContains(t, err, `"slack/team/a="`, "an empty tool list fails closed and names the entry")
 	for _, malformed := range []string{"slack", "slack/a,b", "slack/a=x,,y"} {
 		_, err := ParseConnectionFlag(malformed)
 		require.Error(t, err, malformed)
@@ -83,7 +84,7 @@ func TestConnectionFlagsParseTheDexCLIShape(t *testing.T) {
 
 func TestConnectionsConfigFileParsing(t *testing.T) {
 	selection, err := ParseConnectionsConfig([]byte(`{"schemaVersion":"dex-connectors-mcp/connections-config/v1","connections":[
-		{"connection":"slack/work"},{"connection":"slack/personal","tools":["post_thread_reply","post_thread_reply"]},{"connection":"gmail/me","tools":[]}]}`))
+		{"connection":"slack/work"},{"connection":"slack/personal","tools":["post_thread_reply","post_thread_reply"]},{"connection":"gmail/me","tools":null}]}`))
 	require.NoError(t, err)
 	require.Equal(t, []SelectedConnection{
 		{ConnectorID: "gmail", ConnectionName: "me"},
@@ -97,6 +98,8 @@ func TestConnectionsConfigFileParsing(t *testing.T) {
 		`{"schemaVersion":"dex-connectors-mcp/connections-config/v1","connections":[{"connection":"slack/a"},{"connection":"slack/a"}]}`,
 		`{"schemaVersion":"dex-connectors-mcp/connections-config/v1","connections":[],"extra":1}`,
 		`not json`,
+		`{"schemaVersion":"dex-connectors-mcp/connections-config/v1","connections":[]} {"trailing":true}`,
+		`{"schemaVersion":"dex-connectors-mcp/connections-config/v1","connections":[]} x`,
 	} {
 		_, err := ParseConnectionsConfig([]byte(malformed))
 		require.Error(t, err, malformed)
@@ -133,8 +136,8 @@ func TestConnectionsConfigDigestIsIdenticalForFlagsAndFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "sha256:bbdcd6b32401259c4e60d24b74c477a9c76d1010ba6fc707d1656ac59ea114a7", *empty.ConnectionsConfigDigest())
 
-	// Go escapes U+2028 as   even without HTML escaping; dexcli computes it in Go too.
-	separator, err := NewConnectionSelection([]SelectedConnection{{ConnectorID: "slack", ConnectionName: "a b"}})
+	// Go escapes U+2028 as \u2028 even without HTML escaping; dexcli computes it in Go too.
+	separator, err := NewConnectionSelection([]SelectedConnection{{ConnectorID: "slack", ConnectionName: "a\u2028b"}})
 	require.NoError(t, err)
 	require.Equal(t, "sha256:65295181c87728372b6ca46160e7a6021f3244f88ecbd1291964e6fab1da1632", *separator.ConnectionsConfigDigest())
 }

@@ -54,7 +54,8 @@ func TestARunningIdempotentWriteWhoseToolVanishedIsFinalizedWithoutSending(t *te
 	interrupted := harness.callTool("example-notes_save_record", arguments, "flow/turn/vanish")
 	require.NotNil(t, interrupted.Error)
 
-	harness.writeConnections("personal")
+	// Two other connections qualify every name, so the original name vanishes.
+	harness.writeConnections("personal", "other")
 	result := harness.mustCallResult("example-notes_save_record", arguments, "flow/turn/vanish")
 	require.Equal(t, "unknown", result.outcome())
 	require.Contains(t, result.text(), "no longer offered")

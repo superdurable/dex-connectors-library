@@ -223,6 +223,24 @@ func TestIdempotentWriteCrashPointsApplyAtMostOnce(t *testing.T) {
 	}
 }
 
+// TestAnUnobservedEffectSurvivesACrashBeforeItIsRecorded kills the server
+// after an attempt that applied but asked to retry; the resumed call must not
+// end rejected.
+func TestAnUnobservedEffectSurvivesACrashBeforeItIsRecorded(t *testing.T) {
+	fixture := newCrashFixture(t)
+	fixture.provider.Script("saveRecord",
+		testconnectors.ScriptedResponse{IsEffectAppliedFirst: true, Status: http.StatusServiceUnavailable},
+		testconnectors.ScriptedResponse{Status: http.StatusBadRequest},
+	)
+	fixture.provider.Script("readRecord", testconnectors.ScriptedResponse{Status: http.StatusNotFound})
+	arguments := map[string]any{"name": "a", "value": "1"}
+	fixture.crashDuringCall(crashScenario{crashPoint: ProtocolPointAfterAttempt}, "saveRecord", "example-notes_save_record", arguments, "flow/turn/unobserved")
+	survivor := fixture.startHelper("", "")
+	result := decodeCallResult(t, mustCall(t, survivor, "example-notes_save_record", arguments, "flow/turn/unobserved"))
+	require.Equal(t, outcomeUnknown, result.outcome(), "the crashed attempt's effect was never observed, so the later rejection proves nothing")
+	require.Equal(t, 1, fixture.provider.AppliedRecordWrites(saveRecordIdempotencyKey("flow/turn/unobserved")))
+}
+
 // crashDuringCall issues one call to a helper that dies during it.
 func (fixture *crashFixture) crashDuringCall(scenario crashScenario, operationID string, toolName string, arguments any, key string) {
 	t := fixture.t

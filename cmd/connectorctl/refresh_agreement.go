@@ -72,9 +72,10 @@ func generatedRefreshAgreementFiles(manifestPath string, manifest schema.Manifes
 	return files, nil
 }
 
-var pythonConnectorSDKPin = regexp.MustCompile(`dex-connectors-sdk==([0-9]+)\.([0-9]+)\.([0-9]+)`)
+// pythonConnectorSDKRequirement matches an exact pin or floor; the lowest supported release decides generated cases.
+var pythonConnectorSDKRequirement = regexp.MustCompile(`["']dex-connectors-sdk(?:==([0-9]+\.[0-9]+\.[0-9]+)|>=(0\.[0-9]+\.[0-9]+),<1)["']`)
 
-// languageRefreshAgreementCases checks the exact package pin before emitting timeout enforcement cases.
+// languageRefreshAgreementCases checks the package's SDK requirement before emitting timeout enforcement cases.
 func languageRefreshAgreementCases(cases []byte, packagePath, language string) ([]byte, error) {
 	contents, err := os.ReadFile(packagePath)
 	if err != nil {
@@ -83,11 +84,11 @@ func languageRefreshAgreementCases(cases []byte, packagePath, language string) (
 	var version string
 	switch language {
 	case "python":
-		parts := pythonConnectorSDKPin.FindSubmatch(contents)
-		if parts == nil {
-			return nil, fmt.Errorf("%s must pin dex-connectors-sdk exactly", packagePath)
+		requirements := pythonConnectorSDKRequirement.FindAllSubmatch(contents, -1)
+		if len(requirements) != 1 {
+			return nil, fmt.Errorf("%s must require dex-connectors-sdk once as >=X.Y.Z,<1 or a legacy ==X.Y.Z", packagePath)
 		}
-		version = string(parts[1]) + "." + string(parts[2]) + "." + string(parts[3])
+		version = string(requirements[0][1]) + string(requirements[0][2])
 	case "typescript":
 		var declaration struct {
 			Dependencies map[string]string `json:"dependencies"`

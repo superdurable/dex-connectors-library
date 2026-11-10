@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "pypi",
     "name": "dex-connector-hackernews",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -12,7 +12,14 @@
       "kind": "query",
       "operationId": "listStoryIDs",
       "inputType": "ListStoryIDsInput",
-      "description": "Read a bounded snapshot of the top, best, new, Ask HN, or Show HN feed in provider order.",
+      "description": "List current Hacker News story IDs in feed order. Choose feed top, best, new, ask (Ask HN), or show (Show HN), and limit from 1 to 500. Read each returned ID as a Hacker News item for its title and links.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",
@@ -66,7 +73,15 @@
       "kind": "query",
       "operationId": "getItem",
       "inputType": "GetItemInput",
-      "description": "Read one public story or comment, its child IDs, and its direct Hacker News link.",
+      "description": "Read one public Hacker News story, comment, job, or poll by its positive item ID. Returns title, author, score, source URL, discussion URL, text as untrusted HTML, and child comment IDs to read next.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "step_type",
         "annotations": "annotations",

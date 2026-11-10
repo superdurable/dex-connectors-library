@@ -171,6 +171,7 @@ func TestReadReportsUntrustworthyRecordsAsUnreadable(t *testing.T) {
 		"unknown status":           func(record map[string]any) { record["status"] = "paused" },
 		"read effect":              func(record map[string]any) { record["effect"] = "read" },
 		"attempt zero":             func(record map[string]any) { record["attempt"] = 0 },
+		"no connection target":     func(record map[string]any) { delete(record, "connectionTarget") },
 		"completed without result": func(record map[string]any) { record["status"] = "completed" },
 	}
 	for name, corrupt := range cases {
@@ -443,6 +444,7 @@ func newTestRecord(stateKey string) Record {
 		RequestDigest:     request.Digest(),
 		Effect:            sdkgo.AgentToolEffectNonIdempotentWrite,
 		CallID:            "call-1",
+		ConnectionTarget:  "sha256:" + strings.Repeat("b", 64),
 		FirstAttemptAt:    first,
 		RetryWindowEndsAt: first.Add(time.Hour),
 		Attempt:           1,

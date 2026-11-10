@@ -76,9 +76,10 @@ Exit codes:
 The selection has the shape of the Dex CLI configuration: `connectorId/connectionName`
 plus an optional tool list. Tool list elements are the snake-case operation name
 (`post_thread_reply`, the `io.superdurable.connectors/operationName` value) or
-the `operationId` (`postThreadReply`). An absent or empty list offers every
-exposed tool. The flag form splits at the first `/`, then at the first `=`, then
-on `,`, so a connection name with a comma needs the file form.
+the `operationId` (`postThreadReply`). Only an absent tool list (or `null` in the
+file) offers every exposed tool. The flag form splits at the first `/`, then at
+the first `=`, then on `,`, so a connection name with a comma needs the file
+form.
 
 ```json
 {
@@ -90,8 +91,14 @@ on `,`, so a connection name with a comma needs the file form.
 }
 ```
 
-Malformed input is a startup error: a bad `connectorId/connectionName`, a
-repeated connection, an unknown `schemaVersion`, or an unknown member.
+Malformed input is a usage error (exit code 2) that names the entry:
+
+- a bad `connectorId/connectionName`;
+- a repeated connection;
+- an empty tool list, as `--connection slack/work=` or `"tools": []`. This
+  fails closed, as agreed with Dex;
+- an unknown `schemaVersion` or member;
+- data after the JSON document.
 
 Other problems skip only the affected entry and add a line to `warnings`:
 
@@ -108,12 +115,12 @@ same way:
 
 1. Build the normalized selection: one entry per connection,
    `{"connection": "<connectorId>/<connectionName>", "tools": [...] | null}`.
-   `tools` is `null` when no list or an empty list is given. Otherwise it holds
+   `tools` is `null` when no list is given. Otherwise it holds
    the given strings exactly as written, de-duplicated and sorted by byte
    order. Entries are sorted by `connection`.
 2. Encode `{"connections": [...]}` as canonical JSON: sorted keys, no
    insignificant whitespace, and no HTML escaping. Like any Go encoder, it
-   writes U+2028 and U+2029 as ` ` and ` `.
+   writes U+2028 and U+2029 as `\u2028` and `\u2029`.
 3. The digest is `"sha256:"` followed by the lowercase hex SHA-256 of those
    bytes.
 
@@ -197,7 +204,9 @@ by size, modification time, mode, and SHA-256:
 - the `--connections-config` file.
 
 A change builds a new tool set with `projectconfig.LoadDexWebConnectionsFile`.
-In-flight calls keep the tool set they started with. A credential that this
+A keyed call resolves its tool from the tool set current once it holds the
+key's lock. Every attempt, read or write, resolves its tool again before it
+runs; see [Connection rebinding](#connection-rebinding). A credential that this
 process writes back reloads to an equal tool set, so it is not reported.
 
 A hosted project is loaded once and needs a restart for changes.
@@ -233,6 +242,32 @@ has `openWorldHint: true`. In addition:
 A call sends `io.superdurable.dex/idempotencyKey` in the request `_meta`. A
 valid key is a non-empty UTF-8 string of at most 1024 bytes.
 
+A key answers only the call that first used it. Its connector, operation,
+connection, project, and argument digest must all match the record, and the
+tool name decides the first three:
+
+- **Current name.** A name the current tool set offers names that tool.
+- **Vanished name.** A name that disappeared through a reload matches only a
+  name the record's tool had, with or without connection qualification.
+- **Unknown name.** When this build can no longer name the record's tool, the
+  call answers `unknown`.
+
+Any other call with the key is `rejected` ("the idempotency key was used for a
+different call; nothing was sent"), and its state is left untouched.
+
+**Expected-identity guard.** A request `_meta` may also carry
+`io.superdurable.connectors/expectedConnector`, `expectedConnection`, and
+`expectedOperation`, with the listing's identity values. When any is present,
+every present key must equal the identity the call would run as. That is the
+record's identity when the key already has state, otherwise the tool name's
+current binding.
+
+- A mismatch does not run. It answers JSON-RPC `-32602` with
+  `error.data._meta` outcome `rejected` and a message naming the field. Existing
+  state is never changed.
+- When all three keys match a record, they identify its call even after the
+  tool name was remapped to another connection.
+
 Results use these shapes:
 
 - **Success.** `content` is one text block with the result value as canonical
@@ -254,10 +289,13 @@ Results use these shapes:
 | Arguments pass `inputSchema` but fail strict decoding | `rejected` | `rejected`, stored as the key's result | same |
 | No key | runs, with inline retry | `rejected`, nothing sent | same |
 | Malformed key | `rejected` | `rejected` | `rejected` |
-| Key reused with other arguments | runs (reads keep no state), `rejected` if the key holds a write record | `rejected`, nothing sent | same |
+| Key reused for another call (other tool, connection, project, or arguments) | runs (reads keep no state), `rejected` if the key holds a write record | `rejected`, nothing sent, state untouched | same |
+| Expected-identity key mismatch | JSON-RPC `-32602` with outcome `rejected`, not run | same | same |
+| Key's record names a tool this build cannot name, under a vanished name | n/a | `unknown`, state untouched | same |
+| Running key whose connection now points to another target | n/a | no attempt: `rejected` if proven not sent, else `unknown` | finalized from its checkpoint (never runs again) |
 | Completed record | n/a | replay | replay |
 | Required branch | success | success | success |
-| Listed `rejected` branch | `rejected` | `rejected` | `rejected` |
+| Listed `rejected` branch | `rejected` | `rejected`; `unknown` once an earlier attempt may have applied | `rejected` |
 | Unlisted Query branch or Query `defect` | `failed` | n/a | n/a |
 | `uncertain`, listed `unknown`, unlisted Mutation branch, Mutation `defect`, or a branch after the Fence may have sent | n/a | `unknown` | `unknown` |
 | Connector Retry | inline retry; at the attempt cap `rejected`; budget spent: bare `-32603` | inline retry; at the cap or the window end `rejected` if proven not sent, else `unknown`; budget spent: bare `-32603`, record left running | no inline retry: `rejected` "not sent; the provider asked to retry later" if proven not sent, else `unknown` |
@@ -267,11 +305,15 @@ Results use these shapes:
 | Record corrupt or of an unknown format | `unknown` | `unknown` | `unknown` |
 | Server stopping | bare `-32603` | bare `-32603`; a completed key still replays | `rejected` when no record exists; a completed key replays; a running record is finalized |
 
-"Proven not sent" means the checkpoint of the record's current attempt is a
-`singledispatch` `notSent` marker of this Call ID, with no provider ID.
-`canResend` follows a claim, so it proves nothing. A non-idempotent write
-never ends in a bare `-32603`, because Dex records that as `outcome_unknown`
-even when nothing was sent.
+"Proven not sent" requires two things:
+
+- The checkpoint of the record's current attempt is a `singledispatch`
+  `notSent` marker of this Call ID, with no provider ID. `canResend` follows a
+  claim, so it proves nothing.
+- The record's `possiblyApplied` flag is not set.
+
+A non-idempotent write never ends in a bare `-32603`, because Dex records that
+as `outcome_unknown` even when nothing was sent.
 
 Results longer than `--max-result-bytes` are cut on a UTF-8 boundary and get
 `\n[Dex] truncated, N bytes`. `structuredContent` is then omitted, and
@@ -295,6 +337,10 @@ Reads and idempotent writes retry a connector Retry inside one call.
 - **Retry window.** It is fixed at a write's first attempt: `firstAttemptAt`
   plus the policy's `TotalDuration` (1 hour when unset), never beyond the
   retention. No attempt starts at or after it.
+  - The window is checked again after each retry delay.
+  - Each attempt's deadline is the earlier of its timeout and the window end,
+    so a slow attempt or credential resolution cannot send after the provider
+    stops honoring its idempotency key.
 
 Reads honor client cancellation. A write attempt is never cancelled by the
 client. The operation's Execute timeout bounds it (60 seconds when unset), and
@@ -328,10 +374,12 @@ never logged.
   "requestDigest": "<sha256 of the canonical request object>",
   "effect": "non_idempotent_write",
   "callId": "<sdkgo Call ID>",
+  "connectionTarget": "sha256:<digest of the connection's non-secret target>",
   "firstAttemptAt": "2026-11-20T10:00:00.123456789Z",
   "retryWindowEndsAt": "2026-11-20T11:00:00.123456789Z",
   "attempt": 1,
   "checkpoint": {"callId": "…", "attempt": 1, "state": "claimed"},
+  "possiblyApplied": false,
   "status": "running",
   "result": null,
   "serverVersion": "0.1.3",
@@ -343,10 +391,26 @@ never logged.
   - `projectIdentity` is `file:` plus the real path of `connections.json`, or
     `project:<id>/<scope>` when hosted.
   - `argumentsDigest` treats absent or `null` arguments as `{}`.
+  - `connectionTarget` is `"sha256:"` plus the hex SHA-256 of canonical JSON
+    built from the connection's non-secret target fields:
+    `{"authMethodId", "configuration", "connectionName", "connectorId",
+    "provider", "sharedConnectionId"}`. `configuration` is the connection's
+    settings as canonical JSON, or `null`. Credentials, their expiry, and the
+    module path never enter it, so a credential refresh keeps it. See
+    [Connection rebinding](#connection-rebinding).
   - `effect` is frozen at the first attempt. When a later build reclassifies
     the operation, the stricter effect applies.
   - `checkpoint` is the last heartbeat any attempt recorded. The next attempt
     receives it as its last heartbeat value.
+  - `possiblyApplied` is set once any attempt may have reached the provider,
+    and it is never cleared. That covers three cases:
+    - an attempt ended `unknown` or without a branch after `Invoke`;
+    - an attempt asked to retry without `notSent` proof;
+    - an attempt's outcome was never observed, because a re-issue found the
+      record running.
+
+    While it is set, the call never ends `rejected`. A later listed rejection
+    or `notSent` proof becomes `unknown`.
   - `result` is the exact MCP result returned.
 - **Frozen identities.**
   - Each attempt runs with a `dex.Context` whose Flow ID is
@@ -363,14 +427,24 @@ Protocol for a keyed call:
 1. Validate the key and take the in-process mutex, then `flock(LOCK_EX)` on
    `<k>.lock`. The wait is bounded by the request context. After locking, the
    open file must still be the file at the path, or the lock is retaken.
-2. Read the record **before** resolving the tool name.
-   - Other arguments: `rejected`.
+2. Take the current tool set, not the one in effect when the request arrived.
+   Then read the record **before** resolving the tool name from that tool
+   set.
+   - An expected-identity key that differs from the record: refused, state
+     untouched.
+   - Another call (see [Calls and outcomes](#calls-and-outcomes)): `rejected`,
+     state untouched.
    - `completed`: replay.
    - `running` non-idempotent: finalize from the checkpoint without another
      attempt.
+   - `running`: set `possiblyApplied` unless the current attempt proved
+     `notSent`.
    - `running` idempotent: finalize when the window passed, the cap was
-     reached, or the tool is no longer offered for that connection. Otherwise
-     increment `attempt`, write the record durably, then run.
+     reached, the tool is no longer offered for that connection, or the
+     connection's current target differs from `connectionTarget`. Otherwise
+     increment `attempt`, write the record durably, then run. Before each
+     inline retry, the same tool and target checks run against the tool set
+     as it is then.
 3. No record: resolve the tool, validate the arguments, write a new record with
    `attempt: 1` durably, then run.
 4. A durable write writes a temporary file in the same directory, syncs it,
@@ -403,6 +477,91 @@ Retention:
 - A key reused after retention is a new call.
 - Stored write results can contain personal data. They stay in `0600` files.
 
+### Connection rebinding
+
+Dex Web keeps one record per connection name in `connections.json`, so a
+connection of the same name can later point somewhere else. Each record stores
+`connectionTarget`, and no attempt of an existing key ever runs against a
+different target. A rebound key settles from its evidence and nothing runs:
+
+- `rejected` ("the connection now points to a different target; nothing was
+  sent") when the current attempt proved `notSent` and nothing possibly
+  applied;
+- `unknown` otherwise.
+
+A new key after a rebind runs normally against the new target.
+
+The check uses the tool set as it is when the call holds the key's lock, never
+the one in effect when the request arrived. A request that waited on the lock
+while the connection was rebound therefore sees the new target. Before every
+attempt the call resolves the tool from a current snapshot, compares that
+binding's target with `connectionTarget`, and runs the attempt with the tool
+from the same snapshot:
+
+- **New key.** The record's `connectionTarget` and the first attempt come from
+  the snapshot taken after the lock.
+- **Resumed key.** The binding comes from the snapshot taken after the lock.
+- **Inline retry.** A new snapshot is taken after each retry delay.
+- **Read.** Reads keep no state, but every attempt resolves the tool from a
+  current snapshot and runs it from that snapshot. That covers the first
+  attempt, each inline retry, and the read that runs when the call state is
+  unavailable. If the tool disappeared, or its target changed, between attempts
+  of one read, the read stops with `rejected` and makes no further attempt.
+
+A tool that is gone, or a different target, settles a write's key as above.
+
+**Residual window.** A Dex Web rebind can land during an attempt's own
+execution, after the attempt resolved its tool and checked its target, and
+before the connector sends. This holds for read and write attempts alike, and
+the server does not close this window. sdkgo `projectconfig` reads the
+credential from `connections.json` when the connector resolves it, so such an
+attempt can combine the checked target and settings with the new account's
+credential.
+
+The planned fix is a guard in sdkgo `projectconfig`. It would resolve the
+credential and the connection target, including Dex Web's upcoming
+`authorizationId`, from one snapshot, and refuse a credential whose target no
+longer matches. It is tracked in superdurable/dex-connectors-library#655.
+
+Detected, because the fingerprint changes:
+
+- any change to the connection's non-secret settings: endpoint or base URL,
+  tenant, workspace, region, and account identifiers that a connector derives
+  into its settings from OAuth or OIDC claims or setup commands;
+- another provider, another single authorization method (`authMethodId`), or
+  another shared connection (`sharedConnectionId`);
+- a removed connection: its tool is no longer offered, so the key settles. A
+  re-added connection is compared like any other;
+- another connections file: `projectIdentity` differs, so the key's call is
+  treated as a different call.
+
+Not detected:
+
+- **Same settings, another account.** Re-authorizing the same connection name
+  to a different account when the account exists only in the credentials, for
+  example OAuth tokens of another user or workspace, or another API key, while
+  the settings stay identical. Dex Web stores no non-secret account identity
+  in `connections.json`, and credentials are deliberately never fingerprinted.
+- **Method selection.** A change of the selected method set of a multi-method
+  connector (`authMethodIds`), which `projectconfig` does not expose.
+
+To detect the first case:
+
+- Dex Web would store a non-secret, provider-verified account identity in each
+  connection record, captured at authorization: the OAuth or OIDC `sub`, Slack
+  `team_id` and `user_id`, or a Google account `sub`. The planned Dex Web
+  `authorizationId` may serve this purpose if it changes only when the account
+  changes.
+  - Keep it across credential refresh and write-back.
+  - Change it only when re-authorization yields another account.
+- `projectconfig` would expose that identity, and `authMethodIds`, on
+  `ConnectionConfiguration`.
+- This server would then add both to the fingerprint.
+
+The fingerprint is conservative: settings re-saved with a new default field
+after a connector upgrade also change it, and a running key then settles
+`unknown`.
+
 ## Security
 
 - **Network.** The server listens on loopback only and has no token in this
@@ -424,20 +583,13 @@ Retention:
 
 ## Development
 
-Until sdkgo v0.35.0 is tagged, build against the repository's `sdkgo` with a
-workspace outside the checkout:
+The module requires released modules only and needs Go 1.25 or later:
 
 ```bash
-cat > /tmp/connectorsmcp.work <<EOF
-go 1.25.0
-use ($PWD/sdkgo $PWD/connectorsmcp)
-replace github.com/superdurable/dex-connectors-library/sdkgo v0.35.0 => $PWD/sdkgo
-EOF
-cd connectorsmcp && GOWORK=/tmp/connectorsmcp.work go test -race ./... && GOWORK=/tmp/connectorsmcp.work go vet ./...
+cd connectorsmcp && GOWORK=off go test -race ./... && GOWORK=off go vet ./...
 ```
 
-After the release, use `GOWORK=off go test -race ./...`. Never commit a
-`replace`.
+Never commit a `replace`.
 
 - **Crash tests.** `internal/server/crash_test.go` re-executes the test binary
   as server processes. Each one kills itself with `SIGKILL` at each protocol

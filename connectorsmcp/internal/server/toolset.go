@@ -24,8 +24,9 @@ import (
 // defaultAttemptTimeout bounds an attempt whose operation sets no Execute timeout.
 const defaultAttemptTimeout = 60 * time.Second
 
-// ToolSet is immutable; in-flight calls keep the set they started with.
+// ToolSet is immutable; keyed calls and read attempts re-resolve their tool from the current set.
 type ToolSet struct {
+	registry        *registry.Registry
 	projectIdentity string
 	tools           []*toolBinding
 	byName          map[string]*toolBinding
@@ -51,7 +52,9 @@ type toolBinding struct {
 	connectionName string
 	effect         sdkgo.AgentToolEffect
 	inputSchema    *jsonschema.Resolved
-	mcpTool        *mcp.Tool
+	// connectionTarget is connectionTargetDigest of the connection's configuration.
+	connectionTarget string
+	mcpTool          *mcp.Tool
 }
 
 // ToolNames returns the offered tool names, sorted.
@@ -113,6 +116,24 @@ func (toolSet *ToolSet) toolForRequest(request callstate.Request) *toolBinding {
 	return toolSet.byIdentity[toolIdentity{connectorID: request.ConnectorID, operationID: request.OperationID, connectionName: request.ConnectionName}]
 }
 
+// possibleToolNames returns the names a request's tool has with and without
+// connection qualification; false when this build cannot name it.
+func (toolSet *ToolSet) possibleToolNames(request callstate.Request) ([]string, bool) {
+	connector, isLinked := toolSet.registry.Connector(request.ConnectorID)
+	if !isLinked {
+		return nil, false
+	}
+	metadata, isExposed := connector.ExposedOperation(request.OperationID)
+	if !isExposed {
+		return nil, false
+	}
+	operationName := registry.OperationName(metadata)
+	return []string{
+		toolName(request.ConnectorID, request.ConnectionName, operationName, false),
+		toolName(request.ConnectorID, request.ConnectionName, operationName, true),
+	}, true
+}
+
 // projectSnapshot is one load of the project configuration.
 type projectSnapshot struct {
 	// project is nil when no connections file exists yet or it failed to load.
@@ -136,7 +157,7 @@ type enabledConnection struct {
 }
 
 func (builder *toolSetBuilder) build(snapshot projectSnapshot, selection *ConnectionSelection) *ToolSet {
-	toolSet := &ToolSet{projectIdentity: snapshot.identity, warnings: slices.Clone(snapshot.warnings)}
+	toolSet := &ToolSet{registry: builder.registry, projectIdentity: snapshot.identity, warnings: slices.Clone(snapshot.warnings)}
 	toolSet.warnings = append(toolSet.warnings, selection.Warnings()...)
 	enabled, namingCounts := builder.enableConnections(snapshot, selection, toolSet)
 	var bindings []*toolBinding
@@ -217,6 +238,11 @@ func (builder *toolSetBuilder) bindConnection(project *projectconfig.LoadedProje
 	for _, unknown := range unknownTools {
 		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: tool %s is skipped: no exposed operation of %s has that name", label, unknown, connection.connector.ConnectorID))
 	}
+	connectionTarget, hasTarget := connectionTargetOf(project, connection.connector.ConnectorID, connection.connectionName)
+	if !hasTarget {
+		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s is skipped: it has no configuration", label))
+		return nil
+	}
 	tools, err := connection.connector.OpenAgentTools(project, connection.connectionName)
 	if err != nil {
 		builder.logger.Warn("connection cannot be opened", "connection", label, "error", err)
@@ -240,7 +266,7 @@ func (builder *toolSetBuilder) bindConnection(project *projectconfig.LoadedProje
 			toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: operation %s is bound to another connection and is skipped", label, metadata.Operation.OperationID))
 			continue
 		}
-		binding, err := newToolBinding(tool, metadata, connection, isQualified)
+		binding, err := newToolBinding(tool, metadata, connection, isQualified, connectionTarget)
 		if err != nil {
 			toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: operation %s is skipped: %v", label, metadata.Operation.OperationID, err))
 			continue
@@ -273,7 +299,7 @@ func resolveToolList(connector registry.LinkedConnector, tools []string) (map[st
 	return allowed, unknown
 }
 
-func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, connection enabledConnection, isQualified bool) (*toolBinding, error) {
+func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, connection enabledConnection, isQualified bool, connectionTarget string) (*toolBinding, error) {
 	var schemaObject map[string]any
 	if err := json.Unmarshal(metadata.InputSchema, &schemaObject); err != nil || schemaObject["type"] != "object" {
 		return nil, fmt.Errorf("its input schema is not a JSON Schema of type object")
@@ -302,13 +328,14 @@ func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, conn
 		meta[metaKeyApproval] = approvalRecommended
 	}
 	return &toolBinding{
-		name:           name,
-		tool:           tool,
-		metadata:       metadata,
-		connector:      connection.connector,
-		connectionName: connection.connectionName,
-		effect:         effect,
-		inputSchema:    resolved,
+		name:             name,
+		tool:             tool,
+		metadata:         metadata,
+		connector:        connection.connector,
+		connectionName:   connection.connectionName,
+		effect:           effect,
+		inputSchema:      resolved,
+		connectionTarget: connectionTarget,
 		mcpTool: &mcp.Tool{
 			Meta:        meta,
 			Name:        name,
@@ -318,6 +345,10 @@ func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, conn
 			Annotations: toolAnnotations(effect),
 		},
 	}, nil
+}
+
+func (binding *toolBinding) executionIdentity() executionIdentity {
+	return executionIdentity{connectorID: binding.connector.ConnectorID, connectionName: binding.connectionName, operationID: binding.metadata.Operation.OperationID}
 }
 
 func (binding *toolBinding) identity() toolIdentity {

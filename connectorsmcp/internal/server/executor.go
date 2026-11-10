@@ -29,6 +29,8 @@ import (
 type ProtocolPoint string
 
 const (
+	// ProtocolPointBeforeKeyLock is just before a keyed call waits for its key's lock.
+	ProtocolPointBeforeKeyLock ProtocolPoint = "before-key-lock"
 	// ProtocolPointBeforeRecordCreate is just before a new key's first record write.
 	ProtocolPointBeforeRecordCreate ProtocolPoint = "before-record-create"
 	// ProtocolPointAfterRecordCreate is after that write, before the attempt runs.
@@ -56,18 +58,20 @@ type toolCallExecutor struct {
 	config               executorConfig
 	logger               *slog.Logger
 	observeProtocolPoint func(point ProtocolPoint, operationID string)
-	isDraining           atomic.Bool
-	inflightCalls        sync.WaitGroup
+	// currentToolSet returns the tool set for the files as they are now.
+	currentToolSet func(context.Context) *ToolSet
+	isDraining     atomic.Bool
+	inflightCalls  sync.WaitGroup
 }
 
-func newToolCallExecutor(store *callstate.Store, clock Clock, config executorConfig, logger *slog.Logger, observeProtocolPoint func(ProtocolPoint, string)) *toolCallExecutor {
-	if store == nil || clock == nil || logger == nil {
-		panic("tool call executor requires a store, a clock, and a logger")
+func newToolCallExecutor(store *callstate.Store, clock Clock, config executorConfig, logger *slog.Logger, currentToolSet func(context.Context) *ToolSet, observeProtocolPoint func(ProtocolPoint, string)) *toolCallExecutor {
+	if store == nil || clock == nil || logger == nil || currentToolSet == nil {
+		panic("tool call executor requires a store, a clock, a logger, and the current tool set")
 	}
 	if observeProtocolPoint == nil {
 		observeProtocolPoint = func(ProtocolPoint, string) {}
 	}
-	return &toolCallExecutor{store: store, clock: clock, config: config, logger: logger, observeProtocolPoint: observeProtocolPoint}
+	return &toolCallExecutor{store: store, clock: clock, config: config, logger: logger, currentToolSet: currentToolSet, observeProtocolPoint: observeProtocolPoint}
 }
 
 // beginDrain makes new calls answer that the server is stopping.
@@ -95,6 +99,7 @@ type toolCall struct {
 	name      string
 	arguments json.RawMessage
 	binding   *toolBinding
+	expected  expectedIdentity
 	startedAt time.Time
 	stateKey  string
 	// knownEffect is the effect a failure answer must respect.
@@ -109,6 +114,21 @@ type callAnswer struct {
 	isReplayed bool
 }
 
+// recordIdentityMatch says whether a call is the one that first used its key.
+type recordIdentityMatch int
+
+const (
+	recordIdentityMatches recordIdentityMatch = iota + 1
+	recordIdentityDiffers
+	recordIdentityUndetermined
+)
+
+// connectionRetargetedReason settles a key whose connection was rebound.
+const connectionRetargetedReason = "the connection now points to a different target"
+
+// errRetryWindowPassed ends an attempt that would start at or after the retry window.
+var errRetryWindowPassed = errors.New("the retry window has passed")
+
 // callTool answers one tools/call. It never panics: a panic answers
 // unknown for a write and an interruption for a read.
 func (executor *toolCallExecutor) callTool(ctx context.Context, toolSet *ToolSet, params *mcp.CallToolParamsRaw) (result *mcp.CallToolResult, err error) {
@@ -116,7 +136,8 @@ func (executor *toolCallExecutor) callTool(ctx context.Context, toolSet *ToolSet
 	defer executor.inflightCalls.Done()
 	call := &toolCall{
 		executor: executor, toolSet: toolSet, name: params.Name, arguments: argumentsOrEmptyObject(params.Arguments),
-		binding: toolSet.toolByName(params.Name), startedAt: executor.clock.Now(), knownEffect: sdkgo.AgentToolEffectNonIdempotentWrite,
+		binding: toolSet.toolByName(params.Name), expected: expectedIdentityOf(params.Meta),
+		startedAt: executor.clock.Now(), knownEffect: sdkgo.AgentToolEffectNonIdempotentWrite,
 	}
 	if call.binding != nil {
 		call.knownEffect = call.binding.effect
@@ -143,15 +164,18 @@ func (answer callAnswer) toMCP() (*mcp.CallToolResult, error) {
 
 func (call *toolCall) run(ctx context.Context, meta mcp.Meta) callAnswer {
 	key, hasKey, keyProblem := idempotencyKeyOf(meta)
-	switch {
-	case keyProblem != "" && call.binding == nil:
+	if hasKey {
+		return call.runKeyed(ctx, key)
+	}
+	if call.binding == nil {
 		return callAnswer{err: unknownToolError(call.name)}
+	}
+	if err := call.expected.mismatchError(call.binding.executionIdentity()); err != nil {
+		return callAnswer{err: err}
+	}
+	switch {
 	case keyProblem != "":
 		return callAnswer{result: rejectedResult(keyProblem + "; nothing was sent")}
-	case hasKey:
-		return call.runKeyed(ctx, key)
-	case call.binding == nil:
-		return callAnswer{err: unknownToolError(call.name)}
 	case call.binding.effect != sdkgo.AgentToolEffectRead:
 		return callAnswer{result: rejectedResult("this tool changes data and needs _meta " + metaKeyIdempotencyKey + "; nothing was sent")}
 	default:
@@ -162,26 +186,60 @@ func (call *toolCall) run(ctx context.Context, meta mcp.Meta) callAnswer {
 // runKeyed reads the key's state first, so renamed or withdrawn tools still answer.
 func (call *toolCall) runKeyed(ctx context.Context, key string) callAnswer {
 	call.stateKey = callstate.StateKey(key)
+	call.executor.observeProtocolPoint(ProtocolPointBeforeKeyLock, call.operationIDForObservation())
 	lock, err := call.executor.store.Lock(ctx, call.stateKey)
 	if err != nil {
 		return call.answerLockFailure(ctx, key, err)
 	}
+	call.useCurrentToolSet(ctx)
 	record, isFound, readErr := lock.Read()
-	if readErr == nil && !isFound && call.binding != nil && call.binding.effect == sdkgo.AgentToolEffectRead {
+	if readErr == nil && !isFound {
+		return call.runWithoutRecord(ctx, lock, key)
+	}
+	defer call.releaseLock(lock)
+	if readErr != nil {
+		return call.answerUnreadableState(readErr)
+	}
+	recordIdentity := executionIdentity{connectorID: record.Request.ConnectorID, connectionName: record.Request.ConnectionName, operationID: record.Request.OperationID}
+	if err := call.expected.mismatchError(recordIdentity); err != nil {
+		return callAnswer{err: err}
+	}
+	return call.resumeRecordedCall(ctx, lock, &record, key)
+}
+
+// useCurrentToolSet replaces the request-entry tool set so a key's attempts use today's binding.
+func (call *toolCall) useCurrentToolSet(ctx context.Context) {
+	call.toolSet = call.executor.currentToolSet(context.WithoutCancel(ctx))
+	call.binding = call.toolSet.toolByName(call.name)
+	if call.binding != nil {
+		call.knownEffect = call.binding.effect
+	}
+}
+
+func (call *toolCall) operationIDForObservation() string {
+	if call.binding == nil {
+		return ""
+	}
+	return call.binding.metadata.Operation.OperationID
+}
+
+// runWithoutRecord starts a key's first call; reads release the lock and keep no state.
+func (call *toolCall) runWithoutRecord(ctx context.Context, lock *callstate.KeyLock, key string) callAnswer {
+	if call.binding == nil || call.binding.effect == sdkgo.AgentToolEffectRead {
 		call.releaseLock(lock)
+		if call.binding == nil {
+			return callAnswer{err: unknownToolError(call.name)}
+		}
+		if err := call.expected.mismatchError(call.binding.executionIdentity()); err != nil {
+			return callAnswer{err: err}
+		}
 		return call.runRead(ctx, key)
 	}
 	defer call.releaseLock(lock)
-	switch {
-	case readErr != nil:
-		return call.answerUnreadableState(readErr)
-	case isFound:
-		return call.resumeRecordedCall(ctx, lock, &record, key)
-	case call.binding == nil:
-		return callAnswer{err: unknownToolError(call.name)}
-	default:
-		return call.startWrite(ctx, lock, key)
+	if err := call.expected.mismatchError(call.binding.executionIdentity()); err != nil {
+		return callAnswer{err: err}
 	}
+	return call.startWrite(ctx, lock, key)
 }
 
 func (call *toolCall) releaseLock(lock *callstate.KeyLock) {
@@ -201,6 +259,9 @@ func (call *toolCall) answerLockFailure(ctx context.Context, key string, err err
 	case call.binding.effect == sdkgo.AgentToolEffectRead && isWaitCanceled:
 		return callAnswer{err: interruptedError("the call was canceled")}
 	case call.binding.effect == sdkgo.AgentToolEffectRead:
+		if mismatchErr := call.expected.mismatchError(call.binding.executionIdentity()); mismatchErr != nil {
+			return callAnswer{err: mismatchErr}
+		}
 		return call.runRead(ctx, key)
 	case call.binding.effect == sdkgo.AgentToolEffectIdempotentWrite:
 		return callAnswer{err: interruptedError("call state is busy or unavailable; nothing was sent by this call")}
@@ -222,13 +283,44 @@ func (call *toolCall) answerUnreadableState(err error) callAnswer {
 	return callAnswer{result: unknownResult("tool " + call.name + " may have taken effect: its call state cannot be read; do not repeat it")}
 }
 
-// resumeRecordedCall answers a key that already has a record, from the
-// record's own identity: replay, finalize, or the next attempt.
+// matchRecordIdentity compares full request identity; a vanished name matches only the record tool's names.
+func (call *toolCall) matchRecordIdentity(record *callstate.Record) recordIdentityMatch {
+	request := record.Request
+	if request.ArgumentsDigest != digestArguments(call.arguments) || request.ProjectIdentity != call.toolSet.projectIdentity {
+		return recordIdentityDiffers
+	}
+	if call.expected.isComplete() {
+		// runKeyed already matched all three expected keys against the record.
+		return recordIdentityMatches
+	}
+	if call.binding != nil {
+		if call.binding.identity() == (toolIdentity{connectorID: request.ConnectorID, operationID: request.OperationID, connectionName: request.ConnectionName}) {
+			return recordIdentityMatches
+		}
+		return recordIdentityDiffers
+	}
+	names, isNameable := call.toolSet.possibleToolNames(request)
+	if !isNameable {
+		return recordIdentityUndetermined
+	}
+	for _, name := range names {
+		if name == call.name {
+			return recordIdentityMatches
+		}
+	}
+	return recordIdentityDiffers
+}
+
+// resumeRecordedCall answers a key that already has a record: refuse another
+// call's key, replay, finalize, or run the next attempt.
 func (call *toolCall) resumeRecordedCall(ctx context.Context, lock *callstate.KeyLock, record *callstate.Record, key string) callAnswer {
 	call.knownEffect = record.Effect
 	call.attempt = record.Attempt
-	if record.Request.ArgumentsDigest != digestArguments(call.arguments) {
-		return callAnswer{result: rejectedResult("the idempotency key was already used for a different call; nothing was sent")}
+	switch call.matchRecordIdentity(record) {
+	case recordIdentityDiffers:
+		return callAnswer{result: rejectedResult("the idempotency key was used for a different call; nothing was sent")}
+	case recordIdentityUndetermined:
+		return callAnswer{result: unknownResult(recordLabel(record) + " may have taken effect: this server cannot tell whether this call first used the idempotency key; do not repeat it")}
 	}
 	if record.Status == callstate.StatusCompleted {
 		stored, err := decodeStoredResult(record.Result)
@@ -238,6 +330,8 @@ func (call *toolCall) resumeRecordedCall(ctx context.Context, lock *callstate.Ke
 		}
 		return callAnswer{result: stored, isReplayed: true}
 	}
+	// The last attempt's outcome was not observed, so it may have applied.
+	record.PossiblyApplied = record.PossiblyApplied || !isProvenNotSent(record)
 	recordBinding := call.toolSet.toolForRequest(record.Request)
 	effect := record.Effect
 	if recordBinding != nil && effectRank(recordBinding.effect) > effectRank(effect) {
@@ -254,6 +348,9 @@ func (call *toolCall) resumeRecordedCall(ctx context.Context, lock *callstate.Ke
 	}
 	if recordBinding == nil {
 		return call.finalizeFromCheckpoint(lock, record, "its tool is no longer offered for this connection")
+	}
+	if recordBinding.connectionTarget != record.ConnectionTarget {
+		return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
 	}
 	if limit := attemptLimit(retryPolicyOf(recordBinding.metadata), call.executor.config.maximumInlineAttempts); record.Attempt >= limit {
 		return call.finalizeFromCheckpoint(lock, record, fmt.Sprintf("it already made %d attempts", record.Attempt))
@@ -293,6 +390,7 @@ func (call *toolCall) startWrite(ctx context.Context, lock *callstate.KeyLock, k
 		RequestDigest:     request.Digest(),
 		Effect:            binding.effect,
 		CallID:            string(deriveCallID(localFlowID, key, binding.metadata.Operation)),
+		ConnectionTarget:  binding.connectionTarget,
 		FirstAttemptAt:    now,
 		RetryWindowEndsAt: now.Add(retryWindow(retryPolicyOf(binding.metadata), call.executor.config.callStateRetention)),
 		Attempt:           1,
@@ -319,11 +417,17 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 	for {
 		attempt, runErr := call.runWriteAttempt(ctx, lock, record, binding, key)
 		call.executor.observeProtocolPoint(ProtocolPointAfterAttempt, record.Request.OperationID)
+		if errors.Is(runErr, errRetryWindowPassed) {
+			return call.finalizeFromCheckpoint(lock, record, "its retry window has passed")
+		}
+		if attemptMayHaveApplied(attempt, runErr, record) {
+			record.PossiblyApplied = true
+		}
 		if runErr != nil {
 			return call.finishWriteAttemptWithoutBranch(lock, record, binding, attempt, runErr)
 		}
 		if attempt.Outcome != sdkgo.AgentToolAttemptRetry {
-			return call.finalize(lock, record, branchResult(binding, attempt, call.executor.config.maxResultBytes))
+			return call.finalize(lock, record, call.writeBranchResult(binding, attempt, record))
 		}
 		detail := retryDetail(attempt)
 		if record.Effect != sdkgo.AgentToolEffectIdempotentWrite {
@@ -337,12 +441,25 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 		if !now.Add(delay).Before(record.RetryWindowEndsAt) {
 			return call.finalizeFromCheckpoint(lock, record, "its retry window ends before the next attempt ("+detail+")")
 		}
+		call.persistObservation(lock, record)
 		if delay+binding.attemptTimeout() > call.remainingBudget(now) {
 			return callAnswer{err: interruptedError(binding.operationLabel() + " asked to retry and the call budget is spent; repeat the call with the same idempotency key")}
 		}
 		if !call.executor.clock.Sleep(ctx, delay) || call.executor.isDraining.Load() {
 			return callAnswer{err: interruptedError("the call ended while waiting to retry; repeat it with the same idempotency key")}
 		}
+		if !call.executor.clock.Now().Before(record.RetryWindowEndsAt) {
+			return call.finalizeFromCheckpoint(lock, record, "its retry window passed while it waited to retry ("+detail+")")
+		}
+		// The connections file may have changed during the delay.
+		current := call.executor.currentToolSet(context.WithoutCancel(ctx)).toolForRequest(record.Request)
+		if current == nil {
+			return call.finalizeFromCheckpoint(lock, record, "its tool is no longer offered for this connection")
+		}
+		if current.connectionTarget != record.ConnectionTarget {
+			return call.finalizeFromCheckpoint(lock, record, connectionRetargetedReason)
+		}
+		binding = current
 		record.Attempt++
 		call.attempt = record.Attempt
 		if err := lock.Write(record); err != nil {
@@ -352,10 +469,26 @@ func (call *toolCall) runWriteAttempts(ctx context.Context, lock *callstate.KeyL
 	}
 }
 
-// runWriteAttempt ignores client cancellation; the attempt timeout bounds it.
+// persistObservation stores PossiblyApplied before the call may stop; the
+// resume rule covers a failed write.
+func (call *toolCall) persistObservation(lock *callstate.KeyLock, record *callstate.Record) {
+	if !record.PossiblyApplied {
+		return
+	}
+	if err := lock.Write(record); err != nil {
+		call.executor.logger.Warn("call state observation was not stored", "key", call.keyPrefix(), "error", err)
+	}
+}
+
+// runWriteAttempt ignores client cancellation; its deadline is the attempt
+// timeout, never past the retry window.
 func (call *toolCall) runWriteAttempt(ctx context.Context, lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, key string) (sdkgo.AgentToolAttempt, error) {
+	timeout := min(binding.attemptTimeout(), record.RetryWindowEndsAt.Sub(call.executor.clock.Now()))
+	if timeout <= 0 {
+		return sdkgo.AgentToolAttempt{}, errRetryWindowPassed
+	}
 	checkpoints := &keyedCheckpointWriter{lock: lock, record: record, attempt: record.Attempt}
-	attemptContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), binding.attemptTimeout())
+	attemptContext, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer checkpoints.close()
 	defer cancel()
 	dexContext, err := attemptcontext.New(attemptContext, attemptcontext.Options{
@@ -368,8 +501,24 @@ func (call *toolCall) runWriteAttempt(ctx context.Context, lock *callstate.KeyLo
 	return binding.tool.RunAttempt(dexContext, call.arguments)
 }
 
+// writeBranchResult maps a write's branch; once any attempt may have applied,
+// a rejected branch becomes unknown.
+func (call *toolCall) writeBranchResult(binding *toolBinding, attempt sdkgo.AgentToolAttempt, record *callstate.Record) toolResult {
+	if attempt.Outcome == sdkgo.AgentToolAttemptRejected && record.PossiblyApplied {
+		detail := string(attempt.Branch)
+		if attempt.Failure != nil {
+			detail += ": " + string(attempt.Failure.Kind) + ": " + attempt.Failure.Message
+		}
+		return newErrorResult(resultUnknown, binding.operationLabel()+" may have taken effect: an earlier attempt may have applied it ("+detail+"); do not repeat it", attempt.Branch)
+	}
+	return branchResult(binding, attempt, call.executor.config.maxResultBytes)
+}
+
 func (call *toolCall) finishWriteAttemptWithoutBranch(lock *callstate.KeyLock, record *callstate.Record, binding *toolBinding, attempt sdkgo.AgentToolAttempt, runErr error) callAnswer {
 	if errors.Is(runErr, sdkgo.ErrAgentToolArgumentsInvalid) {
+		if record.PossiblyApplied {
+			return call.finalize(lock, record, unknownResult(binding.operationLabel()+" may have taken effect: an earlier attempt may have applied it; do not repeat it"))
+		}
 		return call.finalize(lock, record, rejectedResult("invalid arguments for "+call.name+": "+runErr.Error()))
 	}
 	call.executor.logger.Warn("attempt ended without a branch", "tool", call.name, "key", call.keyPrefix(), "attempt", record.Attempt, "error", runErr)
@@ -377,23 +526,24 @@ func (call *toolCall) finishWriteAttemptWithoutBranch(lock *callstate.KeyLock, r
 		if record.Effect == sdkgo.AgentToolEffectIdempotentWrite {
 			return callAnswer{err: interruptedError(binding.operationLabel() + " failed before it ran; repeat the call with the same idempotency key")}
 		}
-		return call.finalize(lock, record, rejectedResult(binding.operationLabel()+" failed before it ran; nothing was sent"))
+		if !record.PossiblyApplied {
+			return call.finalize(lock, record, rejectedResult(binding.operationLabel()+" failed before it ran; nothing was sent"))
+		}
 	}
 	return call.finalize(lock, record, unknownResult(binding.operationLabel()+" may have taken effect: the attempt ended without a result; do not repeat it"))
 }
 
 // finalizeRetryLater answers a non-idempotent write whose connector asked to retry.
 func (call *toolCall) finalizeRetryLater(lock *callstate.KeyLock, record *callstate.Record, detail string) callAnswer {
-	if isProvenNotSent(record) {
+	if isProvenNotSent(record) && !record.PossiblyApplied {
 		return call.finalize(lock, record, rejectedResult(recordLabel(record)+": not sent; the provider asked to retry later ("+detail+")"))
 	}
 	return call.finalize(lock, record, unknownResult(recordLabel(record)+" may have taken effect: the provider asked to retry later ("+detail+"); do not repeat it"))
 }
 
-// finalizeFromCheckpoint ends a call without another attempt: rejected only
-// when the record's attempt checkpointed notSent with no provider ID.
+// finalizeFromCheckpoint answers rejected only with notSent proof and nothing possibly applied.
 func (call *toolCall) finalizeFromCheckpoint(lock *callstate.KeyLock, record *callstate.Record, reason string) callAnswer {
-	if isProvenNotSent(record) {
+	if isProvenNotSent(record) && !record.PossiblyApplied {
 		return call.finalize(lock, record, rejectedResult(recordLabel(record)+" did not take effect: "+reason+"; nothing was sent"))
 	}
 	return call.finalize(lock, record, unknownResult(recordLabel(record)+" may have taken effect: "+reason+"; do not repeat it"))
@@ -410,13 +560,33 @@ func (call *toolCall) finalize(lock *callstate.KeyLock, record *callstate.Record
 	return callAnswer{result: result}
 }
 
+// attemptMayHaveApplied: unknown, an error after Invoke, or a Retry without notSent proof.
+func attemptMayHaveApplied(attempt sdkgo.AgentToolAttempt, runErr error, record *callstate.Record) bool {
+	if runErr != nil {
+		return attempt.HasInvokedOperation
+	}
+	switch attempt.Outcome {
+	case sdkgo.AgentToolAttemptSucceeded, sdkgo.AgentToolAttemptUnknown:
+		return true
+	case sdkgo.AgentToolAttemptRetry:
+		return attempt.HasInvokedOperation && !isProvenNotSent(record)
+	default:
+		return false
+	}
+}
+
 // runRead keeps no state and honors client cancellation.
 func (call *toolCall) runRead(ctx context.Context, stepExecutionID string) callAnswer {
-	binding := call.binding
 	call.knownEffect = sdkgo.AgentToolEffectRead
 	if call.executor.isDraining.Load() {
 		return callAnswer{err: interruptedError("the server is stopping")}
 	}
+	identity := call.binding.identity()
+	binding := call.currentBinding(ctx, identity)
+	if binding == nil {
+		return callAnswer{result: rejectedResult("tool " + call.name + " is no longer offered for this connection; nothing was read")}
+	}
+	connectionTarget := binding.connectionTarget
 	if problem := binding.validateArguments(call.arguments); problem != "" {
 		return callAnswer{result: rejectedResult("invalid arguments for " + call.name + ": " + problem)}
 	}
@@ -448,7 +618,16 @@ func (call *toolCall) runRead(ctx context.Context, stepExecutionID string) callA
 		if !call.executor.clock.Sleep(ctx, delay) {
 			return callAnswer{err: interruptedError("the call was canceled")}
 		}
+		// Each attempt runs from a current snapshot, and never on another target.
+		if binding = call.currentBinding(ctx, identity); binding == nil || binding.connectionTarget != connectionTarget {
+			return callAnswer{result: rejectedResult(call.name + " stopped: its connection was removed or now points to a different target; nothing was changed")}
+		}
 	}
+}
+
+// currentBinding resolves identity in the tool set as it is now, or nil.
+func (call *toolCall) currentBinding(ctx context.Context, identity toolIdentity) *toolBinding {
+	return call.executor.currentToolSet(context.WithoutCancel(ctx)).byIdentity[identity]
 }
 
 func (call *toolCall) runReadAttempt(ctx context.Context, binding *toolBinding, stepExecutionID string, attemptNumber int32, checkpoints *readCheckpoints) (sdkgo.AgentToolAttempt, error) {

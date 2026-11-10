@@ -47,6 +47,10 @@ CONNECTOR_SDK_DIRECTORY = Path("sdkgo")
 CONNECTOR_SDK_MODULE = f"github.com/{REPOSITORY}/sdkgo"
 # Vetted one at a time because integration-only and live-only files may declare the same helpers.
 GO_VET_BUILD_TAG_SETS = ("", "integration", "live")
+# A module whose build constraints name an operating system is also vetted, with the default tags, for each of these:
+# Linux and macOS select the Connector SDK's file-lock sources, and Windows selects their fallback.
+GO_VET_OPERATING_SYSTEMS = ("linux", "darwin", "windows")
+GO_BUILD_CONSTRAINT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*")
 GITHUB_REQUEST_ATTEMPTS = 5
 TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 # A rate limit whose reset is further away than this fails the request instead of waiting for it.
@@ -199,7 +203,7 @@ def dex_release_from_environment(requested_version: str) -> tuple[dict[str, obje
 
 
 def build_and_vet_with_dex_go_sdk(module_root: Path, version: str) -> None:
-    """Requires the Dex Go SDK version, then builds every package and vets each build-tag file set."""
+    """Requires the Dex Go SDK version, then builds every package and vets each build-constraint file set."""
     environment = standalone_go_environment()
     run(["go", "get", f"{DEX_GO_SDK_MODULE}@{version}"], module_root, environment)
     run(["go", "mod", "tidy"], module_root, environment)
@@ -209,7 +213,23 @@ def build_and_vet_with_dex_go_sdk(module_root: Path, version: str) -> None:
     run(["go", "build", "./..."], module_root, environment)
     for tags in GO_VET_BUILD_TAG_SETS:
         run(["go", "vet", f"-tags={tags}", "./..."], module_root, environment)
+    if build_constraint_names(module_root) & set(GO_VET_OPERATING_SYSTEMS):
+        for operating_system in GO_VET_OPERATING_SYSTEMS:
+            print(f"Vetting {module_path(module_root)} with GOOS={operating_system}", flush=True)
+            run(["go", "vet", "./..."], module_root, {**environment, "GOOS": operating_system})
     print(f"Latest Dex Go SDK: module={module_path(module_root)} version={version} build=ok vet=ok", flush=True)
+
+
+def build_constraint_names(directory: Path) -> set[str]:
+    """Returns every tag and operating system that a //go:build line below directory names."""
+    names: set[str] = set()
+    for source in directory.rglob("*.go"):
+        if "node_modules" in source.parts:
+            continue
+        for line in source.read_text(encoding="utf-8").splitlines():
+            if line.startswith("//go:build "):
+                names.update(GO_BUILD_CONSTRAINT_NAME.findall(line.removeprefix("//go:build ")))
+    return names
 
 
 def standalone_go_environment() -> dict[str, str]:

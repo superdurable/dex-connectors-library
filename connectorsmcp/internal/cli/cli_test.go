@@ -202,21 +202,31 @@ func TestServeReportsTheSelectionDigestAndWarnings(t *testing.T) {
 
 func TestServeUsageErrors(t *testing.T) {
 	fixture := newCLIFixture(t)
-	cases := map[string][]string{
-		"non-loopback listen":  {"--listen", "0.0.0.0:8803"},
-		"both selection forms": {"--connection", "example-notes/work", "--connections-config", "x.json"},
-		"malformed connection": {"--connection", "example-notes"},
-		"short retention":      {"--call-state-retention", "1h"},
-		"unknown log format":   {"--log-format", "xml"},
+	emptyToolsConfig := filepath.Join(fixture.home, "empty-tools.json")
+	require.NoError(t, os.WriteFile(emptyToolsConfig, []byte(`{"schemaVersion":"dex-connectors-mcp/connections-config/v1","connections":[{"connection":"example-notes/work","tools":[]}]}`), 0o600))
+	trailingConfig := filepath.Join(fixture.home, "trailing.json")
+	require.NoError(t, os.WriteFile(trailingConfig, []byte(`{"schemaVersion":"dex-connectors-mcp/connections-config/v1","connections":[]} {}`), 0o600))
+	cases := map[string]struct {
+		args        []string
+		messagePart string
+	}{
+		"non-loopback listen":       {[]string{"--listen", "0.0.0.0:8803"}, "loopback"},
+		"both selection forms":      {[]string{"--connection", "example-notes/work", "--connections-config", "x.json"}, "mutually exclusive"},
+		"malformed connection":      {[]string{"--connection", "example-notes"}, "example-notes"},
+		"short retention":           {[]string{"--call-state-retention", "1h"}, "retention"},
+		"unknown log format":        {[]string{"--log-format", "xml"}, "log-format"},
+		"empty flag tool list":      {[]string{"--connection", "example-notes/work="}, "example-notes/work="},
+		"empty config tool list":    {[]string{"--connections-config", emptyToolsConfig}, "connection example-notes/work lists no tools"},
+		"config with trailing data": {[]string{"--connections-config", trailingConfig}, "data after its JSON document"},
 	}
-	for name, extraArgs := range cases {
-		args := append([]string{"serve", "--output", "json", "--state-dir", fixture.stateDirectory, "--connections-file", fixture.connectionsFile}, extraArgs...)
+	for name, testCase := range cases {
+		args := append([]string{"serve", "--output", "json", "--state-dir", fixture.stateDirectory, "--connections-file", fixture.connectionsFile}, testCase.args...)
 		exitCode, stdout, _ := fixture.runCommand(args...)
 		require.Equal(t, exitCodeUsage, exitCode, name)
 		var report map[string]string
 		require.NoError(t, json.Unmarshal([]byte(stdout), &report), name)
 		require.Equal(t, "error", report["type"], name)
-		require.NotEmpty(t, report["message"], name)
+		require.Contains(t, report["message"], testCase.messagePart, name)
 	}
 }
 

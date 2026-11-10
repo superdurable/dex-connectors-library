@@ -10,11 +10,11 @@ spec:
   provider: hacker-news
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       operations: [listStoryIDs, getItem]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-hackernews'
       operations: [listStoryIDs, getItem]
       triggers: []
@@ -51,6 +51,12 @@ spec:
       description: Read a bounded snapshot of the top, best, new, Ask HN, or Show HN feed in provider order.
       idempotency: none
       authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. providerRejected follows a definite non-200 refusal and defect local
+        # validation before the request is sent. invalidResponse is a provider malfunction the model cannot fix.
+        branches: {providerRejected: rejected, defect: rejected}
+        description: List current Hacker News story IDs in feed order. Choose feed top, best, new, ask (Ask HN), or show (Show HN), and limit from 1 to 500. Read each returned ID as a Hacker News item for its title and links.
       branches:
         - {id: listed, goName: Listed, description: The feed snapshot was read.}
         - {id: providerRejected, goName: ProviderRejected, description: Hacker News rejected the request., optional: true}
@@ -78,6 +84,12 @@ spec:
       description: Read one public story or comment, its child IDs, and its direct Hacker News link.
       idempotency: none
       authorization: none
+      agent:
+        exposed: true
+        # A read changes nothing. notFound follows a 404 or a null, deleted, or dead item; providerRejected
+        # a definite non-200 refusal; defect a non-positive ID before sending. invalidResponse stays unlisted.
+        branches: {notFound: rejected, providerRejected: rejected, defect: rejected}
+        description: Read one public Hacker News story, comment, job, or poll by its positive item ID. Returns title, author, score, source URL, discussion URL, text as untrusted HTML, and child comment IDs to read next.
       branches:
         - {id: found, goName: Found, description: The public item was read.}
         - {id: notFound, goName: NotFound, description: "The item is missing, deleted, or dead.", optional: true}
