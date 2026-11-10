@@ -478,7 +478,7 @@ class ComponentReleaseTest(unittest.TestCase):
             "factories": [],
         }), encoding="utf-8")
         pyproject = python_package / "pyproject.toml"
-        pyproject.write_text('[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\ndependencies = ["dex-connectors-sdk>=0.1.0"]\n', encoding="utf-8")
+        pyproject.write_text('[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\ndependencies = ["dex-connectors-sdk==0.1.0"]\n', encoding="utf-8")
         lookup = mock.Mock(spec=release.DependencyReleaseLookup)
         lookup.has_tag.return_value = True
         lookup.is_tag_reachable_from_main.return_value = True
@@ -499,6 +499,70 @@ class ComponentReleaseTest(unittest.TestCase):
         (manifest_directory / "dex-connector.json").rename(wrong_directory / "dex-connector.json")
         with self.assertRaisesRegex(ValueError, "must contain generated"):
             release.validate_language_connector_release(python_package, "python", lookup)
+
+    def test_python_sdk_requirement_accepts_floor_and_legacy_exact_pin_only(self) -> None:
+        self.assertEqual(release.parse_python_sdk_requirement("p", ["dex-connectors-sdk>=0.7.0,<1", "httpx>=0.27"]),
+                         release.PythonSDKRequirement("0.7.0", is_floor=True))
+        self.assertEqual(release.parse_python_sdk_requirement("p", ["dex-connectors-sdk==0.1.0"]),
+                         release.PythonSDKRequirement("0.1.0", is_floor=False))
+        for dependencies in (
+            ["dex-connectors-sdk>=0.7.0"],
+            ["dex-connectors-sdk>=0.7.0,<2"],
+            ["dex-connectors-sdk>=0.7.0,<1.0"],
+            ["dex-connectors-sdk>=0.7.0, <1"],
+            ["dex-connectors-sdk >=0.7.0,<1"],
+            ["dex-connectors-sdk>0.7.0,<1"],
+            ["dex-connectors-sdk~=0.7"],
+            ["dex-connectors-sdk>=0.8.0rc1,<1"],
+            ["dex-connectors-sdk==0.8.0rc1"],
+            ["dex-connectors-sdk>=1.0.0,<1"],
+            ["dex-connectors-sdk>=0.07.0,<1"],
+            ["dex-connectors-sdk>=0.7.0,<1; python_version >= '3.11'"],
+            ["dex-connectors-sdk[extra]>=0.7.0,<1"],
+            ["dex_connectors_sdk>=0.7.0,<1"],
+            ["Dex.Connectors-SDK==0.7.0"],
+            ["dex-connectors-sdk @ file:///sdkpython"],
+            ["dex-connectors-sdk>=0.7.0,<1", "dex-connectors-sdk==0.7.0"],
+            ["dex-connectors-sdk-extras==0.7.0"],
+            [],
+        ):
+            with self.subTest(dependencies=dependencies):
+                with self.assertRaisesRegex(ValueError, "must require dex-connectors-sdk"):
+                    release.parse_python_sdk_requirement("p", dependencies)
+
+    @mock.patch.object(release, "read_declared_language_capabilities", return_value=(set(), set()))
+    def test_python_floor_requirement_requires_uv_lock_at_the_floor(self, _capabilities: mock.Mock) -> None:
+        package = self.repository / "connectors/newsapi/python"
+        package.mkdir(parents=True)
+        (package.parent / "connector.yaml").write_text("metadata:\n  version: v0.23.0\n", encoding="utf-8")
+        (package / "pyproject.toml").write_text(
+            '[project]\nname = "dex-connector-newsapi"\nversion = "0.2.0"\n'
+            'dependencies = ["dex-connectors-sdk>=0.7.0,<1"]\n[dependency-groups]\ndev = ["pytest>=8"]\n', encoding="utf-8")
+        connector_manifest = release.language_connector_manifest_path(package, "python")
+        connector_manifest.parent.mkdir(parents=True)
+        connector_manifest.write_text(json.dumps({
+            "releaseTag": "connectors/newsapi/go/v0.23.0",
+            "package": {"ecosystem": "pypi", "name": "dex-connector-newsapi", "version": "0.2.0"},
+            "factories": [],
+        }), encoding="utf-8")
+        lookup = mock.Mock(spec=release.DependencyReleaseLookup)
+        lookup.has_tag.return_value = True
+        lookup.is_tag_reachable_from_main.return_value = True
+        lookup.release_asset_names.side_effect = lambda tag, allow_missing=False: (
+            frozenset({"language-release.json"}) if tag.startswith("sdkpython/") else
+            frozenset({"connector-release.complete"})
+        )
+        lookup.is_language_sdk_published.return_value = True
+
+        with self.assertRaisesRegex(ValueError, "must contain uv.lock"):
+            release.validate_language_package(str(package), "python", lookup)
+        lock = package / "uv.lock"
+        lock.write_text('version = 1\n[[package]]\nname = "dex-connectors-sdk"\nversion = "0.8.0"\n', encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, r"lock dex-connectors-sdk at its floor 0\.7\.0, found \['0\.8\.0'\]"):
+            release.validate_language_package(str(package), "python", lookup)
+        lock.write_text('version = 1\n[[package]]\nname = "dex-connectors-sdk"\nversion = "0.7.0"\n', encoding="utf-8")
+        self.assertEqual(release.validate_language_package(str(package), "python", lookup), "sdkpython/v0.7.0")
+        lookup.is_language_sdk_published.assert_called_with("python", "0.7.0")
 
     @mock.patch.object(release, "read_declared_language_capabilities", return_value=(set(), set()))
     def test_language_connector_requires_completed_go_release(self, _capabilities: mock.Mock) -> None:
@@ -542,7 +606,7 @@ class ComponentReleaseTest(unittest.TestCase):
                 if language == "python":
                     (package / "pyproject.toml").write_text(
                         '[project]\nname = "dex-connector-newsapi"\nversion = "0.1.0"\n'
-                        'dependencies = ["dex-connectors-sdk>=0.1.0"]\n', encoding="utf-8")
+                        'dependencies = ["dex-connectors-sdk==0.1.0"]\n', encoding="utf-8")
                     sdk_tag = "sdkpython/v0.1.0"
                     package_name = "dex-connector-newsapi"
                     ecosystem = "pypi"

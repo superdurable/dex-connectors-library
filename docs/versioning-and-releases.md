@@ -409,6 +409,23 @@ integrity check rejects.
 Connector language packages require a released SDK, with
 no local path, Git, file, workspace, or uv source override. CI and release
 builds verify the SDK tag and GitHub release before building the connector.
+
+A Python connector package lists `dex-connectors-sdk` exactly once, as a
+version floor written without spaces: `dex-connectors-sdk>=X.Y.Z,<1`. The
+floor `X.Y.Z` is the lowest released SDK the package is tested with and works
+with, so an application can install several connectors that share one newer
+SDK. The package's `uv.lock` must resolve the SDK at that floor; after
+changing the floor, run
+`uv lock --upgrade-package dex-connectors-sdk==X.Y.Z` in `python/`. The
+regular locked test run therefore proves the floor, and the
+[latest Python Connector SDK check](#latest-python-connector-sdk-check)
+proves the newest SDK source. Validation rejects an unbounded floor, any other
+upper bound or operator, a prerelease, an environment marker or extra, a floor
+of `1.0.0` or later, and a second SDK requirement. Packages released before
+floors keep a legacy exact pin, `dex-connectors-sdk==X.Y.Z`, which remains
+valid and needs no change. A connector pull request that already edits its
+Python package should move it to a floor; new packages use a floor. The SDK's
+own first `1.0.0` release needs a tooling change before packages can admit it.
 Local and PR language package checks accept a pending Go `releaseTag` only when
 it exactly matches the connector's current `metadata.version`. The release
 workflow still requires that Go tag to be reachable from `main` with
@@ -624,6 +641,28 @@ The check only compiles code. It needs no Dex Server or provider credentials
 and never edits the checkout. CI runs it for affected connectors on pull
 requests and pushes to `main`, and for every connector on the daily schedule.
 A failure names each module that does not build or vet with that Dex Go SDK.
+
+## Latest Python Connector SDK check
+
+`make test-python-connectors-latest-sdk` tests every selected Python connector
+package that declares an SDK floor against the current `sdkpython/` source. It
+builds one SDK wheel from `sdkpython/`, then for each package:
+
+1. runs `uv sync --locked` into a temporary environment, leaving the package's
+   `.venv` on its locked floor;
+2. replaces the locked SDK with the built wheel and confirms the installed
+   version matches `sdkpython/pyproject.toml`;
+3. runs `mypy --strict` on `src/` and `pytest` on `tests/`, including the
+   conformance replay.
+
+Packages with a legacy exact pin claim no newer SDK release and are skipped,
+as are all packages when the SDK source is `1.0.0` or later. The CI job
+`python-connectors-latest-sdk` checks affected connectors on pull requests and
+pushes to `main`. A change under `sdkpython/`, the daily schedule, and manual
+runs check every package, because an SDK change is what can break an unchanged
+connector. The `<1` bound promises that every `0.x` SDK release works with
+each floor package, so an `sdkpython` change must keep this check passing. A
+connector failure on a connector pull request is fixed in that pull request.
 
 ## Connector dependencies
 
