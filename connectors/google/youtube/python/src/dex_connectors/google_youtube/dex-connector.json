@@ -320,7 +320,7 @@
       "kind": "mutation",
       "operationId": "addPlaylistItem",
       "inputType": "AddPlaylistItemInput",
-      "description": "Add one video to the end of a YouTube playlist that the authorized account owns. Give the playlist ID and the 11-character video ID; a video already in the playlist is not added again.",
+      "description": "Add one video to the end of a YouTube playlist that the authorized account owns. Give the playlist ID and the 11-character video ID. It skips the insert when the playlist listing already shows the video, but that listing can lag behind a recent insert, so do not call again for the same video to retry.",
       "agent": {
         "exposed": true,
         "approval": "recommended",

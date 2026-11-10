@@ -337,7 +337,7 @@ spec:
         # after a possible earlier insert the read-back selects only added or uncertain. defect precedes any send.
         # invalidResponse can follow a 2xx insert, so the video may be in the playlist.
         branches: {notFound: rejected, quotaExhausted: rejected, providerRejected: rejected, invalidResponse: unknown, uncertain: unknown, defect: rejected}
-        description: Add one video to the end of a YouTube playlist that the authorized account owns. Give the playlist ID and the 11-character video ID; a video already in the playlist is not added again.
+        description: Add one video to the end of a YouTube playlist that the authorized account owns. Give the playlist ID and the 11-character video ID. It skips the insert when the playlist listing already shows the video, but that listing can lag behind a recent insert, so do not call again for the same video to retry.
       branches:
         - {id: added, goName: Added, description: "The playlist holds the video, added now or found already present."}
         - {id: notFound, goName: NotFound, description: No playlist the account can manage or no visible video has the ID., optional: true}
