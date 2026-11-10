@@ -47,6 +47,15 @@ Use the generated factories in [the runnable Flow](go/examples/daily-digest/flow
 connection for tests. `WithHTTPClient` supplies a transport for tests or
 application networking.
 
+## Agent tools
+
+Both Queries are exposed to agent hosts through the `agent` block in
+`connector.yaml`, which each language package carries in `dex-connector.json`.
+They are public reads, so neither asks for approval. Every optional branch except
+`invalidResponse` is classified `rejected` because a read changes nothing;
+`invalidResponse` is a provider malfunction the model cannot fix, so it stays
+unlisted and agent hosts record it as a failure.
+
 ## Mocks
 
 The generated `hackernewsmock` package supplies a public compiler story for
