@@ -5,7 +5,7 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.25.3
+  version: v0.26.0
 spec:
   provider: google
   languages:
@@ -288,7 +288,7 @@ spec:
           description: The message has no recipient, so no request is sent.
           failure: {kind: VALIDATION, message: At least one recipient is required.}
         - name: unavailable
-          description: Gmail is briefly unavailable before the message is sent.
+          description: Gmail answered 503 and Sent Mail found no match yet; the send may have been accepted, so later attempts only search Sent Mail and never POST again.
           retry: {failure: {kind: AVAILABILITY, message: Gmail is temporarily unavailable.}}
     - name: replyToMessage
       goName: ReplyToMessage

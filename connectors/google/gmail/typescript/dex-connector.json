@@ -1,6 +1,6 @@
 {
   "connectorId": "gmail",
-  "releaseTag": "connectors/google/gmail/go/v0.25.3",
+  "releaseTag": "connectors/google/gmail/go/v0.26.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-gmail",

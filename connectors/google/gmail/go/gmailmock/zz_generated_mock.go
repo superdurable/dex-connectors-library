@@ -184,7 +184,7 @@ func SendMessageNoRecipients() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Branch(gmail.SendMessageBranchDefect, value, &sdkgo.Failure{Kind: sdkgo.FailureValidation, Message: "At least one recipient is required."})
 }
 
-// SendMessageUnavailable is the manifest mock unavailable: Gmail is briefly unavailable before the message is sent.
+// SendMessageUnavailable is the manifest mock unavailable: Gmail answered 503 and Sent Mail found no match yet; the send may have been accepted, so later attempts only search Sent Mail and never POST again.
 func SendMessageUnavailable() connectormock.Case[gmail.SendMessageOutput] {
 	return connectormock.Retry[gmail.SendMessageOutput](sdkgo.Failure{Kind: sdkgo.FailureAvailability, Message: "Gmail is temporarily unavailable."}, time.Duration(0))
 }
