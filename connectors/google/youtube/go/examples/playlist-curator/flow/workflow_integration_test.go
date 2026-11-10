@@ -72,6 +72,21 @@ func TestPlaylistCuratorAddsOnceWithRealDex(t *testing.T) {
 		require.NotContains(t, string(encoded), integrationManageToken)
 	})
 
+	for _, test := range []struct{ name, playlistPrefix string }{
+		{"HTTP 500", "PLLagging"},
+		{"HTTP 503", "PLLaggingUnavailable"},
+	} {
+		t.Run("an ambiguous "+test.name+" insert with a lagging listing ends uncertain without a second insert", func(t *testing.T) {
+			playlistID := test.playlistPrefix + runID
+			flowID := "youtube-curator-lagging-" + strings.ToLower(strings.ReplaceAll(test.name, " ", "-")) + "-" + runID
+			result := harness.runFlow(t, ctx, flow, flowID, CurationRequest{Channel: integrationChannelID, Query: "release", PlaylistID: playlistID})
+			// The example wires only added, so the selected uncertain branch fails the Flow.
+			require.Equal(t, dex.FlowFailed, result.Status)
+			require.Contains(t, result.ErrorMessage, "uncertain")
+			require.Equal(t, 1, provider.insertsFor(playlistID))
+		})
+	}
+
 	t.Run("an unknown handle fails without changes", func(t *testing.T) {
 		playlistID := "PLmissing" + runID
 		result := harness.runFlow(t, ctx, flow, "youtube-curator-missing-"+runID, CurationRequest{Channel: "@missing", Query: "release", PlaylistID: playlistID})
@@ -99,7 +114,9 @@ func TestPlaylistCuratorAddsOnceWithRealDex(t *testing.T) {
 	})
 }
 
-// youtubeProvider is a stateful local YouTube Data API. Each playlist's first insert stores the item and answers HTTP 500.
+// youtubeProvider is a stateful local YouTube Data API. Each playlist's first insert stores the item and answers
+// HTTP 500, or HTTP 503 for a playlist ID containing "Unavailable". Listings of a playlist ID containing
+// "Lagging" never show stored items, as a lagging index would.
 type youtubeProvider struct {
 	*httptest.Server
 	mutex    sync.Mutex
@@ -156,7 +173,11 @@ func (provider *youtubeProvider) serveHTTP(response http.ResponseWriter, request
 	case "GET /playlistItems":
 		playlistID := query.Get("playlistId")
 		var matches []string
-		for position, videoID := range provider.items[playlistID] {
+		visibleItems := provider.items[playlistID]
+		if strings.Contains(playlistID, "Lagging") {
+			visibleItems = nil
+		}
+		for position, videoID := range visibleItems {
 			if query.Get("videoId") == "" || query.Get("videoId") == videoID {
 				matches = append(matches, playlistItemJSON(playlistID, position, videoID))
 			}
@@ -179,7 +200,11 @@ func (provider *youtubeProvider) serveHTTP(response http.ResponseWriter, request
 		provider.inserts[playlistID]++
 		provider.items[playlistID] = append(provider.items[playlistID], payload.Snippet.ResourceID.VideoID)
 		if provider.inserts[playlistID] == 1 {
-			writeProviderResponse(response, http.StatusInternalServerError, `{"error":{"errors":[{"reason":"backendError"}],"message":"SENTINEL"}}`)
+			status := http.StatusInternalServerError
+			if strings.Contains(playlistID, "Unavailable") {
+				status = http.StatusServiceUnavailable
+			}
+			writeProviderResponse(response, status, `{"error":{"errors":[{"reason":"backendError"}],"message":"SENTINEL"}}`)
 			return
 		}
 		writeProviderResponse(response, http.StatusOK, playlistItemJSON(playlistID, len(provider.items[playlistID])-1, payload.Snippet.ResourceID.VideoID))

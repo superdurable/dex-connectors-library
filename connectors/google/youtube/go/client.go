@@ -247,9 +247,9 @@ func (client *Client) exchange(call sdkgo.Call, operation string, request provid
 	return response, &classified
 }
 
-// exchangeFencedWrite sends a write once through its fence. Only a refusal that proves
-// YouTube did not act, such as 429, 503, or a connection that never opened, is an
-// unprocessed Retry; any other failure after the claim may have applied the write.
+// exchangeFencedWrite sends a write once through its fence. Only a rate-limit refusal or a
+// connection that never opened proves YouTube did not act, so only those are an unprocessed
+// Retry; any other failure after the claim, including HTTP 503, may have applied the write.
 func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, request providerRequest, objectID string, credential Credentials) (providerResponse, *providerOutcome) {
 	observation := &writeDispatchObservation{}
 	var response providerResponse
@@ -281,7 +281,7 @@ func (client *Client) exchangeFencedWrite(call sdkgo.Call, operation string, req
 	classified.receipt = receipt
 	if classified.disposition == outcomeRetry {
 		classified.disposition = outcomeWriteUnconfirmed
-		if classified.failure.Kind == sdkgo.FailureRateLimit || response.statusCode == http.StatusServiceUnavailable {
+		if classified.failure.Kind == sdkgo.FailureRateLimit {
 			classified.disposition = outcomeRetryUnprocessed
 		}
 	}

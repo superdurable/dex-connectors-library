@@ -104,6 +104,8 @@ DEX_FLOW_SERVICE_ADDRESS=127.0.0.1:8801 GOWORK=off go test -tags=integration ./e
 
 The real Dex suite covers an insert that answers HTTP 500 after storing the
 item, whose retry only reads the playlist back and finds the item instead of
-adding it twice, and asserts that reads
+adding it twice. It also covers HTTP 500 and 503 inserts whose playlist listing
+lags: the retry reads back, selects the unwired `uncertain` branch, and the Flow
+fails after exactly one insert. It asserts that reads
 send the read-only token and the insert sends the manage token, plus an unknown
 handle, no matching video, and invalid start input.

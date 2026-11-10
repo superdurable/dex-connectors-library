@@ -75,7 +75,7 @@ export class YouTubeClient {
 
   /**
    * Send once, resending after one refreshed 401, and classify the response. A fenced write retries as
-   * unprocessed only after 429, 503, or a connection that never opened; any other failure may have applied it.
+   * unprocessed only after a rate-limit refusal or a connection that never opened; any other failure, including 503, may have applied it.
    */
   private async sendAndClassify(call: Call, operation: string, url: string, initialCredentials: Credentials, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {
     let credentials = initialCredentials;
@@ -94,8 +94,7 @@ export class YouTubeClient {
     if (response.status >= 200 && response.status < 300) return response;
     const classified = classifyError(response, operation, this.now());
     if (!isFencedWrite || classified.disposition !== 'retry') throw classified;
-    const isUnprocessed = classified.kind === 'RATE_LIMIT' || response.status === 503;
-    throw new YouTubeExchangeError(isUnprocessed ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
+    throw new YouTubeExchangeError(classified.kind === 'RATE_LIMIT' ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
   }
 
   private async request(url: string, token: string, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {

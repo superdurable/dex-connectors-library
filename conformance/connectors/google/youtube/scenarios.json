@@ -2775,7 +2775,7 @@
         "heartbeat": {
           "attempt": 1,
           "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
-          "state": "canResend"
+          "state": "claimed"
         },
         "requestCount": 2,
         "retry": true,
@@ -4095,6 +4095,149 @@
         "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
         "state": "claimed"
       }
+    },
+    {
+      "attempts": 2,
+      "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "exchanges": [
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"error\": {\"code\": 503, \"errors\": [{\"reason\": \"backendError\"}]}}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "part": [
+              "snippet,contentDetails"
+            ]
+          },
+          "requestBody": {
+            "snippet": {
+              "playlistId": "PLexample123",
+              "resourceId": {
+                "kind": "youtube#video",
+                "videoId": "dQw4w9WgXcQ"
+              }
+            }
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
+          "body": "{\"pageInfo\": {\"totalResults\": 0}, \"items\": []}",
+          "headers": {
+            "X-Goog-Request-Id": "google-request"
+          },
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/youtube/v3/playlistItems",
+          "query": {
+            "maxResults": [
+              "1"
+            ],
+            "part": [
+              "snippet,contentDetails"
+            ],
+            "playlistId": [
+              "PLexample123"
+            ],
+            "videoId": [
+              "dQw4w9WgXcQ"
+            ]
+          },
+          "requestHeaders": {
+            "Accept": [
+              "application/json"
+            ],
+            "Authorization": [
+              "Bearer youtube-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "uncertain",
+        "failureKind": "TRANSPORT",
+        "output": {
+          "item": {
+            "addedAt": "0001-01-01T00:00:00Z",
+            "id": "",
+            "playlistId": "",
+            "position": 0,
+            "title": "",
+            "videoId": ""
+          },
+          "wasAlreadyPresent": false
+        },
+        "requestCount": 3,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": true
+      },
+      "idempotencyKey": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+      "input": {
+        "playlistId": "PLexample123",
+        "videoId": "dQw4w9WgXcQ"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 2,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "dbf06fa9-bbc5-529b-9f94-181dc26e11c1",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "addPlaylistItem-insert-unavailable-lagging-readback",
+      "operation": "addPlaylistItem"
     }
   ],
   "schemaVersion": 1

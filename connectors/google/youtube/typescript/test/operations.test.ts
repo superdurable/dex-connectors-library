@@ -4,6 +4,7 @@
 import { expect, it } from 'vitest';
 import { SecretString, StaticCredentialProvider, type Call } from '@superdurable/connectors-sdk';
 import { HeartbeatContext, loadScenarios, scenarioCall } from '../../../../../conformance/runners/typescript/connector_scenarios.js';
+import type { ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { YouTubeClient } from '../src/client.js';
 
 const connection = { provider: 'google', name: 'youtube' };
@@ -32,4 +33,34 @@ it('classifies a wrong-typed video statistic as invalidResponse', async () => {
   if (attempt.kind !== 'branch') return;
   expect(attempt.branch).toBe('invalidResponse');
   expect(attempt.failure?.kind).toBe('PROTOCOL');
+});
+
+it('keeps the insert claim after an ambiguous resend that follows a credential refresh', async () => {
+  const inserts: string[] = [];
+  let forcedRefreshes = 0;
+  const credentialFor = (token: string) => ({ ...credentials, authMethodId: 'google-oauth-manage', accessToken: new SecretString(token) });
+  const provider = {
+    resolve: async () => credentialFor('rejected-token'),
+    resolveWithRefresh: async () => credentialFor('rejected-token'),
+    resolveAfterRejection: async () => { forcedRefreshes++; return credentialFor('replacement-token'); },
+  };
+  const send = async (request: ProviderRequest) => {
+    if (request.method === 'GET') return { status: 200, headers: {}, body: new TextEncoder().encode('{"pageInfo":{"totalResults":0},"items":[]}') };
+    inserts.push(String(request.headers?.Authorization).replace('Bearer ', ''));
+    // The refreshed insert may have been applied before this server error.
+    return { status: inserts.length === 1 ? 401 : 500, headers: {}, body: new Uint8Array() };
+  };
+  const client = new YouTubeClient({ endpoint: 'http://127.0.0.1:42501/youtube/v3' }, provider, { send });
+  const scenario = recorded.find(candidate => candidate.operation === 'addPlaylistItem')!;
+  const context = new HeartbeatContext(undefined, undefined, 'youtube-refresh-resend');
+  const kinds: string[] = [];
+  for (const attempt of [1, 2, 3]) {
+    context.attempt = attempt;
+    const attemptCall = scenarioCall(scenario, connection, 'google-youtube', context, { reportProgress() {}, writeText() {}, hasProgressStream: () => false, hasTextStream: () => false }) as Call;
+    kinds.push((await client.addPlaylistItem().invoke(attemptCall, { playlistId: 'PLexample123', videoId: 'dQw4w9WgXcQ' })).kind);
+  }
+  expect(kinds).toEqual(['retry', 'uncertain', 'uncertain']);
+  expect(inserts).toEqual(['rejected-token', 'replacement-token']);
+  expect(forcedRefreshes).toBe(1);
+  expect(context.marker).toEqual({ callId: scenario.callId, attempt: 1, state: 'claimed' });
 });

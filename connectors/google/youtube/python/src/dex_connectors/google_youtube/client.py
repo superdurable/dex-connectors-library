@@ -411,9 +411,9 @@ class Client:
     ) -> tuple[bytes, Receipt, _Outcome | None]:
         """Send once, resending after one refreshed 401, and classify the response.
 
-        A fenced write retries as unprocessed only after a refusal that proves YouTube did not
-        act, such as 429, 503, or a connection that never opened; any other failure after the
-        claim may have applied the write.
+        A fenced write retries as unprocessed only after a rate-limit refusal or a connection
+        that never opened, which prove YouTube did not act; any other failure after the claim,
+        including HTTP 503, may have applied the write.
         """
         transport_disposition = "writeUnconfirmed" if is_fenced_write else "retry"
         for request_attempt in range(2):
@@ -553,8 +553,7 @@ class Client:
                 f"YouTube rejected the request (HTTP {status}{suffix})",
             )
         if disposition == "retry" and is_fenced_write:
-            is_unprocessed = kind == FailureKind.RATE_LIMIT or status == 503
-            disposition = "retryUnprocessed" if is_unprocessed else "writeUnconfirmed"
+            disposition = "retryUnprocessed" if kind == FailureKind.RATE_LIMIT else "writeUnconfirmed"
         failure = _failure(operation, kind, message)
         is_retry = disposition in ("retry", "retryUnprocessed", "writeUnconfirmed")
         return (

@@ -50,12 +50,13 @@ attempt of `AddPlaylistItem` lists the playlist filtered to the video and
 returns `added` with `wasAlreadyPresent: true` when the playlist already holds
 it. Otherwise it sends one insert through a single-dispatch fence
 (`execution.dispatchFence`, which requires sync durability). Only an insert
-that YouTube provably did not process, such as HTTP 429, HTTP 503, a
-rate-limit refusal, or a connection that never opened, may be sent again on a
-later attempt.
+that YouTube provably did not process, after HTTP 429, a `rateLimitExceeded`
+or `userRateLimitExceeded` refusal, or a connection that never opened, may be
+sent again on a later attempt.
 
 After any other failure that may have applied the insert, such as a timeout,
-HTTP 500, or a malformed or oversized 2xx response, the next attempt only
+HTTP 500 or 503 (Google documents `backendError` without saying the write did
+not happen), or a malformed or oversized 2xx response, the next attempt only
 lists the playlist. It returns `added` when the video is shown and `uncertain`
 when it is not, because the listing can lag behind the insert. Wire
 `uncertain` to a Step that checks the playlist before adding the video again.
