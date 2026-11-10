@@ -143,7 +143,9 @@ make test-dex-compat-latest-go-sdk
 ```
 
 It is accepted when every selected module selects that version, builds, and
-vets with no build tags and with the `integration` and `live` tags. Logs name the resolved version and each module that passed. CI runs it
+vets with no build tags and with the `integration` and `live` tags. A module
+whose build constraints name an operating system also vets with `GOOS` set to
+each of `linux`, `darwin` and `windows`. Logs name the resolved version and each module that passed. CI runs it
 for affected connectors on pull requests and `main`, and for the complete
 catalog on the daily schedule.
 
