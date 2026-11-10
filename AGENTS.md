@@ -227,6 +227,7 @@ Every implementation plan includes Tests, Documentation, and UI/UX. Use
   reachable old-path Go release, including v1 connectors such as Slack. The new
   import path forces opt-in; old tags remain history and receive no new releases.
 - Python and TypeScript SDK tags use `sdkpython/vX.Y.Z` and `sdkts/vX.Y.Z`. Their connector tags append `/python/vX.Y.Z` and `/typescript/vX.Y.Z` to the connector directory.
+- The Release workflow alone releases the Connectors MCP server: it tags `connectorsmcp/vX.Y.Z` on a release commit off `main` when the linked connector set or `connectorsmcp/` changes. `connectorsmcp/release.yaml` sets the series and lists withdrawn connectors.
 - Release each language SDK before connectors that require it. New npm packages use the CI token for first publish; existing packages use trusted publishing when configured.
 - Connector modules require an exact published Connector Go SDK release.
 - Dex Server is backward compatible with every earlier Dex SDK release. Pin no

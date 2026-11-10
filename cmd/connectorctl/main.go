@@ -35,7 +35,7 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: connectorctl <validate|language-capabilities|conformance-operations|catalog|release-matrix|release-candidate|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
+		return errors.New("usage: connectorctl <validate|language-capabilities|conformance-operations|catalog|release-matrix|release-candidate|connectors-mcp-inventory|test-matrix|generate|mocks|ui-artifact|release-artifact> [path ...]")
 	}
 	switch args[0] {
 	case "validate":
@@ -79,6 +79,8 @@ func run(args []string) error {
 		return releaseArtifact(args[1:])
 	case "release-candidate":
 		return releaseCandidateCommand(args[1:])
+	case "connectors-mcp-inventory":
+		return connectorsMCPInventoryCommand(args[1:])
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}

@@ -1,0 +1,6 @@
+# Release series of dex-connectors-mcp: each release takes the next patch in it.
+# A breaking launch contract change moves the series (the minor before v1).
+series: v0.1
+# Connector IDs removed on purpose. A release fails rather than drop an
+# included connector that is not listed here.
+withdrawnConnectors: []

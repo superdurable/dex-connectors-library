@@ -195,6 +195,16 @@ one component, and verifies released compatibility. The generated Pages
 catalog and directory site are published only after all requested releases
 succeed or when none are pending.
 
+The `release-connectors-mcp` job runs after the Go release shards in every
+Release run. It links each connector whose latest complete Go release offers
+generated agent tools, builds the server with a hold rule, and tags a release
+commit whose parent is `main`. The catalog job waits for it without requiring
+its success, then publishes `connectors-mcp/index.json` beside `catalog.json`
+from the releases that have `connectors-mcp-release.complete`. CI tests
+`connectorsmcp/` with Go 1.25 against the repository's `sdkgo` when either
+changes, without selecting connectors. See
+[Connectors MCP server releases](versioning-and-releases.md#connectors-mcp-server-releases).
+
 Compatibility jobs resolve the latest stable Dex CLI release and the latest
 stable Dex Go SDK on every run, so no checked-in file pins a Dex version. See
 [Dex versions](versioning-and-releases.md#dex-versions).

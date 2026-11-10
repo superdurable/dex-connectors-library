@@ -1,4 +1,4 @@
-.PHONY: check test test-common test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
+.PHONY: check test test-common test-connectors-mcp test-conformance test-connector-conformance test-connectors test-sdkpython test-sdkpython-integration test-sdkts test-python-connectors test-typescript-connectors catalog-check test-integration test-sdk-integration test-projectconfig-s3-integration test-connector-integration test-dex-compat-current test-dex-compat-released test-dex-compat-latest-go-sdk studio-bundle-theme react react-sdk react-connectors workspace githooks
 
 CONNECTOR_CATALOG ?= catalog.yaml
 CONNECTOR_SCOPE ?= all
@@ -19,12 +19,19 @@ test: test-common test-connectors catalog-check
 test-common:
 	cd sdkgo && GOWORK=off go test -race -count=1 ./...
 	cd sdkgo && GOWORK=off go vet ./...
-	python3 -m unittest script/release/component_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py
+	python3 -m unittest script/release/component_release_test.py script/release/connectors_mcp_release_test.py script/release/github_release_inventory_test.py script/release/language_publish_test.py script/release/npm_publish_test.py script/release/retitle_connector_releases_test.py script/dex_compatibility_test.py script/branch_off_main_policy_test.py script/agent_rules_test.py script/ci_workflow_test.py script/connector_conformance_test.py script/studio_bundle_theme_check_test.py script/verify_go_subdir_migration_test.py
 	npm ci --prefix connectors/stripe/typescript
 	connectors/stripe/typescript/node_modules/.bin/tsx --test conformance/runners/typescript/connector_scenarios.test.mjs
 	npm ci --prefix connectors/google/gmail/typescript
 	TS_CODEGEN_COMPILE=1 GOWORK=off go test -race ./...
 	GOWORK=off go vet ./...
+
+# The temporary workspace links this commit's sdkgo, so an SDK change is tested against the server
+# before release. The release workflow builds the server with GOWORK=off against released modules.
+test-connectors-mcp:
+	@workspace="$$(mktemp -d)"; \
+	printf 'go 1.25.0\n\nuse %s/connectorsmcp\n\nreplace github.com/superdurable/dex-connectors-library/sdkgo => %s/sdkgo\n' "$(CURDIR)" "$(CURDIR)" > "$$workspace/go.work"; \
+	cd connectorsmcp && GOWORK="$$workspace/go.work" go vet ./... && GOWORK="$$workspace/go.work" go test -race -count=1 ./...
 
 test-conformance:
 	cd sdkgo && GOWORK=off go test ./... -run '^TestConformance' -count=1

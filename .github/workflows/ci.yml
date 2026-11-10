@@ -23,6 +23,7 @@ jobs:
       sdkgo_integration: ${{ steps.plan.outputs.sdkgo_integration }}
       react: ${{ steps.plan.outputs.react }}
       site: ${{ steps.plan.outputs.site }}
+      connectors_mcp: ${{ steps.plan.outputs.connectors_mcp }}
     env:
       CONNECTOR_SCOPE: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && 'changed' || 'all' }}
       CONNECTOR_BASE: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
@@ -899,6 +900,24 @@ jobs:
       - run: npm run build
         working-directory: site
 
+  connectors-mcp:
+    needs: connector-plan
+    if: needs.connector-plan.outputs.connectors_mcp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          # The server's MCP SDK requires Go 1.25.
+          go-version: '1.25'
+          check-latest: false
+          token: ''
+          cache-dependency-path: |
+            connectorsmcp/go.sum
+            sdkgo/go.sum
+      - name: Test the Connectors MCP server against this commit's sdkgo
+        run: make test-connectors-mcp
+
   ci-summary:
     if: always()
     needs:
@@ -924,6 +943,7 @@ jobs:
       - dex-compat-canary-issue
       - react
       - site
+      - connectors-mcp
     runs-on: ubuntu-latest
     env:
       JOB_RESULTS: ${{ toJSON(needs) }}
@@ -934,6 +954,7 @@ jobs:
       RUN_SDKGO_INTEGRATION: ${{ needs.connector-plan.outputs.sdkgo_integration }}
       RUN_REACT: ${{ needs.connector-plan.outputs.react }}
       RUN_SITE: ${{ needs.connector-plan.outputs.site }}
+      RUN_CONNECTORS_MCP: ${{ needs.connector-plan.outputs.connectors_mcp }}
       EVENT_NAME: ${{ github.event_name }}
     steps:
       - name: Require every selected CI job to pass
@@ -955,6 +976,7 @@ jobs:
               'RUN_SDKGO_INTEGRATION': ('dex-integration-sdk',),
               'RUN_REACT': ('react',),
               'RUN_SITE': ('site',),
+              'RUN_CONNECTORS_MCP': ('connectors-mcp',),
           }.items():
               if os.environ[output] == 'true':
                   if event_name != 'schedule' or output not in ('RUN_SDKGO_INTEGRATION', 'RUN_REACT', 'RUN_SITE'):
