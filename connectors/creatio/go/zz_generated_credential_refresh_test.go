@@ -525,9 +525,10 @@ func manifestGrants() []manifestGrant {
 				{name: " with different reported scope", response: map[string]any{"access_token": "manifest-access-token-2", "expires_in": 3600, "scope": "manifest-ungranted-scope", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "", expectedExpiry: time.Duration(0), checkExpiry: false},
 				{name: " without expires_in", response: map[string]any{"access_token": "manifest-access-token-2", "token_type": "Bearer"}, credentials: map[string]string{}, updates: map[string]string{"access_token": "manifest-access-token-2"}, expectedError: "retryable", expectedExpiry: time.Duration(0), checkExpiry: false},
 			},
-			updates:              map[string]string{"access_token": "manifest-access-token-2"},
-			terminalErrorCodes:   []string{"invalid_client", "unauthorized_client"},
-			tokenExchangeTimeout: time.Duration(8000000000),
+			updates:                    map[string]string{"access_token": "manifest-access-token-2"},
+			terminalErrorCodes:         []string{"invalid_client", "unauthorized_client"},
+			tokenExchangeTimeout:       time.Duration(8000000000),
+			deadlineWithSuppliedClient: true,
 		},
 	}
 }
