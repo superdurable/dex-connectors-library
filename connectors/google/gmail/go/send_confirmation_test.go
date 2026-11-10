@@ -508,7 +508,7 @@ func TestGmailSlowSendFindsMailOnNextAttemptWithoutAnotherPost(t *testing.T) {
 	})
 }
 
-func TestGmailNextAttemptResendsAfterSearchMiss(t *testing.T) {
+func TestGmailServiceUnavailableSearchMissKeepsTheClaim(t *testing.T) {
 	forSendAndReply(t, func(t *testing.T, isReply bool) {
 		fake := newGmailSendFake(t, sendFakeBehavior{answerSendAttempt: func(response http.ResponseWriter, sendNumber int) {
 			if sendNumber == 1 {
@@ -522,16 +522,18 @@ func TestGmailNextAttemptResendsAfterSearchMiss(t *testing.T) {
 		first := runGmailSendAttempt(stepContext, client, isReply)
 		var retry *sdkgo.RetryError
 		require.ErrorAs(t, first.err, &retry)
+		require.Equal(t, sdkgo.FailureAvailability, retry.Failure.Kind)
 		stepContext.AdvanceAttempt()
+		var marker singledispatch.Marker
+		hasMarker, err := stepContext.GetLastHeartbeatValue(&marker)
+		require.NoError(t, err)
+		require.True(t, hasMarker)
+		require.Equal(t, singledispatch.StateClaimed, marker.State)
 		second := runGmailSendAttempt(stepContext, client, isReply)
-		require.NoError(t, second.err)
-		require.Equal(t, sendBranch(isReply, gmail.SendMessageBranchSent, gmail.ReplyToMessageBranchSent), second.branch)
+		require.ErrorAs(t, second.err, &retry)
 		sends, searches, _, _ := fake.counts()
-		require.Equal(t, 2, sends)
+		require.Equal(t, 1, sends)
 		require.Equal(t, 5, searches)
-		messageIDs := fake.messageIDs()
-		require.Len(t, messageIDs, 2)
-		require.Equal(t, messageIDs[0], messageIDs[1])
 	})
 }
 

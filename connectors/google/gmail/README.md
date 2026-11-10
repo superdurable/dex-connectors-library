@@ -1,10 +1,10 @@
 # Gmail Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.25.2`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/google/gmail/go@v0.25.3`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/google/gmail`.
 
-## TypeScript (v0.1.0)
+## TypeScript (v0.2.0)
 
 Install `@superdurable/connector-google-gmail` with `@superdurable/dex`. The [TypeScript README](typescript/README.md) covers OAuth and Workspace connection setup, the `gmail-inbox` static connection name, the runnable Worker and Client example, and real Dex tests. The TypeScript package implements `getMessage`, `sendMessage`, and `replyToMessage`; the Go connector owns Gmail Triggers. Its manifest-derived npm marker lets Dex CLI v1.28.0 render all three examples as strict TypeScript FDG 2.0 graphs.
 
@@ -164,15 +164,20 @@ terminal branch, including an early read-back and a provider rejection.
   returns `sent`; a failed read falls back to the Sent Mail search.
 - A 429 and a failure that a traced DNS, connect, or TLS error proves happened
   before a connection existed return Retry.
+- A 503 polls Sent Mail like any other 5xx. A match is `sent`; a miss returns
+  Retry and keeps the `claimed` checkpoint, so later attempts only read back.
 
 A send or reply records a `claimed` heartbeat before the POST. Synchronous
-Execute durability carries that checkpoint across regular retries. A 429, 503,
-or proven undispatched transport failure can checkpoint `canResend`, allowing
-one later POST after a Sent Mail search miss. Gmail may have accepted a 503
-response before its message is searchable; if that poll misses, `canResend`
-permits another POST and the recipient may receive a duplicate. An ambiguous
-dispatch stays `claimed`: later attempts only read back, and the Flow fails
-when retries are exhausted. Gmail does not dedupe by `Message-ID`; a lost
+Execute durability carries that checkpoint across regular retries. A 429 or
+proven undispatched transport failure can checkpoint `canResend`, allowing one
+later POST after a Sent Mail search miss. Gmail's
+[error guide](https://developers.google.com/workspace/gmail/api/guides/handle-errors)
+describes 5xx responses, 503 included, as errors raised while processing the
+request, and Sent Mail search can lag an accepted send, so a 503 never permits
+another POST. Any possibly accepted dispatch, including a 503, stays `claimed`:
+later attempts only read back, and the Flow fails when retries are exhausted.
+A 503 that Gmail did not process therefore fails the Flow after the retry
+budget instead of risking a duplicate email. Gmail does not dedupe by `Message-ID`; a lost
 heartbeat frame also cannot prove exactly-once delivery.
 The released v0.23.1 selected `uncertain` for an ambiguous send and did not
 search Sent Mail.

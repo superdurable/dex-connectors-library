@@ -1,10 +1,10 @@
 {
   "connectorId": "gmail",
-  "releaseTag": "connectors/google/gmail/go/v0.25.2",
+  "releaseTag": "connectors/google/gmail/go/v0.25.3",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-google-gmail",
-    "version": "0.1.2"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -12,7 +12,16 @@
       "kind": "query",
       "operationId": "getMessage",
       "inputType": "GetMessageInput",
-      "description": "Read one Gmail message with decoded text and HTML bodies.",
+      "description": "Read one Gmail message from the connected mailbox by its Gmail message ID, returning its sender, recipients, subject, threading headers, labels, and decoded text and HTML bodies.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "invalidResponse": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -66,7 +75,15 @@
       "kind": "mutation",
       "operationId": "sendMessage",
       "inputType": "SendMessageInput",
-      "description": "Send one MIME message from the authorized primary account.",
+      "description": "Send one new email from the connected Gmail account. Give the recipient email addresses, a one-line subject, and the plain-text body; an HTML body is optional.",
+      "agent": {
+        "exposed": true,
+        "approval": "recommended",
+        "branches": {
+          "defect": "unknown",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -130,7 +147,16 @@
       "kind": "mutation",
       "operationId": "replyToMessage",
       "inputType": "ReplyToMessageInput",
-      "description": "Reply to one Gmail message in its existing thread.",
+      "description": "Reply in its existing Gmail thread to one message in the connected mailbox, addressed to that message's Reply-To or sender. Give the Gmail message ID to answer and the plain-text reply body; an HTML body is optional.",
+      "agent": {
+        "exposed": true,
+        "approval": "recommended",
+        "branches": {
+          "defect": "unknown",
+          "invalidResponse": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

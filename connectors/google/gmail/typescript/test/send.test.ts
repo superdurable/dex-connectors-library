@@ -264,7 +264,7 @@ describe('Gmail send and reply classification', () => {
     expect(checkpoint.value).toMatchObject({ state: 'claimed', providerId: 'sent-after-limit', attempt: 2 });
   });
 
-  it('ignores an ID in a 503 body and resends after Sent Mail misses', async () => {
+  it('ignores an ID in a 503 body and never resends after Sent Mail misses', async () => {
     const checkpoint: { value?: unknown } = {};
     let posts = 0;
     let searches = 0;
@@ -275,11 +275,11 @@ describe('Gmail send and reply classification', () => {
     });
     expect(await operation.sendMessage(operationCall('sendMessage', 1, checkpoint), sendInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
-    expect(checkpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
     expect(checkpoint.value).not.toHaveProperty('providerId');
     expect(await operation.sendMessage(operationCall('sendMessage', 2, checkpoint), sendInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ branch: 'sent', value: { messageId: 'sent-after-503' } });
-    expect(posts).toBe(2);
+      .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(posts).toBe(1);
     expect(searches).toBe(5);
   });
 
@@ -409,7 +409,7 @@ describe('Gmail send and reply classification', () => {
     });
   });
 
-  it('records canResend after a 503 reply miss and posts again on the next attempt', async () => {
+  it('keeps the claim after a 503 reply miss and only searches on the next attempt', async () => {
     const checkpoint: { value?: unknown } = {};
     let posts = 0;
     let searches = 0;
@@ -423,11 +423,11 @@ describe('Gmail send and reply classification', () => {
     });
     expect(await operation.replyToMessage(operationCall('replyToMessage', 1, checkpoint), replyInput, new Date(Date.now() + 30_000)))
       .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
-    expect(checkpoint.value).toMatchObject({ state: 'canResend', attempt: 1 });
+    expect(checkpoint.value).toMatchObject({ state: 'claimed', attempt: 1 });
     expect(checkpoint.value).not.toHaveProperty('providerId');
     expect(await operation.replyToMessage(operationCall('replyToMessage', 2, checkpoint), replyInput, new Date(Date.now() + 30_000)))
-      .toMatchObject({ branch: 'sent', value: { messageId: 'reply-after-503' } });
-    expect(posts).toBe(2);
+      .toMatchObject({ kind: 'retry', failure: { kind: 'AVAILABILITY' } });
+    expect(posts).toBe(1);
     expect(searches).toBe(5);
   });
 

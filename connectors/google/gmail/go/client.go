@@ -402,11 +402,10 @@ func (client *Client) sendAndConfirm(
 			"Gmail temporarily rejected the "+operation.requestName)
 	case response.StatusCode == http.StatusServiceUnavailable:
 		closeGmailResponse(response)
-		// The contract retries a 503 whether the search misses or fails; only a match changes that.
+		// Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
 		if sent, isFound, _ := client.pollSentMessageByRFCMessageID(budget.attemptContext, call, credentials); isFound {
 			return client.sentAfterDispatch(call, budget, credentials, operation, message, sent, receipt, fence)
 		}
-		_ = fence.RecordCanResend() // A missed read-back permits retry after 503; a failed checkpoint preserves the claim.
 		return retryAfterGmailRefusal(response.Header, operation.operationID, sdkgo.FailureAvailability,
 			"Gmail "+operation.requestName+" is temporarily unavailable")
 	case response.StatusCode >= 500:

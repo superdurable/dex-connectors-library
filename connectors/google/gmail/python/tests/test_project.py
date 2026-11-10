@@ -76,13 +76,13 @@ async def test_project_provider_refreshes_and_persists_local_oauth_credentials(t
     async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http_client:
         connection = new_project_connection(project, "support", http_client=http_client)
         assert connection.reference == ConnectionRef("google", "support")
-        provider = connection.client
+        provider = connection._client
         assert provider is not None
         call = Call(
             CallID(str(uuid4())), ConnectionRef("google", "support"), OperationRef("gmail", "getMessage")
         )
         credential = await provider.resolve_credentials(call)
-        await connection.close()
+        await connection.aclose()
     assert provider.max_response_bytes == 2048
     assert credential.access_token.reveal() == "new-access"
     assert credential.refresh_token.reveal() == "new-refresh"
