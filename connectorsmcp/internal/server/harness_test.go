@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -189,15 +190,7 @@ func (result callResult) outcome() any { return result.Meta[metaKeyOutcome] }
 // callTool calls a tool over HTTP with MCP 2026-07-28; an empty key sends none.
 func (harness *testHarness) callTool(name string, arguments any, key string) rpcResponse {
 	harness.t.Helper()
-	meta := map[string]any{"io.modelcontextprotocol/protocolVersion": testProtocolVersion, "io.modelcontextprotocol/clientCapabilities": map[string]any{}}
-	if key != "" {
-		meta[metaKeyIdempotencyKey] = key
-	}
-	params := map[string]any{"name": name, "_meta": meta}
-	if arguments != nil {
-		params["arguments"] = arguments
-	}
-	return harness.postRPC(map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": params}, nil)
+	return harness.postRPC(toolCallBody(name, arguments, key), nil)
 }
 
 func (harness *testHarness) mustCallResult(name string, arguments any, key string) callResult {
@@ -224,10 +217,21 @@ func (harness *testHarness) listTools() []map[string]any {
 
 func (harness *testHarness) postRPC(body any, headers map[string]string) rpcResponse {
 	harness.t.Helper()
+	response, err := postJSONRPC(harness.httpServer.URL+MCPPath, body, headers)
+	require.NoError(harness.t, err)
+	return response
+}
+
+// postJSONRPC posts one MCP 2026-07-28 request and decodes its answer.
+func postJSONRPC(endpoint string, body any, headers map[string]string) (rpcResponse, error) {
 	encoded, err := json.Marshal(body)
-	require.NoError(harness.t, err)
-	request, err := http.NewRequest(http.MethodPost, harness.httpServer.URL+MCPPath, bytes.NewReader(encoded))
-	require.NoError(harness.t, err)
+	if err != nil {
+		return rpcResponse{}, err
+	}
+	request, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(encoded))
+	if err != nil {
+		return rpcResponse{}, err
+	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
 	request.Header.Set("MCP-Protocol-Version", testProtocolVersion)
@@ -244,14 +248,33 @@ func (harness *testHarness) postRPC(body any, headers map[string]string) rpcResp
 		request.Header.Set(name, value)
 	}
 	response, err := http.DefaultClient.Do(request)
-	require.NoError(harness.t, err)
+	if err != nil {
+		return rpcResponse{}, err
+	}
 	defer response.Body.Close()
 	contents, err := io.ReadAll(response.Body)
-	require.NoError(harness.t, err)
+	if err != nil {
+		return rpcResponse{}, err
+	}
 	decoded := rpcResponse{HTTPStatus: response.StatusCode}
 	// MCP 2026-07-28 answers -32602 with HTTP 400 and a JSON-RPC body.
 	if response.Header.Get("Content-Type") == "application/json" {
-		require.NoError(harness.t, json.Unmarshal(contents, &decoded), "body: %s", contents)
+		if err := json.Unmarshal(contents, &decoded); err != nil {
+			return rpcResponse{}, fmt.Errorf("decode %s: %w", contents, err)
+		}
 	}
-	return decoded
+	return decoded, nil
+}
+
+// toolCallBody is a tools/call request; an empty key sends none.
+func toolCallBody(name string, arguments any, key string) map[string]any {
+	meta := map[string]any{"io.modelcontextprotocol/protocolVersion": testProtocolVersion, "io.modelcontextprotocol/clientCapabilities": map[string]any{}}
+	if key != "" {
+		meta[metaKeyIdempotencyKey] = key
+	}
+	params := map[string]any{"name": name, "_meta": meta}
+	if arguments != nil {
+		params["arguments"] = arguments
+	}
+	return map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": params}
 }

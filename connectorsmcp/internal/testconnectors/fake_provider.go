@@ -28,6 +28,9 @@ type ScriptedResponse struct {
 	// IsHeld keeps the request open, after counting it, until the client goes
 	// away or Release is called; HeldRequests reports its arrival.
 	IsHeld bool
+	// IsHeldAfterEffect applies a postNote or saveRecord write first, then
+	// holds like IsHeld: the provider acted but its answer may be lost.
+	IsHeldAfterEffect bool
 }
 
 // FakeProvider is an HTTP provider for the notes connector. It counts every
@@ -199,6 +202,9 @@ func (provider *FakeProvider) servePostNote(response http.ResponseWriter, reques
 	noteID := "n-" + strconv.Itoa(len(provider.createdNotes)+1)
 	provider.createdNotes[noteID] = body.Text
 	provider.mu.Unlock()
+	if !provider.holdAfterEffect(request, "postNote") {
+		return
+	}
 	writeJSON(response, map[string]string{"id": noteID})
 }
 
@@ -243,6 +249,9 @@ func (provider *FakeProvider) serveSaveRecord(response http.ResponseWriter, requ
 	}
 	value := provider.recordsByKey[idempotencyKey]
 	provider.mu.Unlock()
+	if !provider.holdAfterEffect(request, "saveRecord") {
+		return
+	}
 	writeJSON(response, map[string]string{"value": value})
 }
 
@@ -256,6 +265,10 @@ func (provider *FakeProvider) answerScripted(response http.ResponseWriter, reque
 		return false
 	}
 	scripted := queue[0]
+	if scripted.IsHeldAfterEffect {
+		provider.mu.Unlock()
+		return false
+	}
 	provider.scripts[operationID] = queue[1:]
 	release := provider.release
 	provider.mu.Unlock()
@@ -275,6 +288,27 @@ func (provider *FakeProvider) answerScripted(response http.ResponseWriter, reque
 	}
 	http.Error(response, fmt.Sprintf("scripted status %d", scripted.Status), scripted.Status)
 	return true
+}
+
+// holdAfterEffect consumes a queued IsHeldAfterEffect response and holds the
+// request; it reports false when the client went away while held.
+func (provider *FakeProvider) holdAfterEffect(request *http.Request, operationID string) bool {
+	provider.mu.Lock()
+	queue := provider.scripts[operationID]
+	if len(queue) == 0 || !queue[0].IsHeldAfterEffect {
+		provider.mu.Unlock()
+		return true
+	}
+	provider.scripts[operationID] = queue[1:]
+	release := provider.release
+	provider.mu.Unlock()
+	provider.heldRequests <- operationID
+	select {
+	case <-request.Context().Done():
+		return false
+	case <-release:
+		return true
+	}
 }
 
 func writeJSON(response http.ResponseWriter, value any) {
