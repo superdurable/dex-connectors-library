@@ -126,6 +126,18 @@ class PlanReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(release.ConnectorsMCPReleaseError, "older v1.3.9; a release never downgrades"):
             plan_with(previous, connector("slack", "v1.3.9"))
 
+    def test_withdrawing_the_last_connector_releases_an_empty_server(self) -> None:
+        previous = lock("0.1.3", connector("slack", "v1.4.0"))
+        plan = plan_with(previous, connector("slack", "v1.4.0"), withdrawn=["slack"])
+        self.assertTrue(plan.is_release_required, "the index must stop advertising a withdrawn connector")
+        self.assertEqual(("connectorsmcp/v0.1.4", []), (plan.tag, plan.desired))
+        evaluated = []
+        result = release.select_release_set(plan, lambda connectors: evaluated.append(connectors) or True)
+        self.assertEqual(([[]], []), (evaluated, result.connectors))
+        self.assertTrue(release.is_release_required_after_hold(plan, result))
+        empty_previous = lock("0.1.4")
+        self.assertFalse(plan_with(empty_previous, withdrawn=["slack"], tree=OTHER_TREE).is_release_required)
+
     def test_no_release_without_a_connector(self) -> None:
         plan = plan_with(None)
         self.assertFalse(plan.is_release_required)
@@ -371,6 +383,30 @@ class PackageReleaseTests(unittest.TestCase):
             self.assertIn("| slack | `github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.4.0` | `slack_list_items` |", notes)
             self.assertIn("- reddit: v0.3.0 (not v0.4.0)", notes)
 
+    def test_packages_an_empty_server_after_the_last_withdrawal(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            module = repository / "connectorsmcp"
+            (module / release.REGISTRY_PATH).parent.mkdir(parents=True)
+            (repository / "LICENSE").write_text("MIT License\n")
+            (module / "README.md").write_text("# Dex Connectors MCP server\n")
+            (module / "go.mod").write_text("module github.com/superdurable/dex-connectors-library/connectorsmcp\n")
+            (module / release.REGISTRY_PATH).write_text(release.generate_registry_source([], format_source=release.gofmt_source))
+            run_git(repository, "init", "-q", "-b", "main")
+            run_git(repository, "add", "-A")
+            run_git(repository, "commit", "-q", "-m", "main")
+            # The registry equals main's, so the release commit is empty.
+            run_git(repository, "commit", "-q", "--allow-empty", "-m", "connectorsmcp: release v0.1.4")
+            run_git(repository, "tag", "connectorsmcp/v0.1.4")
+
+            lock_data = release.package_release(
+                repository=repository, module_directory=module, version="0.1.4", tag="connectorsmcp/v0.1.4",
+                output_directory=repository / "dist", work_directory=repository / "work",
+                build=release.ServerBuild(module, repository / "work", run=FakeGo()))
+
+            self.assertEqual([], lock_data["connectors"])
+            self.assertIn("links no connector release", (repository / "work" / "release-notes.md").read_text())
+
     def test_refuses_a_tag_that_does_not_name_the_checked_out_commit(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repository = Path(directory)
@@ -430,10 +466,18 @@ def github_release(version: str, release_lock: dict | None, *, complete: bool = 
 
 
 class ReleaseIndexTests(unittest.TestCase):
-    def build(self, releases: list[dict], locks: dict[str, object]) -> tuple[dict, list[str]]:
+    def build(self, releases: list[dict], locks: dict[str, object], archive_bytes: dict[str, bytes] | None = None,
+              fetched: list[str] | None = None) -> tuple[dict, list[str]]:
         warnings: list[str] = []
+        archive_bytes = archive_bytes or {}
+        fetched = fetched if fetched is not None else []
 
         def fetch(url: str) -> bytes:
+            fetched.append(url)
+            name = url.rsplit("/", 1)[-1]
+            if name.endswith(".tar.gz"):
+                _, version, goos, goarch = name.removesuffix(".tar.gz").split("_")
+                return archive_bytes.get(name, f"{version}-{goos}-{goarch}".encode())
             value = locks[url.rsplit("/", 2)[-2]]
             return value if isinstance(value, bytes) else json.dumps(value).encode()
 
@@ -469,8 +513,35 @@ class ReleaseIndexTests(unittest.TestCase):
                            "tools": ["gmail_list_items"]}], newest["connectors"])
         self.assertNotIn("checksumsUrl", json.dumps(index))
 
+    def test_archives_without_a_github_digest_are_downloaded_and_hashed(self) -> None:
+        good = lock("0.1.1", connector("slack", "v1.4.0"))
+        replaced = lock("0.1.2", connector("slack", "v1.4.0"))
+        newest = lock("0.1.3", connector("slack", "v1.4.0"))
+        all_digests = {asset["name"]: "sha256:" + asset["sha256"] for asset in newest["assets"].values()}
+        releases = [github_release("0.1.1", good), github_release("0.1.2", replaced), github_release("0.1.3", newest, digests=all_digests)]
+        fetched: list[str] = []
+        index, warnings = self.build(releases, {"v0.1.1": good, "v0.1.2": replaced, "v0.1.3": newest},
+                                     archive_bytes={release.archive_name("0.1.2", "darwin", "arm64"): b"replaced upload"}, fetched=fetched)
+
+        self.assertEqual(["0.1.3", "0.1.1"], [entry["version"] for entry in index["releases"]])
+        self.assertEqual(1, len(warnings))
+        self.assertIn("connectorsmcp/v0.1.2", warnings[0])
+        self.assertIn("not the locked", warnings[0])
+        self.assertFalse(any("v0.1.3/" in url and url.endswith(".tar.gz") for url in fetched),
+                         "a GitHub digest avoids downloading the archive")
+        self.assertEqual(4, sum("v0.1.1/" in url and url.endswith(".tar.gz") for url in fetched))
+
+    def test_the_newest_release_must_verify_or_the_index_fails(self) -> None:
+        older = lock("0.1.1", connector("slack", "v1.4.0"))
+        newest = lock("0.1.2", connector("slack", "v1.4.0"))
+        releases = [github_release("0.1.1", older), github_release("0.1.2", newest)]
+        corrupted = {release.archive_name("0.1.2", "linux", "amd64"): b"corrupted"}
+        with self.assertRaisesRegex(release.ConnectorsMCPReleaseError, "newest Connectors MCP release connectorsmcp/v0.1.2"):
+            self.build(releases, {"v0.1.1": older, "v0.1.2": newest}, archive_bytes=corrupted)
+
     def test_a_broken_release_is_left_out_with_a_warning(self) -> None:
         good = lock("0.1.1", connector("slack", "v1.4.0"))
+        newest = lock("0.1.6", connector("slack", "v1.4.0"))
         wrong_identity = lock("0.1.2", connector("slack", "v1.4.0"))
         wrong_identity["tag"] = "connectorsmcp/v0.1.9"
         digest_mismatch = lock("0.1.3", connector("slack", "v1.4.0"))
@@ -479,22 +550,24 @@ class ReleaseIndexTests(unittest.TestCase):
                     github_release("0.1.2", wrong_identity),
                     github_release("0.1.3", digest_mismatch, digests={release.archive_name("0.1.3", "linux", "amd64"): "sha256:" + "0" * 64}),
                     github_release("0.1.4", None),
-                    github_release("0.1.5", lock("0.1.5", connector("slack", "v1.4.0")))]
-        index, warnings = self.build(releases, {"v0.1.1": good, "v0.1.2": wrong_identity, "v0.1.3": digest_mismatch, "v0.1.5": b"{"})
+                    github_release("0.1.5", lock("0.1.5", connector("slack", "v1.4.0"))),
+                    github_release("0.1.6", newest)]
+        index, warnings = self.build(releases, {"v0.1.1": good, "v0.1.2": wrong_identity, "v0.1.3": digest_mismatch,
+                                                "v0.1.5": b"{", "v0.1.6": newest})
 
-        self.assertEqual(["0.1.1"], [entry["version"] for entry in index["releases"]])
+        self.assertEqual(["0.1.6", "0.1.1"], [entry["version"] for entry in index["releases"]])
         self.assertEqual(4, len(warnings))
-        self.assertIn("v0.1.2", warnings[0])
-        self.assertIn("differs from its lock", warnings[1])
-        self.assertIn("has no connectors-mcp-release.json", warnings[2])
-        self.assertIn("is not JSON", warnings[3])
+        self.assertIn("is not JSON", warnings[0])
+        self.assertIn("has no connectors-mcp-release.json", warnings[1])
+        self.assertIn("not the locked", warnings[2])
+        self.assertIn("v0.1.2", warnings[3])
 
-    def test_a_failed_download_fails_the_index_instead_of_leaving_a_release_out(self) -> None:
+    def test_a_failed_download_of_the_newest_release_fails_the_index(self) -> None:
         def fetch(url: str) -> bytes:
             raise release.ReleaseDownloadError(f"download {url} failed: timed out")
 
         releases = [github_release("0.1.1", lock("0.1.1", connector("slack", "v1.4.0")))]
-        with self.assertRaisesRegex(release.ReleaseDownloadError, "timed out"):
+        with self.assertRaisesRegex(release.ConnectorsMCPReleaseError, "cannot be indexed: .*timed out"):
             release.build_release_index(releases, fetch, lambda _message: None)
 
     def test_empty_index_when_nothing_is_released(self) -> None:

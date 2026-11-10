@@ -1055,8 +1055,9 @@ jobs:
             echo 'The release build changed files outside the registry and go.mod' >&2
             exit 1
           fi
+          # A server-only change or the last withdrawal leaves the generated files equal to main's.
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-            commit --quiet -m "connectorsmcp: release v${RELEASE_VERSION}"
+            commit --quiet --allow-empty -m "connectorsmcp: release v${RELEASE_VERSION}"
           git tag "${RELEASE_TAG}"
       - name: Check out the incomplete release for repair
         if: steps.state.outputs.repair_tag != ''
@@ -1180,14 +1181,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The catalog never waits on this index: a failed rebuild keeps the deployed copy, or omits it.
           index=dist/pages/connectors-mcp/index.json
+          mkdir -p "$(dirname "${index}")"
           if ! python3 script/release/connectors_mcp_release.py index --output "${index}"; then
-            # dexcli reads this index, so a failed rebuild republishes the deployed one instead of dropping it.
+            rm -f "${index}"
             echo '::warning::Connectors MCP index rebuild failed; republishing the deployed index'
-            mkdir -p "$(dirname "${index}")"
-            curl --fail --silent --show-error --location --retry 3 \
-              https://connectors.superdurable.io/connectors-mcp/index.json --output "${index}"
-            python3 -c 'import json,sys; index=json.load(open(sys.argv[1])); sys.exit(index.get("schemaVersion") != "dex-connectors-mcp/release-index/v1")' "${index}"
+            if curl --fail --silent --show-error --location --retry 3 \
+                https://connectors.superdurable.io/connectors-mcp/index.json --output "${index}.deployed" \
+              && python3 -c 'import json,sys; index=json.load(open(sys.argv[1])); sys.exit(index.get("schemaVersion") != "dex-connectors-mcp/release-index/v1")' "${index}.deployed"; then
+              mv "${index}.deployed" "${index}"
+            else
+              rm -f "${index}.deployed"
+              echo '::warning::No deployed Connectors MCP index is available; this catalog deploy omits it'
+            fi
           fi
       - name: Build directory site and preview card
         run: |

@@ -278,7 +278,8 @@ def plan_release(inventory: dict[str, object], previous_lock: dict[str, object] 
     ordered = [desired[connector_id] for connector_id in sorted(desired)]
     plan = ReleasePlan(is_release_required=False, reason="", version=None, tag=None, source_commit=source_commit,
                        server_source_tree=server_source_tree, previous=previous, desired=ordered)
-    if not ordered:
+    # Withdrawing the last linked connector still releases, so the index stops advertising it.
+    if not ordered and (previous is None or not previous.connectors):
         plan.reason = "no connector release offers agent tools"
         return plan
     if previous is not None and connector_versions(ordered) == connector_versions(previous.connectors.values()) \
@@ -335,10 +336,8 @@ def sorted_connectors(connectors: Iterable[LinkedConnector]) -> list[LinkedConne
 
 
 def is_release_required_after_hold(plan: ReleasePlan, release_set: ReleaseSet) -> bool:
-    if not release_set.connectors:
-        return False
     if plan.previous is None:
-        return True
+        return bool(release_set.connectors)
     return connector_versions(release_set.connectors) != connector_versions(plan.previous.connectors.values()) \
         or plan.previous.server_source_tree != plan.server_source_tree
 
@@ -594,8 +593,6 @@ def package_release(*, repository: Path, module_directory: Path, version: str, t
     server_source_tree = git_output(repository, "rev-parse", "HEAD^1:connectorsmcp")
     modified_at = int(git_output(repository, "show", "-s", "--format=%ct", "HEAD"))
     entries = read_registry_entries((module_directory / REGISTRY_PATH).read_text(encoding="utf-8"))
-    if not entries:
-        raise ConnectorsMCPReleaseError(f"{tag} links no connector")
     host_binary = build.build_binary(work_directory / "host" / BINARY_NAME, version)
     report = build.version_report(host_binary)
     tools_by_connector = {entry.get("connectorId"): entry.get("tools") for entry in report.get("connectors", [])
@@ -635,6 +632,9 @@ def package_release(*, repository: Path, module_directory: Path, version: str, t
 def release_notes(lock: dict[str, object], held: list[HeldConnector], excluded: list[LinkedConnector]) -> str:
     lines = [f"Dex Connectors MCP server {lock['version']} (launch contract {lock['launchContract']}) links these "
              "connector releases:", "", "| Connector | Go module | Tools |", "|---|---|---|"]
+    if not lock["connectors"]:
+        lines = [f"Dex Connectors MCP server {lock['version']} (launch contract {lock['launchContract']}) links no "
+                 "connector release; every linked connector was withdrawn."]
     for connector in lock["connectors"]:
         tools = ", ".join(f"`{tool}`" for tool in connector["tools"])
         lines.append(f"| {connector['connectorId']} | `{connector['module']}@{connector['version']}` | {tools} |")
@@ -653,33 +653,43 @@ def release_notes(lock: dict[str, object], held: list[HeldConnector], excluded: 
 
 def build_release_index(releases: list[dict[str, object]], fetch_bytes: Callable[[str], bytes],
                         warn: Callable[[str], None] = lambda message: print(f"::warning::{message}", flush=True)) -> dict[str, object]:
-    """Builds connectors-mcp/index.json from GitHub releases that carry connectors-mcp-release.complete."""
-    entries = []
+    """Builds connectors-mcp/index.json from GitHub releases that carry connectors-mcp-release.complete.
+
+    An older release that cannot be verified is left out with a warning; the newest one fails the index.
+    """
+    complete = []
     for release in releases:
         tag = release.get("tag_name")
         version = server_version_of_tag(tag) if isinstance(tag, str) else None
         if version is None or release.get("draft") or release.get("prerelease"):
             continue
         assets = {asset.get("name"): asset for asset in release.get("assets", []) if isinstance(asset, dict)}
-        if RELEASE_COMPLETE_ASSET not in assets:
-            continue
+        if RELEASE_COMPLETE_ASSET in assets:
+            complete.append((server_version_key(version), release, assets))
+    complete.sort(key=lambda item: item[0], reverse=True)
+    entries = []
+    for position, (_, release, assets) in enumerate(complete):
+        tag = release["tag_name"]
         try:
-            if RELEASE_LOCK_ASSET not in assets:
-                raise ConnectorsMCPReleaseError(f"{tag} has no {RELEASE_LOCK_ASSET}")
-            try:
-                lock = json.loads(fetch_bytes(str(assets[RELEASE_LOCK_ASSET]["browser_download_url"])))
-            except json.JSONDecodeError as error:
-                raise ConnectorsMCPReleaseError(f"{tag} {RELEASE_LOCK_ASSET} is not JSON: {error}") from error
-            validate_release_lock(lock, tag)
-            entries.append(release_index_entry(release, lock, assets))
-        except ConnectorsMCPReleaseError as error:
+            entries.append(release_index_entry(release, assets, fetch_bytes))
+        except (ConnectorsMCPReleaseError, ReleaseDownloadError) as error:
+            if position == 0:
+                raise ConnectorsMCPReleaseError(f"the newest Connectors MCP release {tag} cannot be indexed: {error}") from error
             warn(f"Connectors MCP release {tag} is left out of the index: {error}")
-    entries.sort(key=lambda entry: server_version_key(entry["version"]), reverse=True)
     return {"schemaVersion": INDEX_SCHEMA_VERSION, "releases": entries}
 
 
-def release_index_entry(release: dict[str, object], lock: dict[str, object], assets: dict[str, dict]) -> dict[str, object]:
+def release_index_entry(release: dict[str, object], assets: dict[str, dict],
+                        fetch_bytes: Callable[[str], bytes]) -> dict[str, object]:
+    """Returns one index entry after checking each archive against GitHub's digest or its downloaded bytes."""
     tag = str(release["tag_name"])
+    if RELEASE_LOCK_ASSET not in assets:
+        raise ConnectorsMCPReleaseError(f"{tag} has no {RELEASE_LOCK_ASSET}")
+    try:
+        lock = json.loads(fetch_bytes(str(assets[RELEASE_LOCK_ASSET]["browser_download_url"])))
+    except json.JSONDecodeError as error:
+        raise ConnectorsMCPReleaseError(f"{tag} {RELEASE_LOCK_ASSET} is not JSON: {error}") from error
+    validate_release_lock(lock, tag)
     published_at = release.get("published_at")
     if not isinstance(published_at, str) or not published_at:
         raise ConnectorsMCPReleaseError(f"{tag} has no publication time")
@@ -690,8 +700,12 @@ def release_index_entry(release: dict[str, object], lock: dict[str, object], ass
         if asset is None or not isinstance(asset.get("browser_download_url"), str):
             raise ConnectorsMCPReleaseError(f"{tag} has no {locked['name']} asset")
         digest = asset.get("digest")
-        if isinstance(digest, str) and digest and digest != f"sha256:{locked['sha256']}":
-            raise ConnectorsMCPReleaseError(f"{tag} {locked['name']} digest {digest} differs from its lock")
+        if isinstance(digest, str) and digest.startswith("sha256:"):
+            actual = digest.removeprefix("sha256:")
+        else:
+            actual = hashlib.sha256(fetch_bytes(asset["browser_download_url"])).hexdigest()
+        if actual != locked["sha256"]:
+            raise ConnectorsMCPReleaseError(f"{tag} {locked['name']} has SHA-256 {actual}, not the locked {locked['sha256']}")
         index_assets[platform_key(goos, goarch)] = {"url": asset["browser_download_url"], "sha256": locked["sha256"]}
     return {
         "version": lock["version"], "launchContract": lock["launchContract"], "tag": tag, "publishedAt": published_at,

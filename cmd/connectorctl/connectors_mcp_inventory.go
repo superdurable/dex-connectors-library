@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	connectorsMCPSDKModulePath = "github.com/superdurable/dex-connectors-library/sdkgo"
+	connectorsMCPLibraryModulePath = "github.com/superdurable/dex-connectors-library"
+	connectorsMCPSDKModulePath     = connectorsMCPLibraryModulePath + "/sdkgo"
 	// connectorsMCPMinimumSDKVersion is the first sdkgo release with the agent tool API.
 	connectorsMCPMinimumSDKVersion = "v0.35.0"
 	connectorsMCPAgentToolsFile    = "zz_generated_agent_tools.go"
@@ -236,6 +237,10 @@ func readConnectorsMCPCandidate(repositoryRoot, directory, tag string) (connecto
 	}
 	if module.Module == nil {
 		return connectorsMCPCandidate{}, false, fmt.Errorf("%s at %s has no module directive", goModPath, tag)
+	}
+	if expectedModulePath := connectorsMCPLibraryModulePath + "/" + directory + "/go"; module.Module.Mod.Path != expectedModulePath {
+		fmt.Fprintf(os.Stderr, "::error::%s declares module %s, not %s; it is not linked\n", tag, module.Module.Mod.Path, expectedModulePath)
+		return connectorsMCPCandidate{}, false, nil
 	}
 	sdkVersion := ""
 	for _, requirement := range module.Require {

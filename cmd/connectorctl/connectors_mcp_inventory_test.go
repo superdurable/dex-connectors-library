@@ -21,20 +21,24 @@ type connectorsMCPFixtureRelease struct {
 	hasAgentTools bool
 	exposed       []string
 	declined      []string
+	modulePath    string
 }
 
 func TestConnectorsMCPInventorySelectsLatestCompleteReleasesWithAgentTools(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	runConnectorsMCPFixtureGit(t, repositoryRoot, "init", "-q", "-b", "main")
-	directories := []string{"connectors/acme/chat", "connectors/acme/legacy", "connectors/acme/notes", "connectors/beta"}
+	directories := []string{"connectors/acme/chat", "connectors/acme/legacy", "connectors/acme/notes", "connectors/beta", "connectors/gamma"}
 	writeConnectorsMCPFixtureFile(t, repositoryRoot, "catalog.yaml", "apiVersion: connectors.dex.dev/catalog-source/v1alpha1\n"+
-		"kind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n  - connectors/acme/legacy\n  - connectors/acme/notes\n  - connectors/beta\n")
+		"kind: ConnectorCatalogSource\ndirectories:\n  - connectors/acme/chat\n  - connectors/acme/legacy\n  - connectors/acme/notes\n  - connectors/beta\n  - connectors/gamma\n")
 	writeConnectorsMCPFixtureFile(t, repositoryRoot, "connectorsmcp/release.yaml", "series: v0.1\nwithdrawnConnectors: [old-tool]\n")
 	commitConnectorsMCPFixtureReleases(t, repositoryRoot, "v0.1.0", []connectorsMCPFixtureRelease{
 		{directory: directories[0], connectorID: "acme-chat", sdkVersion: "v0.35.0", hasAgentTools: true, exposed: []string{"listStoryIDs"}, declined: []string{"deleteMessage"}},
 		{directory: directories[1], connectorID: "acme-legacy", sdkVersion: "v0.34.0", exposed: []string{"getItem"}},
 		{directory: directories[2], connectorID: "acme-notes", sdkVersion: "v0.35.0", declined: []string{"postNote"}},
 		{directory: directories[3], connectorID: "beta", sdkVersion: "v0.35.0", hasAgentTools: true, exposed: []string{"getItem"}},
+		// A release whose go.mod names another module path is never linked.
+		{directory: directories[4], connectorID: "gamma", sdkVersion: "v0.35.0", hasAgentTools: true, exposed: []string{"getItem"},
+			modulePath: "example.com/connectors/gamma/go"},
 	})
 	// A newer chat release is tagged but its release is incomplete, so v0.1.0 stays the latest complete one.
 	commitConnectorsMCPFixtureReleases(t, repositoryRoot, "v0.2.0", []connectorsMCPFixtureRelease{
@@ -54,6 +58,7 @@ func TestConnectorsMCPInventorySelectsLatestCompleteReleasesWithAgentTools(t *te
 		directories[2] + "/go/v0.1.0": {"connector-release.complete"},
 		directories[3] + "/go/v0.2.0": {"connector-release.complete"},
 		directories[3] + "/go/v0.3.0": {"connector-release.complete"},
+		directories[4] + "/go/v0.1.0": {"connector-release.complete"},
 	}
 
 	inventory, err := buildConnectorsMCPInventory(filepath.Join(repositoryRoot, "catalog.yaml"),
@@ -67,12 +72,12 @@ func TestConnectorsMCPInventorySelectsLatestCompleteReleasesWithAgentTools(t *te
 	require.Equal(t, []connectorsMCPCandidate{
 		{
 			ConnectorID: "acme-chat", DisplayName: "Acme Chat Display", Directory: directories[0],
-			Module: "example.com/" + directories[0] + "/go", Version: "v0.1.0", Tag: directories[0] + "/go/v0.1.0",
+			Module: connectorsMCPLibraryModulePath + "/" + directories[0] + "/go", Version: "v0.1.0", Tag: directories[0] + "/go/v0.1.0",
 			PackageName: "acmechat", Tools: []string{"acme-chat_list_story_ids"},
 		},
 		{
 			ConnectorID: "beta", DisplayName: "Beta Display", Directory: directories[3],
-			Module: "example.com/" + directories[3] + "/go", Version: "v0.2.0", Tag: directories[3] + "/go/v0.2.0",
+			Module: connectorsMCPLibraryModulePath + "/" + directories[3] + "/go", Version: "v0.2.0", Tag: directories[3] + "/go/v0.2.0",
 			PackageName: "beta", Tools: []string{"beta_get_item", "beta_put_item"},
 		},
 	}, inventory.Connectors)
@@ -134,8 +139,12 @@ func commitConnectorsMCPFixtureReleases(t *testing.T, repositoryRoot, version st
 		writeConnectorsMCPFixtureFile(t, repositoryRoot, release.directory+"/connector.yaml", fmt.Sprintf(
 			"metadata:\n  name: %s\n  displayName: %s\n  futureField: kept by newer manifests\nspec:\n  operations:\n%s",
 			release.connectorID, map[string]string{"acme-chat": "Acme Chat Display", "beta": "Beta Display"}[release.connectorID], operations))
+		modulePath := release.modulePath
+		if modulePath == "" {
+			modulePath = connectorsMCPLibraryModulePath + "/" + release.directory + "/go"
+		}
 		writeConnectorsMCPFixtureFile(t, repositoryRoot, release.directory+"/go/go.mod", fmt.Sprintf(
-			"module example.com/%s/go\n\ngo 1.24.0\n\nrequire github.com/superdurable/dex-connectors-library/sdkgo %s\n", release.directory, release.sdkVersion))
+			"module %s\n\ngo 1.24.0\n\nrequire github.com/superdurable/dex-connectors-library/sdkgo %s\n", modulePath, release.sdkVersion))
 		agentToolsPath := filepath.Join(repositoryRoot, release.directory, "go", connectorsMCPAgentToolsFile)
 		if release.hasAgentTools {
 			writeConnectorsMCPFixtureFile(t, repositoryRoot, release.directory+"/go/"+connectorsMCPAgentToolsFile,

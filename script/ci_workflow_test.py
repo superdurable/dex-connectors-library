@@ -2,7 +2,11 @@
 # SPDX-License-Identifier: MIT
 """Keep the CI summary dependent on every required workflow job and Dex test servers fast."""
 
+import os
 import re
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -78,6 +82,19 @@ def workflow_steps(job: str) -> list[str]:
     return re.split(r"(?m)^      - ", job.split("\n    steps:\n", 1)[1])[1:]
 
 
+def step_script(job: str, step_name: str) -> str:
+    """Returns the shell of one named step's run block."""
+    step = next(step for step in workflow_steps(job) if step.startswith(f"name: {step_name}\n"))
+    lines = step.split("        run: |\n", 1)[1].splitlines()
+    return "\n".join(line[10:] for line in lines if line.startswith("          ") or not line.strip()) + "\n"
+
+
+GIT_FIXTURE_ENVIRONMENT = {
+    "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.com", "GIT_COMMITTER_NAME": "Fixture",
+    "GIT_COMMITTER_EMAIL": "fixture@example.com", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+}
+
+
 class ConnectorsMCPWorkflowTest(unittest.TestCase):
     release_workflow = (WORKFLOW_DIRECTORY / "release-connector.yml").read_text(encoding="utf-8")
 
@@ -113,6 +130,68 @@ class ConnectorsMCPWorkflowTest(unittest.TestCase):
             if re.search(r"gh release (create|edit|upload)|push origin", step):
                 self.assertIn("inputs.dry_run != true", step, step.splitlines()[0])
         self.assertLess(names.index("Verify the published server module"), names.index("Mark the Connectors MCP release complete"))
+
+    def run_release_commit_step(self, change) -> tuple[subprocess.CompletedProcess, Path]:
+        script = step_script(workflow_job(self.release_workflow, "release-connectors-mcp"),
+                             "Create the release commit off main and tag it")
+        directory = Path(tempfile.mkdtemp())
+        environment = {**os.environ, **GIT_FIXTURE_ENVIRONMENT, "RELEASE_TAG": "connectorsmcp/v0.1.4", "RELEASE_VERSION": "0.1.4"}
+        registry = directory / "connectorsmcp/cmd/dex-connectors-mcp/zz_generated_registry.go"
+        registry.parent.mkdir(parents=True)
+        registry.write_text("package main\n")
+        for name in ("go.mod", "go.sum", "README.md"):
+            (directory / "connectorsmcp" / name).write_text(name + "\n")
+        for arguments in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-q", "-m", "main"]):
+            subprocess.run(["git", *arguments], cwd=directory, env=environment, check=True)
+        (directory / "main-commit").write_text(subprocess.run(["git", "rev-parse", "HEAD"], cwd=directory, env=environment,
+                                                              capture_output=True, text=True, check=True).stdout)
+        change(directory)
+        result = subprocess.run(["bash", "-e", "-c", script], cwd=directory, env=environment, capture_output=True, text=True)
+        return result, directory
+
+    def test_release_commit_succeeds_when_the_generated_files_equal_main(self) -> None:
+        result, directory = self.run_release_commit_step(lambda _directory: None)
+        self.assertEqual(0, result.returncode, result.stderr)
+        parent = subprocess.run(["git", "rev-parse", "connectorsmcp/v0.1.4^1"], cwd=directory,
+                                capture_output=True, text=True, check=True).stdout
+        self.assertEqual((directory / "main-commit").read_text(), parent, "the release commit's parent is main")
+
+    def test_release_commit_rejects_files_outside_the_registry_and_go_mod(self) -> None:
+        result, _ = self.run_release_commit_step(lambda directory: (directory / "connectorsmcp/README.md").write_text("changed\n"))
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("changed files outside the registry and go.mod", result.stderr)
+        accepted, _ = self.run_release_commit_step(lambda directory: (directory / "connectorsmcp/go.mod").write_text("changed\n"))
+        self.assertEqual(0, accepted.returncode, accepted.stderr)
+
+    def run_index_step(self, deployed_index: str | None) -> tuple[subprocess.CompletedProcess, Path]:
+        script = step_script(workflow_job(self.release_workflow, "build-catalog"), "Generate the Connectors MCP release index")
+        directory = Path(tempfile.mkdtemp())
+        stubs = directory / "bin"
+        stubs.mkdir()
+        # The index rebuild fails; python3 -c still validates the deployed index.
+        (stubs / "python3").write_text(f'#!/bin/sh\nif [ "$1" = -c ]; then exec {sys.executable} "$@"; fi\nexit 1\n')
+        curl = "#!/bin/sh\nexit 22\n" if deployed_index is None else (
+            '#!/bin/sh\nwhile [ "$1" != --output ]; do shift; done\n'
+            f"cat > \"$2\" <<'JSON'\n{deployed_index}\nJSON\n")
+        (stubs / "curl").write_text(curl)
+        for stub in stubs.iterdir():
+            stub.chmod(0o755)
+        environment = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}"}
+        result = subprocess.run(["bash", "-e", "-c", script], cwd=directory, env=environment, capture_output=True, text=True)
+        return result, directory / "dist/pages/connectors-mcp/index.json"
+
+    def test_failed_index_rebuild_never_blocks_the_catalog(self) -> None:
+        result, index = self.run_index_step(None)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("this catalog deploy omits it", result.stdout)
+        self.assertFalse(index.exists())
+        deployed = '{"schemaVersion": "dex-connectors-mcp/release-index/v1", "releases": []}'
+        result, index = self.run_index_step(deployed)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(deployed + "\n", index.read_text())
+        result, index = self.run_index_step('{"schemaVersion": "other"}')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse(index.exists(), "an unrecognized deployed index is not republished")
 
     def test_catalog_publishes_the_release_index_with_the_site(self) -> None:
         catalog = workflow_job(self.release_workflow, "build-catalog")

@@ -590,6 +590,8 @@ Release workflow itself and never by a version bump in a pull request.
 is reachable from `main` and has `connector-release.complete` meets all of
 these:
 
+- its `go.mod` declares the module
+  `github.com/superdurable/dex-connectors-library/<connector directory>/go`;
 - it requires `sdkgo` v0.35.0 or later;
 - it contains the generated `go/zz_generated_agent_tools.go`;
 - its `connector.yaml` has an `agent.exposed: true` operation.
@@ -634,7 +636,9 @@ a `version --output json` smoke check of the linked connectors and tools, and
 
 A linked connector whose latest complete release no longer offers agent tools
 also fails the job. To remove it on purpose, list its connector ID under
-`withdrawnConnectors` in `connectorsmcp/release.yaml`.
+`withdrawnConnectors` in `connectorsmcp/release.yaml`. A withdrawal always
+cuts a release, even one that links no connector, so the index stops offering
+the withdrawn connector. The release commit may then equal `main`'s files.
 
 **Assets.** Each release has, for `darwin` and `linux` on `arm64` and `amd64`:
 
@@ -656,8 +660,12 @@ There is no Windows archive until the call-state lock supports Windows.
 that have the complete marker, newest first. Each entry lists `version`,
 `launchContract`, `tag`, `publishedAt`, the archive `url` and `sha256` per
 platform, and the linked connectors with their tools. dexcli verifies an
-archive against the index `sha256` alone. If the index cannot be rebuilt, the
-catalog job republishes the deployed index.
+archive against the index `sha256` alone, so each archive must match the
+lock's SHA-256: by GitHub's asset digest, or by downloading and hashing it when
+GitHub has none. An older release that fails this check is left out with a
+warning; a failing newest release fails the rebuild. The index never blocks
+the catalog: after a failed rebuild the catalog job republishes the deployed
+index, or deploys without one when none is available.
 
 **Failures and repair.** The job runs after the Go release shards in every
 Release run, including runs that released nothing, so `GO_RELEASE_LIMIT`
