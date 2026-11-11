@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-google-youtube",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "YouTube Data API connector for Dex TypeScript Flows",
   "repository": {
     "type": "git",

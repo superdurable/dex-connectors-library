@@ -522,13 +522,12 @@ class SendService:
                 f"Gmail temporarily rejected the {outcome.request_name}",
             )
         if status == 503:
+            # Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
             found, _ = await self._poll_sent(execution, budget, credential)
             if found:
                 if execution.fence is not None and found.get("id"):
                     await execution.fence.record_provider_id(found["id"])
                 return await self._sent(execution, budget, credential, outcome, message, found, receipt)
-            if execution.fence is not None:
-                await execution.fence.record_can_resend()
             return _retry_after(
                 headers,
                 outcome,

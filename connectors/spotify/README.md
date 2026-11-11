@@ -2,13 +2,16 @@
 
 Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/spotify/go@v0.24.0`.
 
-The Python port is `dex-connector-spotify==0.1.0`. Its generated
+The Python port is `dex-connector-spotify==0.2.0`. Its generated
 `new_project_connection` binds the same `listPlaylistTracks` Query and Spotify
 OAuth refresh contract. See the [Python package](python/README.md) and
 [runnable Flow](python/examples/playlist_tracks/README.md). The Python package
 release version is independent of the Go module version.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/spotify`.
+
+The Python and TypeScript packages offer `listPlaylistTracks` to Dex agent
+hosts as a read-only tool.
 
 The Spotify connector lists one bounded page of tracks from a playlist through
 Spotify's official [Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)

@@ -1,9 +1,10 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-import { BodyTooLargeError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
+import { BodyTooLargeError, ProviderTransportError, isHeaderSafeCredential, parseRetryAfter, sendProviderRequest, validateBaseURL, type ProviderRequest, type ProviderResponse } from '@superdurable/connectors-sdk/providerhttp';
 import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oauthtoken';
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call } from '@superdurable/connectors-sdk';
+import { CheckpointError, DispatchNotAllowedError, InsufficientTimeError, type Fence } from '@superdurable/connectors-sdk/singledispatch';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
 import { SearchVideosOperation, GetVideoOperation, GetChannelOperation, ListPlaylistItemsOperation, AddPlaylistItemOperation } from './operations.js';
@@ -16,9 +17,12 @@ const defaultTimeoutMs = 25_000;
 export interface YouTubeClientOptions { send?: (request: ProviderRequest) => Promise<ProviderResponse>; now?: () => Date; }
 /** One provider exchange. */
 export interface YouTubeResponse { status: number; headers: ProviderResponse['headers']; body: Uint8Array; isTooLarge: boolean; }
-/** One classified provider exchange. */
+/**
+ * One classified provider exchange. A fenced write reports `retryUnprocessed` only when YouTube
+ * provably did not act on it, and `writeUnconfirmed` when it may have taken effect.
+ */
 export class YouTubeExchangeError extends Error {
-  constructor(readonly disposition: 'retry' | 'quotaExhausted' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect', readonly kind: string, message: string, readonly response?: YouTubeResponse, readonly retryAfterMs = 0) { super(message); }
+  constructor(readonly disposition: 'retry' | 'retryUnprocessed' | 'writeUnconfirmed' | 'quotaExhausted' | 'notFound' | 'providerRejected' | 'invalidResponse' | 'defect', readonly kind: string, message: string, readonly response?: YouTubeResponse, readonly retryAfterMs = 0) { super(message); }
 }
 
 /** YouTube API client using the generated OAuth refresh declaration. */
@@ -48,8 +52,8 @@ export class YouTubeClient {
   /** Bind the playlist query. */ listPlaylistItems() { return new ListPlaylistItemsOperation(this); }
   /** Bind the playlist mutation. */ addPlaylistItem() { return new AddPlaylistItemOperation(this); }
 
-  /** Send one request, resolving and refreshing credentials as the host requires. */
-  async exchange(call: Call, operation: string, path: string, query: Record<string, string>, requiresManage = false, body?: string): Promise<YouTubeResponse> {
+  /** Send one request, resolving and refreshing credentials as the host requires; a write fence sends it at most once. */
+  async exchange(call: Call, operation: string, path: string, query: Record<string, string>, requiresManage = false, body?: string, writeFence?: Fence): Promise<YouTubeResponse> {
     let credentials: Credentials;
     try { credentials = await resolveCredential(this.credentials, call, this.refreshDriver, call.context.cancellationSignal); }
     catch (error) {
@@ -60,31 +64,49 @@ export class YouTubeClient {
     if (requiresManage && credentials.authMethodId !== 'google-oauth-manage') throw new YouTubeExchangeError('providerRejected', 'AUTHORIZATION', 'addPlaylistItem requires a YouTube connection authorized with the google-oauth-manage method and its youtube scope');
     const encoded = Object.keys(query).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(key => `${goQueryEscape(key)}=${goQueryEscape(query[key]!)}`).join('&');
     const url = `${this.endpoint}${path}${encoded ? `?${encoded}` : ''}`;
-    let response = await this.request(call, url, credentials.accessToken.reveal(), body);
+    if (!writeFence) return this.sendAndClassify(call, operation, url, credentials, body, call.context.cancellationSignal, false);
+    try { return await writeFence.dispatch(signal => this.sendAndClassify(call, operation, url, credentials, body, signal, true)); }
+    catch (error) {
+      if (error instanceof CheckpointError || error instanceof InsufficientTimeError || error instanceof DispatchNotAllowedError || error instanceof AggregateError)
+        throw new YouTubeExchangeError('retry', 'TRANSPORT', 'the YouTube insert was not started');
+      throw error;
+    }
+  }
+
+  /**
+   * Send once, resending after one refreshed 401, and classify the response. A fenced write retries as
+   * unprocessed only after a rate-limit refusal or a connection that never opened; any other failure, including 503, may have applied it.
+   */
+  private async sendAndClassify(call: Call, operation: string, url: string, initialCredentials: Credentials, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {
+    let credentials = initialCredentials;
+    let response = await this.request(url, credentials.accessToken.reveal(), body, signal, isFencedWrite);
     if (response.status === 401 && 'resolveAfterRejection' in this.credentials) {
       try {
         credentials = await resolveCredentialAfterRejection(this.credentials, call, this.refreshDriver, call.context.cancellationSignal);
-        response = await this.request(call, url, credentials.accessToken.reveal(), body);
+        response = await this.request(url, credentials.accessToken.reveal(), body, signal, isFencedWrite);
       } catch (error) {
         if (error instanceof YouTubeExchangeError) throw error;
         if (error instanceof ReauthorizationRequiredError) throw new YouTubeExchangeError('providerRejected', 'AUTHENTICATION', 'the YouTube connection must be authorized again');
         throw new YouTubeExchangeError('defect', 'AUTHENTICATION', 'YouTube connection credentials are unavailable or invalid');
       }
     }
-    if (response.isTooLarge) throw new YouTubeExchangeError('invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
+    if (response.isTooLarge) throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'invalidResponse', 'RESPONSE_TOO_LARGE', 'YouTube response exceeds the configured size limit', response);
     if (response.status >= 200 && response.status < 300) return response;
-    throw classifyError(response, operation, this.now());
+    const classified = classifyError(response, operation, this.now());
+    if (!isFencedWrite || classified.disposition !== 'retry') throw classified;
+    throw new YouTubeExchangeError(classified.kind === 'RATE_LIMIT' ? 'retryUnprocessed' : 'writeUnconfirmed', classified.kind, classified.message, response, classified.retryAfterMs);
   }
 
-  private async request(call: Call, url: string, token: string, body?: string): Promise<YouTubeResponse> {
-    const request: ProviderRequest = { url, method: body === undefined ? 'GET' : 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: new TextEncoder().encode(body) }), addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs, signal: call.context.cancellationSignal };
+  private async request(url: string, token: string, body: string | undefined, signal: AbortSignal, isFencedWrite: boolean): Promise<YouTubeResponse> {
+    const request: ProviderRequest = { url, method: body === undefined ? 'GET' : 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: new TextEncoder().encode(body) }), addressPolicy: this.endpoint.startsWith('https://') ? 'publicHTTPS' : 'privateNetworkHTTP', maxResponseBytes: this.maxResponseBytes, timeoutMs: this.timeoutMs, signal };
     try { return { ...(await this.send(request)), isTooLarge: false }; }
     catch (error) {
       if (error instanceof BodyTooLargeError && error.status !== undefined && error.headers !== undefined) {
         if (error.status < 200 || error.status >= 300) return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: false };
         return { status: error.status, headers: error.headers, body: new Uint8Array(), isTooLarge: true };
       }
-      throw new YouTubeExchangeError('retry', 'TRANSPORT', 'YouTube did not return a complete response');
+      if (isFencedWrite && error instanceof ProviderTransportError && error.isProvablyNotSent) throw new YouTubeExchangeError('retryUnprocessed', 'TRANSPORT', 'YouTube could not be reached before sending');
+      throw new YouTubeExchangeError(isFencedWrite ? 'writeUnconfirmed' : 'retry', 'TRANSPORT', 'YouTube did not return a complete response');
     }
   }
 }

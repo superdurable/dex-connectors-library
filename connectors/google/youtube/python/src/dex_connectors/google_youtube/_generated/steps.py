@@ -255,6 +255,7 @@ def new_add_playlist_item_step(
     quota_exhausted: dex.StepTarget[MutationResult[AddedPlaylistItem]] | None = None,
     provider_rejected: dex.StepTarget[MutationResult[AddedPlaylistItem]] | None = None,
     invalid_response: dex.StepTarget[MutationResult[AddedPlaylistItem]] | None = None,
+    uncertain: dex.StepTarget[MutationResult[AddedPlaylistItem]] | None = None,
     defect: dex.StepTarget[MutationResult[AddedPlaylistItem]] | None = None,
     result_attribute: dex.Attribute[MutationResult[AddedPlaylistItem]] | None = None,
     step_options_override: dex.StepOptions | None = None,
@@ -280,6 +281,8 @@ def new_add_playlist_item_step(
         branches["providerRejected"] = provider_rejected
     if invalid_response is not None:
         branches["invalidResponse"] = invalid_response
+    if uncertain is not None:
+        branches["uncertain"] = uncertain
     if defect is not None:
         branches["defect"] = defect
     return MutationStep(

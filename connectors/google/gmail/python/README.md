@@ -2,13 +2,13 @@
 
 `dex-connector-google-gmail` provides typed Gmail reads, sends, and replies for
 Dex Python Flows. The package imports as `dex_connectors.google_gmail`.
-Version 0.1.2 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
+Version 0.2.0 includes `getMessage`, `sendMessage`, and `replyToMessage` only;
 the Go `messageReceived` and `replyReceived` Triggers are not available in Python.
 
 ## Install
 
-After release, install `dex-connector-google-gmail==0.1.2`. The package requires
-`dex-connectors-sdk==0.4.0` and `dex-python-sdk>=1.28.0`; the latter provides
+After release, install `dex-connector-google-gmail==0.2.0`. The package requires
+`dex-connectors-sdk>=0.6.0,<1` and `dex-python-sdk>=1.28.0`; the latter provides
 Go-compatible JSON field metadata and the Flow start and attempt deadline
 needed for Gmail's duplicate-send fence.
 
@@ -54,6 +54,13 @@ await run_thread_reply_worker(
 )
 ```
 
+`Connection` exposes each operation through a method, as generated connector
+packages do: `connection.get_message()`, `connection.send_message()`, and
+`connection.reply_to_message()`. Close a provider-backed connection with
+`await connection.aclose()`. Version 0.2.0 replaced the earlier dataclass
+fields and `close()` (breaking). `new_connection_with_operations` binds mock
+or custom operations to the same `google` connection reference.
+
 Run `dexcli dev`, then from this `python/` directory run
 `DEX_CONNECTOR_CONFIG_FILE=/path/to/connections.json python -m examples.thread_reply.main`.
 The Flow type is `ThreadReplyFlow`; its input JSON contains `messageId` and
@@ -78,8 +85,10 @@ polls Sent Mail before returning Retry. A successful 2xx is already accepted
 even if its response is malformed, oversized, or unreadable; a Sent Mail miss
 then returns `sent` with an empty message ID. A search miss after a claimed
 POST remains Retry without another dispatch; the Flow fails when its retry
-budget is exhausted. A definite 429 or 503 refusal, or a transport failure
-proven to precede dispatch, permits a later send. The manifest limits sends
+budget is exhausted. A 503 is treated like any other 5xx: Gmail may have
+processed it, so a Sent Mail miss keeps the claim and never permits another
+POST. A definite 429 refusal, or a transport failure proven to precede
+dispatch, permits a later send. The manifest limits sends
 and replies to five attempts within two minutes.
 
 Live provider authorization and these Gmail behaviors remain unverified without

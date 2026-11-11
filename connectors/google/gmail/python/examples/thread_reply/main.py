@@ -27,7 +27,7 @@ async def main() -> None:
         )
     finally:
         if connection is not None:
-            await connection.close()
+            await connection.aclose()
         await project.close()
 
 
