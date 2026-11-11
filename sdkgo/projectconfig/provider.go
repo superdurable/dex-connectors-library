@@ -98,9 +98,14 @@ func NewCredentialResolver[C any](store *ConnectionStore, key ConnectionKey, dec
 }
 
 // Resolve reads exact current material without refreshing; known-expired credentials require ResolveWithRefresh.
+// Under ContextWithExpectedConnectionTarget it returns an error wrapping ErrConnectionTargetChanged or
+// ErrConnectionTargetUnverifiable instead of a credential whose connection does not have the expected target.
 func (provider *CredentialResolver[C]) Resolve(ctx context.Context) (C, error) {
 	var zero C
 	if provider.shared != nil {
+		if err := provider.refuseSharedTargetExpectation(ctx); err != nil {
+			return zero, err
+		}
 		return provider.resolveShared(ctx)
 	}
 	material, connection, err := provider.store.ReadCredentialMaterial(ctx, provider.key)
@@ -124,12 +129,19 @@ func (provider *CredentialResolver[C]) Resolve(ctx context.Context) (C, error) {
 // from reading the credential again through writing the result back, and so does an observer's recovery. A
 // process that waited for the lock adopts the credential another process wrote back instead of refreshing again.
 // The wait ends with ctx, and after two minutes at most, with an error that wraps ErrRefreshFailed.
+//
+// Under ContextWithExpectedConnectionTarget it compares the target with each read of the record, including the
+// read after acquiring the refresh lock, and returns an error wrapping ErrConnectionTargetChanged before any refresh
+// request when it differs; ErrConnectionTargetUnverifiable when the source cannot compare.
 func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, driver RefreshDriver[C]) (C, error) {
 	var zero C
 	if ctx == nil || driver == nil {
 		return zero, errors.New("credential context and refresh driver are required")
 	}
 	if provider.shared != nil {
+		if err := provider.refuseSharedTargetExpectation(ctx); err != nil {
+			return zero, err
+		}
 		return provider.resolveShared(ctx)
 	}
 	if provider.encode == nil {
@@ -140,7 +152,7 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 		if err := ctx.Err(); err != nil {
 			return zero, err
 		}
-		record, _, err := provider.store.readRecord(ctx, provider.key)
+		record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 		if err != nil {
 			return zero, err
 		}
@@ -186,23 +198,35 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 
 // ResolveAfterRejection refreshes only when authoritative expiry has elapsed.
 // A generic HTTP 401, permission error, or unknown expiry is insufficient evidence for an extra provider mutation.
+// It honors ContextWithExpectedConnectionTarget as ResolveWithRefresh does.
 func (provider *CredentialResolver[C]) ResolveAfterRejection(ctx context.Context, driver RefreshDriver[C]) (C, error) {
 	var zero C
 	if provider.shared != nil {
+		if err := provider.refuseSharedTargetExpectation(ctx); err != nil {
+			return zero, err
+		}
 		credential, err := provider.shared.credentialAfterRejection(ctx)
 		if err != nil {
 			return zero, err
 		}
 		return provider.decodeShared(credential)
 	}
-	connection, err := provider.store.ReadConnection(ctx, provider.key)
+	record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 	if err != nil {
 		return zero, err
 	}
-	if connection.ExpiresAt == nil || connection.ExpiresAt.After(provider.store.now()) {
+	if record.ExpiresAt == nil || record.ExpiresAt.After(provider.store.now()) {
 		return zero, errors.New("authentication rejection does not prove credential expiry")
 	}
 	return provider.ResolveWithRefresh(ctx, driver)
+}
+
+// refuseSharedTargetExpectation fails closed: the broker serves no authorization identity to compare.
+func (provider *CredentialResolver[C]) refuseSharedTargetExpectation(ctx context.Context) error {
+	if _, isExpected := expectedConnectionTarget(ctx, provider.key); isExpected {
+		return ErrConnectionTargetUnverifiable
+	}
+	return nil
 }
 
 func (provider *CredentialResolver[C]) resolveShared(ctx context.Context) (C, error) {
@@ -255,7 +279,7 @@ func (provider *CredentialResolver[C]) refreshWhileLocked(ctx context.Context, d
 		return zero, false, err
 	}
 	defer lock.release()
-	record, _, err := provider.store.readRecord(ctx, provider.key)
+	record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 	if err != nil {
 		return zero, false, err
 	}

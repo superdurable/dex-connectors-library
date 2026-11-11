@@ -47,6 +47,7 @@ type dexWebConnection struct {
 	ConnectorID         string          `json:"connectorId"`
 	AuthMethodID        string          `json:"authMethodId"`
 	AuthMethodIDs       []string        `json:"authMethodIds"`
+	AuthorizationID     string          `json:"authorizationId,omitempty"`
 	ModulePath          string          `json:"modulePath"`
 	Provider            string          `json:"provider"`
 	ConnectionName      string          `json:"connectionName"`
@@ -68,6 +69,19 @@ type dexWebUseConfigurationsFile struct {
 
 func (connection dexWebConnection) key() ConnectionKey {
 	return ConnectionKey{ConnectorID: connection.ConnectorID, ConnectionName: connection.ConnectionName}
+}
+
+// connectionConfiguration is the record's loaded entry; authMethodId counts only without authMethodIds.
+func (connection dexWebConnection) connectionConfiguration() ConnectionConfiguration {
+	authMethodID := ""
+	if len(connection.AuthMethodIDs) == 0 {
+		authMethodID = connection.AuthMethodID
+	}
+	return ConnectionConfiguration{
+		ConnectorID: connection.ConnectorID, ConnectionName: connection.ConnectionName, ModulePath: connection.ModulePath,
+		Provider: connection.Provider, AuthMethodID: authMethodID, Configuration: connection.Configuration,
+		AuthorizationID: connection.AuthorizationID, AuthMethodIDs: connection.AuthMethodIDs,
+	}
 }
 
 // authMethod names the method that produced the credentials. Dex Web omits it for a connector with one method.
@@ -165,14 +179,7 @@ func loadDexWebProject(ctx context.Context, path string) (*LoadedProject, error)
 	}
 	document := Configuration{TriggerBindings: file.TriggerBindings, OperationConfigurations: useConfigurations.OperationConfigurations}
 	for _, connection := range file.Connections {
-		authMethodID := ""
-		if len(connection.AuthMethodIDs) == 0 {
-			authMethodID = connection.AuthMethodID
-		}
-		document.Connections = append(document.Connections, ConnectionConfiguration{
-			ConnectorID: connection.ConnectorID, ConnectionName: connection.ConnectionName, ModulePath: connection.ModulePath,
-			Provider: connection.Provider, AuthMethodID: authMethodID, Configuration: connection.Configuration,
-		})
+		document.Connections = append(document.Connections, connection.connectionConfiguration())
 	}
 	if document.TriggerBindings == nil {
 		document.TriggerBindings = []TriggerConfiguration{}
@@ -191,7 +198,25 @@ func loadDexWebProject(ctx context.Context, path string) (*LoadedProject, error)
 	if err != nil {
 		return nil, err
 	}
-	return loadProject(ctx, store, dexWebScope, reference, brokerClientOptions{})
+	project, err := loadProject(ctx, store, dexWebScope, reference, brokerClientOptions{})
+	if err != nil {
+		return nil, err
+	}
+	attachDexWebRecordIdentities(project, file)
+	return project, nil
+}
+
+// attachDexWebRecordIdentities restores the record members that the configuration document never carries.
+func attachDexWebRecordIdentities(project *LoadedProject, file dexWebConnectionsFile) {
+	records := make(map[ConnectionKey]dexWebConnection, len(file.Connections))
+	for _, connection := range file.Connections {
+		records[connection.key()] = connection
+	}
+	for index := range project.Configuration.Connections {
+		entry := &project.Configuration.Connections[index]
+		record := records[ConnectionKey{ConnectorID: entry.ConnectorID, ConnectionName: entry.ConnectionName}]
+		entry.AuthorizationID, entry.AuthMethodIDs = record.AuthorizationID, record.AuthMethodIDs
+	}
 }
 
 // readDexWebFile reads a file Dex Web wrote, which must be a regular, owner-only file as Dex Web creates it.
@@ -276,13 +301,13 @@ func (store *dexWebStore) importCredentials(ctx context.Context, file dexWebConn
 	return nil
 }
 
-// sync adopts credentials that Dex Web saved since the last call.
-func (store *dexWebStore) sync(ctx context.Context) error {
+// sync adopts credentials that Dex Web saved since the last call and returns the file it read.
+func (store *dexWebStore) sync(ctx context.Context) (dexWebConnectionsFile, error) {
 	file, err := readDexWebConnections(store.path)
 	if err != nil {
-		return err
+		return dexWebConnectionsFile{}, err
 	}
-	return store.importCredentials(ctx, file)
+	return file, store.importCredentials(ctx, file)
 }
 
 func (store *dexWebStore) partition(key string) *versionedStore {
@@ -301,11 +326,33 @@ func (store *dexWebStore) ReadObject(ctx context.Context, key, version string) (
 	if isConnectionHead(key) {
 		store.mu.Lock()
 		defer store.mu.Unlock()
-		if err := store.sync(ctx); err != nil {
+		if _, err := store.sync(ctx); err != nil {
 			return Object{}, err
 		}
 	}
 	return store.partition(key).ReadObject(ctx, key, version)
+}
+
+// readConnectionHeadWithTarget syncs once and returns the head and target fingerprint of that file read.
+// Holding mu, no other sync replaces the head in between.
+func (store *dexWebStore) readConnectionHeadWithTarget(ctx context.Context, headKey string, key ConnectionKey) (head Object, fingerprint string, isListed bool, err error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	file, err := store.sync(ctx)
+	if err != nil {
+		return Object{}, "", false, err
+	}
+	for _, connection := range file.Connections {
+		if connection.key() != key {
+			continue
+		}
+		if fingerprint, err = connection.connectionConfiguration().ConnectionTargetFingerprint(); err != nil {
+			return Object{}, "", false, err
+		}
+		head, err = store.memory.ReadObject(ctx, headKey, "")
+		return head, fingerprint, true, err
+	}
+	return Object{}, "", false, nil
 }
 
 // CreateObject creates a previously absent key and returns ErrConflict if it exists.
@@ -336,7 +383,7 @@ func (store *dexWebStore) CompareAndSwapObject(ctx context.Context, key, expecte
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	if err := store.sync(ctx); err != nil {
+	if _, err := store.sync(ctx); err != nil {
 		return Object{}, err
 	}
 	object, err := store.memory.CompareAndSwapObject(ctx, key, expectedETag, contents)

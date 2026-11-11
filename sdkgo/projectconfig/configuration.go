@@ -36,6 +36,19 @@ type ConnectionConfiguration struct {
 	// Configuration contains manifest-validated ordinary values; secret fields must be excluded by Dex Web.
 	// A shared entry holds the shared connection's settings as they were when the document was written.
 	Configuration json.RawMessage `json:"configuration"`
+	// AuthorizationID is the non-secret identity of the authorization that produced the connection's credentials,
+	// as a Dex Web connections file records it: Dex Web replaces it on a new connection, every OAuth callback and
+	// every change of the stored credentials, and keeps it on settings-only edits and credential refresh. It
+	// identifies the account behind the credentials only; Configuration identifies the rest of the target.
+	//
+	// It is empty for a record written before Dex Web added it, and always empty for a project not loaded from a
+	// Dex Web connections file, such as hosted or S3 storage. It is not part of the configuration document and is
+	// never serialized.
+	AuthorizationID string `json:"-"`
+	// AuthMethodIDs lists the authorization method identifiers that a Dex Web connections file records for the
+	// connection, in the file's order. It is nil when the record lists none and always nil for a project not loaded
+	// from a Dex Web connections file. It is not part of the configuration document and is never serialized.
+	AuthMethodIDs []string `json:"-"`
 }
 
 // CredentialBrokerConfiguration locates the service that serves the credentials of shared connections.

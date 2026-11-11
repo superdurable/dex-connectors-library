@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -158,8 +159,9 @@ func (store *ConnectionStore) ReadConnection(ctx context.Context, key Connection
 
 // ReadCredentialMaterial reads exact private material for trusted Dex Web setup commands or keep-field updates.
 // This method never refreshes; callers must enforce expiry and must not expose the returned bytes to a browser.
+// It honors ContextWithExpectedConnectionTarget as CredentialResolver.Resolve does.
 func (store *ConnectionStore) ReadCredentialMaterial(ctx context.Context, key ConnectionKey) (CredentialMaterial, Connection, error) {
-	record, _, err := store.readRecord(ctx, key)
+	record, _, err := store.readRecordForCredentialUse(ctx, key)
 	if err != nil {
 		return CredentialMaterial{}, Connection{}, err
 	}
@@ -233,6 +235,38 @@ func (store *ConnectionStore) readRecord(ctx context.Context, key ConnectionKey)
 	if err != nil {
 		return connectionRecord{}, Object{}, err
 	}
+	return store.decodeRecord(object, key, path)
+}
+
+// readRecordForCredentialUse is readRecord that enforces ctx's expected target for key from the same read.
+func (store *ConnectionStore) readRecordForCredentialUse(ctx context.Context, key ConnectionKey) (connectionRecord, Object, error) {
+	expectedFingerprint, isExpected := expectedConnectionTarget(ctx, key)
+	if !isExpected {
+		return store.readRecord(ctx, key)
+	}
+	path, err := store.connectionPath(key)
+	if err != nil {
+		return connectionRecord{}, Object{}, err
+	}
+	reader, isVerifiable := store.objects.(connectionTargetSnapshotReader)
+	if !isVerifiable {
+		return connectionRecord{}, Object{}, ErrConnectionTargetUnverifiable
+	}
+	object, fingerprint, isListed, err := reader.readConnectionHeadWithTarget(ctx, connectionHeadPath(path), key)
+	if err != nil {
+		return connectionRecord{}, Object{}, err
+	}
+	if !isListed {
+		return connectionRecord{}, Object{}, fmt.Errorf("%w: connection %q of connector %q was removed", ErrConnectionTargetChanged, key.ConnectionName, key.ConnectorID)
+	}
+	if fingerprint != expectedFingerprint {
+		return connectionRecord{}, Object{}, fmt.Errorf("%w: connection %q of connector %q now has target %s", ErrConnectionTargetChanged, key.ConnectionName, key.ConnectorID, fingerprint)
+	}
+	return store.decodeRecord(object, key, path)
+}
+
+// decodeRecord validates the connection head object of key, stored under path.
+func (store *ConnectionStore) decodeRecord(object Object, key ConnectionKey, path string) (connectionRecord, Object, error) {
 	var record connectionRecord
 	if strictJSON(object.Contents, &record) != nil || record.SchemaVersion != connectionSchema || record.Scope != store.scope || record.Key != key || record.Revision == 0 || record.Fence == 0 || object.Version == "" || object.ETag == "" {
 		return connectionRecord{}, Object{}, errors.New("project connection identity is invalid")
