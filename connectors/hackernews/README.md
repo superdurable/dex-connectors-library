@@ -1,6 +1,6 @@
 # Hacker News Daily Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.23.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/hackernews/go@v0.24.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/hackernews`.
 
@@ -46,6 +46,19 @@ Use the generated factories in [the runnable Flow](go/examples/daily-digest/flow
 `projectconfig.LoadFromEnvironment` loads. `New` and `NewConnection` build a
 connection for tests. `WithHTTPClient` supplies a transport for tests or
 application networking.
+
+## Agent tools
+
+Both Queries are exposed to agent hosts through the `agent` block in
+`connector.yaml`, which each language package carries in `dex-connector.json`.
+They are public reads, so neither asks for approval. Every optional branch except
+`invalidResponse` is classified `rejected` because a read changes nothing;
+`invalidResponse` is a provider malfunction the model cannot fix, so it stays
+unlisted and agent hosts record it as a failure.
+
+From Go v0.24.0, `Connection.AgentTools()` binds both Queries to a connection as
+`sdkgo.AgentTool` values, and `ExposedAgentTools()` lists their metadata. A
+`hackernewsmock` connection returns the same tools for host tests.
 
 ## Mocks
 

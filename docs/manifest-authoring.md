@@ -531,7 +531,7 @@ operations:
       exposed: true
       approval: recommended
       retry: safe
-      branches: {providerRejected: rejected, uncertain: unknown, invalidResponse: unknown, defect: rejected}
+      branches: {providerRejected: rejected, uncertain: unknown, invalidResponse: unknown}
       description: Refund part or all of one Stripe PaymentIntent. Give the amount in the currency's minor unit, such as cents.
 ```
 
@@ -581,24 +581,36 @@ question for each optional branch:
 
 A host treats an optional Mutation branch that is not listed as `unknown`, and an
 optional Query branch that is not listed as a failure. A missing entry therefore
-fails closed. Keys must be optional branch IDs of the operation; the happy-path
-branch is the success and takes no entry. `connectorctl validate` rejects any
-other key, and a Query may use only `rejected`.
+fails closed. A host also treats a Mutation's `defect` as `unknown` whatever the
+listing says, because the SDK selects `defect` for an invalid attempt after the
+request may have been sent; listing it `rejected` has no effect. A Query's
+`defect` follows the listing. Keys must be optional branch IDs of the operation;
+the happy-path branch is the success and takes no entry. `connectorctl
+validate` rejects any other key, `uncertain: rejected`, and `unknown` on a
+Query.
 
 Classify a branch by reading where the operation selects it, in Go and in each
 language port, and asking whether the request had been sent:
 
 - A branch selected only before the request leaves the process, such as local
-  input validation or missing credentials in `defect`, is `rejected`.
+  input validation, is `rejected`. On a Query this includes `defect`.
 - A branch selected from a definite provider refusal, such as a 4xx in
   `providerRejected`, is `rejected`.
 - A branch selected after the provider may have acted, such as `uncertain`, or
   `invalidResponse` after a 2xx, is `unknown`. Stripe `createRefund` reaches
   `invalidResponse` only after Stripe accepted the refund, so the refund exists.
 
-List every optional branch of a reviewed Mutation, so the map records each
-decision rather than leaving it to the default. If one branch is selected both
-before and after the request is sent, it is `unknown`.
+List every optional branch of a reviewed Mutation other than `defect`, so the
+map records each decision rather than leaving it to the default. If one branch
+is selected both before and after the request is sent, it is `unknown`.
+
+The listing is the contract, and a host trusts a `rejected` entry. The Go
+Connector SDK adds one safety net for Go agent hosts (`sdkgo` v0.35.0 and
+later): when a Mutation uses the `singledispatch` Fence and its checkpoint
+cannot prove that no request reached the provider, any branch other than the
+happy path is `unknown`, whatever the listing says. A Mutation with its own
+checkpoint, or none, gets no such check, and a `rejected` entry on a branch it
+selects after sending invites a duplicate write.
 
 Write `agent.description` for a model, not a Connector author. State what the
 operation does and what the model must supply. Leave out durability, retry, and
@@ -607,7 +619,57 @@ fence details. Do not name credentials or secrets.
 Reviewing an operation means checking its description, its input fields, and the
 harm a wrong call can do. Change this block in a pull request for that connector.
 Moving `exposed` to `true`, or changing `approval` or `branches`, is a minor
-release of each language package that should offer it.
+release of each language package that should offer it. Go is one of those
+languages once the connector's Go module has adopted agent tools (see
+[Generated Go agent tools](#generated-go-agent-tools)): its Go minor release is
+what reaches Go agent hosts, such as the Connectors MCP server.
+
+### Generated Go agent tools
+
+`connectorctl generate` writes `go/zz_generated_agent_tools.go` when the
+manifest exposes at least one operation and `go/go.mod` requires `sdkgo`
+v0.35.0 or later, the first release with agent tools. The file adds:
+
+- `ExposedAgentTools() []sdkgo.AgentToolMetadata`: the metadata of every
+  exposed operation, in manifest order.
+- `Connection.AgentTools() ([]sdkgo.AgentTool, error)`: every exposed operation
+  bound to the connection. It also works on a connection from
+  `NewConnectionWithOperations`, such as a generated mock's, so a host can be
+  tested without the provider.
+- `Connection.Operations()` and `Connection.Reference()`: the operations and
+  connection reference that the Step factories and agent tools use.
+
+Each metadata value is generated from the manifest:
+
+- `ToolName` is `metadata.name`, an underscore, and the operation ID in the
+  snake case of the Python Step factory name, such as
+  `hacker-news-daily_list_story_ids` for `listStoryIDs`.
+- `Description`, `InputType`, and `InputSchema` are the same as in
+  `dex-connector.json`.
+- `IsApprovalRecommended`, `IsRetrySafe`, and `BranchOutcomes` come from the
+  `agent` block.
+- `Branches` and `StepDefaults` are the operation definition's own.
+
+The `sdkgo` constructors check the metadata against the operation definition
+again.
+
+A module that requires an earlier `sdkgo` gets no file, and its exposure reaches
+only the Python and TypeScript packages. `connectorctl generate --check` and
+`connectorctl validate` reject a leftover file there, or in a module whose
+manifest no longer exposes an operation. Once a manifest exposes an operation,
+both commands also reject a `go/go.mod` that replaces `sdkgo` or requires a
+pseudo-version or prerelease of it, because the version gate cannot tell
+whether such a module compiles the generated code.
+
+To offer the tools from Go:
+
+1. Raise the module's `sdkgo` requirement to v0.35.0 or later.
+2. Regenerate.
+3. Release the Go module as a minor version.
+
+The file appears whenever a module that exposes operations raises its `sdkgo`
+requirement to v0.35.0 or later, even if the raise was for another reason. That pull
+request is a Go minor release too.
 
 ### Generated input schema
 

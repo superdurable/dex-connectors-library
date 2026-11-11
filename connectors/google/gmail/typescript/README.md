@@ -11,7 +11,7 @@ This package provides typed `getMessage`, `sendMessage`, and `replyToMessage` op
 The checked-in `src/generated/` contracts come from `connector.yaml` and the
 Go operation structs. Run `go run ./cmd/connectorctl generate --lang typescript connectors/google/gmail/connector.yaml` from the repository root after either source changes. `src/models.ts` keeps credential requirements specific to Google OAuth and Workspace delegation, plus the public non-null send recipient arrays. `src/steps.ts` delegates to generated factories while requiring `GmailConnection` at compile time; `src/mock/index.ts` re-exports matching generated scenarios and validates send scenarios against the public result type. `src/project.ts` keeps the refresh codec and public connection constructor.
 
-Version 0.1.2 requires Connector SDK 0.4.0. Generated private and shared
+Version 0.2.0 requires Connector SDK 0.6.0. Generated private and shared
 credential decoders validate project material, and the refresh driver reads
 generated manifest grants with Gmail-specific delegation checks.
 
@@ -26,7 +26,7 @@ For personal Gmail or ordinary Workspace accounts, select **Google OAuth**. In [
 
 For administrator-managed Workspace delegation, use [Google Cloud service accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) to create a service account and download its JSON key. In [Workspace domain-wide delegation](https://admin.google.com/ac/owl/domainwidedelegation), authorize that account's OAuth client ID for the Gmail readonly and send scopes. Put the JSON key and one managed mailbox in the connection form. The connector mints short-lived delegated tokens and uses that mailbox as the sender.
 
-`sendMessage` and `replyToMessage` use synchronous Execute and claim a Dex heartbeat checkpoint before POST. They search Sent Mail under a run-specific RFC `Message-ID` after an ambiguous send. A confirmed match returns `sent`; a miss retries read-back within the manifest budget without another POST. A conclusive 429 or 503 can permit another attempt after its own read-back; delayed Sent Mail indexing after a 503 can still cause duplicate delivery. An accepted 2xx never resends merely because its response body is unusable.
+`sendMessage` and `replyToMessage` use synchronous Execute and claim a Dex heartbeat checkpoint before POST. They search Sent Mail under a run-specific RFC `Message-ID` after an ambiguous send. A confirmed match returns `sent`; a miss retries read-back within the manifest budget without another POST. A conclusive 429 or a failure proven to precede dispatch can permit another POST. A 503 may have been processed, so like any 5xx it keeps the claim and later attempts only read back. An accepted 2xx never resends merely because its response body is unusable.
 
 ## Run the example
 

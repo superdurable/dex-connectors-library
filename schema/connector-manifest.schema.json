@@ -863,6 +863,7 @@
           "type": "object",
           "minProperties": 1,
           "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]+$" },
+          "properties": { "uncertain": { "const": "unknown" } },
           "additionalProperties": { "enum": ["rejected", "unknown"] }
         }
       },

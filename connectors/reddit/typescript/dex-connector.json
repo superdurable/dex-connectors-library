@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-reddit",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "factories": [
     {
@@ -12,7 +12,15 @@
       "kind": "query",
       "operationId": "getPost",
       "inputType": "GetPostInput",
-      "description": "Read one post's ID, title, subreddit, permalink, and score by full t3_ ID.",
+      "description": "Read one Reddit post's title, subreddit, permalink, and score. Supply the post's full ID, which starts with t3_.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "missing": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",

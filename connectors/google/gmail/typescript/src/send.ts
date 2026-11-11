@@ -248,9 +248,9 @@ export class GmailSender {
       return retryAfterRefusal(operation.operationId, 'RATE_LIMIT', `Gmail temporarily rejected the ${operation.requestName}`, headers);
     }
     if (status === 503) {
+      // Gmail documents 5xx as processing failures and Sent Mail search can lag, so the claim stays.
       const lookup = await this.#pollSentMessage(call, budget, credentials);
       if (lookup.sent) return this.#sentAfterDispatch(call, fence, budget, credentials, operation, message, lookup.sent, receipt);
-      await recordSafeResend(fence);
       return retryAfterRefusal(operation.operationId, 'AVAILABILITY', `Gmail ${operation.requestName} is temporarily unavailable`, headers);
     }
     if (status >= 500) return this.#confirmPossiblySent(call, fence, budget, credentials, operation, message, 'AVAILABILITY', `Gmail ${operation.requestName} outcome is unknown`, receipt);

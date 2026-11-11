@@ -5,16 +5,16 @@ metadata:
   displayName: Gmail
   description: Start and update Dex Flows from received Gmail messages, read messages, and send or reply to email.
   company: Google
-  version: v0.25.2
+  version: v0.26.0
 spec:
   provider: google
   languages:
     python:
-      version: v0.1.2
+      version: v0.2.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: []
     typescript:
-      version: v0.1.2
+      version: v0.2.0
       operations: [getMessage, sendMessage, replyToMessage]
       triggers: []
   codegen:
@@ -207,6 +207,11 @@ spec:
       kind: query
       description: Read one Gmail message with decoded text and HTML bodies.
       idempotency: none
+      agent:
+        exposed: true
+        # notFound and providerRejected follow a definite 4xx, invalidResponse an unusable read, defect precedes any request.
+        branches: {notFound: rejected, providerRejected: rejected, invalidResponse: rejected, defect: rejected}
+        description: Read one Gmail message from the connected mailbox by its Gmail message ID, returning its sender, recipients, subject, threading headers, labels, and decoded text and HTML bodies.
       branches:
         - {id: read, goName: Read, description: The Gmail message was read.}
         - {id: notFound, goName: NotFound, description: The Gmail message does not exist., optional: true}
@@ -248,6 +253,14 @@ spec:
       kind: mutation
       description: Send one MIME message from the authorized primary account.
       idempotency: required
+      agent:
+        exposed: true
+        approval: recommended
+        # No retry claim: Gmail has no idempotency key and Sent Mail search can lag an accepted send.
+        # providerRejected follows a definite 4xx; later attempts POST only after notSent or canResend (429, proven unsent).
+        # defect is also selected when the fence fails closed or credentials fail after an earlier claimed POST.
+        branches: {providerRejected: rejected, defect: unknown}
+        description: Send one new email from the connected Gmail account. Give the recipient email addresses, a one-line subject, and the plain-text body; an HTML body is optional.
       branches:
         - {id: sent, goName: Sent, description: "Gmail accepted the message; its message and thread IDs can be empty when an unusable accepted response has no Sent Mail match."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the message., optional: true}
@@ -256,7 +269,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 429 or 503 can checkpoint canResend, and a later POST after a Sent Mail miss may duplicate a delayed Gmail send; bound sendMessage retries to five attempts within two minutes."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 503, later attempts only search Sent Mail; bound sendMessage retries to five attempts within two minutes so an unconfirmed send fails the Flow promptly."}}
       mocks:
         - name: sentToCustomer
           branch: sent
@@ -275,7 +288,7 @@ spec:
           description: The message has no recipient, so no request is sent.
           failure: {kind: VALIDATION, message: At least one recipient is required.}
         - name: unavailable
-          description: Gmail is briefly unavailable before the message is sent.
+          description: Gmail answered 503 and Sent Mail found no match yet; the send may have been accepted, so later attempts only search Sent Mail and never POST again.
           retry: {failure: {kind: AVAILABILITY, message: Gmail is temporarily unavailable.}}
     - name: replyToMessage
       goName: ReplyToMessage
@@ -284,6 +297,14 @@ spec:
       kind: mutation
       description: Reply to one Gmail message in its existing thread.
       idempotency: required
+      agent:
+        exposed: true
+        approval: recommended
+        # No retry claim: Gmail has no idempotency key and Sent Mail search can lag an accepted reply.
+        # providerRejected follows a definite source-read or send 4xx; invalidResponse follows the source read, before the POST.
+        # defect is also selected when the fence fails closed or credentials fail after an earlier claimed POST.
+        branches: {providerRejected: rejected, invalidResponse: rejected, defect: unknown}
+        description: Reply in its existing Gmail thread to one message in the connected mailbox, addressed to that message's Reply-To or sender. Give the Gmail message ID to answer and the plain-text reply body; an HTML body is optional.
       branches:
         - {id: sent, goName: Sent, description: "Gmail accepted the reply; its message ID can be empty when an unusable accepted response has no Sent Mail match, while the requested thread ID remains."}
         - {id: providerRejected, goName: ProviderRejected, description: Gmail conclusively rejected the reply., optional: true}
@@ -293,7 +314,7 @@ spec:
         executeMethodTimeout: 30s
         durability: sync
         dispatchFence: true
-        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "A 429 or 503 can checkpoint canResend, and a later POST after a Sent Mail miss may duplicate a delayed Gmail reply; bound replyToMessage retries to five attempts within two minutes."}}
+        retry: {initialInterval: 1s, backoffCoefficient: 2, maximumInterval: 30s, maximumAttempts: 5, totalDuration: 2m, reason: {kind: duplicateWriteRisk, explanation: "Gmail has no idempotency key, so after a possibly accepted POST, including a 503, later attempts only search Sent Mail; bound replyToMessage retries to five attempts within two minutes so an unconfirmed reply fails the Flow promptly."}}
       mocks:
         - name: repliedInThread
           branch: sent

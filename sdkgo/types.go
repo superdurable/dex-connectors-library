@@ -273,6 +273,12 @@ func (call Call) HasProgressStream() bool { return call.progress != nil }
 // HasTextStream reports whether buffered text output is configured.
 func (call Call) HasTextStream() bool { return call.text != nil }
 
+// operationRunTrace records facts about one run that its result cannot show.
+type operationRunTrace struct {
+	// hasInvokedOperation is set immediately before Invoke, so it also holds when Invoke panics.
+	hasInvokedOperation bool
+}
+
 type runConfig struct {
 	progressStream *dex.Stream[ProgressUpdate]
 	textStream     *dex.Stream[string]
@@ -320,6 +326,10 @@ func WithTextStream(stream dex.Stream[string], options ...dex.BufferedTextStream
 
 // RunQuery invokes a query inside a Dex Step and validates its terminal attempt.
 func RunQuery[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], connection ConnectionRef, input IN, options ...RunOption) (QueryResult[OUT], error) {
+	return runQueryWithTrace(ctx, operation, connection, input, &operationRunTrace{}, options...)
+}
+
+func runQueryWithTrace[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], connection ConnectionRef, input IN, trace *operationRunTrace, options ...RunOption) (QueryResult[OUT], error) {
 	if isNilValue(operation) {
 		return failedQuery[OUT](QueryDefinition{}, "connector query is required"), nil
 	}
@@ -334,11 +344,16 @@ func RunQuery[IN, OUT any](ctx dex.Context, operation Query[IN, OUT], connection
 	if err := configureCall(&call, options); err != nil {
 		return failedQueryForCall[OUT](definition, call, err.Error()), nil
 	}
+	trace.hasInvokedOperation = true
 	return queryResult(call, definition, operation.Invoke(call, input))
 }
 
 // RunMutation invokes a mutation inside a Dex Step using a stable idempotency key.
 func RunMutation[IN, OUT any](ctx dex.Context, operation Mutation[IN, OUT], connection ConnectionRef, input IN, options ...RunOption) (MutationResult[OUT], error) {
+	return runMutationWithTrace(ctx, operation, connection, input, &operationRunTrace{}, options...)
+}
+
+func runMutationWithTrace[IN, OUT any](ctx dex.Context, operation Mutation[IN, OUT], connection ConnectionRef, input IN, trace *operationRunTrace, options ...RunOption) (MutationResult[OUT], error) {
 	if isNilValue(operation) {
 		return failedMutation[OUT](MutationDefinition{}, "connector mutation is required"), nil
 	}
@@ -361,6 +376,7 @@ func RunMutation[IN, OUT any](ctx dex.Context, operation Mutation[IN, OUT], conn
 	if err := configureCall(&call, options); err != nil {
 		return failedMutationForCall[OUT](definition, call, err.Error()), nil
 	}
+	trace.hasInvokedOperation = true
 	return mutationResult(call, definition, operation.Invoke(call, input))
 }
 

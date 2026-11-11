@@ -95,7 +95,7 @@ func TestFirstReviewedOperationsCarryTheirRetryClaims(t *testing.T) {
 	}{
 		{"connectors/stripe", "createRefund", map[string]any{"exposed": true, "approval": "recommended", "retry": "safe",
 			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "invalidResponse": "unknown", "defect": "rejected"}}},
-		{"connectors/slack", "postThreadReply", map[string]any{"exposed": true,
+		{"connectors/slack", "postThreadReply", map[string]any{"exposed": true, "approval": "recommended",
 			"branches": map[string]any{"providerRejected": "rejected", "uncertain": "unknown", "defect": "rejected"}}},
 	} {
 		for path, contents := range publishedLanguageManifests(t, testCase.directory) {
