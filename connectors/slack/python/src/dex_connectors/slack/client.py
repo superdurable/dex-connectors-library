@@ -46,8 +46,11 @@ from ._generated.definitions import (
     DEFECT,
     FOUND,
     GET_THREAD_REPLY_DEFINITION,
+    GET_WORKSPACE_IDENTITY_DEFINITION,
     INVALID_RESPONSE,
+    LIST_CHANNELS_DEFINITION,
     LIST_THREAD_MESSAGES_DEFINITION,
+    LISTED,
     NOT_FOUND,
     POST_CHANNEL_MESSAGE_DEFINITION,
     POST_THREAD_REPLY_DEFINITION,
@@ -56,8 +59,13 @@ from ._generated.definitions import (
     SENT,
 )
 from .models import (
+    Channel,
     GetThreadReplyInput,
     GetThreadReplyOutput,
+    GetWorkspaceIdentityInput,
+    GetWorkspaceIdentityOutput,
+    ListChannelsInput,
+    ListChannelsOutput,
     ListThreadMessagesInput,
     ListThreadMessagesOutput,
     Message,
@@ -92,6 +100,10 @@ def _query_branch(operation: str, branch: str, kind: FailureKind, message: str) 
 
 
 def _empty_output(operation: str) -> Any:
+    if operation == "listChannels":
+        return ListChannelsOutput()
+    if operation == "getWorkspaceIdentity":
+        return GetWorkspaceIdentityOutput()
     return GetThreadReplyOutput() if operation == "getThreadReply" else ListThreadMessagesOutput()
 
 
@@ -207,6 +219,14 @@ class Client:
         """Close the provider and generated OAuth refresh transport."""
         await self.http_client.aclose()
 
+    def list_channels(self) -> ListChannelsOperation:
+        """Bind the channel page Query."""
+        return ListChannelsOperation(self)
+
+    def get_workspace_identity(self) -> GetWorkspaceIdentityOperation:
+        """Bind the workspace identity Query."""
+        return GetWorkspaceIdentityOperation(self)
+
     def list_thread_messages(self) -> ListThreadMessagesOperation:
         """Bind the thread page Query."""
         return ListThreadMessagesOperation(self)
@@ -274,11 +294,16 @@ class Client:
             result.error = "invalid"
         return result
 
-    async def _get(self, call: Call, credentials: Credentials, query: dict[str, str]) -> _Response:
+    async def _get(
+        self,
+        call: Call,
+        credentials: Credentials,
+        query: dict[str, str],
+        token_field: str = "user_token",
+        api_method: str = "conversations.replies",
+    ) -> _Response:
         for attempt in range(2):
-            result = await self._request(
-                call, credentials, "user_token", "GET", "conversations.replies", query=query
-            )
+            result = await self._request(call, credentials, token_field, "GET", api_method, query=query)
             if result.error or not _credential_rejected(result) or attempt:
                 return result
             refresh = getattr(self.credentials, "resolve_after_rejection", None)
@@ -288,7 +313,7 @@ class Client:
                 replacement = await refresh(call)
             except Exception:
                 return result
-            if not replacement.user_token.reveal():
+            if not getattr(replacement, token_field).reveal():
                 return result
             credentials = replacement
         return result
@@ -471,6 +496,222 @@ class GetThreadReplyOperation:
             self.client._receipt(call, response),
             _failure(operation, FailureKind.NOT_FOUND, "Slack thread reply was not found"),
         )
+
+
+_CHANNEL_TYPES = {
+    "": "public_channel,private_channel",
+    "public": "public_channel",
+    "private": "private_channel",
+}
+
+
+def _optional_value(value: dict[str, Any], field_name: str, expected: type) -> Any:
+    """Return a Go-decodable optional JSON field, treating null as the zero value."""
+    item = value.get(field_name)
+    if item is None:
+        return expected()
+    if not isinstance(item, expected):
+        raise ValueError("Slack field has an invalid type")
+    return item
+
+
+def _decoded_channels(decoded: dict[str, Any]) -> list[dict[str, Any]]:
+    """Match Go decoding of conversations.list and users.conversations channels."""
+    channels = decoded.get("channels")
+    if channels is None:
+        return []
+    if not isinstance(channels, list):
+        raise ValueError("Slack channels have an invalid shape")
+    result = []
+    for channel in channels:
+        if channel is None:
+            channel = {}
+        if not isinstance(channel, dict):
+            raise ValueError("Slack channel has an invalid shape")
+        topic = _optional_value(channel, "topic", dict)
+        purpose = _optional_value(channel, "purpose", dict)
+        result.append(
+            {
+                "id": _optional_value(channel, "id", str),
+                "name": _optional_value(channel, "name", str),
+                "is_private": _optional_value(channel, "is_private", bool),
+                "is_member": _optional_value(channel, "is_member", bool),
+                "topic": _optional_value(topic, "value", str),
+                "purpose": _optional_value(purpose, "value", str),
+            }
+        )
+    return result
+
+
+def _channel_name_filter(name_filter: str) -> str:
+    """Trim spaces and one leading # and lowercase the filter."""
+    trimmed = name_filter.strip()
+    return (trimmed[1:] if trimmed.startswith("#") else trimmed).lower()
+
+
+def _classify_query_response(
+    client: Client,
+    call: Call,
+    operation: str,
+    response: _Response,
+    empty: Any,
+    unavailable_message: str,
+    rate_limited_message: str,
+) -> QueryAttempt[Any] | None:
+    """Select the transport, status, and Slack envelope outcome shared by bot-token reads."""
+    if response.error in ("invalid", "too_large"):
+        kind = FailureKind.PROTOCOL if response.error == "invalid" else FailureKind.RESPONSE_TOO_LARGE
+        return QueryAttempt.branch_result(
+            INVALID_RESPONSE,
+            empty,
+            client._receipt(call, response),
+            _failure(operation, kind, "Slack returned an invalid response"),
+        )
+    if response.error:
+        return QueryAttempt.retry(_failure(operation, FailureKind.AVAILABILITY, unavailable_message))
+    if response.status == 429:
+        return QueryAttempt.retry(
+            _failure(operation, FailureKind.RATE_LIMIT, rate_limited_message), _retry_after(response)
+        )
+    if response.status >= 500:
+        return QueryAttempt.retry(_failure(operation, FailureKind.AVAILABILITY, unavailable_message))
+    if not 200 <= response.status < 300 or not response.decoded.get("ok", False):
+        return QueryAttempt.branch_result(
+            PROVIDER_REJECTED,
+            empty,
+            client._receipt(call, response),
+            _failure(operation, _rejection_kind(response), "Slack rejected the request"),
+        )
+    return None
+
+
+class ListChannelsOperation:
+    """Read one Slack channel page with the bot token and filter it by name."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the manifest operation definition."""
+        return LIST_CHANNELS_DEFINITION
+
+    async def invoke(self, call: Call, input: ListChannelsInput) -> QueryAttempt[ListChannelsOutput]:
+        """Validate, read, filter, and classify one provider attempt."""
+        operation = "listChannels"
+        channel_types = _CHANNEL_TYPES.get(input.visibility)
+        if channel_types is None or not 0 <= input.limit <= 999:
+            return _query_branch(
+                operation,
+                DEFECT,
+                FailureKind.VALIDATION,
+                "visibility must be blank, public, or private, and limit must be from 0 through 999",
+            )
+        credentials, _ = await self.client._resolve(call, "bot_token")
+        if credentials is None:
+            return _query_branch(
+                operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
+            )
+        query = {"exclude_archived": "true", "types": channel_types, "limit": str(input.limit or 200)}
+        if input.cursor:
+            query["cursor"] = input.cursor
+        # users.conversations lists only joined channels and omits is_member.
+        api_method = "users.conversations" if input.member_only else "conversations.list"
+        response = await self.client._get(call, credentials, query, "bot_token", api_method)
+        classified = _classify_query_response(
+            self.client,
+            call,
+            operation,
+            response,
+            ListChannelsOutput(),
+            "Slack channels are temporarily unavailable",
+            "Slack rate limited the channel query",
+        )
+        if classified is not None:
+            return classified
+        try:
+            channels = _decoded_channels(response.decoded)
+        except ValueError:
+            channels = None
+        if channels is None or any(not channel["id"] for channel in channels):
+            return QueryAttempt.branch_result(
+                INVALID_RESPONSE,
+                ListChannelsOutput(),
+                self.client._receipt(call, response),
+                _failure(operation, FailureKind.PROTOCOL, "Slack returned an invalid channel list"),
+            )
+        name_filter = _channel_name_filter(input.name_filter)
+        output = ListChannelsOutput(
+            tuple(
+                Channel(
+                    channel["id"],
+                    channel["name"],
+                    channel["is_private"],
+                    channel["is_member"] or input.member_only,
+                    channel["topic"],
+                    channel["purpose"],
+                )
+                for channel in channels
+                if not name_filter or name_filter in channel["name"].lower()
+            ),
+            (response.decoded.get("response_metadata") or {}).get("next_cursor") or "",
+        )
+        return QueryAttempt.branch_result(LISTED, output, self.client._receipt(call, response))
+
+
+class GetWorkspaceIdentityOperation:
+    """Read the bot token's workspace and identity with auth.test."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
+
+    def definition(self) -> QueryDefinition:
+        """Return the manifest operation definition."""
+        return GET_WORKSPACE_IDENTITY_DEFINITION
+
+    async def invoke(
+        self, call: Call, input: GetWorkspaceIdentityInput
+    ) -> QueryAttempt[GetWorkspaceIdentityOutput]:
+        """Read and classify one provider attempt."""
+        operation = "getWorkspaceIdentity"
+        credentials, _ = await self.client._resolve(call, "bot_token")
+        if credentials is None:
+            return _query_branch(
+                operation, DEFECT, FailureKind.AUTHENTICATION, "Slack connection credentials are unavailable"
+            )
+        response = await self.client._get(call, credentials, {}, "bot_token", "auth.test")
+        classified = _classify_query_response(
+            self.client,
+            call,
+            operation,
+            response,
+            GetWorkspaceIdentityOutput(),
+            "Slack workspace identity is temporarily unavailable",
+            "Slack rate limited the identity query",
+        )
+        if classified is not None:
+            return classified
+        try:
+            decoded = response.decoded
+            output = GetWorkspaceIdentityOutput(
+                _optional_value(decoded, "team_id", str),
+                _optional_value(decoded, "team", str),
+                _optional_value(decoded, "url", str),
+                _optional_value(decoded, "enterprise_id", str),
+                _optional_value(decoded, "is_enterprise_install", bool),
+                _optional_value(decoded, "user_id", str),
+                _optional_value(decoded, "user", str),
+                _optional_value(decoded, "bot_id", str),
+            )
+        except ValueError:
+            output = None
+        if output is None or not output.bot_user_id or not (output.team_id or output.enterprise_id):
+            return QueryAttempt.branch_result(
+                INVALID_RESPONSE,
+                GetWorkspaceIdentityOutput(),
+                self.client._receipt(call, response),
+                _failure(operation, FailureKind.PROTOCOL, "Slack returned an invalid workspace identity"),
+            )
+        return QueryAttempt.branch_result(READ, output, self.client._receipt(call, response, output.team_id))
 
 
 class PostChannelMessageOperation:

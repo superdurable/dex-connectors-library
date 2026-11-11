@@ -6,7 +6,7 @@ import { RetryError, runMutation, SecretString, type Call, type Mutation } from 
 import { ProviderTransportError, type ProviderRequest } from '@superdurable/connectors-sdk/providerhttp';
 import { answerRecordedRequest, ExchangeRecorder, invokeProductionMutation, loadScenarios, replay, scenarioCall, type HeartbeatContext, type Scenario } from '../../../../conformance/runners/typescript/connector_scenarios.js';
 import { SlackClient } from '../src/client.js';
-import { GetThreadReplyInputSchema, ListThreadMessagesInputSchema, PostChannelMessageInputSchema, PostThreadReplyInputSchema } from '../src/generated/models.js';
+import { GetThreadReplyInputSchema, GetWorkspaceIdentityInputSchema, ListChannelsInputSchema, ListThreadMessagesInputSchema, PostChannelMessageInputSchema, PostThreadReplyInputSchema } from '../src/generated/models.js';
 
 const scenarios = loadScenarios(new URL('../../../../conformance/connectors/slack/scenarios.json', import.meta.url));
 const connection = { provider: 'slack', name: 'workspace' };
@@ -20,11 +20,14 @@ function productionMutation<Input, Output>(operation: Mutation<Input, Output>, c
 
 async function invokeSlack(scenario: Scenario, recorder: ExchangeRecorder, context: HeartbeatContext) {
   const sender = (request: ProviderRequest) => answerRecordedRequest(recorder, request, before => new ProviderTransportError(before));
+  const botToken = scenario.name === 'getWorkspaceIdentity-defect' ? '' : 'bot-token';
   const client = new SlackClient({}, {
-    resolve: async () => ({ botToken: new SecretString('bot-token'), userToken: new SecretString('user-token') }),
-    resolveWithRefresh: async () => ({ botToken: new SecretString('bot-token'), userToken: new SecretString('user-token') }),
+    resolve: async () => ({ botToken: new SecretString(botToken), userToken: new SecretString('user-token') }),
+    resolveWithRefresh: async () => ({ botToken: new SecretString(botToken), userToken: new SecretString('user-token') }),
   }, { send: sender });
   const call = scenarioCall(scenario, connection, 'slack', context) as Call;
+  if (scenario.operation === 'listChannels') return client.listChannels().invoke(call, ListChannelsInputSchema.parse(scenario.input));
+  if (scenario.operation === 'getWorkspaceIdentity') return client.getWorkspaceIdentity().invoke(call, GetWorkspaceIdentityInputSchema.parse(scenario.input));
   if (scenario.operation === 'listThreadMessages') return client.listThreadMessages().invoke(call, ListThreadMessagesInputSchema.parse(scenario.input));
   if (scenario.operation === 'getThreadReply') return client.getThreadReply().invoke(call, GetThreadReplyInputSchema.parse(scenario.input));
   if (scenario.operation === 'postChannelMessage') return productionMutation(client.postChannelMessage(), call, PostChannelMessageInputSchema.parse(scenario.input), scenario.idempotencyKey!);

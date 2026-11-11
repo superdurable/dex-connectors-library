@@ -4,11 +4,38 @@
 
 import { branchCase, retryCase, uncertainCase, type Case, newMutation, type MockMutation, newQuery, type MockQuery } from '@superdurable/connectors-sdk/connectormock';
 import type { Failure } from '@superdurable/connectors-sdk';
-import type { ListThreadMessagesInput, Message, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
-import { ListThreadMessagesInputSchema, MessageSchema, ListThreadMessagesOutputSchema, GetThreadReplyInputSchema, GetThreadReplyOutputSchema, PostChannelMessageInputSchema, PostMessageOutputSchema, PostThreadReplyInputSchema } from './models.js';
-import { ProviderID, ConnectorID, ListThreadMessagesDefinition, GetThreadReplyDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './definitions.js';
+import type { ListChannelsInput, Channel, ListChannelsOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListThreadMessagesInput, Message, ListThreadMessagesOutput, GetThreadReplyInput, GetThreadReplyOutput, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './models.js';
+import { ListChannelsInputSchema, ChannelSchema, ListChannelsOutputSchema, GetWorkspaceIdentityInputSchema, GetWorkspaceIdentityOutputSchema, ListThreadMessagesInputSchema, MessageSchema, ListThreadMessagesOutputSchema, GetThreadReplyInputSchema, GetThreadReplyOutputSchema, PostChannelMessageInputSchema, PostMessageOutputSchema, PostThreadReplyInputSchema } from './models.js';
+import { ProviderID, ConnectorID, ListChannelsDefinition, GetWorkspaceIdentityDefinition, ListThreadMessagesDefinition, GetThreadReplyDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './definitions.js';
 import { newConnectionWithOperations, type Connection, type Operations } from './connection.js';
 
+/** Go zero value for ListChannelsInput in scripted cases. */
+export const emptyListChannelsInput: ListChannelsInput = ListChannelsInputSchema.parse({
+});
+/** Go zero value for Channel in scripted cases. */
+export const emptyChannel: Channel = ChannelSchema.parse({
+  "channelId": '',
+  "name": '',
+  "isPrivate": false,
+  "isMember": false,
+});
+/** Go zero value for ListChannelsOutput in scripted cases. */
+export const emptyListChannelsOutput: ListChannelsOutput = ListChannelsOutputSchema.parse({
+  "channels": [],
+});
+/** Go zero value for GetWorkspaceIdentityInput in scripted cases. */
+export const emptyGetWorkspaceIdentityInput: GetWorkspaceIdentityInput = GetWorkspaceIdentityInputSchema.parse({
+});
+/** Go zero value for GetWorkspaceIdentityOutput in scripted cases. */
+export const emptyGetWorkspaceIdentityOutput: GetWorkspaceIdentityOutput = GetWorkspaceIdentityOutputSchema.parse({
+  "teamId": '',
+  "teamName": '',
+  "workspaceUrl": '',
+  "isEnterpriseInstall": false,
+  "botUserId": '',
+  "botUserName": '',
+  "botId": '',
+});
 /** Go zero value for ListThreadMessagesInput in scripted cases. */
 export const emptyListThreadMessagesInput: ListThreadMessagesInput = ListThreadMessagesInputSchema.parse({
   "channelId": '',
@@ -50,6 +77,72 @@ export const emptyPostThreadReplyInput: PostThreadReplyInput = PostThreadReplyIn
   "threadTimestamp": '',
   "text": '',
 });
+
+/** Script the listed branch. */
+export function listChannelsListed(value: ListChannelsOutput, failure?: Failure): Case<ListChannelsOutput> { return branchCase("listed", value, failure); }
+/** Script the providerRejected branch. */
+export function listChannelsProviderRejected(value: ListChannelsOutput, failure?: Failure): Case<ListChannelsOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function listChannelsInvalidResponse(value: ListChannelsOutput, failure?: Failure): Case<ListChannelsOutput> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function listChannelsDefect(value: ListChannelsOutput, failure?: Failure): Case<ListChannelsOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of listChannels. */
+export function listChannelsRetry(failure: Failure, retryAfterMs = 0): Case<ListChannelsOutput> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario workspaceChannels for listChannels. */
+export function listChannelsWorkspaceChannels(): Case<ListChannelsOutput> {
+  const value = emptyListChannelsOutput;
+  return branchCase("listed", value);
+}
+/** Default listChannels scenario. */
+export function listChannelsDefault(): Case<ListChannelsOutput> { return listChannelsWorkspaceChannels(); }
+/** Manifest scenario channelListRejected for listChannels. */
+export function listChannelsChannelListRejected(): Case<ListChannelsOutput> {
+  const value = emptyListChannelsOutput;
+  return branchCase("providerRejected", value, { kind: "AUTHORIZATION", provider: ConnectorID, operation: "listChannels", message: "Slack rejected the channel listing because the app lacks a required scope." });
+}
+/** Manifest scenario malformedChannelList for listChannels. */
+export function listChannelsMalformedChannelList(): Case<ListChannelsOutput> {
+  const value = emptyListChannelsOutput;
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "listChannels", message: "Slack returned an invalid channel list response." });
+}
+/** Manifest scenario channelLimitOutOfRange for listChannels. */
+export function listChannelsChannelLimitOutOfRange(): Case<ListChannelsOutput> {
+  const value = emptyListChannelsOutput;
+  return branchCase("defect", value, { kind: "VALIDATION", provider: ConnectorID, operation: "listChannels", message: "The channel page limit must be from 1 through 999." });
+}
+
+/** Script the read branch. */
+export function getWorkspaceIdentityRead(value: GetWorkspaceIdentityOutput, failure?: Failure): Case<GetWorkspaceIdentityOutput> { return branchCase("read", value, failure); }
+/** Script the providerRejected branch. */
+export function getWorkspaceIdentityProviderRejected(value: GetWorkspaceIdentityOutput, failure?: Failure): Case<GetWorkspaceIdentityOutput> { return branchCase("providerRejected", value, failure); }
+/** Script the invalidResponse branch. */
+export function getWorkspaceIdentityInvalidResponse(value: GetWorkspaceIdentityOutput, failure?: Failure): Case<GetWorkspaceIdentityOutput> { return branchCase("invalidResponse", value, failure); }
+/** Script the defect branch. */
+export function getWorkspaceIdentityDefect(value: GetWorkspaceIdentityOutput, failure?: Failure): Case<GetWorkspaceIdentityOutput> { return branchCase("defect", value, failure); }
+/** Script a safe retry of getWorkspaceIdentity. */
+export function getWorkspaceIdentityRetry(failure: Failure, retryAfterMs = 0): Case<GetWorkspaceIdentityOutput> { return retryCase(failure, retryAfterMs); }
+/** Manifest scenario acmeWorkspace for getWorkspaceIdentity. */
+export function getWorkspaceIdentityAcmeWorkspace(): Case<GetWorkspaceIdentityOutput> {
+  const value = GetWorkspaceIdentityOutputSchema.parse({"botId":"B0123456789","botUserId":"U0BOT123456","botUserName":"dex-bot","isEnterpriseInstall":false,"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/"});
+  return branchCase("read", value);
+}
+/** Default getWorkspaceIdentity scenario. */
+export function getWorkspaceIdentityDefault(): Case<GetWorkspaceIdentityOutput> { return getWorkspaceIdentityAcmeWorkspace(); }
+/** Manifest scenario identityRejected for getWorkspaceIdentity. */
+export function getWorkspaceIdentityIdentityRejected(): Case<GetWorkspaceIdentityOutput> {
+  const value = emptyGetWorkspaceIdentityOutput;
+  return branchCase("providerRejected", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "getWorkspaceIdentity", message: "Slack rejected the identity read because the connection was revoked." });
+}
+/** Manifest scenario malformedIdentity for getWorkspaceIdentity. */
+export function getWorkspaceIdentityMalformedIdentity(): Case<GetWorkspaceIdentityOutput> {
+  const value = emptyGetWorkspaceIdentityOutput;
+  return branchCase("invalidResponse", value, { kind: "PROTOCOL", provider: ConnectorID, operation: "getWorkspaceIdentity", message: "Slack returned an invalid identity response." });
+}
+/** Manifest scenario missingBotToken for getWorkspaceIdentity. */
+export function getWorkspaceIdentityMissingBotToken(): Case<GetWorkspaceIdentityOutput> {
+  const value = emptyGetWorkspaceIdentityOutput;
+  return branchCase("defect", value, { kind: "AUTHENTICATION", provider: ConnectorID, operation: "getWorkspaceIdentity", message: "Slack connection credentials are unavailable." });
+}
 
 /** Script the read branch. */
 export function listThreadMessagesRead(value: ListThreadMessagesOutput, failure?: Failure): Case<ListThreadMessagesOutput> { return branchCase("read", value, failure); }
@@ -192,6 +285,8 @@ export function postThreadReplyMissingReplyText(): Case<PostMessageOutput> {
 
 /** Scripted operations and manifest defaults for this connector. */
 export class GeneratedMock implements Operations {
+  readonly #listChannels: MockQuery<ListChannelsInput, ListChannelsOutput>;
+  readonly #getWorkspaceIdentity: MockQuery<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput>;
   readonly #listThreadMessages: MockQuery<ListThreadMessagesInput, ListThreadMessagesOutput>;
   readonly #getThreadReply: MockQuery<GetThreadReplyInput, GetThreadReplyOutput>;
   readonly #postChannelMessage: MockMutation<PostChannelMessageInput, PostMessageOutput>;
@@ -199,6 +294,8 @@ export class GeneratedMock implements Operations {
   readonly #connection: Connection;
 
   constructor(connectionName: string) {
+    this.#listChannels = newQuery<ListChannelsInput, ListChannelsOutput>(ListChannelsDefinition).default(listChannelsDefault());
+    this.#getWorkspaceIdentity = newQuery<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput>(GetWorkspaceIdentityDefinition).default(getWorkspaceIdentityDefault());
     this.#listThreadMessages = newQuery<ListThreadMessagesInput, ListThreadMessagesOutput>(ListThreadMessagesDefinition).default(listThreadMessagesDefault());
     this.#getThreadReply = newQuery<GetThreadReplyInput, GetThreadReplyOutput>(GetThreadReplyDefinition).default(getThreadReplyDefault());
     this.#postChannelMessage = newMutation<PostChannelMessageInput, PostMessageOutput>(PostChannelMessageDefinition).default(postChannelMessageDefault());
@@ -207,11 +304,15 @@ export class GeneratedMock implements Operations {
   }
 
   connection(): Connection { return this.#connection; }
+  listChannels(): MockQuery<ListChannelsInput, ListChannelsOutput> { return this.#listChannels; }
+  getWorkspaceIdentity(): MockQuery<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput> { return this.#getWorkspaceIdentity; }
   listThreadMessages(): MockQuery<ListThreadMessagesInput, ListThreadMessagesOutput> { return this.#listThreadMessages; }
   getThreadReply(): MockQuery<GetThreadReplyInput, GetThreadReplyOutput> { return this.#getThreadReply; }
   postChannelMessage(): MockMutation<PostChannelMessageInput, PostMessageOutput> { return this.#postChannelMessage; }
   postThreadReply(): MockMutation<PostThreadReplyInput, PostMessageOutput> { return this.#postThreadReply; }
   assertNoFailures(): void {
+    this.#listChannels.assertNoFailures();
+    this.#getWorkspaceIdentity.assertNoFailures();
     this.#listThreadMessages.assertNoFailures();
     this.#getThreadReply.assertNoFailures();
     this.#postChannelMessage.assertNoFailures();

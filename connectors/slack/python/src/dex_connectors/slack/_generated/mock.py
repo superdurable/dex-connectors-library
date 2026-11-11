@@ -8,8 +8,98 @@ from dex_connectors.sdk import ConnectionRef, Failure, FailureKind
 from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
-from ..models import GetThreadReplyInput, GetThreadReplyOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput
-from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_THREAD_REPLY_DEFINITION, INVALID_RESPONSE, LIST_THREAD_MESSAGES_DEFINITION, NOT_FOUND, POST_CHANNEL_MESSAGE_DEFINITION, POST_THREAD_REPLY_DEFINITION, PROVIDER_REJECTED, READ, SENT, UNCERTAIN
+from ..models import Channel, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput
+from .definitions import CONNECTOR_ID, DEFECT, FOUND, GET_THREAD_REPLY_DEFINITION, GET_WORKSPACE_IDENTITY_DEFINITION, INVALID_RESPONSE, LISTED, LIST_CHANNELS_DEFINITION, LIST_THREAD_MESSAGES_DEFINITION, NOT_FOUND, POST_CHANNEL_MESSAGE_DEFINITION, POST_THREAD_REPLY_DEFINITION, PROVIDER_REJECTED, READ, SENT, UNCERTAIN
+
+def list_channels_listed(value: ListChannelsOutput, failure: Failure | None = None) -> Case[ListChannelsOutput]:
+    return Case.branch_result(LISTED, value, failure)
+
+setattr(list_channels_listed, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_provider_rejected(value: ListChannelsOutput, failure: Failure | None = None) -> Case[ListChannelsOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(list_channels_provider_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_invalid_response(value: ListChannelsOutput, failure: Failure | None = None) -> Case[ListChannelsOutput]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(list_channels_invalid_response, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_defect(value: ListChannelsOutput, failure: Failure | None = None) -> Case[ListChannelsOutput]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(list_channels_defect, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_retry(failure: Failure, after_seconds: float = 0) -> Case[ListChannelsOutput]:
+    return Case.retry(failure, after_seconds)
+
+setattr(list_channels_retry, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_workspace_channels() -> Case[ListChannelsOutput]:
+    return Case.paged(LISTED, (ListChannelsOutput(channels=(Channel(channel_id='C0345678901', name='support', is_private=False, is_member=True, topic='Customer questions', purpose='Answer customer questions within one business day.'), Channel(channel_id='C0123456789', name='general', is_private=False, is_member=True, topic='Company announcements', purpose='Company-wide announcements and work-based matters.')), next_cursor='cursor-page-2'), ListChannelsOutput(channels=(Channel(channel_id='C0123456789', name='general', is_private=False, is_member=True, topic='Company announcements', purpose='Company-wide announcements and work-based matters.'), Channel(channel_id='C0456789012', name='random', is_private=False, is_member=False, purpose='Non-work banter and water cooler conversation.')), next_cursor='cursor-page-3'), ListChannelsOutput(channels=(Channel(channel_id='G0234567890', name='order-approvals', is_private=True, is_member=True, topic='Orders awaiting approval', purpose='Approve or reject large orders.'),))))
+
+setattr(list_channels_workspace_channels, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_channel_list_rejected() -> Case[ListChannelsOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, ListChannelsOutput(), Failure(FailureKind.AUTHORIZATION, CONNECTOR_ID, "listChannels", "Slack rejected the channel listing because the app lacks a required scope."))
+
+setattr(list_channels_channel_list_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_malformed_channel_list() -> Case[ListChannelsOutput]:
+    return Case.branch_result(INVALID_RESPONSE, ListChannelsOutput(), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "listChannels", "Slack returned an invalid channel list response."))
+
+setattr(list_channels_malformed_channel_list, '__module__', "dex_connectors.slack.slackmock")
+
+def list_channels_channel_limit_out_of_range() -> Case[ListChannelsOutput]:
+    return Case.branch_result(DEFECT, ListChannelsOutput(), Failure(FailureKind.VALIDATION, CONNECTOR_ID, "listChannels", "The channel page limit must be from 1 through 999."))
+
+setattr(list_channels_channel_limit_out_of_range, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_read(value: GetWorkspaceIdentityOutput, failure: Failure | None = None) -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(READ, value, failure)
+
+setattr(get_workspace_identity_read, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_provider_rejected(value: GetWorkspaceIdentityOutput, failure: Failure | None = None) -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, value, failure)
+
+setattr(get_workspace_identity_provider_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_invalid_response(value: GetWorkspaceIdentityOutput, failure: Failure | None = None) -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(INVALID_RESPONSE, value, failure)
+
+setattr(get_workspace_identity_invalid_response, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_defect(value: GetWorkspaceIdentityOutput, failure: Failure | None = None) -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(DEFECT, value, failure)
+
+setattr(get_workspace_identity_defect, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_retry(failure: Failure, after_seconds: float = 0) -> Case[GetWorkspaceIdentityOutput]:
+    return Case.retry(failure, after_seconds)
+
+setattr(get_workspace_identity_retry, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_acme_workspace() -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(READ, GetWorkspaceIdentityOutput(team_id='T0123456789', team_name='Acme Corp', workspace_url='https://acme.slack.com/', is_enterprise_install=False, bot_user_id='U0BOT123456', bot_user_name='dex-bot', bot_id='B0123456789'))
+
+setattr(get_workspace_identity_acme_workspace, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_identity_rejected() -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(PROVIDER_REJECTED, GetWorkspaceIdentityOutput(), Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "getWorkspaceIdentity", "Slack rejected the identity read because the connection was revoked."))
+
+setattr(get_workspace_identity_identity_rejected, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_malformed_identity() -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(INVALID_RESPONSE, GetWorkspaceIdentityOutput(), Failure(FailureKind.PROTOCOL, CONNECTOR_ID, "getWorkspaceIdentity", "Slack returned an invalid identity response."))
+
+setattr(get_workspace_identity_malformed_identity, '__module__', "dex_connectors.slack.slackmock")
+
+def get_workspace_identity_missing_bot_token() -> Case[GetWorkspaceIdentityOutput]:
+    return Case.branch_result(DEFECT, GetWorkspaceIdentityOutput(), Failure(FailureKind.AUTHENTICATION, CONNECTOR_ID, "getWorkspaceIdentity", "Slack connection credentials are unavailable."))
+
+setattr(get_workspace_identity_missing_bot_token, '__module__', "dex_connectors.slack.slackmock")
 
 def list_thread_messages_read(value: ListThreadMessagesOutput, failure: Failure | None = None) -> Case[ListThreadMessagesOutput]:
     return Case.branch_result(READ, value, failure)
@@ -205,6 +295,10 @@ setattr(post_thread_reply_missing_reply_text, '__module__', "dex_connectors.slac
 class Mock:
 
     def __init__(self, connection_name: str = "slack") -> None:
+        self.list_channels_script: Query[ListChannelsInput, ListChannelsOutput] = Query(LIST_CHANNELS_DEFINITION)
+        self.list_channels_script.default(list_channels_workspace_channels())
+        self.get_workspace_identity_script: Query[GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput] = Query(GET_WORKSPACE_IDENTITY_DEFINITION)
+        self.get_workspace_identity_script.default(get_workspace_identity_acme_workspace())
         self.list_thread_messages_script: Query[ListThreadMessagesInput, ListThreadMessagesOutput] = Query(LIST_THREAD_MESSAGES_DEFINITION)
         self.list_thread_messages_script.default(list_thread_messages_approval_thread())
         self.get_thread_reply_script: Query[GetThreadReplyInput, GetThreadReplyOutput] = Query(GET_THREAD_REPLY_DEFINITION)
@@ -214,6 +308,8 @@ class Mock:
         self.post_thread_reply_script: Mutation[PostThreadReplyInput, PostMessageOutput] = Mutation(POST_THREAD_REPLY_DEFINITION)
         self.post_thread_reply_script.default(post_thread_reply_reply_sent())
         self._connection = new_connection_with_operations(
+            list_channels=self.list_channels_script,
+            get_workspace_identity=self.get_workspace_identity_script,
             list_thread_messages=self.list_thread_messages_script,
             get_thread_reply=self.get_thread_reply_script,
             post_channel_message=self.post_channel_message_script,
@@ -228,6 +324,24 @@ setattr(Mock, '__module__', "dex_connectors.slack.slackmock")
 
 __all__ = [
     "Mock",
+    "list_channels_listed",
+    "list_channels_provider_rejected",
+    "list_channels_invalid_response",
+    "list_channels_defect",
+    "list_channels_retry",
+    "list_channels_workspace_channels",
+    "list_channels_channel_list_rejected",
+    "list_channels_malformed_channel_list",
+    "list_channels_channel_limit_out_of_range",
+    "get_workspace_identity_read",
+    "get_workspace_identity_provider_rejected",
+    "get_workspace_identity_invalid_response",
+    "get_workspace_identity_defect",
+    "get_workspace_identity_retry",
+    "get_workspace_identity_acme_workspace",
+    "get_workspace_identity_identity_rejected",
+    "get_workspace_identity_malformed_identity",
+    "get_workspace_identity_missing_bot_token",
     "list_thread_messages_read",
     "list_thread_messages_provider_rejected",
     "list_thread_messages_invalid_response",

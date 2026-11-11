@@ -13,6 +13,97 @@ def _replace_nil_slices(value: Any, depth: int) -> Any:
     return tuple(_replace_nil_slices(item, depth - 1) for item in value)
 
 
+# ListChannelsInput selects one page of Slack channels visible to the connection's app.
+@dataclass(frozen=True, slots=True)
+class ListChannelsInput:
+    # NameFilter keeps only channels whose name contains this text, ignoring case, surrounding spaces, and one leading #,
+    # so "#General" matches general and general-ops. Blank keeps every channel on the page.
+    name_filter: str = _dataclass_field(default='', metadata={'dex_json_name': 'nameFilter', 'dex_json_omit_default': True})
+    # Visibility is public for public channels only or private for private channels only. Blank lists both.
+    visibility: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # MemberOnly lists only channels the app has joined, which are the channels it can post to. False also lists
+    # public channels the app has not joined.
+    member_only: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'memberOnly', 'dex_json_omit_default': True})
+    # Limit is the number of channels Slack examines for this page, from 1 through 999, Slack's maximum. Zero uses 200. The name
+    # filter runs after Slack returns the page, so fewer channels can be returned.
+    limit: int = _dataclass_field(default=0, metadata={'dex_json_omit_default': True})
+    # Cursor is the nextCursor from the previous page. Blank reads the first page.
+    cursor: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(ListChannelsInput, '__module__', 'dex_connectors.slack.models')
+
+
+# Channel describes one Slack channel.
+@dataclass(frozen=True, slots=True)
+class Channel:
+    # ChannelID is the Slack channel identifier, such as C0123456789, accepted as channelId by the other Slack operations.
+    channel_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'channelId'})
+    # Name is the channel name without the leading #.
+    name: str = ''
+    # IsPrivate is true for a private channel.
+    is_private: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isPrivate'})
+    # IsMember is true when the app has joined the channel and can post to it.
+    is_member: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isMember'})
+    # Topic is the channel topic; blank when none is set.
+    topic: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+    # Purpose is the channel purpose; blank when none is set.
+    purpose: str = _dataclass_field(default='', metadata={'dex_json_omit_default': True})
+
+
+setattr(Channel, '__module__', 'dex_connectors.slack.models')
+
+
+# ListChannelsOutput contains one filtered page of Slack channels.
+@dataclass(frozen=True, slots=True)
+class ListChannelsOutput:
+    # Channels are the page's channels that match the input filters, in Slack's order.
+    channels: tuple[Channel, ...] = ()
+    # NextCursor continues the listing when non-blank, even if Channels is empty; blank means the listing ended.
+    next_cursor: str = _dataclass_field(default='', metadata={'dex_json_name': 'nextCursor', 'dex_json_omit_default': True})
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'channels', _replace_nil_slices(self.channels, 1))
+
+
+ListChannelsOutput.__annotations__['channels'] = tuple[Channel, ...] | None
+ListChannelsOutput.__dataclass_fields__['channels'].type = tuple[Channel, ...] | None
+setattr(ListChannelsOutput, '__module__', 'dex_connectors.slack.models')
+
+
+# GetWorkspaceIdentityInput takes no fields because the connection determines the workspace.
+@dataclass(frozen=True, slots=True)
+class GetWorkspaceIdentityInput:
+    pass
+
+
+setattr(GetWorkspaceIdentityInput, '__module__', 'dex_connectors.slack.models')
+
+
+# GetWorkspaceIdentityOutput identifies the Slack workspace and bot that the connection is authorized for.
+@dataclass(frozen=True, slots=True)
+class GetWorkspaceIdentityOutput:
+    # TeamID is the Slack workspace identifier, such as T0123456789.
+    team_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'teamId'})
+    # TeamName is the workspace name shown in Slack.
+    team_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'teamName'})
+    # WorkspaceURL is the workspace's Slack URL, such as https://acme.slack.com/.
+    workspace_url: str = _dataclass_field(default='', metadata={'dex_json_name': 'workspaceUrl'})
+    # EnterpriseID is the Enterprise Grid organization identifier; blank outside Enterprise Grid.
+    enterprise_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'enterpriseId', 'dex_json_omit_default': True})
+    # IsEnterpriseInstall is true when the app is installed for a whole Enterprise Grid organization.
+    is_enterprise_install: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'isEnterpriseInstall'})
+    # BotUserID is the Slack user identifier of the bot that posts messages, such as U0BOT123456.
+    bot_user_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'botUserId'})
+    # BotUserName is the bot user's Slack name.
+    bot_user_name: str = _dataclass_field(default='', metadata={'dex_json_name': 'botUserName'})
+    # BotID is the Slack bot identifier, such as B0123456789.
+    bot_id: str = _dataclass_field(default='', metadata={'dex_json_name': 'botId'})
+
+
+setattr(GetWorkspaceIdentityOutput, '__module__', 'dex_connectors.slack.models')
+
+
 # ListThreadMessagesInput contains the provider request fields for list thread messages.
 @dataclass(frozen=True, slots=True)
 class ListThreadMessagesInput:

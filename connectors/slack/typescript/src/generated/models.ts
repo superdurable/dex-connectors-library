@@ -96,6 +96,66 @@ export function decodeSharedCredentials(value: unknown): Credentials {
 /** Host-owned source of private connector credentials. */
 export type CredentialSource = RefreshingCredentialProvider<Credentials>;
 
+/** ListChannelsInput selects one page of Slack channels visible to the connection's app. */
+export interface ListChannelsInput {
+  /** NameFilter keeps only channels whose name contains this text, ignoring case, surrounding spaces, and one leading #,
+   * so "#General" matches general and general-ops. Blank keeps every channel on the page. */
+  "nameFilter"?: string | undefined;
+  /** Visibility is public for public channels only or private for private channels only. Blank lists both. */
+  "visibility"?: string | undefined;
+  /** MemberOnly lists only channels the app has joined, which are the channels it can post to. False also lists
+   * public channels the app has not joined. */
+  "memberOnly"?: boolean | undefined;
+  /** Limit is the number of channels Slack examines for this page, from 1 through 999, Slack's maximum. Zero uses 200. The name
+   * filter runs after Slack returns the page, so fewer channels can be returned. */
+  "limit"?: number | undefined;
+  /** Cursor is the nextCursor from the previous page. Blank reads the first page. */
+  "cursor"?: string | undefined;
+}
+/** Channel describes one Slack channel. */
+export interface Channel {
+  /** ChannelID is the Slack channel identifier, such as C0123456789, accepted as channelId by the other Slack operations. */
+  "channelId": string;
+  /** Name is the channel name without the leading #. */
+  "name": string;
+  /** IsPrivate is true for a private channel. */
+  "isPrivate": boolean;
+  /** IsMember is true when the app has joined the channel and can post to it. */
+  "isMember": boolean;
+  /** Topic is the channel topic; blank when none is set. */
+  "topic"?: string | undefined;
+  /** Purpose is the channel purpose; blank when none is set. */
+  "purpose"?: string | undefined;
+}
+/** ListChannelsOutput contains one filtered page of Slack channels. */
+export interface ListChannelsOutput {
+  /** Channels are the page's channels that match the input filters, in Slack's order. */
+  "channels": Array<Channel> | null;
+  /** NextCursor continues the listing when non-blank, even if Channels is empty; blank means the listing ended. */
+  "nextCursor"?: string | undefined;
+}
+/** GetWorkspaceIdentityInput takes no fields because the connection determines the workspace. */
+export interface GetWorkspaceIdentityInput {
+}
+/** GetWorkspaceIdentityOutput identifies the Slack workspace and bot that the connection is authorized for. */
+export interface GetWorkspaceIdentityOutput {
+  /** TeamID is the Slack workspace identifier, such as T0123456789. */
+  "teamId": string;
+  /** TeamName is the workspace name shown in Slack. */
+  "teamName": string;
+  /** WorkspaceURL is the workspace's Slack URL, such as https://acme.slack.com/. */
+  "workspaceUrl": string;
+  /** EnterpriseID is the Enterprise Grid organization identifier; blank outside Enterprise Grid. */
+  "enterpriseId"?: string | undefined;
+  /** IsEnterpriseInstall is true when the app is installed for a whole Enterprise Grid organization. */
+  "isEnterpriseInstall": boolean;
+  /** BotUserID is the Slack user identifier of the bot that posts messages, such as U0BOT123456. */
+  "botUserId": string;
+  /** BotUserName is the bot user's Slack name. */
+  "botUserName": string;
+  /** BotID is the Slack bot identifier, such as B0123456789. */
+  "botId": string;
+}
 /** ListThreadMessagesInput contains the provider request fields for list thread messages. */
 export interface ListThreadMessagesInput {
   /** ChannelID is the Slack channel identifier. */
@@ -162,6 +222,47 @@ export interface PostThreadReplyInput {
   /** Text specifies text for post thread reply input. */
   "text": string;
 }
+
+/** Runtime validator for ListChannelsInput. */
+export const ListChannelsInputSchema = z.strictObject({
+  "nameFilter": z.string().optional(),
+  "visibility": z.string().optional(),
+  "memberOnly": z.boolean().optional(),
+  "limit": z.number().int().optional(),
+  "cursor": z.string().optional(),
+}) satisfies z.ZodType<ListChannelsInput>;
+
+/** Runtime validator for Channel. */
+export const ChannelSchema = z.strictObject({
+  "channelId": z.string(),
+  "name": z.string(),
+  "isPrivate": z.boolean(),
+  "isMember": z.boolean(),
+  "topic": z.string().optional(),
+  "purpose": z.string().optional(),
+}) satisfies z.ZodType<Channel>;
+
+/** Runtime validator for ListChannelsOutput. */
+export const ListChannelsOutputSchema = z.strictObject({
+  "channels": z.array(ChannelSchema).nullable(),
+  "nextCursor": z.string().optional(),
+}) satisfies z.ZodType<ListChannelsOutput>;
+
+/** Runtime validator for GetWorkspaceIdentityInput. */
+export const GetWorkspaceIdentityInputSchema = z.strictObject({
+}) satisfies z.ZodType<GetWorkspaceIdentityInput>;
+
+/** Runtime validator for GetWorkspaceIdentityOutput. */
+export const GetWorkspaceIdentityOutputSchema = z.strictObject({
+  "teamId": z.string(),
+  "teamName": z.string(),
+  "workspaceUrl": z.string(),
+  "enterpriseId": z.string().optional(),
+  "isEnterpriseInstall": z.boolean(),
+  "botUserId": z.string(),
+  "botUserName": z.string(),
+  "botId": z.string(),
+}) satisfies z.ZodType<GetWorkspaceIdentityOutput>;
 
 /** Runtime validator for ListThreadMessagesInput. */
 export const ListThreadMessagesInputSchema = z.strictObject({

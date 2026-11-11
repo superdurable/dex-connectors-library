@@ -25,6 +25,9 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 	credentials := sdkgo.StaticCredentialProvider[slack.Credentials]{slackConnection: {
 		BotToken: sdkgo.NewSecretString("bot-token"), UserToken: sdkgo.NewSecretString("user-token"),
 	}}
+	if scenario.Name == "getWorkspaceIdentity-defect" {
+		credentials[slackConnection] = slack.Credentials{UserToken: sdkgo.NewSecretString("user-token")}
+	}
 	client, err := slack.New(slack.Config{Endpoint: endpoint}, credentials, slack.WithHTTPClient(transport))
 	if err != nil {
 		t.Fatal(err)
@@ -45,10 +48,12 @@ func newConformanceInvoker(t *testing.T, scenario conformanceScenario, endpoint 
 			context.attempt = int32(attempt)
 		}
 	}, actions: map[string]conformanceOperationInvocation{
-		"listThreadMessages": newConformanceQueryInvocation(t, scenario.Input, context, client.ListThreadMessages(), slackConnection),
-		"getThreadReply":     newConformanceQueryInvocation(t, scenario.Input, context, client.GetThreadReply(), slackConnection),
-		"postChannelMessage": newConformanceMutationInvocation(t, scenario.Input, context, client.PostChannelMessage(), slackConnection, scenario.CallID),
-		"postThreadReply":    newConformanceMutationInvocation(t, scenario.Input, context, client.PostThreadReply(), slackConnection, scenario.CallID),
+		"listChannels":         newConformanceQueryInvocation(t, scenario.Input, context, client.ListChannels(), slackConnection),
+		"getWorkspaceIdentity": newConformanceQueryInvocation(t, scenario.Input, context, client.GetWorkspaceIdentity(), slackConnection),
+		"listThreadMessages":   newConformanceQueryInvocation(t, scenario.Input, context, client.ListThreadMessages(), slackConnection),
+		"getThreadReply":       newConformanceQueryInvocation(t, scenario.Input, context, client.GetThreadReply(), slackConnection),
+		"postChannelMessage":   newConformanceMutationInvocation(t, scenario.Input, context, client.PostChannelMessage(), slackConnection, scenario.CallID),
+		"postThreadReply":      newConformanceMutationInvocation(t, scenario.Input, context, client.PostThreadReply(), slackConnection, scenario.CallID),
 	}}
 }
 

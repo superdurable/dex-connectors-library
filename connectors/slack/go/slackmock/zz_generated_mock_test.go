@@ -16,6 +16,22 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 		name   string
 		decode func() error
 	}{
+		{name: "listChannels/workspaceChannels/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.ListChannelsOutput](`{"channels":[{"channelId":"C0345678901","name":"support","isPrivate":false,"isMember":true,"topic":"Customer questions","purpose":"Answer customer questions within one business day."},{"channelId":"C0123456789","name":"general","isPrivate":false,"isMember":true,"topic":"Company announcements","purpose":"Company-wide announcements and work-based matters."}],"nextCursor":"cursor-page-2"}`)
+			return err
+		}},
+		{name: "listChannels/workspaceChannels/2", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.ListChannelsOutput](`{"channels":[{"channelId":"C0123456789","name":"general","isPrivate":false,"isMember":true,"topic":"Company announcements","purpose":"Company-wide announcements and work-based matters."},{"channelId":"C0456789012","name":"random","isPrivate":false,"isMember":false,"purpose":"Non-work banter and water cooler conversation."}],"nextCursor":"cursor-page-3"}`)
+			return err
+		}},
+		{name: "listChannels/workspaceChannels/3", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.ListChannelsOutput](`{"channels":[{"channelId":"G0234567890","name":"order-approvals","isPrivate":true,"isMember":true,"topic":"Orders awaiting approval","purpose":"Approve or reject large orders."}]}`)
+			return err
+		}},
+		{name: "getWorkspaceIdentity/acmeWorkspace/1", decode: func() error {
+			_, err := connectormock.DecodeOutput[slack.GetWorkspaceIdentityOutput](`{"teamId":"T0123456789","teamName":"Acme Corp","workspaceUrl":"https://acme.slack.com/","isEnterpriseInstall":false,"botUserId":"U0BOT123456","botUserName":"dex-bot","botId":"B0123456789"}`)
+			return err
+		}},
 		{name: "listThreadMessages/approvalThread/1", decode: func() error {
 			_, err := connectormock.DecodeOutput[slack.ListThreadMessagesOutput](`{"messages":[{"channelId":"C0123456789","timestamp":"1710000000.000100","userId":"U0123456789","text":"Request approval for order 1042."},{"channelId":"C0123456789","timestamp":"1710000001.000200","threadTimestamp":"1710000000.000100","userId":"U0234567890","text":"Can you confirm the delivery date?"}],"nextCursor":"cursor-page-2"}`)
 			return err
@@ -50,6 +66,12 @@ func TestManifestMockOutputsDecodeStrictly(t *testing.T) {
 
 func TestNewBindsEveryOperation(t *testing.T) {
 	mock := New(t, "mock")
+	if mock.ListChannels().Definition().Operation.OperationID != "listChannels" {
+		t.Errorf("listChannels mock has another definition")
+	}
+	if mock.GetWorkspaceIdentity().Definition().Operation.OperationID != "getWorkspaceIdentity" {
+		t.Errorf("getWorkspaceIdentity mock has another definition")
+	}
 	if mock.ListThreadMessages().Definition().Operation.OperationID != "listThreadMessages" {
 		t.Errorf("listThreadMessages mock has another definition")
 	}

@@ -3,8 +3,13 @@
 """Public Slack operation models generated from the Go connector."""
 
 from ._generated.models import (
+    Channel,
     GetThreadReplyInput,
     GetThreadReplyOutput,
+    GetWorkspaceIdentityInput,
+    GetWorkspaceIdentityOutput,
+    ListChannelsInput,
+    ListChannelsOutput,
     ListThreadMessagesInput,
     ListThreadMessagesOutput,
     Message,
@@ -14,8 +19,13 @@ from ._generated.models import (
 )
 
 __all__ = [
+    "Channel",
     "GetThreadReplyInput",
     "GetThreadReplyOutput",
+    "GetWorkspaceIdentityInput",
+    "GetWorkspaceIdentityOutput",
+    "ListChannelsInput",
+    "ListChannelsOutput",
     "ListThreadMessagesInput",
     "ListThreadMessagesOutput",
     "Message",

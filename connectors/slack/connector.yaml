@@ -5,19 +5,19 @@ metadata:
   displayName: Slack
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
-  version: v1.4.0
+  version: v1.5.0
 spec:
   provider: slack
   languages:
     python:
-      version: v0.3.0
+      version: v0.4.0
       package: dex-connector-slack
-      operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
+      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
     typescript:
-      version: v0.3.0
+      version: v0.4.0
       package: "@superdurable/connector-slack"
-      operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
+      operations: [listChannels, getWorkspaceIdentity, listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
   codegen:
     go:
@@ -178,6 +178,93 @@ spec:
       configurationType: ThreadReplyCreatedTriggerConfiguration
       description: Receive a matching thread reply.
   operations:
+    - name: listChannels
+      goName: ListChannels
+      inputType: ListChannelsInput
+      outputType: ListChannelsOutput
+      kind: query
+      description: Read one page of non-archived public and private Slack channels visible to the app, optionally filtered by name.
+      idempotency: none
+      branches:
+        - {id: listed, goName: Listed, description: The channel page was read.}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the channel query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized channel response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      agent:
+        exposed: true
+        # providerRejected follows Slack's definite refusal; invalidResponse is unlisted because corrected input cannot fix it.
+        branches: {providerRejected: rejected, defect: rejected}
+        description: "Find Slack channels and their channel IDs. Call this first whenever the user names a channel, such as #general, and pass the returned channelId to other Slack tools instead of asking the user for an ID. Optionally supply part of the channel name (case-insensitive; a leading # is ignored), visibility public or private, memberOnly true to list only channels the app has joined, a limit from 1 through 999, and the cursor from the previous page. The name filter applies to each page separately, so a page can have no match: while nextCursor is present, call again with it. The app can post only where isMember is true, and a private channel appears only after the app is added to it."
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      pagination: {inputField: cursor, nextField: nextCursor}
+      mocks:
+        - name: workspaceChannels
+          branch: listed
+          description: Three unordered channel pages with a repeated channel across a page boundary and a channel the app has not joined.
+          default: true
+          pages:
+            - channels:
+                - {channelId: C0345678901, name: support, isPrivate: false, isMember: true, topic: Customer questions, purpose: Answer customer questions within one business day.}
+                - {channelId: C0123456789, name: general, isPrivate: false, isMember: true, topic: Company announcements, purpose: Company-wide announcements and work-based matters.}
+              nextCursor: cursor-page-2
+            - channels:
+                - {channelId: C0123456789, name: general, isPrivate: false, isMember: true, topic: Company announcements, purpose: Company-wide announcements and work-based matters.}
+                - {channelId: C0456789012, name: random, isPrivate: false, isMember: false, purpose: Non-work banter and water cooler conversation.}
+              nextCursor: cursor-page-3
+            - channels:
+                - {channelId: G0234567890, name: order-approvals, isPrivate: true, isMember: true, topic: Orders awaiting approval, purpose: Approve or reject large orders.}
+        - name: channelListRejected
+          branch: providerRejected
+          description: Slack rejects the channel listing because the app lacks the channel read scopes.
+          failure: {kind: AUTHORIZATION, message: Slack rejected the channel listing because the app lacks a required scope.}
+        - name: malformedChannelList
+          branch: invalidResponse
+          description: Slack returns an invalid channel list response.
+          failure: {kind: PROTOCOL, message: Slack returned an invalid channel list response.}
+        - name: channelLimitOutOfRange
+          branch: defect
+          description: The page limit is above 999, so no request is sent.
+          failure: {kind: VALIDATION, message: The channel page limit must be from 1 through 999.}
+    - name: getWorkspaceIdentity
+      goName: GetWorkspaceIdentity
+      inputType: GetWorkspaceIdentityInput
+      outputType: GetWorkspaceIdentityOutput
+      kind: query
+      description: Read the Slack workspace and bot identity that the connection is authorized for.
+      idempotency: none
+      branches:
+        - {id: read, goName: Read, description: The workspace and bot identity were read.}
+        - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the identity query., optional: true}
+        - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized identity response., optional: true}
+        - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      agent:
+        exposed: true
+        # providerRejected follows Slack's definite refusal; invalidResponse is unlisted because corrected input cannot fix it.
+        branches: {providerRejected: rejected, defect: rejected}
+        description: Show which Slack workspace this connection is connected to and which bot posts for it. Takes no input. Returns the workspace name, ID, and URL, the Enterprise Grid organization ID when there is one, and the bot's user ID, user name, and bot ID. Use it to tell the user which workspace a message will go to.
+      execution:
+        executeMethodTimeout: 30s
+        durability: async
+      mocks:
+        - name: acmeWorkspace
+          branch: read
+          description: The bot identity in a standard workspace outside Enterprise Grid.
+          default: true
+          output: {teamId: T0123456789, teamName: Acme Corp, workspaceUrl: "https://acme.slack.com/", isEnterpriseInstall: false, botUserId: U0BOT123456, botUserName: dex-bot, botId: B0123456789}
+        - name: identityRejected
+          branch: providerRejected
+          description: Slack rejects the identity read because the connection was revoked.
+          failure: {kind: AUTHENTICATION, message: Slack rejected the identity read because the connection was revoked.}
+        - name: malformedIdentity
+          branch: invalidResponse
+          description: Slack returns an identity response without the bot user ID.
+          failure: {kind: PROTOCOL, message: Slack returned an invalid identity response.}
+        - name: missingBotToken
+          branch: defect
+          description: The connection has no bot token, so no request is sent.
+          failure: {kind: AUTHENTICATION, message: Slack connection credentials are unavailable.}
     - name: listThreadMessages
       goName: ListThreadMessages
       inputType: ListThreadMessagesInput
@@ -289,7 +376,7 @@ spec:
         approval: recommended
         # defect is raised before chat.postMessage is sent; every path that may have posted is uncertain.
         branches: {providerRejected: rejected, uncertain: unknown, defect: rejected}
-        description: Post one new top-level message to a Slack channel. Supply the channel ID and the message text.
+        description: "Post one new top-level message to a Slack channel. Supply the channel ID and the message text. When the user names a channel, such as #general, first find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find. The app must be a member of the channel."
       execution:
         executeMethodTimeout: 30s
         durability: sync
@@ -327,7 +414,7 @@ spec:
         approval: recommended
         # defect is raised before chat.postMessage is sent; every path that may have posted is uncertain.
         branches: {providerRejected: rejected, uncertain: unknown, defect: rejected}
-        description: Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text.
+        description: "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text. When the user names a channel, such as #general, find its channelId with the Slack list_channels tool for the same connection; never ask the user for a channel ID that tool can find."
       execution:
         executeMethodTimeout: 30s
         durability: sync

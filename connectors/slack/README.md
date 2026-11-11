@@ -1,28 +1,38 @@
 # Slack Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.4.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.5.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 
-This module reads and writes Slack channel threads and receives Slack Events
+This module finds Slack channels, identifies the connected workspace, reads
+and writes Slack channel threads, and receives Slack Events
 API messages through Socket Mode, or from a host that relays them for a shared
 connection (see [Relayed events](#relayed-events)). It supports public and
 private channels, not direct messages.
 
 ## Agent tools
 
-The Python and TypeScript packages offer all four operations to Dex agent
+The Python and TypeScript packages offer all six operations to Dex agent
 hosts. Both posts recommend approval and claim no safe retry, so a host runs
-each post once.
+each post once. The two discovery reads need no approval:
 
-From Go v1.4.0, `Connection.AgentTools()` binds the same four operations to a
+- `slack_list_channels` (`listChannels`) finds channel IDs from a name such as
+  `#general`. The post tools tell the model to look a channel up with it
+  instead of asking the user for a raw channel ID.
+- `slack_get_workspace_identity` (`getWorkspaceIdentity`) names the workspace
+  and bot that the connection posts as.
+
+Neither post resolves channel names itself; it still takes an exact channel ID.
+
+From Go v1.4.0, `Connection.AgentTools()` binds the exposed operations to a
 connection as `sdkgo.AgentTool` values, and `ExposedAgentTools()` lists their
-metadata. A `slackmock` connection returns the same tools for host tests.
+metadata; v1.5.0 adds the two discovery reads. A `slackmock` connection returns
+the same tools for host tests.
 
 ## TypeScript package
 
-`@superdurable/connector-slack@0.3.0` implements the four thread read and
-message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
+`@superdurable/connector-slack@0.4.0` implements the channel discovery,
+thread read, and message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
 Go-only. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
 uses the static `slack-thread-reader` connection name and obtains OAuth bot and
 user tokens through Dex project credentials. The TypeScript package uses
@@ -262,6 +272,18 @@ no `binding`. Their runner records go to `slog.Default()`, so call
 
 ## Operations
 
+- `ListChannels` returns one page of non-archived public and private
+  channels with their IDs, names, privacy, app membership, topic, and purpose.
+  It calls `conversations.list`, or `users.conversations` when `memberOnly` is
+  true, with the bot token and the existing `channels:read` and `groups:read`
+  scopes. `limit` (1–999, default 200) is Slack's page size; `nameFilter`
+  keeps names containing the text, ignoring case and one leading `#`, after
+  Slack returns the page, so a page may be empty while `nextCursor` continues
+  the listing. `visibility` selects `public` or `private` channels. Slack lists
+  a private channel only after the app is added to it.
+- `GetWorkspaceIdentity` calls `auth.test` with the bot token and returns the
+  workspace ID, name, and URL, the Enterprise Grid ID when present, and the bot
+  user ID, user name, and bot ID. It needs no scope.
 - `ListThreadMessages` returns one page and a next cursor. Page size is 1–15.
 - `GetThreadReply` reads one reply by timestamp.
 - `PostChannelMessage` creates a top-level channel message.
@@ -338,13 +360,14 @@ invalid responses, and uncertain post outcomes.
 
 [`examples/thread-approval`](go/examples/thread-approval) combines both Triggers,
 `ListThreadMessages`, a typed reply RPC, and `PostThreadReply` in one runnable
-Flow.
+Flow. [`examples/channel-lookup`](go/examples/channel-lookup) reads the
+workspace identity and one filtered channel page.
 
 ## Python package
 
-The [Python package](python/README.md) provides all four Slack operations:
-`listThreadMessages`, `getThreadReply`, `postChannelMessage`, and
-`postThreadReply`. It uses generated OAuth credential decoding and refresh for
+The [Python package](python/README.md) provides all six Slack operations:
+`listChannels`, `getWorkspaceIdentity`, `listThreadMessages`, `getThreadReply`,
+`postChannelMessage`, and `postThreadReply`. It uses generated OAuth credential decoding and refresh for
 private or shared Dex project connections. Socket Mode Triggers remain Go-only.
 The runnable [thread messages example](python/examples/thread_messages/README.md)
 posts through a Mutation Step and reads the new thread through a Query Step.

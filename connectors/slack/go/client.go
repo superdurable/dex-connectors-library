@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Super Durable
 // SPDX-License-Identifier: MIT
 
-// Package slack connects Dex applications to Slack channel threads.
+// Package slack connects Dex applications to Slack channels and channel threads.
 package slack
 
 import (
@@ -223,6 +223,16 @@ func New(config Config, credentials CredentialSource, options ...Option) (*Clien
 		maxResponseBytes: config.MaxResponseBytes, maxMessageCharacters: int(config.MaxMessageCharacters),
 		now: dependencies.now, socketDialer: dependencies.socketDialer, logger: dependencies.logger,
 	}, nil
+}
+
+// ListChannels returns the ListChannels operation bound to this client.
+func (client *Client) ListChannels() ListChannelsOperation {
+	return ListChannelsOperation{client: client}
+}
+
+// GetWorkspaceIdentity returns the GetWorkspaceIdentity operation bound to this client.
+func (client *Client) GetWorkspaceIdentity() GetWorkspaceIdentityOperation {
+	return GetWorkspaceIdentityOperation{client: client}
 }
 
 // ListThreadMessages returns the ListThreadMessages operation bound to this client.

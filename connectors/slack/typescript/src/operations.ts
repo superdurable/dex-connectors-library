@@ -4,13 +4,64 @@
 import { newMutationBranch, newMutationRetry, newMutationUncertain, newQueryBranch, newQueryRetry, type Call, type Failure, type Mutation, type MutationAttempt, type Query, type QueryAttempt } from '@superdurable/connectors-sdk';
 import { CheckpointError, InsufficientTimeError, newFence, type Marker } from '@superdurable/connectors-sdk/singledispatch';
 import { failure, isCredentialRejected, retryAfter, type SlackClient, type SlackExchange } from './client.js';
-import { GetThreadReplyDefinition, ListThreadMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
-import type { GetThreadReplyInput, GetThreadReplyOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
+import { GetThreadReplyDefinition, GetWorkspaceIdentityDefinition, ListChannelsDefinition, ListThreadMessagesDefinition, PostChannelMessageDefinition, PostThreadReplyDefinition } from './generated/definitions.js';
+import type { Channel, GetThreadReplyInput, GetThreadReplyOutput, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput, ListChannelsInput, ListChannelsOutput, ListThreadMessagesInput, ListThreadMessagesOutput, Message, PostChannelMessageInput, PostMessageOutput, PostThreadReplyInput } from './generated/models.js';
 
 const emptyMessage: Message = { channelId: '', timestamp: '', text: '' };
 const emptyReply: GetThreadReplyOutput = { message: emptyMessage };
 const emptyPost: PostMessageOutput = { message: emptyMessage };
 const emptyList: ListThreadMessagesOutput = { messages: [] };
+const emptyChannels: ListChannelsOutput = { channels: [] };
+const emptyIdentity: GetWorkspaceIdentityOutput = { teamId: '', teamName: '', workspaceUrl: '', isEnterpriseInstall: false, botUserId: '', botUserName: '', botId: '' };
+
+/** Read one Slack channel page with the bot token and filter it by name. */
+export class ListChannelsOperation implements Query<ListChannelsInput, ListChannelsOutput> {
+  /** Bind the provider client. */ constructor(private readonly client: SlackClient) {}
+  /** Return the manifest definition. */ definition() { return ListChannelsDefinition; }
+  /** Invoke Slack conversations.list, or users.conversations for joined channels only. */
+  async invoke(call: Call, input: ListChannelsInput): Promise<QueryAttempt<ListChannelsOutput>> {
+    const operation = 'listChannels';
+    const visibility = input.visibility ?? '';
+    const channelTypes = Object.hasOwn(channelTypesByVisibility, visibility) ? channelTypesByVisibility[visibility] : undefined;
+    const limit = input.limit ?? 0;
+    if (!channelTypes || !Number.isInteger(limit) || limit < 0 || limit > 999) return newQueryBranch('defect', emptyChannels, {}, failure(operation, 'VALIDATION', 'visibility must be blank, public, or private, and limit must be from 0 through 999'));
+    const credential = await this.client.resolveToken(call, 'bot');
+    if (!credential.token) return newQueryBranch('defect', emptyChannels, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    const query = new URLSearchParams({ exclude_archived: 'true', types: channelTypes, limit: String(limit || 200) });
+    if (input.cursor) query.set('cursor', input.cursor);
+    // users.conversations lists only joined channels and omits is_member.
+    const path = input.memberOnly ? 'users.conversations' : 'conversations.list';
+    const response = await this.client.get(call, credential.token, path, query, 'bot');
+    const classified = classifyQuery(this.client, call, operation, response, emptyChannels, 'Slack channels are temporarily unavailable', 'Slack rate limited the channel query');
+    if (classified) return classified;
+    const body = response.body as SlackBody & { channels?: unknown };
+    const channels = decodeChannels(body.channels);
+    if (!channels || channels.some(channel => !channel.channelId)) return newQueryBranch('invalidResponse', emptyChannels, this.client.receipt(call, response), failure(operation, 'PROTOCOL', 'Slack returned an invalid channel list'));
+    const nameFilter = channelNameFilter(input.nameFilter ?? '');
+    const matches = channels.filter(channel => !nameFilter || channel.name.toLowerCase().includes(nameFilter))
+      .map(channel => ({ ...channel, isMember: channel.isMember || Boolean(input.memberOnly) }));
+    const nextCursor = body.response_metadata?.next_cursor;
+    return newQueryBranch('listed', { channels: matches, ...(nextCursor ? { nextCursor } : {}) }, this.client.receipt(call, response));
+  }
+}
+
+/** Read the bot token's workspace and identity with auth.test. */
+export class GetWorkspaceIdentityOperation implements Query<GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput> {
+  /** Bind the provider client. */ constructor(private readonly client: SlackClient) {}
+  /** Return the manifest definition. */ definition() { return GetWorkspaceIdentityDefinition; }
+  /** Invoke the Slack auth.test query. */
+  async invoke(call: Call, _input: GetWorkspaceIdentityInput): Promise<QueryAttempt<GetWorkspaceIdentityOutput>> {
+    const operation = 'getWorkspaceIdentity';
+    const credential = await this.client.resolveToken(call, 'bot');
+    if (!credential.token) return newQueryBranch('defect', emptyIdentity, {}, failure(operation, 'AUTHENTICATION', 'Slack connection credentials are unavailable'));
+    const response = await this.client.get(call, credential.token, 'auth.test', new URLSearchParams(), 'bot');
+    const classified = classifyQuery(this.client, call, operation, response, emptyIdentity, 'Slack workspace identity is temporarily unavailable', 'Slack rate limited the identity query');
+    if (classified) return classified;
+    const identity = decodeIdentity(response.body as Record<string, unknown>);
+    if (!identity || !identity.botUserId || !(identity.teamId || identity.enterpriseId)) return newQueryBranch('invalidResponse', emptyIdentity, this.client.receipt(call, response), failure(operation, 'PROTOCOL', 'Slack returned an invalid workspace identity'));
+    return newQueryBranch('read', identity, this.client.receipt(call, response, identity.teamId));
+  }
+}
 
 /** Read one bounded Slack thread page. */
 export class ListThreadMessagesOperation implements Query<ListThreadMessagesInput, ListThreadMessagesOutput> {
@@ -70,6 +121,56 @@ export class PostThreadReplyOperation implements Mutation<PostThreadReplyInput, 
   /** Match Go's stable Call ID idempotency key. */ idempotencyKey(callId: string): string { return callId; }
   /** Invoke the Slack chat.postMessage mutation. */
   invoke(call: Call, input: PostThreadReplyInput): Promise<MutationAttempt<PostMessageOutput>> { return postMessage(this.client, call, 'postThreadReply', input.channelId, input.threadTimestamp, input.text); }
+}
+
+const channelTypesByVisibility: Record<string, string> = { '': 'public_channel,private_channel', public: 'public_channel', private: 'private_channel' };
+
+/** Read an optional field like Go's json.Unmarshal: null is the zero value and a wrong type fails. */
+function optionalField<T>(value: Record<string, unknown>, key: string, type: 'string' | 'boolean' | 'object', zero: T): T | undefined {
+  const item = value[key];
+  if (item === undefined || item === null) return zero;
+  if (type === 'object' ? typeof item !== 'object' || Array.isArray(item) : typeof item !== type) return undefined;
+  return item as T;
+}
+
+/** Decode conversations.list and users.conversations channels with Go-compatible type checks. */
+function decodeChannels(value: unknown): Channel[] | undefined {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) return undefined;
+  const channels: Channel[] = [];
+  for (const raw of value) {
+    const item = (raw ?? {}) as Record<string, unknown>;
+    if (typeof item !== 'object' || Array.isArray(item)) return undefined;
+    const topic = optionalField<Record<string, unknown>>(item, 'topic', 'object', {});
+    const purpose = optionalField<Record<string, unknown>>(item, 'purpose', 'object', {});
+    const fields = [
+      optionalField(item, 'id', 'string', ''), optionalField(item, 'name', 'string', ''),
+      optionalField(item, 'is_private', 'boolean', false), optionalField(item, 'is_member', 'boolean', false),
+      topic && optionalField(topic, 'value', 'string', ''), purpose && optionalField(purpose, 'value', 'string', ''),
+    ] as const;
+    if (fields.some(field => field === undefined)) return undefined;
+    const [channelId, name, isPrivate, isMember, topicValue, purposeValue] = fields as unknown as [string, string, boolean, boolean, string, string];
+    channels.push({ channelId, name, isPrivate, isMember, ...(topicValue ? { topic: topicValue } : {}), ...(purposeValue ? { purpose: purposeValue } : {}) });
+  }
+  return channels;
+}
+
+/** Decode the auth.test identity with Go-compatible type checks. */
+function decodeIdentity(body: Record<string, unknown>): GetWorkspaceIdentityOutput | undefined {
+  const fields = [
+    optionalField(body, 'team_id', 'string', ''), optionalField(body, 'team', 'string', ''), optionalField(body, 'url', 'string', ''),
+    optionalField(body, 'enterprise_id', 'string', ''), optionalField(body, 'is_enterprise_install', 'boolean', false),
+    optionalField(body, 'user_id', 'string', ''), optionalField(body, 'user', 'string', ''), optionalField(body, 'bot_id', 'string', ''),
+  ] as const;
+  if (fields.some(field => field === undefined)) return undefined;
+  const [teamId, teamName, workspaceUrl, enterpriseId, isEnterpriseInstall, botUserId, botUserName, botId] = fields as unknown as [string, string, string, string, boolean, string, string, string];
+  return { teamId, teamName, workspaceUrl, ...(enterpriseId ? { enterpriseId } : {}), isEnterpriseInstall, botUserId, botUserName, botId };
+}
+
+/** Trim spaces and one leading # and lowercase the filter. */
+function channelNameFilter(nameFilter: string): string {
+  const trimmed = nameFilter.trim();
+  return (trimmed.startsWith('#') ? trimmed.slice(1) : trimmed).toLowerCase();
 }
 
 interface SlackMessage { channel?: string; ts?: string; thread_ts?: string; user?: string; text?: string }

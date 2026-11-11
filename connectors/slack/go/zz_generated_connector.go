@@ -55,6 +55,8 @@ type Connection struct {
 // Operations returns the operations that this connector's Step factories invoke, one accessor per operation.
 // NewConnection uses the client's operations; NewConnectionWithOperations accepts another implementation.
 type Operations interface {
+	ListChannels() sdkgo.Query[ListChannelsInput, ListChannelsOutput]
+	GetWorkspaceIdentity() sdkgo.Query[GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput]
 	ListThreadMessages() sdkgo.Query[ListThreadMessagesInput, ListThreadMessagesOutput]
 	GetThreadReply() sdkgo.Query[GetThreadReplyInput, GetThreadReplyOutput]
 	PostChannelMessage() sdkgo.Mutation[PostChannelMessageInput, PostMessageOutput]
@@ -63,6 +65,12 @@ type Operations interface {
 
 type clientOperations struct{ client *Client }
 
+func (operations clientOperations) ListChannels() sdkgo.Query[ListChannelsInput, ListChannelsOutput] {
+	return operations.client.ListChannels()
+}
+func (operations clientOperations) GetWorkspaceIdentity() sdkgo.Query[GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput] {
+	return operations.client.GetWorkspaceIdentity()
+}
 func (operations clientOperations) ListThreadMessages() sdkgo.Query[ListThreadMessagesInput, ListThreadMessagesOutput] {
 	return operations.client.ListThreadMessages()
 }
@@ -371,6 +379,152 @@ func NewThreadReplyCreatedTrigger(config ThreadReplyCreatedTriggerConfig) sdkgo.
 	return sdkgo.MustNewTrigger(sdkgo.TriggerConfig[MessageEvent]{
 		Definition: ThreadReplyCreatedTriggerDefinition, Binding: binding,
 		Source: config.Connection.client.threadReplyCreatedTriggerSource(config.Connection.reference, config.Configuration), Target: config.Target,
+	})
+}
+
+const ListChannelsBranchListed sdkgo.BranchID = "listed"
+const ListChannelsBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const ListChannelsBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const ListChannelsBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var ListChannelsDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "listChannels"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: ListChannelsBranchListed, Description: "The channel page was read."},
+		{ID: ListChannelsBranchProviderRejected, Description: "Slack conclusively rejected the channel query.", Optional: true},
+		{ID: ListChannelsBranchInvalidResponse, Description: "Slack returned an invalid or oversized channel response.", Optional: true},
+		{ID: ListChannelsBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type ListChannelsResult = sdkgo.QueryResult[ListChannelsOutput]
+
+type ListChannelsStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                              `connector:"connectorId=slack"`
+	operationID                    struct{}                                              `connector:"operationId=listChannels"`
+	StepType                       string                                                `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                 `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                        `connector:"configurationUI"`
+	Connection                     Connection                                            `connector:"connection"`
+	ConnectionName                 string                                                `connector:"connectionName"`
+	MapToOperationInput            func(IN) ListChannelsInput                            `connector:"mapToOperationInput"`
+	Listed                         sdkgo.Target[ListChannelsResult]                      `connector:"branch=listed"`
+	ProviderRejected               sdkgo.Target[ListChannelsResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[ListChannelsResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[ListChannelsResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[ListChannelsOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                      `connector:"stepOptionsOverride"`
+}
+
+func NewListChannelsStep[IN any](config ListChannelsStepConfig[IN]) sdkgo.QueryStep[IN, ListChannelsInput, ListChannelsOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("slack connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, ListChannelsInput, ListChannelsOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.ListChannels(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[ListChannelsResult] {
+			branches := make([]sdkgo.BranchTarget[ListChannelsResult], 0, 4)
+			if config.Listed.HasStep() {
+				branches = append(branches, config.Listed.BranchTarget(ListChannelsBranchListed))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(ListChannelsBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(ListChannelsBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(ListChannelsBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
+	})
+}
+
+const GetWorkspaceIdentityBranchRead sdkgo.BranchID = "read"
+const GetWorkspaceIdentityBranchProviderRejected sdkgo.BranchID = "providerRejected"
+const GetWorkspaceIdentityBranchInvalidResponse sdkgo.BranchID = "invalidResponse"
+const GetWorkspaceIdentityBranchDefect sdkgo.BranchID = sdkgo.DefectBranchID
+
+var GetWorkspaceIdentityDefinition = sdkgo.QueryDefinition{
+	Operation: sdkgo.OperationRef{ConnectorID: ConnectorID, OperationID: "getWorkspaceIdentity"},
+	Branches: []sdkgo.BranchDefinition{
+		{ID: GetWorkspaceIdentityBranchRead, Description: "The workspace and bot identity were read."},
+		{ID: GetWorkspaceIdentityBranchProviderRejected, Description: "Slack conclusively rejected the identity query.", Optional: true},
+		{ID: GetWorkspaceIdentityBranchInvalidResponse, Description: "Slack returned an invalid or oversized identity response.", Optional: true},
+		{ID: GetWorkspaceIdentityBranchDefect, Description: "Local input, connection configuration, or connector definition is invalid.", Optional: true},
+	},
+	StepDefaults: sdkgo.StepDefaults{
+		ExecuteMethodTimeout: time.Duration(30000000000), HeartbeatTimeout: time.Duration(0),
+		ExecuteRetry:      &dex.RetryPolicy{InitialInterval: time.Duration(1000000000), BackoffCoefficient: 2, MaximumInterval: time.Duration(300000000000), MaximumAttempts: 0, TotalDuration: time.Duration(3600000000000)},
+		ExecuteDurability: dex.StepDurabilityAsync,
+	},
+}
+
+type GetWorkspaceIdentityResult = sdkgo.QueryResult[GetWorkspaceIdentityOutput]
+
+type GetWorkspaceIdentityStepConfig[IN any] struct {
+	sdkgo.QueryFactoryConfigMarker `connector:"factory=query"`
+	connectorID                    struct{}                                                      `connector:"connectorId=slack"`
+	operationID                    struct{}                                                      `connector:"operationId=getWorkspaceIdentity"`
+	StepType                       string                                                        `connector:"stepType"`
+	Annotations                    sdkgo.StepAnnotations                                         `connector:"annotations"`
+	ConfigurationUI                sdkgo.ConnectorConfigurationUI                                `connector:"configurationUI"`
+	Connection                     Connection                                                    `connector:"connection"`
+	ConnectionName                 string                                                        `connector:"connectionName"`
+	MapToOperationInput            func(IN) GetWorkspaceIdentityInput                            `connector:"mapToOperationInput"`
+	Read                           sdkgo.Target[GetWorkspaceIdentityResult]                      `connector:"branch=read"`
+	ProviderRejected               sdkgo.Target[GetWorkspaceIdentityResult]                      `connector:"branch=providerRejected,optional"`
+	InvalidResponse                sdkgo.Target[GetWorkspaceIdentityResult]                      `connector:"branch=invalidResponse,optional"`
+	Defect                         sdkgo.Target[GetWorkspaceIdentityResult]                      `connector:"branch=defect,optional"`
+	ResultAttribute                *dex.Attribute[sdkgo.QueryResult[GetWorkspaceIdentityOutput]] `connector:"resultAttribute"`
+	StepOptionsOverride            *dex.StepOptions                                              `connector:"stepOptionsOverride"`
+}
+
+func NewGetWorkspaceIdentityStep[IN any](config GetWorkspaceIdentityStepConfig[IN]) sdkgo.QueryStep[IN, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput] {
+	if err := config.Connection.validateOperations(); err != nil {
+		panic(err)
+	}
+	if config.ConnectionName != config.Connection.reference.Name {
+		panic(fmt.Errorf("slack connector Step ConnectionName %q must equal its connection's name %q", config.ConnectionName, config.Connection.reference.Name))
+	}
+	return sdkgo.MustNewQueryStep(sdkgo.QueryStepConfig[IN, GetWorkspaceIdentityInput, GetWorkspaceIdentityOutput]{
+		StepType: config.StepType, Annotations: config.Annotations,
+		ConfigurationUI: config.ConfigurationUI,
+		Operation:       config.Connection.operations.GetWorkspaceIdentity(), Connection: config.Connection.reference,
+		MapToOperationInput: config.MapToOperationInput,
+		Branches: func() []sdkgo.BranchTarget[GetWorkspaceIdentityResult] {
+			branches := make([]sdkgo.BranchTarget[GetWorkspaceIdentityResult], 0, 4)
+			if config.Read.HasStep() {
+				branches = append(branches, config.Read.BranchTarget(GetWorkspaceIdentityBranchRead))
+			}
+			if config.ProviderRejected.HasStep() {
+				branches = append(branches, config.ProviderRejected.BranchTarget(GetWorkspaceIdentityBranchProviderRejected))
+			}
+			if config.InvalidResponse.HasStep() {
+				branches = append(branches, config.InvalidResponse.BranchTarget(GetWorkspaceIdentityBranchInvalidResponse))
+			}
+			if config.Defect.HasStep() {
+				branches = append(branches, config.Defect.BranchTarget(GetWorkspaceIdentityBranchDefect))
+			}
+			return branches
+		}(),
+		ResultAttribute:     config.ResultAttribute,
+		StepOptionsOverride: config.StepOptionsOverride,
 	})
 }
 

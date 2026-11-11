@@ -6,7 +6,7 @@ import { ManifestCredentialRefreshDriver } from '@superdurable/connectors-sdk/oa
 import { ReauthorizationRequiredError, resolveCredential, resolveCredentialAfterRejection, type Call, type Failure, type ReceiptDraft } from '@superdurable/connectors-sdk';
 import { Authorization, CredentialFields } from './generated/refresh.js';
 import type { Config, CredentialSource, Credentials } from './generated/models.js';
-import { GetThreadReplyOperation, ListThreadMessagesOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
+import { GetThreadReplyOperation, GetWorkspaceIdentityOperation, ListChannelsOperation, ListThreadMessagesOperation, PostChannelMessageOperation, PostThreadReplyOperation } from './operations.js';
 
 /** One Slack request exchange, including a status when body decoding failed. */
 export interface SlackExchange {
@@ -46,6 +46,8 @@ export class SlackClient {
     this.now = options.now ?? (() => new Date());
   }
 
+  /** Bind the list channels Query. */ listChannels(): ListChannelsOperation { return new ListChannelsOperation(this); }
+  /** Bind the get workspace identity Query. */ getWorkspaceIdentity(): GetWorkspaceIdentityOperation { return new GetWorkspaceIdentityOperation(this); }
   /** Bind the list thread messages Query. */ listThreadMessages(): ListThreadMessagesOperation { return new ListThreadMessagesOperation(this); }
   /** Bind the get thread reply Query. */ getThreadReply(): GetThreadReplyOperation { return new GetThreadReplyOperation(this); }
   /** Bind the post channel message Mutation. */ postChannelMessage(): PostChannelMessageOperation { return new PostChannelMessageOperation(this); }
@@ -92,11 +94,11 @@ export class SlackClient {
     } catch { return { status: received.status, headers: received.headers, body: undefined, error: 'invalid' }; }
   }
 
-  /** Retry one authenticated read after host-coordinated renewal. */
-  async get(call: Call, token: string, path: string, query: URLSearchParams): Promise<SlackExchange> {
+  /** Retry one authenticated read after host-coordinated renewal of the same token kind. */
+  async get(call: Call, token: string, path: string, query: URLSearchParams, kind: 'bot' | 'user' = 'user'): Promise<SlackExchange> {
     const first = await this.request('GET', path, token, query, undefined, call.context.cancellationSignal);
     if (first.error || !isCredentialRejected(first) || !('resolveAfterRejection' in this.credentials)) return first;
-    const replacement = await this.refreshRejectedToken(call, 'user', token);
+    const replacement = await this.refreshRejectedToken(call, kind, token);
     return replacement.token ? this.request('GET', path, replacement.token, query, undefined, call.context.cancellationSignal) : first;
   }
 
