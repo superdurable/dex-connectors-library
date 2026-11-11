@@ -1,6 +1,6 @@
 {
   "name": "@superdurable/connector-hackernews",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Hacker News connector for Dex TypeScript applications",
   "repository": {

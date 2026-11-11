@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,13 @@ const (
 	dexWebInboxDirectoryName = "trigger-inboxes"
 	// dexWebDefaultAuthMethod labels credentials of a record that names no authorization method.
 	dexWebDefaultAuthMethod = "local"
+)
+
+var (
+	// errFileHoldsNewerCredential means Dex Web saved a credential after the last read; that credential wins.
+	errFileHoldsNewerCredential = errors.New("the file holds a newer credential")
+	// errConnectionRemovedFromFile means Dex Web removed the connection after the last read.
+	errConnectionRemovedFromFile = errors.New("the connection is no longer in the file")
 )
 
 // dexWebScope is the fixed scope of the single local project that Dex Web's files describe.
@@ -101,12 +109,15 @@ func credentialDigest(credentials json.RawMessage, expiresAt *time.Time) string 
 // Connection records are projected from connections.json whenever the application reads or writes one: a
 // credential that Dex Web saved since the last read replaces the stored one, and a credential the application
 // refreshed is written back to connections.json while that file still holds the credential it was read from.
+// CredentialResolver refreshes while holding refreshLock, the flock of connections.json.lock beside the file.
 // Trigger inboxes persist in files beside connections.json; every other object stays in memory.
 type dexWebStore struct {
 	path        string
 	memory      *versionedStore
 	inbox       *versionedStore
 	connections *ConnectionStore
+	refreshLock *fileRefreshLock
+	renameFile  func(oldPath, newPath string) error
 
 	mu       sync.Mutex
 	imported map[ConnectionKey]string
@@ -134,7 +145,14 @@ func loadDexWebProject(ctx context.Context, path string) (*LoadedProject, error)
 	if err != nil {
 		return nil, err
 	}
-	store := &dexWebStore{path: path, memory: memory, inbox: inbox, imported: map[ConnectionKey]string{}}
+	if !isCrossProcessRefreshLockSupported {
+		slog.Warn("local connector credential refresh is coordinated only within one loaded project on this platform; run one application per connections file", "os", runtime.GOOS)
+	}
+	store := &dexWebStore{
+		path: path, memory: memory, inbox: inbox, imported: map[ConnectionKey]string{},
+		refreshLock: newFileRefreshLock(path+refreshLockFileSuffix, refreshLockMaxWait),
+		renameFile:  os.Rename,
+	}
 	if store.connections, err = NewConnectionStore(&ConnectionStoreConfig{Objects: memory, Scope: dexWebScope}); err != nil {
 		return nil, err
 	}
@@ -295,6 +313,22 @@ func (store *dexWebStore) CreateObject(ctx context.Context, key string, contents
 	return store.partition(key).CreateObject(ctx, key, contents)
 }
 
+// lockCredentialRefresh holds the cross-process refresh lock of connections.json until the returned lock is released.
+func (store *dexWebStore) lockCredentialRefresh(ctx context.Context) (*heldRefreshLock, error) {
+	return store.refreshLock.acquire(ctx)
+}
+
+// verifyCredentialWriteBack rewrites connections.json unchanged through the write-back path, before a provider rotates a token.
+func (store *dexWebStore) verifyCredentialWriteBack() error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	contents, err := readDexWebFile(store.path)
+	if err != nil {
+		return err
+	}
+	return replacePrivateFile(store.path, contents, store.renameFile)
+}
+
 // CompareAndSwapObject replaces a key conditionally; a refreshed connection credential is also written back to connections.json.
 func (store *dexWebStore) CompareAndSwapObject(ctx context.Context, key, expectedETag string, contents []byte) (Object, error) {
 	if !isConnectionHead(key) {
@@ -312,10 +346,11 @@ func (store *dexWebStore) CompareAndSwapObject(ctx context.Context, key, expecte
 	return object, err
 }
 
-// writeBack records a refreshed credential in connections.json, so a restarted application and Dex Web see the
-// current refresh token. It writes only while the file still holds the credential that was last synchronized;
-// otherwise Dex Web saved a newer one, which the next read adopts. A failure is logged and does not fail the
-// refresh, whose result is already committed.
+// writeBack records a refreshed credential in connections.json, so a restarted application, another process and
+// Dex Web see the current refresh token. A CredentialResolver refresh reaches it while holding refreshLock.
+// It writes only while the file still holds the credential that was last synchronized; otherwise Dex Web saved a
+// newer one, which the next read adopts. A failure is logged and does not fail the refresh, whose result is
+// already committed: failing would not restore a refresh token that the provider already rotated.
 func (store *dexWebStore) writeBack(ctx context.Context, head Object) {
 	var record connectionRecord
 	if json.Unmarshal(head.Contents, &record) != nil || record.Status != CredentialReady || record.Credential == nil {
@@ -331,7 +366,12 @@ func (store *dexWebStore) writeBack(ctx context.Context, head Object) {
 		return
 	}
 	if err = store.replaceInFile(record.Key, material); err != nil {
-		slog.Warn("local connector credential write-back failed", "connector", record.Key.ConnectorID, "connection", record.Key.ConnectionName, "error", err.Error())
+		if errors.Is(err, errFileHoldsNewerCredential) || errors.Is(err, errConnectionRemovedFromFile) {
+			slog.Warn("local connector credential write-back skipped", "connector", record.Key.ConnectorID, "connection", record.Key.ConnectionName, "reason", err.Error())
+			return
+		}
+		slog.Error("local connector credential write-back failed; other processes and a restart keep the previous credential and may require reauthorization",
+			"connector", record.Key.ConnectorID, "connection", record.Key.ConnectionName, "error", err.Error())
 		return
 	}
 	store.imported[record.Key] = digest
@@ -355,7 +395,7 @@ func (store *dexWebStore) replaceInFile(key ConnectionKey, material CredentialMa
 			continue
 		}
 		if credentialDigest(identity.Credentials, identity.CredentialExpiresAt) != store.imported[key] {
-			return errors.New("the file holds a newer credential")
+			return errFileHoldsNewerCredential
 		}
 		raw["credentials"] = material.Credentials
 		if material.ExpiresAt != nil {
@@ -370,7 +410,7 @@ func (store *dexWebStore) replaceInFile(key ConnectionKey, material CredentialMa
 		if err != nil {
 			return err
 		}
-		return writePrivateFile(store.path, append(updated, '\n'))
+		return replacePrivateFile(store.path, append(updated, '\n'), store.renameFile)
 	}
-	return errors.New("the connection is no longer in the file")
+	return errConnectionRemovedFromFile
 }

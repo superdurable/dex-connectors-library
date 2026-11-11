@@ -14,3 +14,8 @@ import (
 func LoadProjectForTest(ctx context.Context, objects ObjectStore, scope Scope, reference SnapshotRef, httpClient *http.Client, now func() time.Time) (*LoadedProject, error) {
 	return loadProject(ctx, objects, scope, reference, brokerClientOptions{httpClient: httpClient, now: now})
 }
+
+// ReplaceDexWebRenameForTest makes the local connections file store of project replace files with rename.
+func ReplaceDexWebRenameForTest(project *LoadedProject, rename func(oldPath, newPath string) error) {
+	project.objects.(*dexWebStore).renameFile = rename
+}

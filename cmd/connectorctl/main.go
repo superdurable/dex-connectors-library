@@ -50,6 +50,13 @@ func run(args []string) error {
 			if err := manifest.ValidateMockCoverage(); err != nil {
 				return fmt.Errorf("validate %s: %w", path, err)
 			}
+			staleAgentTools, err := staleAgentToolFiles(path, manifest)
+			if err != nil {
+				return fmt.Errorf("validate %s: %w", path, err)
+			}
+			if len(staleAgentTools) > 0 {
+				return fmt.Errorf("validate %s: %s requires agent.exposed operations and %s %s or later in go/go.mod", path, staleAgentTools[0], connectorSDKModulePath, codegen.AgentToolsMinimumSDKVersion)
+			}
 			fmt.Printf("valid %s\n", manifest.Metadata.Name)
 		}
 		return nil
@@ -470,6 +477,14 @@ func generate(args []string) error {
 	if err != nil {
 		return err
 	}
+	agentToolFiles, err := generatedAgentToolFiles(args[0], manifest)
+	if err != nil {
+		return err
+	}
+	staleAgentTools, err := staleAgentToolFiles(args[0], manifest)
+	if err != nil {
+		return err
+	}
 	languageManifestFiles, err := generatedLanguageManifestFiles(args[0], manifest)
 	if err != nil {
 		return err
@@ -503,6 +518,9 @@ func generate(args []string) error {
 	for path, contents := range conformanceTestFiles {
 		mockFiles[path] = contents
 	}
+	for path, contents := range agentToolFiles {
+		mockFiles[path] = contents
+	}
 	for path, contents := range languageManifestFiles {
 		mockFiles[path] = contents
 	}
@@ -532,6 +550,9 @@ func generate(args []string) error {
 		if len(staleSharedCredential) > 0 {
 			return fmt.Errorf("generated shared credential test is stale because the manifest keeps no credentials on the host: %s", staleSharedCredential[0])
 		}
+		if len(staleAgentTools) > 0 {
+			return fmt.Errorf("generated agent tools are stale because the manifest exposes no operation to agents or go/go.mod requires sdkgo below %s: %s", codegen.AgentToolsMinimumSDKVersion, staleAgentTools[0])
+		}
 		if len(staleLanguageManifests) > 0 {
 			return fmt.Errorf("generated language package manifest is stale: %s", staleLanguageManifests[0])
 		}
@@ -546,7 +567,7 @@ func generate(args []string) error {
 	if err := os.WriteFile(output, generated, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", output, err)
 	}
-	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleLanguageManifests, staleTypeScript, stalePython) {
+	for _, path := range slices.Concat(stale, staleRefreshAgreement, staleSharedCredential, staleAgentTools, staleLanguageManifests, staleTypeScript, stalePython) {
 		if err := os.Remove(path); err != nil {
 			return fmt.Errorf("remove stale %s: %w", path, err)
 		}

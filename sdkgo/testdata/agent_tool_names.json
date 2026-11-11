@@ -1,0 +1,65 @@
+{
+  "description": "Operation IDs and their snake case. sdkgo agent tool names and connectorctl Python factory names must both produce these.",
+  "vectors": [
+    {
+      "operationId": "getHTTPResponse",
+      "snakeCase": "get_http_response"
+    },
+    {
+      "operationId": "notFound",
+      "snakeCase": "not_found"
+    },
+    {
+      "operationId": "readIDToken",
+      "snakeCase": "read_id_token"
+    },
+    {
+      "operationId": "listStoryIDs",
+      "snakeCase": "list_story_ids"
+    },
+    {
+      "operationId": "readIDsFromCache",
+      "snakeCase": "read_ids_from_cache"
+    },
+    {
+      "operationId": "getAPISettings",
+      "snakeCase": "get_api_settings"
+    },
+    {
+      "operationId": "postReply",
+      "snakeCase": "post_reply"
+    },
+    {
+      "operationId": "send",
+      "snakeCase": "send"
+    },
+    {
+      "operationId": "createV2Item",
+      "snakeCase": "create_v2_item"
+    },
+    {
+      "operationId": "listOAuthApps",
+      "snakeCase": "list_o_auth_apps"
+    },
+    {
+      "operationId": "get2FACode",
+      "snakeCase": "get2_fa_code"
+    },
+    {
+      "operationId": "listURLs",
+      "snakeCase": "list_urls"
+    },
+    {
+      "operationId": "uploadURLsBatch",
+      "snakeCase": "upload_urls_batch"
+    },
+    {
+      "operationId": "sendSMSMessage",
+      "snakeCase": "send_sms_message"
+    },
+    {
+      "operationId": "listIDs",
+      "snakeCase": "list_ids"
+    }
+  ]
+}

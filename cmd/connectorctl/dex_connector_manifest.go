@@ -123,7 +123,7 @@ func generatedLanguageManifestFiles(manifestPath string, manifest schema.Manifes
 				factory.Agent = dexConnectorOperationAgent(operation)
 			}
 			if language.name == "python" {
-				factory.Name = "new_" + lowerCamelToSnake(operation.Name) + "_step"
+				factory.Name = pythonStepFactoryName(operation.Name)
 			} else {
 				factory.Name = "new" + operation.GoName + "Step"
 			}
@@ -166,7 +166,15 @@ func languageOperationInputModels(manifestPath string, manifest schema.Manifest)
 	if err != nil || !hasAuthoredGoTypes {
 		return nil, err
 	}
+	return loadOperationInputModels(goDirectory, manifest, languageSelectedOperations(manifest))
+}
+
+// languageSelectedOperations names the operations that any language package implements.
+func languageSelectedOperations(manifest schema.Manifest) map[string]bool {
 	selectedOperations := make(map[string]bool)
+	if manifest.Spec.Languages == nil {
+		return selectedOperations
+	}
 	for _, language := range []*schema.LanguagePackage{manifest.Spec.Languages.Python, manifest.Spec.Languages.TypeScript} {
 		if language == nil {
 			continue
@@ -175,6 +183,11 @@ func languageOperationInputModels(manifestPath string, manifest schema.Manifest)
 			selectedOperations[name] = true
 		}
 	}
+	return selectedOperations
+}
+
+// loadOperationInputModels roots the graph at selected inputs in manifest order; the root set decides model names.
+func loadOperationInputModels(goDirectory string, manifest schema.Manifest, selectedOperations map[string]bool) (*gomodel.Graph, error) {
 	var inputTypes []string
 	for _, operation := range manifest.Spec.Operations {
 		if selectedOperations[operation.Name] {
@@ -237,6 +250,11 @@ func staleLanguageManifestFiles(manifestPath string, generated map[string][]byte
 		}
 	}
 	return stale, nil
+}
+
+// pythonStepFactoryName is the Python Step factory of an operation; Go agent tool names share its snake case.
+func pythonStepFactoryName(operationID string) string {
+	return "new_" + lowerCamelToSnake(operationID) + "_step"
 }
 
 func connectorReleaseTag(connectorDirectory, version string) string {

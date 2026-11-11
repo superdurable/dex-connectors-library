@@ -4,7 +4,7 @@
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-slack",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "factories": [
     {
@@ -12,7 +12,14 @@
       "kind": "query",
       "operationId": "listThreadMessages",
       "inputType": "ListThreadMessagesInput",
-      "description": "Read one bounded page of messages from a channel thread.",
+      "description": "Read one page of messages from a Slack channel thread. Supply the channel ID, the parent message timestamp, a page size from 1 through 15, and the cursor from the previous page to continue.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -75,7 +82,15 @@
       "kind": "query",
       "operationId": "getThreadReply",
       "inputType": "GetThreadReplyInput",
-      "description": "Read one reply from a channel thread by timestamp.",
+      "description": "Read one reply in a Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply's own timestamp.",
+      "agent": {
+        "exposed": true,
+        "branches": {
+          "defect": "rejected",
+          "notFound": "rejected",
+          "providerRejected": "rejected"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -139,7 +154,16 @@
       "kind": "mutation",
       "operationId": "postChannelMessage",
       "inputType": "PostChannelMessageInput",
-      "description": "Post one top-level message to a Slack channel. Synchronous durability preserves the shared single-dispatch fence after retry or Worker loss.",
+      "description": "Post one new top-level message to a Slack channel. Supply the channel ID and the message text.",
+      "agent": {
+        "exposed": true,
+        "approval": "recommended",
+        "branches": {
+          "defect": "rejected",
+          "providerRejected": "rejected",
+          "uncertain": "unknown"
+        }
+      },
       "fields": {
         "stepType": "stepType",
         "annotations": "annotations",
@@ -193,9 +217,10 @@
       "kind": "mutation",
       "operationId": "postThreadReply",
       "inputType": "PostThreadReplyInput",
-      "description": "Post one reply to an existing Slack channel thread.",
+      "description": "Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text.",
       "agent": {
         "exposed": true,
+        "approval": "recommended",
         "branches": {
           "defect": "rejected",
           "providerRejected": "rejected",

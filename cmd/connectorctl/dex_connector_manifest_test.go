@@ -26,6 +26,23 @@ func TestOperationAndBranchNamesBecomePythonKeywords(t *testing.T) {
 	require.Equal(t, "acme_data_api", pythonImportPackageName("connectors/acme/data-api"))
 }
 
+// sdkgo mirrors lowerCamelToSnake to name agent tools; both read the same vectors.
+func TestLowerCamelToSnakeMatchesSDKAgentToolNameVectors(t *testing.T) {
+	contents, err := os.ReadFile(filepath.Join("..", "..", "sdkgo", "testdata", "agent_tool_names.json"))
+	require.NoError(t, err)
+	var document struct {
+		Vectors []struct {
+			OperationID string `json:"operationId"`
+			SnakeCase   string `json:"snakeCase"`
+		} `json:"vectors"`
+	}
+	require.NoError(t, json.Unmarshal(contents, &document))
+	require.NotEmpty(t, document.Vectors)
+	for _, vector := range document.Vectors {
+		require.Equal(t, vector.SnakeCase, lowerCamelToSnake(vector.OperationID), vector.OperationID)
+	}
+}
+
 func TestGenerateLanguagePackageManifestsAndDetectDrift(t *testing.T) {
 	repositoryRoot := t.TempDir()
 	connectorDirectory := filepath.Join(repositoryRoot, "connectors", "google", "sheets")
