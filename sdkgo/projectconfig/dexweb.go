@@ -36,6 +36,10 @@ var (
 	errFileHoldsNewerCredential = errors.New("the file holds a newer credential")
 	// errConnectionRemovedFromFile means Dex Web removed the connection after the last read.
 	errConnectionRemovedFromFile = errors.New("the connection is no longer in the file")
+	// errDuplicateConnectionInFile means the file lists one connection key more than once.
+	errDuplicateConnectionInFile = errors.New("the file lists the connection more than once")
+	// errFileChangedSinceRead means the file changed after the read a decision was based on; read it again.
+	errFileChangedSinceRead = errors.New("the connector configuration file changed since it was read")
 )
 
 // dexWebScope is the fixed scope of the single local project that Dex Web's files describe.
@@ -47,6 +51,7 @@ type dexWebConnection struct {
 	ConnectorID         string          `json:"connectorId"`
 	AuthMethodID        string          `json:"authMethodId"`
 	AuthMethodIDs       []string        `json:"authMethodIds"`
+	AuthorizationID     string          `json:"authorizationId,omitempty"`
 	ModulePath          string          `json:"modulePath"`
 	Provider            string          `json:"provider"`
 	ConnectionName      string          `json:"connectionName"`
@@ -68,6 +73,19 @@ type dexWebUseConfigurationsFile struct {
 
 func (connection dexWebConnection) key() ConnectionKey {
 	return ConnectionKey{ConnectorID: connection.ConnectorID, ConnectionName: connection.ConnectionName}
+}
+
+// connectionConfiguration is the record's loaded entry; authMethodId counts only without authMethodIds.
+func (connection dexWebConnection) connectionConfiguration() ConnectionConfiguration {
+	authMethodID := ""
+	if len(connection.AuthMethodIDs) == 0 {
+		authMethodID = connection.AuthMethodID
+	}
+	return ConnectionConfiguration{
+		ConnectorID: connection.ConnectorID, ConnectionName: connection.ConnectionName, ModulePath: connection.ModulePath,
+		Provider: connection.Provider, AuthMethodID: authMethodID, Configuration: connection.Configuration,
+		AuthorizationID: connection.AuthorizationID, AuthMethodIDs: connection.AuthMethodIDs,
+	}
 }
 
 // authMethod names the method that produced the credentials. Dex Web omits it for a connector with one method.
@@ -118,6 +136,10 @@ type dexWebStore struct {
 	connections *ConnectionStore
 	refreshLock *fileRefreshLock
 	renameFile  func(oldPath, newPath string) error
+	// onRefreshLockAcquired, when set by a test, runs each time the refresh lock is acquired.
+	onRefreshLockAcquired func()
+	// beforeUnchangedRewriteCheck, when set by a test, runs before the unchanged rewrite compares the file.
+	beforeUnchangedRewriteCheck func()
 
 	mu       sync.Mutex
 	imported map[ConnectionKey]string
@@ -165,14 +187,7 @@ func loadDexWebProject(ctx context.Context, path string) (*LoadedProject, error)
 	}
 	document := Configuration{TriggerBindings: file.TriggerBindings, OperationConfigurations: useConfigurations.OperationConfigurations}
 	for _, connection := range file.Connections {
-		authMethodID := ""
-		if len(connection.AuthMethodIDs) == 0 {
-			authMethodID = connection.AuthMethodID
-		}
-		document.Connections = append(document.Connections, ConnectionConfiguration{
-			ConnectorID: connection.ConnectorID, ConnectionName: connection.ConnectionName, ModulePath: connection.ModulePath,
-			Provider: connection.Provider, AuthMethodID: authMethodID, Configuration: connection.Configuration,
-		})
+		document.Connections = append(document.Connections, connection.connectionConfiguration())
 	}
 	if document.TriggerBindings == nil {
 		document.TriggerBindings = []TriggerConfiguration{}
@@ -191,7 +206,25 @@ func loadDexWebProject(ctx context.Context, path string) (*LoadedProject, error)
 	if err != nil {
 		return nil, err
 	}
-	return loadProject(ctx, store, dexWebScope, reference, brokerClientOptions{})
+	project, err := loadProject(ctx, store, dexWebScope, reference, brokerClientOptions{})
+	if err != nil {
+		return nil, err
+	}
+	attachDexWebRecordIdentities(project, file)
+	return project, nil
+}
+
+// attachDexWebRecordIdentities restores the record members that the configuration document never carries.
+func attachDexWebRecordIdentities(project *LoadedProject, file dexWebConnectionsFile) {
+	records := make(map[ConnectionKey]dexWebConnection, len(file.Connections))
+	for _, connection := range file.Connections {
+		records[connection.key()] = connection
+	}
+	for index := range project.Configuration.Connections {
+		entry := &project.Configuration.Connections[index]
+		record := records[ConnectionKey{ConnectorID: entry.ConnectorID, ConnectionName: entry.ConnectionName}]
+		entry.AuthorizationID, entry.AuthMethodIDs = record.AuthorizationID, record.AuthMethodIDs
+	}
 }
 
 // readDexWebFile reads a file Dex Web wrote, which must be a regular, owner-only file as Dex Web creates it.
@@ -214,8 +247,13 @@ func readDexWebConnections(path string) (dexWebConnectionsFile, error) {
 	if err != nil {
 		return dexWebConnectionsFile{}, fmt.Errorf("read connector configuration file: %w", err)
 	}
+	return decodeDexWebConnections(contents)
+}
+
+// decodeDexWebConnections validates connections.json contents. A duplicated key fails only that key's resolutions.
+func decodeDexWebConnections(contents []byte) (dexWebConnectionsFile, error) {
 	var file dexWebConnectionsFile
-	if err = json.Unmarshal(contents, &file); err != nil {
+	if err := json.Unmarshal(contents, &file); err != nil {
 		return dexWebConnectionsFile{}, errors.New("connector configuration file is not valid JSON")
 	}
 	if file.SchemaVersion != dexWebConnectionsSchema {
@@ -252,9 +290,14 @@ func readDexWebUseConfigurations(path string) (dexWebUseConfigurationsFile, erro
 }
 
 // importCredentials stores every credential of file that differs from the one last synchronized with it.
+// A duplicated key is skipped: no single credential belongs to it.
 func (store *dexWebStore) importCredentials(ctx context.Context, file dexWebConnectionsFile) error {
+	listings := file.listingCounts()
 	for _, connection := range file.Connections {
 		key := connection.key()
+		if listings[key] > 1 {
+			continue
+		}
 		digest := credentialDigest(connection.Credentials, connection.CredentialExpiresAt)
 		if digest == "" {
 			return fmt.Errorf("connection %q of connector %q has credentials that are not a JSON value", key.ConnectionName, key.ConnectorID)
@@ -276,13 +319,13 @@ func (store *dexWebStore) importCredentials(ctx context.Context, file dexWebConn
 	return nil
 }
 
-// sync adopts credentials that Dex Web saved since the last call.
-func (store *dexWebStore) sync(ctx context.Context) error {
+// sync adopts credentials that Dex Web saved since the last call and returns the file it read.
+func (store *dexWebStore) sync(ctx context.Context) (dexWebConnectionsFile, error) {
 	file, err := readDexWebConnections(store.path)
 	if err != nil {
-		return err
+		return dexWebConnectionsFile{}, err
 	}
-	return store.importCredentials(ctx, file)
+	return file, store.importCredentials(ctx, file)
 }
 
 func (store *dexWebStore) partition(key string) *versionedStore {
@@ -301,11 +344,61 @@ func (store *dexWebStore) ReadObject(ctx context.Context, key, version string) (
 	if isConnectionHead(key) {
 		store.mu.Lock()
 		defer store.mu.Unlock()
-		if err := store.sync(ctx); err != nil {
+		if _, err := store.sync(ctx); err != nil {
 			return Object{}, err
 		}
 	}
 	return store.partition(key).ReadObject(ctx, key, version)
+}
+
+// readConnectionHeadWithTarget syncs once and returns the head and target fingerprint of that file read.
+// Holding mu, no other sync replaces the head in between.
+func (store *dexWebStore) readConnectionHeadWithTarget(ctx context.Context, headKey string, key ConnectionKey) (head Object, fingerprint string, err error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	file, err := store.sync(ctx)
+	if err != nil {
+		return Object{}, "", err
+	}
+	record, err := file.onlyConnection(key)
+	if err != nil {
+		return Object{}, "", err
+	}
+	if fingerprint, err = record.connectionConfiguration().ConnectionTargetFingerprint(); err != nil {
+		return Object{}, "", err
+	}
+	head, err = store.memory.ReadObject(ctx, headKey, "")
+	return head, fingerprint, err
+}
+
+// onlyConnection returns the one record of key, or an error wrapping errConnectionRemovedFromFile or
+// errDuplicateConnectionInFile.
+func (file dexWebConnectionsFile) onlyConnection(key ConnectionKey) (dexWebConnection, error) {
+	var record dexWebConnection
+	listings := 0
+	for _, connection := range file.Connections {
+		if connection.key() == key {
+			record = connection
+			listings++
+		}
+	}
+	switch listings {
+	case 1:
+		return record, nil
+	case 0:
+		return dexWebConnection{}, fmt.Errorf("connection %q of connector %q: %w", key.ConnectionName, key.ConnectorID, errConnectionRemovedFromFile)
+	default:
+		return dexWebConnection{}, fmt.Errorf("connection %q of connector %q: %w", key.ConnectionName, key.ConnectorID, errDuplicateConnectionInFile)
+	}
+}
+
+// listingCounts counts the records of each connection key.
+func (file dexWebConnectionsFile) listingCounts() map[ConnectionKey]int {
+	listings := make(map[ConnectionKey]int, len(file.Connections))
+	for _, connection := range file.Connections {
+		listings[connection.key()]++
+	}
+	return listings
 }
 
 // CreateObject creates a previously absent key and returns ErrConflict if it exists.
@@ -315,18 +408,59 @@ func (store *dexWebStore) CreateObject(ctx context.Context, key string, contents
 
 // lockCredentialRefresh holds the cross-process refresh lock of connections.json until the returned lock is released.
 func (store *dexWebStore) lockCredentialRefresh(ctx context.Context) (*heldRefreshLock, error) {
-	return store.refreshLock.acquire(ctx)
+	lock, err := store.refreshLock.acquire(ctx)
+	if err == nil && store.onRefreshLockAcquired != nil {
+		store.onRefreshLockAcquired()
+	}
+	return lock, err
 }
 
-// verifyCredentialWriteBack rewrites connections.json unchanged through the write-back path, before a provider rotates a token.
-func (store *dexWebStore) verifyCredentialWriteBack() error {
+// verifyCredentialWriteBack rewrites connections.json unchanged through the write-back path, before a provider
+// rotates a token. One read supplies the checked record and the rewritten bytes; see verifyRefreshedRecord.
+func (store *dexWebStore) verifyCredentialWriteBack(ctx context.Context, key ConnectionKey) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	contents, err := readDexWebFile(store.path)
 	if err != nil {
 		return err
 	}
-	return replacePrivateFile(store.path, contents, store.renameFile)
+	file, err := decodeDexWebConnections(contents)
+	if err != nil {
+		return err
+	}
+	if err = store.verifyRefreshedRecord(ctx, file, key); err != nil {
+		return err
+	}
+	// A writer that skips the lock could replace the file after this read; never overwrite its write.
+	return replacePrivateFileChecked(store.path, contents, store.renameFile, func() error {
+		if store.beforeUnchangedRewriteCheck != nil {
+			store.beforeUnchangedRewriteCheck()
+		}
+		return requireFileContents(store.path, contents)
+	})
+}
+
+// verifyRefreshedRecord checks that file still lists key once, with the expected target and the credential being
+// refreshed. Otherwise nothing may be sent: see guardedRecordError for the errors.
+func (store *dexWebStore) verifyRefreshedRecord(ctx context.Context, file dexWebConnectionsFile, key ConnectionKey) error {
+	expectedFingerprint, isExpected := expectedConnectionTarget(ctx, key)
+	record, err := file.onlyConnection(key)
+	if err != nil {
+		return guardedRecordError(err, isExpected)
+	}
+	if isExpected {
+		fingerprint, err := record.connectionConfiguration().ConnectionTargetFingerprint()
+		if err != nil {
+			return err
+		}
+		if fingerprint != expectedFingerprint {
+			return fmt.Errorf("%w: connection %q of connector %q now has target %s", ErrConnectionTargetChanged, key.ConnectionName, key.ConnectorID, fingerprint)
+		}
+	}
+	if credentialDigest(record.Credentials, record.CredentialExpiresAt) != store.imported[key] {
+		return errFileChangedSinceRead
+	}
+	return nil
 }
 
 // CompareAndSwapObject replaces a key conditionally; a refreshed connection credential is also written back to connections.json.
@@ -336,7 +470,7 @@ func (store *dexWebStore) CompareAndSwapObject(ctx context.Context, key, expecte
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	if err := store.sync(ctx); err != nil {
+	if _, err := store.sync(ctx); err != nil {
 		return Object{}, err
 	}
 	object, err := store.memory.CompareAndSwapObject(ctx, key, expectedETag, contents)
@@ -366,7 +500,7 @@ func (store *dexWebStore) writeBack(ctx context.Context, head Object) {
 		return
 	}
 	if err = store.replaceInFile(record.Key, material); err != nil {
-		if errors.Is(err, errFileHoldsNewerCredential) || errors.Is(err, errConnectionRemovedFromFile) {
+		if errors.Is(err, errFileHoldsNewerCredential) || errors.Is(err, errConnectionRemovedFromFile) || errors.Is(err, errDuplicateConnectionInFile) {
 			slog.Warn("local connector credential write-back skipped", "connector", record.Key.ConnectorID, "connection", record.Key.ConnectionName, "reason", err.Error())
 			return
 		}
@@ -387,6 +521,13 @@ func (store *dexWebStore) replaceInFile(key ConnectionKey, material CredentialMa
 	var records []map[string]json.RawMessage
 	if err = json.Unmarshal(contents, &file); err != nil || json.Unmarshal(file["connections"], &records) != nil {
 		return errors.New("connector configuration file is not valid JSON")
+	}
+	decoded, err := decodeDexWebConnections(contents)
+	if err != nil {
+		return err
+	}
+	if _, err = decoded.onlyConnection(key); err != nil {
+		return err
 	}
 	for _, raw := range records {
 		var identity dexWebConnection

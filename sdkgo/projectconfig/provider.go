@@ -98,9 +98,14 @@ func NewCredentialResolver[C any](store *ConnectionStore, key ConnectionKey, dec
 }
 
 // Resolve reads exact current material without refreshing; known-expired credentials require ResolveWithRefresh.
+// Under ContextWithExpectedConnectionTarget it returns an error wrapping ErrConnectionTargetChanged or
+// ErrConnectionTargetUnverifiable instead of a credential whose connection does not have the expected target.
 func (provider *CredentialResolver[C]) Resolve(ctx context.Context) (C, error) {
 	var zero C
 	if provider.shared != nil {
+		if err := provider.refuseSharedTargetExpectation(ctx); err != nil {
+			return zero, err
+		}
 		return provider.resolveShared(ctx)
 	}
 	material, connection, err := provider.store.ReadCredentialMaterial(ctx, provider.key)
@@ -124,12 +129,19 @@ func (provider *CredentialResolver[C]) Resolve(ctx context.Context) (C, error) {
 // from reading the credential again through writing the result back, and so does an observer's recovery. A
 // process that waited for the lock adopts the credential another process wrote back instead of refreshing again.
 // The wait ends with ctx, and after two minutes at most, with an error that wraps ErrRefreshFailed.
+//
+// Under ContextWithExpectedConnectionTarget it compares the target with each read of the record, including the
+// read after acquiring the refresh lock, and returns an error wrapping ErrConnectionTargetChanged before any refresh
+// request when it differs; ErrConnectionTargetUnverifiable when the source cannot compare.
 func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, driver RefreshDriver[C]) (C, error) {
 	var zero C
 	if ctx == nil || driver == nil {
 		return zero, errors.New("credential context and refresh driver are required")
 	}
 	if provider.shared != nil {
+		if err := provider.refuseSharedTargetExpectation(ctx); err != nil {
+			return zero, err
+		}
 		return provider.resolveShared(ctx)
 	}
 	if provider.encode == nil {
@@ -140,9 +152,9 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 		if err := ctx.Err(); err != nil {
 			return zero, err
 		}
-		record, _, err := provider.store.readRecord(ctx, provider.key)
+		record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 		if err != nil {
-			return zero, err
+			return zero, refreshReadError(err)
 		}
 		switch record.Status {
 		case CredentialRevoked, CredentialReauthorizationRequired:
@@ -186,23 +198,43 @@ func (provider *CredentialResolver[C]) ResolveWithRefresh(ctx context.Context, d
 
 // ResolveAfterRejection refreshes only when authoritative expiry has elapsed.
 // A generic HTTP 401, permission error, or unknown expiry is insufficient evidence for an extra provider mutation.
+// It honors ContextWithExpectedConnectionTarget as ResolveWithRefresh does.
 func (provider *CredentialResolver[C]) ResolveAfterRejection(ctx context.Context, driver RefreshDriver[C]) (C, error) {
 	var zero C
 	if provider.shared != nil {
+		if err := provider.refuseSharedTargetExpectation(ctx); err != nil {
+			return zero, err
+		}
 		credential, err := provider.shared.credentialAfterRejection(ctx)
 		if err != nil {
 			return zero, err
 		}
 		return provider.decodeShared(credential)
 	}
-	connection, err := provider.store.ReadConnection(ctx, provider.key)
+	record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 	if err != nil {
 		return zero, err
 	}
-	if connection.ExpiresAt == nil || connection.ExpiresAt.After(provider.store.now()) {
+	if record.ExpiresAt == nil || record.ExpiresAt.After(provider.store.now()) {
 		return zero, errors.New("authentication rejection does not prove credential expiry")
 	}
 	return provider.ResolveWithRefresh(ctx, driver)
+}
+
+// refreshReadError reports a connection removed from its file as a failed refresh: nothing was sent.
+func refreshReadError(err error) error {
+	if errors.Is(err, errConnectionRemovedFromFile) && !errors.Is(err, ErrConnectionTargetChanged) {
+		return fmt.Errorf("%w: %w", ErrRefreshFailed, err)
+	}
+	return err
+}
+
+// refuseSharedTargetExpectation fails closed: the broker serves no authorization identity to compare.
+func (provider *CredentialResolver[C]) refuseSharedTargetExpectation(ctx context.Context) error {
+	if _, isExpected := expectedConnectionTarget(ctx, provider.key); isExpected {
+		return ErrConnectionTargetUnverifiable
+	}
+	return nil
 }
 
 func (provider *CredentialResolver[C]) resolveShared(ctx context.Context) (C, error) {
@@ -255,9 +287,9 @@ func (provider *CredentialResolver[C]) refreshWhileLocked(ctx context.Context, d
 		return zero, false, err
 	}
 	defer lock.release()
-	record, _, err := provider.store.readRecord(ctx, provider.key)
+	record, _, err := provider.store.readRecordForCredentialUse(ctx, provider.key)
 	if err != nil {
-		return zero, false, err
+		return zero, false, refreshReadError(err)
 	}
 	if record.Status != CredentialReady {
 		return zero, false, nil
@@ -270,7 +302,13 @@ func (provider *CredentialResolver[C]) refreshWhileLocked(ctx context.Context, d
 		return state.Credentials, true, nil
 	}
 	// A rotated refresh token that cannot be written back would strand every other process.
-	if err = refreshLocker.verifyCredentialWriteBack(); err != nil {
+	if err = refreshLocker.verifyCredentialWriteBack(ctx, provider.key); err != nil {
+		if errors.Is(err, ErrConnectionTargetChanged) {
+			return zero, false, err
+		}
+		if errors.Is(err, errFileChangedSinceRead) {
+			return zero, false, nil
+		}
 		return zero, false, fmt.Errorf("%w: the credential cannot be written back: %w", ErrRefreshFailed, err)
 	}
 	return provider.refreshReady(ctx, record, material, state, driver)
@@ -324,6 +362,12 @@ func (provider *CredentialResolver[C]) recoverExchange(ctx context.Context, reco
 			return err
 		}
 		defer lock.release()
+		// The target may have changed while this caller waited; recovery publishes and writes back.
+		if _, isExpected := expectedConnectionTarget(ctx, provider.key); isExpected {
+			if _, _, err = provider.store.readRecordForCredentialUse(ctx, provider.key); err != nil {
+				return err
+			}
+		}
 	}
 	_, err := provider.store.RecoverCredentialExchange(ctx, exchangeAdmission(record, false))
 	return err

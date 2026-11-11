@@ -1085,6 +1085,18 @@ The example uses the `singledispatchtest` fake context; a host runs attempts
 with its own Step context. An agent host loads a Dex Web `connections.json`
 by path with `projectconfig.LoadDexWebConnectionsFile`.
 
+A host that records which connection target a tool call was checked against
+uses `ConnectionConfiguration.ConnectionTargetFingerprint`, a stable
+`sha256:` value that includes Dex Web's `authorizationId`. From v0.36.0 the
+host passes `projectconfig.ContextWithExpectedConnectionTarget` in the attempt
+context, and the project credential provider then refuses a credential whose
+connection was rebound. It returns `projectconfig.ErrConnectionTargetChanged`,
+or `ErrConnectionTargetUnverifiable` for a source other than a Dex Web
+connections file, before any provider request. A connector handles it as any
+credential error and returns Retry: it is a definite not-sent outcome, never
+`uncertain`. See
+[Connection targets](projectconfig/README.md#connection-targets).
+
 ## Trigger bindings
 
 Project configuration stores named connections and named Trigger bindings

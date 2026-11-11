@@ -409,6 +409,12 @@ needs `sdkgo` v0.28.0 or later; connectors need no change.
   so changing them in Dex Web needs an application restart.
 - Credentials are read again before each provider call, so reauthorizing in
   Dex Web takes effect on the next call without a restart.
+- A connection that Dex Web removed, or that the file lists more than once,
+  stops resolving from the next call, and it is never refreshed. The error
+  names the reason, and `ResolveWithRefresh` wraps a removal in
+  `ErrRefreshFailed`. Every other connection in the file keeps resolving. A
+  file that lists a connection more than once cannot be loaded, because the
+  configuration document cannot hold it. Both need `sdkgo` v0.36.0 or later.
 - Dex Web does not refresh credentials. When a refreshable connector refreshes
   one, the application writes the new credential back to `connections.json`
   while that file still holds the credential it read, so a restart or Dex Web
@@ -420,6 +426,11 @@ needs `sdkgo` v0.28.0 or later; connectors need no change.
   refreshes the shared connection.
 - Trigger inboxes persist in `trigger-inboxes/` beside `connections.json`, so
   acknowledged events survive a restart.
+- Each loaded connection exposes the record's `authorizationId` as
+  `AuthorizationID` and its `authMethodIds` as `AuthMethodIDs`. A refresh
+  write-back changes only `credentials` and `credentialExpiresAt`, so it keeps
+  `authorizationId` and every other member of the file. See
+  [Connection targets](#connection-targets).
 - The connections file holds plaintext secrets for local development. Never
   commit it or use it outside a developer machine.
 
@@ -449,8 +460,12 @@ refresh of a local connection therefore also holds a file lock:
 3. Otherwise it first rewrites `connections.json` unchanged through the
    write-back steps: a temporary file in the same directory with mode `0600`,
    `fsync`, rename over `connections.json`, then `fsync` of the directory.
-   This proves the file can be replaced. Then it sends the one refresh
-   request and writes the result back through the same steps.
+   This proves the file can be replaced. The rewrite uses the bytes of one
+   read. That read must still hold the credential being refreshed, and the
+   expected target when there is one. Just before the rename, the file must
+   still hold those bytes. Otherwise nothing is renamed, and the caller reads
+   the file again instead of refreshing. Then it sends the one refresh request
+   and writes the result back through the same steps.
 4. It releases the lock. An observer that recovers an unfinished refresh of
    its own process holds the lock in the same way.
 
@@ -491,12 +506,132 @@ Limits:
   refresh is coordinated only within one loaded project, the application logs
   a warning when it loads the file, and the file must serve one loaded project
   of one application process.
-- Dex Web does not take this lock when it saves a reauthorized credential. A
-  reauthorization saved during another process's write-back or its unchanged
-  rewrite, each of which lasts milliseconds, can be overwritten; reauthorize
-  again if a call still uses the previous authorization.
+- Dex Web releases before superdurable/dex#1526 do not take this lock when
+  they save a reauthorized credential. Such a save can still be overwritten
+  in two places: during another process's write-back, or between the
+  unchanged rewrite's last comparison and its rename. Each window lasts
+  milliseconds or less. Reauthorize again if a call still uses the previous
+  authorization.
 - The Python and TypeScript SDKs do not take this lock yet. Do not let them
   refresh a connection that a Go process also refreshes from the same file.
+
+### Connection targets
+
+Dex Web (from Dex Web and dexcli 1.43) writes a non-secret `authorizationId`
+UUID into every record of `connections.json`. It replaces the value on a new
+connection, every OAuth callback, and any change of the stored credentials. It
+keeps the value on settings-only edits, Trigger binding edits, writes of other
+records, and another process's refresh write-back. A record written by an older
+Dex Web has none. `authorizationId` identifies only the account behind the
+credentials. The settings in `configuration` identify the rest of the target,
+so a target is the two together. This needs `sdkgo` v0.36.0 or later.
+
+`ConnectionConfiguration.AuthorizationID` is empty for a record without it.
+`AuthMethodIDs` lists the record's `authMethodIds` in the file's order, or is
+nil. `AuthMethodID` keeps its v0.35.0 value: the record's `authMethodId` only
+when the record lists no `authMethodIds`. Neither new field is part of the
+project configuration document or serialized with it. A project loaded from
+hosted or S3 storage leaves both empty, because its records carry no
+authorization identity.
+
+`ConnectionTargetFingerprint` is the one definition of a connection's target.
+It hashes `ConnectorID`, `ConnectionName`, `Provider`, `AuthMethodID`,
+`AuthMethodIDs` (order matters), `AuthorizationID`, `SharedConnectionID` and
+the JSON value of `Configuration`. It never hashes `ModulePath`, credentials,
+or expiry, so a connector upgrade or a token refresh keeps the target. The
+format is stable, and callers may persist it: `sha256:` followed by the
+lowercase hexadecimal SHA-256 of this canonical JSON object.
+
+| Member | Value |
+| --- | --- |
+| `schema` | `connectors.dex.dev/connection-target/v1` (`ConnectionTargetFingerprintSchema`) |
+| `authorizationId` | `AuthorizationID`; `""` when absent |
+| `authMethodId` | `AuthMethodID` |
+| `authMethodIds` | `AuthMethodIDs`; `[]` when nil |
+| `configuration` | the JSON value of `Configuration`, or `null` when empty |
+| `connectionName`, `connectorId`, `provider`, `sharedConnectionId` | the fields of the same name |
+
+The object's members and every nested object's members are sorted by name, with
+no white space. Strings are encoded as Go's `encoding/json` encodes them with
+HTML escaping disabled, and numbers keep their JSON text (`1.50` and `1.5`
+differ). A later format changes `schema`, and so every fingerprint. The golden
+vectors in `connection_target_test.go` give exact documents and digests. A
+record from an older Dex Web hashes `""` as its `authorizationId`, so its
+target first changes at its next reauthorization.
+
+A caller that checked a target before an attempt can require it while the
+attempt resolves credentials. `ContextWithExpectedConnectionTarget(ctx, key,
+fingerprint)` returns a context that reaches `CredentialResolver` through the
+connector's normal call path, such as the Step context passed to
+`sdkgo.ResolveCredential`, so connectors need no change. Under it, `Resolve`,
+`ResolveWithRefresh`, `ResolveAfterRejection` and
+`ConnectionStore.ReadCredentialMaterial` behave as follows:
+
+- They read the credential and the record's target fields from one read of
+  `connections.json`. `ResolveWithRefresh` compares again after it acquires
+  the [refresh lock](#refresh-across-processes), and so does recovery of an
+  unfinished refresh before it publishes the result. A rebind that lands
+  while it waits is caught before the refresh request.
+- The unchanged rewrite before a refresh compares the target again, in the
+  same read whose bytes it rewrites. It never renames over a file that changed
+  after that read, so it never overwrites a rebind or a settings edit.
+- When the record's fingerprint differs or the record is gone, they return an
+  error wrapping `ErrConnectionTargetChanged`. They send no provider request,
+  not even a token refresh, change no record, and return no credential.
+- A refresh request already sent for a matching record still commits its
+  result, so a rotated refresh token is never lost. A returned credential
+  always belongs to the target that was compared, even when a rebind lands
+  after the comparison.
+- A record removed from the file, or listed more than once, fails every
+  resolution of that key with an error wrapping `ErrConnectionTargetChanged`,
+  because no single expected target remains. The unchanged rewrite checks this
+  again before a refresh. Other keys of the same file resolve and compare
+  their own targets as usual.
+- An empty or malformed fingerprint never matches. Resolutions of other
+  connections are unaffected, and a later call for the same key replaces the
+  expectation.
+- Every other source fails closed with `ErrConnectionTargetUnverifiable`,
+  again before any request. That covers hosted and S3 storage, in-memory
+  stores, and shared entries served by the credential broker. Their records
+  carry no authorization identity, and their settings are fixed at load.
+
+Connectors surface both errors through their usual credential-error path. The
+error comes before any provider request, so it is a definite not-sent outcome.
+An operation returns Retry, never `uncertain`, a business branch, or
+reauthorization. The caller then compares the current target before it starts
+another attempt.
+
+From [`connection_target_example_test.go`](connection_target_example_test.go):
+
+```go
+key := projectconfig.ConnectionKey{ConnectorID: "example", ConnectionName: "main"}
+// Record the target that the call was checked against; the fingerprint is safe to persist.
+target, err := project.Configuration.Connections[0].ConnectionTargetFingerprint()
+if err != nil {
+	fmt.Println(err)
+	return
+}
+resolver, err := projectconfig.NewCredentialResolver(project.Connections, key, func(contents json.RawMessage) (exampleCredentials, error) {
+	var credentials exampleCredentials
+	return credentials, projectconfig.DecodeCredentials(contents, &credentials)
+}, nil)
+if err != nil {
+	fmt.Println(err)
+	return
+}
+attemptContext := projectconfig.ContextWithExpectedConnectionTarget(ctx, key, target)
+
+credentials, err := resolver.Resolve(attemptContext)
+fmt.Println(credentials.APIKey, err)
+
+// Dex Web rebinds the connection to another account before the next attempt resolves its credential.
+if err = writeExampleConnections(path, "c2a9e7d4-8f3b-4e61-a2d5-5b7c9e0f1a23", "key-for-account-b"); err != nil {
+	fmt.Println(err)
+	return
+}
+_, err = resolver.Resolve(attemptContext)
+fmt.Println(errors.Is(err, projectconfig.ErrConnectionTargetChanged))
+```
 
 Tests load a project from an in-memory `ObjectStore` with
 `projectconfigtest.LoadProject(ctx, objects, scope, reference)`, so they can
@@ -539,6 +674,18 @@ rename and, on macOS, an immutable `connections.json` stop a refresh before
 the provider request, that a late write-back failure returns the credential
 and logs an error, that a temporary file that cannot be removed is logged by
 path, and that an unsafe lock file is refused or restricted to `0600`.
+The connection target tests check the fingerprint's golden vectors and which
+fields change it. They check that a matching target returns the credential and
+that a rebind, a settings change or a removed record is refused with no
+refresh request and no file write, including a rebind written while a guarded
+refresh waits for another holder's lock, between the check under the lock and
+the unchanged rewrite, and during that rewrite. In none of these cases is the
+rewrite allowed to overwrite the newer file. Other tests cover recovery after a
+settings change, removed records, a duplicated record that leaves other
+connections resolving, a record without
+`authorizationId`, the generated connector provider path, fail-closed hosted
+and shared sources, and a write-back that keeps `authorizationId` and unknown
+members across a restart.
 `make test-projectconfig-s3-integration` calls real AWS S3/KMS using the caller's
 default credential chain. It requires an explicitly configured existing versioned
 bucket and exact KMS key ARN. It creates a unique owned prefix, checks conditional

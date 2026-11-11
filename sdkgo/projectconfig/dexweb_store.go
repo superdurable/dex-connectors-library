@@ -4,6 +4,7 @@
 package projectconfig
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -197,6 +198,23 @@ func writePrivateFile(path string, contents []byte) error {
 
 // replacePrivateFile is writePrivateFile with the rename that replaces path; tests substitute a failing one.
 func replacePrivateFile(path string, contents []byte, rename func(oldPath, newPath string) error) error {
+	return replacePrivateFileChecked(path, contents, rename, func() error { return nil })
+}
+
+// requireFileContents returns errFileChangedSinceRead when path no longer holds contents.
+func requireFileContents(path string, contents []byte) error {
+	current, err := readDexWebFile(path)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(current, contents) {
+		return errFileChangedSinceRead
+	}
+	return nil
+}
+
+// replacePrivateFileChecked is replacePrivateFile that calls checkBeforeRename last and keeps path when it fails.
+func replacePrivateFileChecked(path string, contents []byte, rename func(oldPath, newPath string) error, checkBeforeRename func() error) error {
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".write-*")
 	if err != nil {
 		return fmt.Errorf("create temporary file: %w", err)
@@ -214,6 +232,10 @@ func replacePrivateFile(path string, contents []byte, rename func(oldPath, newPa
 	if err != nil {
 		removeTemporaryFile(name)
 		return fmt.Errorf("write temporary file: %w", err)
+	}
+	if err = checkBeforeRename(); err != nil {
+		removeTemporaryFile(name)
+		return err
 	}
 	if err = rename(name, path); err != nil {
 		removeTemporaryFile(name)
