@@ -9,9 +9,15 @@ API messages through Socket Mode, or from a host that relays them for a shared
 connection (see [Relayed events](#relayed-events)). It supports public and
 private channels, not direct messages.
 
+## Agent tools
+
+The Python and TypeScript packages offer all four operations to Dex agent
+hosts. Both posts recommend approval and claim no safe retry, so a host runs
+each post once.
+
 ## TypeScript package
 
-`@superdurable/connector-slack@0.2.0` implements the four thread read and
+`@superdurable/connector-slack@0.3.0` implements the four thread read and
 message post operations for TypeScript Dex Flows. Socket Mode Triggers remain
 Go-only. The [runnable thread page example](typescript/examples/list-thread-messages/README.md)
 uses the static `slack-thread-reader` connection name and obtains OAuth bot and

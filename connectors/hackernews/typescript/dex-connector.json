@@ -1,6 +1,6 @@
 {
   "connectorId": "hacker-news-daily",
-  "releaseTag": "connectors/hackernews/go/v0.23.0",
+  "releaseTag": "connectors/hackernews/go/v0.24.0",
   "package": {
     "ecosystem": "npm",
     "name": "@superdurable/connector-hackernews",
