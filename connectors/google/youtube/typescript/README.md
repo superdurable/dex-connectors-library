@@ -1,6 +1,6 @@
 # YouTube TypeScript connector
 
-`@superdurable/connector-google-youtube` provides Dex Query Steps for video search, video and channel reads, and playlist pages, plus an add-once playlist Mutation. The package follows the Go connector's YouTube Data API v3 request and retry behavior. OAuth credentials are resolved and refreshed through the host-owned connection using the generated authorization declaration.
+`@superdurable/connector-google-youtube` provides Dex Query Steps for video search, video and channel reads, and playlist pages, plus a playlist Mutation that adds a video at most once and selects `uncertain` when an earlier insert cannot be confirmed. The package follows the Go connector's YouTube Data API v3 request and retry behavior. OAuth credentials are resolved and refreshed through the host-owned connection using the generated authorization declaration.
 
 The checked-in [video lookup example](examples/video-lookup/README.md) binds the static `youtube-video-reader` connection and runs a real Dex Flow. Configure Google OAuth in Dex Web Connections. The read-only method is sufficient for the example; `addPlaylistItem` requires the manage method.
 

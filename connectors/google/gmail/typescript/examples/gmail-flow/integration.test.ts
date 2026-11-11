@@ -111,7 +111,7 @@ it('preserves the send claim across a real Dex retry and confirms by Sent Mail',
   }
 }, 30_000);
 
-it('ignores a 503 error-body ID and safely resends after a real Dex retry', async () => {
+it('ignores a 503 error-body ID and confirms by Sent Mail after a real Dex retry without resending', async () => {
   let postCount = 0;
   let searchCount = 0;
   const connectionReference = { provider: 'google', name: ConnectionName };
@@ -119,11 +119,12 @@ it('ignores a 503 error-body ID and safely resends after a real Dex retry', asyn
   const transport = async (request: ProviderRequest): Promise<ProviderResponse> => {
     if (request.method === 'GET') {
       searchCount++;
-      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ messages: [] })) };
+      // The 503 send becomes visible in Sent Mail only after the first attempt's bounded polling.
+      const messages = searchCount >= 5 ? [{ id: 'sent-after-503', threadId: 'thread-1' }] : [];
+      return { status: 200, headers: {}, body: Buffer.from(JSON.stringify({ messages })) };
     }
     postCount++;
-    const body = postCount === 1 ? { id: 'not-a-message' } : { id: 'sent-after-503', threadId: 'thread-1' };
-    return { status: postCount === 1 ? 503 : 200, headers: {}, body: Buffer.from(JSON.stringify(body)) };
+    return { status: 503, headers: {}, body: Buffer.from(JSON.stringify({ id: 'not-a-message' })) };
   };
   const providerClient = new GmailClient({ endpoint: 'http://127.0.0.1:8080' },
     new StaticCredentialProvider([[connectionReference, credentials]]), { transport });
@@ -139,7 +140,7 @@ it('ignores a 503 error-body ID and safely resends after a real Dex retry', asyn
     const result = await providerDexClient.waitForFlow(flowId, 20_000);
     expect(result.status).toBe('completed');
     expect(result.singleOutput()).toMatchObject({ branch: 'sent', value: { messageId: 'sent-after-503' } });
-    expect(postCount).toBe(2);
+    expect(postCount).toBe(1);
     expect(searchCount).toBe(5);
   } finally {
     await providerDexClient.close();

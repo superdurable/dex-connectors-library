@@ -1,6 +1,6 @@
 # Slack Connector
 
-Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.3.0`.
+Install the Go module with `go get github.com/superdurable/dex-connectors-library/connectors/slack/go@v1.4.0`.
 
 Moved from `github.com/superdurable/dex-connectors-library/connectors/slack`.
 
@@ -14,6 +14,10 @@ private channels, not direct messages.
 The Python and TypeScript packages offer all four operations to Dex agent
 hosts. Both posts recommend approval and claim no safe retry, so a host runs
 each post once.
+
+From Go v1.4.0, `Connection.AgentTools()` binds the same four operations to a
+connection as `sdkgo.AgentTool` values, and `ExposedAgentTools()` lists their
+metadata. A `slackmock` connection returns the same tools for host tests.
 
 ## TypeScript package
 

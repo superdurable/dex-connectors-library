@@ -265,7 +265,8 @@ setattr(AddPlaylistItemInput, '__module__', 'dex_connectors.google_youtube.model
 class AddedPlaylistItem:
     # Item is the new entry, or the existing entry when WasAlreadyPresent is true.
     item: PlaylistItem = _dataclass_field(default_factory=PlaylistItem)
-    # WasAlreadyPresent reports that the playlist already held the video, so nothing was inserted.
+    # WasAlreadyPresent reports that this attempt found the video in the playlist and inserted nothing;
+    # after an interrupted attempt, that attempt may have added it.
     was_already_present: bool = _dataclass_field(default=False, metadata={'dex_json_name': 'wasAlreadyPresent'})
 
 

@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dex-connector-google-gmail"
-version = "0.1.2"
+version = "0.2.0"
 description = "Dex-native Python connector for Gmail"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-dependencies = ["dex-connectors-sdk==0.6.0", "dex-python-sdk>=1.28.0", "httpx>=0.27"]
+dependencies = ["dex-connectors-sdk>=0.6.0,<1", "dex-python-sdk>=1.28.0", "httpx>=0.27"]
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "mypy>=1.13", "ruff>=0.7", "PyYAML>=6", "types-PyYAML>=6"]

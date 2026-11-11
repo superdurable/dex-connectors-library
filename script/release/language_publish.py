@@ -195,8 +195,9 @@ def select_release_matrices(items: list[dict[str, str]], first_publish_limit: in
     ``pending_upload_directory`` limits pending uploads to that exact connector directory.
     A package of a connector in ``deferred_go_directories`` waits with its Go release, whose tag it requires.
     """
-    if first_publish_limit < 1:
-        raise ValueError("PyPI first publish limit must be positive")
+    # Zero pauses new PyPI projects; uploads to existing projects continue.
+    if first_publish_limit < 0:
+        raise ValueError("PyPI first publish limit must not be negative")
     if github_release_limit < 1:
         raise ValueError("GitHub first release limit must be positive")
     if pending_upload_directory is not None and not is_connector_directory(pending_upload_directory):

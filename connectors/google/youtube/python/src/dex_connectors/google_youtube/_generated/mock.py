@@ -9,7 +9,7 @@ from dex_connectors.sdk.connectormock import Case, Mutation, Query
 
 from ..connection import Connection, new_connection_with_operations
 from ..models import AddPlaylistItemInput, AddedPlaylistItem, Channel, GetChannelInput, GetVideoInput, ListPlaylistItemsInput, PlaylistItem, PlaylistItemPage, SearchVideosInput, Video, VideoSearchPage, VideoSearchResult
-from .definitions import CONNECTOR_ID, PROVIDER, ADDED, ADD_PLAYLIST_ITEM_DEFINITION, DEFECT, FOUND, GET_CHANNEL_DEFINITION, GET_VIDEO_DEFINITION, INVALID_RESPONSE, LISTED, LIST_PLAYLIST_ITEMS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, QUOTA_EXHAUSTED, SEARCHED, SEARCH_VIDEOS_DEFINITION
+from .definitions import CONNECTOR_ID, PROVIDER, ADDED, ADD_PLAYLIST_ITEM_DEFINITION, DEFECT, FOUND, GET_CHANNEL_DEFINITION, GET_VIDEO_DEFINITION, INVALID_RESPONSE, LISTED, LIST_PLAYLIST_ITEMS_DEFINITION, NOT_FOUND, PROVIDER_REJECTED, QUOTA_EXHAUSTED, SEARCHED, SEARCH_VIDEOS_DEFINITION, UNCERTAIN
 
 def search_videos_searched(value: VideoSearchPage, failure: Failure | None = None) -> Case[VideoSearchPage]:
     return Case.branch_result(SEARCHED, value, failure)
@@ -246,6 +246,11 @@ def add_playlist_item_invalid_response(value: AddedPlaylistItem, failure: Failur
 
 setattr(add_playlist_item_invalid_response, '__module__', "dex_connectors.google_youtube.youtubemock")
 
+def add_playlist_item_uncertain(value: AddedPlaylistItem, failure: Failure) -> Case[AddedPlaylistItem]:
+    return Case.uncertain(value, failure)
+
+setattr(add_playlist_item_uncertain, '__module__', "dex_connectors.google_youtube.youtubemock")
+
 def add_playlist_item_defect(value: AddedPlaylistItem, failure: Failure | None = None) -> Case[AddedPlaylistItem]:
     return Case.branch_result(DEFECT, value, failure)
 
@@ -275,6 +280,11 @@ def add_playlist_item_provider_rejected_failure() -> Case[AddedPlaylistItem]:
     return Case.branch_result(PROVIDER_REJECTED, AddedPlaylistItem(item=PlaylistItem()), Failure(FailureKind.AUTHORIZATION, CONNECTOR_ID, "addPlaylistItem", "YouTube denied the request."))
 
 setattr(add_playlist_item_provider_rejected_failure, '__module__', "dex_connectors.google_youtube.youtubemock")
+
+def add_playlist_item_insert_outcome_unknown() -> Case[AddedPlaylistItem]:
+    return Case.uncertain(AddedPlaylistItem(item=PlaylistItem()), Failure(FailureKind.TRANSPORT, CONNECTOR_ID, "addPlaylistItem", "An earlier attempt may have added the video, and the playlist listing does not show it yet; check the playlist before adding the video again."))
+
+setattr(add_playlist_item_insert_outcome_unknown, '__module__', "dex_connectors.google_youtube.youtubemock")
 
 
 class Mock:
@@ -353,10 +363,12 @@ __all__ = [
     "add_playlist_item_quota_exhausted",
     "add_playlist_item_provider_rejected",
     "add_playlist_item_invalid_response",
+    "add_playlist_item_uncertain",
     "add_playlist_item_defect",
     "add_playlist_item_retry",
     "add_playlist_item_compiler_video_added",
     "add_playlist_item_not_found_failure",
     "add_playlist_item_quota_exhausted_failure",
     "add_playlist_item_provider_rejected_failure",
+    "add_playlist_item_insert_outcome_unknown",
 ]
