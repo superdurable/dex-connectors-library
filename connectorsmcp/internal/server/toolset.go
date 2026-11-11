@@ -52,9 +52,12 @@ type toolBinding struct {
 	connectionName string
 	effect         sdkgo.AgentToolEffect
 	inputSchema    *jsonschema.Resolved
-	// connectionTarget is connectionTargetDigest of the connection's configuration.
+	// connectionTarget is the connection's projectconfig ConnectionTargetFingerprint.
 	connectionTarget string
-	mcpTool          *mcp.Tool
+	// isConnectionTargetVerifiable reports whether attempts can require connectionTarget
+	// while they resolve credentials; only read tools are offered without it.
+	isConnectionTargetVerifiable bool
+	mcpTool                      *mcp.Tool
 }
 
 // ToolNames returns the offered tool names, sorted.
@@ -140,6 +143,9 @@ type projectSnapshot struct {
 	project  *projectconfig.LoadedProject
 	identity string
 	warnings []string
+	// canVerifyConnectionTargets is true for a Dex Web connections file, whose
+	// credential resolution can compare a connection's target.
+	canVerifyConnectionTargets bool
 }
 
 // toolSetBuilder turns a project snapshot and a selection into a ToolSet.
@@ -162,7 +168,7 @@ func (builder *toolSetBuilder) build(snapshot projectSnapshot, selection *Connec
 	enabled, namingCounts := builder.enableConnections(snapshot, selection, toolSet)
 	var bindings []*toolBinding
 	for _, connection := range enabled {
-		bindings = append(bindings, builder.bindConnection(snapshot.project, connection, namingCounts[connection.connector.ConnectorID] > 1, toolSet)...)
+		bindings = append(bindings, builder.bindConnection(snapshot, connection, namingCounts[connection.connector.ConnectorID] > 1, toolSet)...)
 	}
 	toolSet.byName = map[string]*toolBinding{}
 	toolSet.byIdentity = map[toolIdentity]*toolBinding{}
@@ -232,24 +238,25 @@ func (builder *toolSetBuilder) enableConnections(snapshot projectSnapshot, selec
 	return enabled, namingCounts
 }
 
-func (builder *toolSetBuilder) bindConnection(project *projectconfig.LoadedProject, connection enabledConnection, isQualified bool, toolSet *ToolSet) []*toolBinding {
+func (builder *toolSetBuilder) bindConnection(snapshot projectSnapshot, connection enabledConnection, isQualified bool, toolSet *ToolSet) []*toolBinding {
 	label := connection.connector.ConnectorID + "/" + connection.connectionName
 	allowedOperations, unknownTools := resolveToolList(connection.connector, connection.tools)
 	for _, unknown := range unknownTools {
 		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: tool %s is skipped: no exposed operation of %s has that name", label, unknown, connection.connector.ConnectorID))
 	}
-	connectionTarget, hasTarget := connectionTargetOf(project, connection.connector.ConnectorID, connection.connectionName)
-	if !hasTarget {
-		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s is skipped: it has no configuration", label))
+	target, skipReason := connectionTargetOf(snapshot, connection.connector.ConnectorID, connection.connectionName)
+	if skipReason != "" {
+		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s is skipped: %s", label, skipReason))
 		return nil
 	}
-	tools, err := connection.connector.OpenAgentTools(project, connection.connectionName)
+	tools, err := connection.connector.OpenAgentTools(snapshot.project, connection.connectionName)
 	if err != nil {
 		builder.logger.Warn("connection cannot be opened", "connection", label, "error", err)
 		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s is skipped: it cannot be opened (see the server log)", label))
 		return nil
 	}
 	var bindings []*toolBinding
+	hasSkippedWrite := false
 	for _, tool := range tools {
 		if tool == nil {
 			continue
@@ -266,12 +273,20 @@ func (builder *toolSetBuilder) bindConnection(project *projectconfig.LoadedProje
 			toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: operation %s is bound to another connection and is skipped", label, metadata.Operation.OperationID))
 			continue
 		}
-		binding, err := newToolBinding(tool, metadata, connection, isQualified, connectionTarget)
+		// A write could otherwise resolve another account's credential mid-attempt.
+		if !target.isVerifiable && metadata.Effect() != sdkgo.AgentToolEffectRead {
+			hasSkippedWrite = true
+			continue
+		}
+		binding, err := newToolBinding(tool, metadata, connection, isQualified, target)
 		if err != nil {
 			toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: operation %s is skipped: %v", label, metadata.Operation.OperationID, err))
 			continue
 		}
 		bindings = append(bindings, binding)
+	}
+	if hasSkippedWrite {
+		toolSet.warnings = append(toolSet.warnings, fmt.Sprintf("connection %s: its write tools are not offered: the target of a hosted or shared connection cannot be verified while a call resolves its credential", label))
 	}
 	return bindings
 }
@@ -299,7 +314,7 @@ func resolveToolList(connector registry.LinkedConnector, tools []string) (map[st
 	return allowed, unknown
 }
 
-func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, connection enabledConnection, isQualified bool, connectionTarget string) (*toolBinding, error) {
+func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, connection enabledConnection, isQualified bool, target connectionTarget) (*toolBinding, error) {
 	var schemaObject map[string]any
 	if err := json.Unmarshal(metadata.InputSchema, &schemaObject); err != nil || schemaObject["type"] != "object" {
 		return nil, fmt.Errorf("its input schema is not a JSON Schema of type object")
@@ -328,14 +343,15 @@ func newToolBinding(tool sdkgo.AgentTool, metadata sdkgo.AgentToolMetadata, conn
 		meta[metaKeyApproval] = approvalRecommended
 	}
 	return &toolBinding{
-		name:             name,
-		tool:             tool,
-		metadata:         metadata,
-		connector:        connection.connector,
-		connectionName:   connection.connectionName,
-		effect:           effect,
-		inputSchema:      resolved,
-		connectionTarget: connectionTarget,
+		name:                         name,
+		tool:                         tool,
+		metadata:                     metadata,
+		connector:                    connection.connector,
+		connectionName:               connection.connectionName,
+		effect:                       effect,
+		inputSchema:                  resolved,
+		connectionTarget:             target.fingerprint,
+		isConnectionTargetVerifiable: target.isVerifiable,
 		mcpTool: &mcp.Tool{
 			Meta:        meta,
 			Name:        name,

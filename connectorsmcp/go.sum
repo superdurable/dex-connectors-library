@@ -74,8 +74,8 @@ github.com/segmentio/encoding v0.5.4 h1:OW1VRern8Nw6ITAtwSZ7Idrl3MXCFwXHPgqESYfv
 github.com/segmentio/encoding v0.5.4/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/superdurable/dex-connectors-library/sdkgo v0.35.0 h1:b+8436QTnWUKOiFjowYILseLYQsUJXjjzBByWQFepNI=
-github.com/superdurable/dex-connectors-library/sdkgo v0.35.0/go.mod h1:zH3wYOhRcorzF7wGSrhz7V3zptvshZWufDEBReCayfM=
+github.com/superdurable/dex-connectors-library/sdkgo v0.36.0 h1:bfAjw6jQESxwlzl6YrCCs3b4qoy4xgkY5+VRclZ9F2Q=
+github.com/superdurable/dex-connectors-library/sdkgo v0.36.0/go.mod h1:zH3wYOhRcorzF7wGSrhz7V3zptvshZWufDEBReCayfM=
 github.com/superdurable/dex/blob-cache-go v0.1.2 h1:vHwmUZl59GkpTdrcwouj47rnKdx45ETfZdtfxn/vzSM=
 github.com/superdurable/dex/blob-cache-go v0.1.2/go.mod h1:Atepb7+sztvDCztVKmlvEKCSKFCkHKtDhoFYjaFmtEw=
 github.com/superdurable/dex/sdk-go v1.40.2 h1:r+r039YlNauVg2CQp9mGdVP20mm5y4xuAbAonR4lTbw=

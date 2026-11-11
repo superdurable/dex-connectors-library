@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -19,34 +18,46 @@ import (
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
-func TestConnectionTargetDigestUsesOnlyNonSecretTargetFields(t *testing.T) {
-	slack := projectconfig.ConnectionConfiguration{
-		ConnectorID: "slack", ConnectionName: "work", ModulePath: "example.com/slack/go", Provider: "slack", AuthMethodID: "oauth",
-		Configuration: json.RawMessage(`{ "workspace": "T123", "baseUrl": "https://slack.com/api" }`),
+func TestTheConnectionTargetIsTheProjectConfigFingerprint(t *testing.T) {
+	harness := newTestHarness(t, harnessOptions{})
+	base := testconnectors.NotesConnection("work", harness.provider)
+	base.AuthorizationID = "8f14e45f-ceea-4e7a-9b1d-3c59e6a1b2c4"
+	harness.writeConnectionRecords(base)
+	targetOf := func() string {
+		binding := harness.server.CurrentToolSet(t.Context()).toolByName("example-notes_save_record")
+		require.NotNil(t, binding)
+		return binding.connectionTarget
 	}
-	// Computed independently with Python json.dumps(sort_keys=True, separators=(",", ":")).
-	require.Equal(t, "sha256:a9082ed1e9c48cb3e4e02d7311e439922b7587461cc21938b2a8a4992f65658e", connectionTargetDigest(slack))
-	hackerNews := projectconfig.ConnectionConfiguration{ConnectorID: "hacker-news-daily", ConnectionName: "default", Provider: "hacker-news"}
-	require.Equal(t, "sha256:f60918fde0944e9683a9ff3cf8b3fa7f434e93e5138edd2c2b6f907d2c9561e5", connectionTargetDigest(hackerNews))
+	project, err := projectconfig.LoadDexWebConnectionsFile(t.Context(), harness.connectionsFile)
+	require.NoError(t, err)
+	expected, err := project.Configuration.Connections[0].ConnectionTargetFingerprint()
+	require.NoError(t, err)
+	require.Equal(t, expected, targetOf(), "the server uses the one sdkgo definition")
 
-	sameTarget := slack
-	sameTarget.ModulePath = "example.com/slack/go/v2"
-	sameTarget.Configuration = json.RawMessage(`{"baseUrl":"https://slack.com/api","workspace":"T123"}`)
-	require.Equal(t, connectionTargetDigest(slack), connectionTargetDigest(sameTarget), "key order, whitespace, and a module move keep the target")
-	for name, change := range map[string]func(*projectconfig.ConnectionConfiguration){
-		"another endpoint": func(c *projectconfig.ConnectionConfiguration) {
-			c.Configuration = json.RawMessage(`{"baseUrl":"https://other","workspace":"T123"}`)
+	sameTarget := base
+	expiresAt := time.Now().Add(time.Hour).UTC().Truncate(time.Second)
+	sameTarget.CredentialExpiresAt = &expiresAt
+	sameTarget.Credentials = testconnectors.NotesCredentials{Token: "refreshed-token"}
+	sameTarget.ModulePath = "example.com/connectors/example-notes/go/v2"
+	harness.writeConnectionRecords(sameTarget)
+	require.Equal(t, expected, targetOf(), "a refreshed credential, its expiry, and a module move keep the target")
+
+	for name, change := range map[string]func(*testconnectors.ConnectionsFileConnection){
+		"another authorization": func(connection *testconnectors.ConnectionsFileConnection) {
+			connection.AuthorizationID = "c2a9e7d4-8f3b-4e61-a2d5-5b7c9e0f1a23"
 		},
-		"another workspace": func(c *projectconfig.ConnectionConfiguration) {
-			c.Configuration = json.RawMessage(`{"baseUrl":"https://slack.com/api","workspace":"T999"}`)
+		"no authorization ID": func(connection *testconnectors.ConnectionsFileConnection) { connection.AuthorizationID = "" },
+		"another method set": func(connection *testconnectors.ConnectionsFileConnection) {
+			connection.AuthMethodIDs = []string{"apiKey"}
 		},
-		"another provider":          func(c *projectconfig.ConnectionConfiguration) { c.Provider = "slack-enterprise" },
-		"another auth method":       func(c *projectconfig.ConnectionConfiguration) { c.AuthMethodID = "botToken" },
-		"another shared connection": func(c *projectconfig.ConnectionConfiguration) { c.SharedConnectionID = "shared-1" },
+		"another endpoint": func(connection *testconnectors.ConnectionsFileConnection) {
+			connection.Configuration = testconnectors.NotesConfig{BaseURL: "http://127.0.0.1:1"}
+		},
 	} {
-		changed := slack
+		changed := base
 		change(&changed)
-		require.NotEqual(t, connectionTargetDigest(slack), connectionTargetDigest(changed), name)
+		harness.writeConnectionRecords(changed)
+		require.NotEqual(t, expected, targetOf(), name)
 	}
 }
 

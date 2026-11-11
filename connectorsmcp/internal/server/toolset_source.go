@@ -52,7 +52,7 @@ func (source dexWebProjectSource) load(ctx context.Context) projectSnapshot {
 		source.logger.Error("connections file cannot be loaded; serving no tools", "file", source.path, "error", err)
 		return projectSnapshot{identity: identity, warnings: []string{"the connections file cannot be loaded; serving no tools (see the server log)"}}
 	}
-	return projectSnapshot{project: project, identity: identity}
+	return projectSnapshot{project: project, identity: identity, canVerifyConnectionTargets: true}
 }
 
 // hostedProjectSource serves one project loaded from DEX_PROJECT_* at start;

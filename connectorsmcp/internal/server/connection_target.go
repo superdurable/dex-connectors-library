@@ -4,49 +4,41 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-
-	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/canonicaljson"
 	"github.com/superdurable/dex-connectors-library/sdkgo/projectconfig"
 )
 
-// connectionTargetDigest fingerprints what a connection points at, from
-// non-secret fields only; credentials, their expiry, and the module never enter it.
-func connectionTargetDigest(configuration projectconfig.ConnectionConfiguration) string {
-	settings := json.RawMessage("null")
-	if trimmed := bytes.TrimSpace(configuration.Configuration); len(trimmed) > 0 {
-		canonical, err := canonicaljson.Canonicalize(trimmed)
-		if err != nil {
-			// Settings that are not JSON still fingerprint by their exact bytes.
-			canonical, _ = json.Marshal(string(trimmed))
-		}
-		settings = canonical
-	}
-	encoded, err := canonicaljson.Marshal(map[string]any{
-		"authMethodId":       configuration.AuthMethodID,
-		"configuration":      settings,
-		"connectionName":     configuration.ConnectionName,
-		"connectorId":        configuration.ConnectorID,
-		"provider":           configuration.Provider,
-		"sharedConnectionId": configuration.SharedConnectionID,
-	})
-	if err != nil {
-		panic(fmt.Sprintf("encode connection target: %v", err))
-	}
-	return "sha256:" + canonicaljson.SHA256Hex(encoded)
+// connectionTarget is what one project connection points at.
+type connectionTarget struct {
+	// fingerprint is the connection's projectconfig ConnectionTargetFingerprint.
+	fingerprint string
+	// isVerifiable reports whether credential resolution can require fingerprint:
+	// only a Dex Web connections file record that is not a shared entry can.
+	isVerifiable bool
 }
 
-// connectionTargetOf returns the target digest of one project connection, or false.
-func connectionTargetOf(project *projectconfig.LoadedProject, connectorID string, connectionName string) (string, bool) {
-	if project == nil {
-		return "", false
+// connectionTargetOf returns the target of one project connection, or the
+// reason the connection is skipped.
+func connectionTargetOf(snapshot projectSnapshot, connectorID string, connectionName string) (connectionTarget, string) {
+	if snapshot.project == nil {
+		return connectionTarget{}, "it has no configuration"
 	}
-	for _, configuration := range project.Configuration.Connections {
-		if configuration.ConnectorID == connectorID && configuration.ConnectionName == connectionName {
-			return connectionTargetDigest(configuration), true
+	for _, configuration := range snapshot.project.Configuration.Connections {
+		if configuration.ConnectorID != connectorID || configuration.ConnectionName != connectionName {
+			continue
 		}
+		fingerprint, err := configuration.ConnectionTargetFingerprint()
+		if err != nil {
+			return connectionTarget{}, "its settings cannot be fingerprinted: " + err.Error()
+		}
+		return connectionTarget{
+			fingerprint:  fingerprint,
+			isVerifiable: snapshot.canVerifyConnectionTargets && configuration.SharedConnectionID == "",
+		}, ""
 	}
-	return "", false
+	return connectionTarget{}, "it has no configuration"
+}
+
+// connectionKeyOf names the connection whose credentials an attempt resolves.
+func connectionKeyOf(connectorID string, connectionName string) projectconfig.ConnectionKey {
+	return projectconfig.ConnectionKey{ConnectorID: connectorID, ConnectionName: connectionName}
 }

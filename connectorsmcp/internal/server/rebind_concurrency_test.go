@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/stretchr/testify/require"
 	"github.com/superdurable/dex-connectors-library/connectorsmcp/internal/testconnectors"
 )
@@ -55,16 +54,19 @@ func TestARebindWhileASecondRequestWaitsForTheKeyNeverRunsTheOldBinding(t *testi
 
 	firstOutcome := <-first
 	require.NoError(t, firstOutcome.err)
-	require.NotNil(t, firstOutcome.response.Error)
-	require.Equal(t, int64(jsonrpc.CodeInternalError), firstOutcome.response.Error.Code, "the first attempt asked to retry and the budget is spent")
+	require.Nil(t, firstOutcome.response.Error)
+	var firstSettled callResult
+	require.NoError(t, json.Unmarshal(firstOutcome.response.Result, &firstSettled))
+	require.Equal(t, outcomeUnknown, firstSettled.outcome(), "the attempt asked to retry and its recheck found the rebind")
+	require.Contains(t, firstSettled.text(), "the connection now points to a different target")
 
 	secondOutcome := <-second
 	require.NoError(t, secondOutcome.err)
 	require.Nil(t, secondOutcome.response.Error)
 	var settled callResult
 	require.NoError(t, json.Unmarshal(secondOutcome.response.Result, &settled))
-	require.Equal(t, outcomeUnknown, settled.outcome())
-	require.Contains(t, settled.text(), "the connection now points to a different target")
+	require.Equal(t, firstSettled.text(), settled.text(), "the waiting request replays the settled answer")
+	require.Equal(t, true, settled.Meta[metaKeyReplayed])
 	require.Equal(t, 1, harness.provider.RecordRequests(), "the old binding never ran again")
 	require.Zero(t, otherAccount.TotalRequests(), "nothing ran against the new target")
 }

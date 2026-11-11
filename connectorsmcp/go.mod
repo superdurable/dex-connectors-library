@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/stretchr/testify v1.11.1
-	github.com/superdurable/dex-connectors-library/sdkgo v0.35.0
+	github.com/superdurable/dex-connectors-library/sdkgo v0.36.0
 	github.com/superdurable/dex/sdk-go v1.40.2
 )
 
