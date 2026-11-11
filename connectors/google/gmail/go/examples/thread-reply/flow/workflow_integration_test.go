@@ -27,7 +27,7 @@ import (
 	"github.com/superdurable/dex/sdk-go/dex"
 )
 
-func TestThreadReplyExampleCompletesAndRetriesAfterSearchMissWithRealDex(t *testing.T) {
+func TestThreadReplyExampleReadsBackAfterUnavailableWithoutResendWithRealDex(t *testing.T) {
 	provider := newGmailProvider(t)
 	defer provider.Close()
 	flow, harness := newGmailIntegrationHarness(t, provider.URL)
@@ -102,7 +102,7 @@ func TestThreadReplyExampleCompletesAndRetriesAfterSearchMissWithRealDex(t *test
 	retriedResult, err := harness.client.WaitForFlow(ctx, retriedFlowID, dex.WaitForFlowOptions{})
 	require.NoError(t, err)
 	require.Equal(t, dex.FlowCompleted, retriedResult.Status)
-	require.Equal(t, 2, provider.sendCount(retriedThreadID))
+	require.Equal(t, 1, provider.sendCount(retriedThreadID), "a 503 may have been processed and must not be resent")
 	require.Equal(t, 5, provider.searchCount(retriedThreadID))
 }
 
@@ -306,6 +306,10 @@ func (provider *gmailProvider) serveSentMailSearch(response http.ResponseWriter,
 		if query.Get("q") == "in:sent rfc822msgid:"+rfcMessageID && query.Get("maxResults") == "1" && query.Get("includeSpamTrash") == "true" {
 			provider.searchesByThread[threadID]++
 			found = provider.sentByRFCMessageID[rfcMessageID]
+			// A retried send that got 503 was processed, but Sent Mail indexes it only after four searches.
+			if strings.HasPrefix(threadID, "thread-retried-") && provider.searchesByThread[threadID] > 4 {
+				found = struct{ ID, ThreadID string }{"sent-after-503", threadID}
+			}
 		}
 	}
 	provider.mutex.Unlock()
@@ -316,7 +320,7 @@ func (provider *gmailProvider) serveSentMailSearch(response http.ResponseWriter,
 	writeGmailProviderResponse(response, `{"messages":[{"id":`+strconv.Quote(found.ID)+`,"threadId":`+strconv.Quote(found.ThreadID)+`}]}`)
 }
 
-// serveSend answers by thread prefix: confirmed loses the answer, hanging never answers, retried fails once with 500.
+// serveSend answers by thread prefix: confirmed loses the answer, hanging never answers, retried fails once with 503.
 func (provider *gmailProvider) serveSend(response http.ResponseWriter, request *http.Request) {
 	var payload map[string]string
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {

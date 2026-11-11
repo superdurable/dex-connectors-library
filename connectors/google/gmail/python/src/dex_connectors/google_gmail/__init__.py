@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Gmail operations for Dex Flows."""
 
-from .connection import Connection, new_connection
+from .connection import Connection, new_connection, new_connection_with_operations
 from .definitions import (
     CONNECTOR_ID,
     GET_MESSAGE_DEFINITION,
@@ -52,6 +52,7 @@ __all__ = [
     "decode_credentials",
     "encode_credentials",
     "new_connection",
+    "new_connection_with_operations",
     "new_get_message_step",
     "new_project_connection",
     "new_project_provider",

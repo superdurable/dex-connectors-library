@@ -126,8 +126,8 @@ async def test_rate_limit_records_positive_can_resend_proof() -> None:
 
 
 @pytest.mark.asyncio
-async def test_service_unavailable_records_can_resend_after_sent_mail_miss() -> None:
-    """A 503 and absent Sent Mail match permit Go's next-attempt resend."""
+async def test_service_unavailable_keeps_the_claim_after_sent_mail_miss() -> None:
+    """A 503 may have been processed, so a Sent Mail miss keeps Go's no-resend claim."""
     context = HeartbeatContext()
     requests: list[str] = []
 
@@ -140,7 +140,7 @@ async def test_service_unavailable_records_can_resend_after_sent_mail_miss() -> 
     attempt, _ = await _invoke(_call(context), httpx.MockTransport(answer))
     assert attempt.kind == "retry"
     assert requests == ["POST", "GET", "GET", "GET", "GET"]
-    assert context.heartbeats[-1].state == State.CAN_RESEND
+    assert context.heartbeats[-1].state == State.CLAIMED
 
 
 @pytest.mark.asyncio

@@ -1548,6 +1548,93 @@
           "status": 200
         },
         {
+          "body": "{\"messages\":[{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}],\"resultSizeEstimate\":1}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:fbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "messageId": "sent-1",
+          "recipients": [
+            "\u003ccustomer@example.com\u003e"
+          ],
+          "sender": "owner@example.com",
+          "threadId": "thread-1"
+        },
+        "requestCount": 6,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "input": {
+        "subject": "Progress",
+        "textBody": "Update",
+        "to": [
+          "customer@example.com"
+        ]
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 5,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "sendMessage-unavailable-readback-match",
+      "operation": "sendMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
+      "exchanges": [
+        {
+          "body": "",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "POST",
+          "path": "/users/me/messages/send",
+          "requestBody": {
+            "$rawMime": "From: owner@example.com\r\nTo: \u003ccustomer@example.com\u003e\r\nSubject: Progress\r\nMessage-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Call-ID: 9d2167f5-ff7c-53fa-b238-886c4dcac6e9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nUpdate"
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ],
+            "Content-Type": [
+              "application/json"
+            ]
+          },
+          "status": 503
+        },
+        {
           "body": "{\"resultSizeEstimate\":0}",
           "headers": {},
           "keyMode": "absent",
@@ -1572,44 +1659,107 @@
           "status": 200
         },
         {
-          "body": "{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}",
+          "body": "{\"resultSizeEstimate\":0}",
           "headers": {},
           "keyMode": "absent",
-          "method": "POST",
-          "path": "/users/me/messages/send",
-          "requestBody": {
-            "$rawMime": "From: owner@example.com\r\nTo: \u003ccustomer@example.com\u003e\r\nSubject: Progress\r\nMessage-ID: \u003cfbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev\u003e\r\nX-Dex-Call-ID: 9d2167f5-ff7c-53fa-b238-886c4dcac6e9\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\nContent-Transfer-Encoding: 8bit\r\n\r\nUpdate"
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:fbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev"
+            ]
           },
           "requestHeaders": {
             "Authorization": [
               "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
             ],
-            "Content-Type": [
-              "application/json"
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:fbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:fbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:fbce9b7fa05ed91cccb7890696a08be59f5a07560806df867dec464511549402@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
             ]
           },
           "status": 200
         }
       ],
       "expected": {
-        "branch": "sent",
-        "failureKind": "",
-        "heartbeat": {
-          "attempt": 2,
-          "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-          "providerId": "sent-1",
-          "state": "claimed"
-        },
-        "output": {
-          "messageId": "sent-1",
-          "recipients": [
-            "\u003ccustomer@example.com\u003e"
-          ],
-          "sender": "owner@example.com",
-          "threadId": "thread-1"
-        },
-        "requestCount": 7,
-        "retry": false,
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 6,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -1628,12 +1778,12 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "9d2167f5-ff7c-53fa-b238-886c4dcac6e9",
-            "state": "canResend"
+            "state": "claimed"
           },
           "retryAfterMs": 0
         }
       ],
-      "name": "sendMessage-retry-search-miss-resend",
+      "name": "sendMessage-unavailable-no-resend",
       "operation": "sendMessage"
     },
     {
@@ -2626,7 +2776,7 @@
           "status": 200
         },
         {
-          "body": "{\"resultSizeEstimate\":0}",
+          "body": "{\"messages\":[{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}],\"resultSizeEstimate\":1}",
           "headers": {},
           "keyMode": "absent",
           "method": "GET",
@@ -2648,7 +2798,46 @@
             ]
           },
           "status": 200
+        }
+      ],
+      "expected": {
+        "branch": "sent",
+        "failureKind": "",
+        "output": {
+          "messageId": "sent-1",
+          "recipients": [],
+          "sender": "owner@example.com",
+          "threadId": "thread-1"
         },
+        "requestCount": 7,
+        "retry": false,
+        "retryAfterMs": 0,
+        "uncertain": false
+      },
+      "idempotencyKey": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "input": {
+        "messageId": "message-1",
+        "textBody": "Reply"
+      },
+      "intermediate": [
+        {
+          "exchangeCount": 6,
+          "failureKind": "AVAILABILITY",
+          "heartbeat": {
+            "attempt": 1,
+            "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+            "state": "claimed"
+          },
+          "retryAfterMs": 0
+        }
+      ],
+      "name": "replyToMessage-unavailable-readback-match",
+      "operation": "replyToMessage"
+    },
+    {
+      "attempts": 2,
+      "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
+      "exchanges": [
         {
           "body": "{\"id\": \"message-1\", \"threadId\": \"thread-1\", \"internalDate\": \"1000\", \"payload\": {\"mimeType\": \"text/plain\", \"headers\": [{\"name\": \"Message-ID\", \"value\": \"\u003cmessage-1@example.com\u003e\"}, {\"name\": \"From\", \"value\": \"Sender \u003csender@example.com\u003e\"}, {\"name\": \"To\", \"value\": \"owner@example.com\"}, {\"name\": \"Subject\", \"value\": \"Question\"}], \"body\": {\"data\": \"SGVsbG8\"}}}",
           "headers": {},
@@ -2677,7 +2866,7 @@
           "status": 200
         },
         {
-          "body": "{\"id\":\"sent-1\",\"threadId\":\"thread-1\"}",
+          "body": "",
           "headers": {},
           "keyMode": "absent",
           "method": "POST",
@@ -2694,28 +2883,134 @@
               "application/json"
             ]
           },
+          "status": 503
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:adafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:adafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:adafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:adafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
+          "status": 200
+        },
+        {
+          "body": "{\"resultSizeEstimate\":0}",
+          "headers": {},
+          "keyMode": "absent",
+          "method": "GET",
+          "path": "/users/me/messages",
+          "query": {
+            "includeSpamTrash": [
+              "true"
+            ],
+            "maxResults": [
+              "1"
+            ],
+            "q": [
+              "in:sent rfc822msgid:adafd8b7bb2c07ba45e22e6ff0ac0de59c00122a8ec0781fd90d2f07a8409767@dex.superdurable.dev"
+            ]
+          },
+          "requestHeaders": {
+            "Authorization": [
+              "Bearer gmail-token"
+            ]
+          },
           "status": 200
         }
       ],
       "expected": {
-        "branch": "sent",
-        "failureKind": "",
-        "heartbeat": {
-          "attempt": 2,
-          "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-          "providerId": "sent-1",
-          "state": "claimed"
-        },
-        "output": {
-          "messageId": "sent-1",
-          "recipients": [
-            "\"Sender\" \u003csender@example.com\u003e"
-          ],
-          "sender": "owner@example.com",
-          "threadId": "thread-1"
-        },
-        "requestCount": 9,
-        "retry": false,
+        "branch": "",
+        "failureKind": "AVAILABILITY",
+        "requestCount": 7,
+        "retry": true,
         "retryAfterMs": 0,
         "uncertain": false
       },
@@ -2731,12 +3026,12 @@
           "heartbeat": {
             "attempt": 1,
             "callId": "d7b3cda7-c00c-5757-a41a-7b0109f0ede9",
-            "state": "canResend"
+            "state": "claimed"
           },
           "retryAfterMs": 0
         }
       ],
-      "name": "replyToMessage-retry-search-miss-resend",
+      "name": "replyToMessage-unavailable-no-resend",
       "operation": "replyToMessage"
     },
     {
