@@ -77,6 +77,10 @@ func TestConnectorTestSelectionUsesLocalAndCatalogChanges(t *testing.T) {
 			paths: []string{"docs/architecture.md", "connectors/acme/logo.svg"}, expected: []string{},
 		},
 		{
+			name: "Connectors MCP server", previous: directories,
+			paths: []string{"connectorsmcp/go.mod", "connectorsmcp/internal/server/server.go"}, expected: []string{},
+		},
+		{
 			name: "directory site and agent rules", previous: directories,
 			paths: []string{"site/src/App.tsx", "AGENTS.md", ".cursor/rules/project-core.mdc"}, expected: []string{},
 		},
@@ -129,7 +133,7 @@ func TestEmptyConnectorTestMatrixHasNoJobs(t *testing.T) {
 }
 
 func TestCIJobsSelectOnlyChangedInputs(t *testing.T) {
-	allJobs := ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, React: true, Site: true}
+	allJobs := ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, React: true, Site: true, ConnectorsMCP: true}
 	testCases := []struct {
 		name     string
 		path     string
@@ -149,7 +153,9 @@ func TestCIJobsSelectOnlyChangedInputs(t *testing.T) {
 		{"documentation", "docs/x.md", ciJobSelection{Common: true}},
 		{"root conformance", "conformance/x.json", allJobs},
 		{"connector conformance", "conformance/connectors/x/scenarios.json", ciJobSelection{}},
-		{"Go SDK", "sdkgo/x.go", ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true}},
+		{"Go SDK", "sdkgo/x.go", ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, ConnectorsMCP: true}},
+		{"Connectors MCP server", "connectorsmcp/internal/server/server.go", ciJobSelection{ConnectorsMCP: true}},
+		{"Connectors MCP release config", "connectorsmcp/release.yaml", ciJobSelection{ConnectorsMCP: true}},
 		{"Python SDK", "sdkpython/src/sdk.py", ciJobSelection{SDKPython: true}},
 		{"TypeScript SDK", "sdkts/src/sdk.ts", ciJobSelection{SDKTypeScript: true}},
 		{"React SDK", "sdk/react/src/index.ts", ciJobSelection{React: true}},

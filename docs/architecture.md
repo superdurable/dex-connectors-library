@@ -14,6 +14,9 @@
 - `site/` is the static directory published with the generated public catalog.
 - `cmd/connectorctl/` validates and generates connectors, selects CI shards,
   plans releases, and creates release artifacts.
+- `connectorsmcp/` is the separately released Go module of the
+  `dex-connectors-mcp` server, which offers agent-exposed operations as MCP
+  tools. Connector modules never require it.
 
 The first directory below `connectors/` is the company, matches
 `metadata.company`, and contains `logo.svg`. Every connector has a separate Go
@@ -138,6 +141,36 @@ An SDK contract change is released first; connectors require that exact
 release in later PRs. Git tags, not the source catalog, define published
 versions.
 
+## Agent tools over MCP
+
+`dex-connectors-mcp` (`connectorsmcp/`) serves every `agent.exposed: true`
+operation of the connections that Dex Web authorized as an MCP tool over
+loopback-only, stateless Streamable HTTP. It is built from three parts:
+
+- **Tool metadata.** It comes from the generated `ExposedAgentTools()` and
+  `Connection.AgentTools()` code of each linked connector module. Tools run
+  through `sdkgo.AgentTool.RunAttempt`, which also classifies each attempt's
+  branch.
+- **Results.** Tool `_meta` and results follow the Dex MCP conventions:
+  - `io.superdurable.dex/effect` and `io.superdurable.dex/approval` describe
+    each tool.
+  - `io.superdurable.dex/outcome` is `rejected` or `unknown`.
+  - `io.superdurable.connectors/*` identity keys name the connector,
+    connection, and operation, so Dex CLI can filter tools by them.
+- **Write state.** A declared write runs only under its
+  `io.superdurable.dex/idempotencyKey`. Its state lives in a per-key record
+  under the state directory (`dex-connectors-mcp/call-state/v1`). The record
+  is written durably before each attempt, and each heartbeat checkpoint is
+  written before the attempt continues. A crash or a Dex re-issue therefore
+  replays the stored result, reads back, or answers `unknown`; it never sends
+  blind.
+
+On `main` the server links no connector. Its tests use fake connectors. A
+release commit generates the registry of included connectors at their latest
+complete Go releases. dexcli finds a compatible release by its integer launch
+contract. See the [server README](../connectorsmcp/README.md) for flags, the
+ready line, the outcome mapping, and the state format.
+
 ## CI and release topology
 
 CI derives connector ownership from the catalog. Pull requests select the
@@ -161,6 +194,16 @@ their reachable tags. Each release job runs current compatibility, publishes
 one component, and verifies released compatibility. The generated Pages
 catalog and directory site are published only after all requested releases
 succeed or when none are pending.
+
+The `release-connectors-mcp` job runs after the Go release shards in every
+Release run. It links each connector whose latest complete Go release offers
+generated agent tools, builds the server with a hold rule, and tags a release
+commit whose parent is `main`. The catalog job waits for it without requiring
+its success, then publishes `connectors-mcp/index.json` beside `catalog.json`
+from the releases that have `connectors-mcp-release.complete`. CI tests
+`connectorsmcp/` with Go 1.25 against the repository's `sdkgo` when either
+changes, without selecting connectors. See
+[Connectors MCP server releases](versioning-and-releases.md#connectors-mcp-server-releases).
 
 Compatibility jobs resolve the latest stable Dex CLI release and the latest
 stable Dex Go SDK on every run, so no checked-in file pins a Dex version. See

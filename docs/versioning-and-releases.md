@@ -26,6 +26,9 @@ The module directory determines the Git tag prefix:
   `connectors/google/gmail` and `connectors/google/spreadsheet`.
 - Python and TypeScript packages append `/python/vMAJOR.MINOR.PATCH` or
   `/typescript/vMAJOR.MINOR.PATCH` to their connector directory.
+- `connectorsmcp` uses `connectorsmcp/vMAJOR.MINOR.PATCH` on release commits
+  off `main`; see
+  [Connectors MCP server releases](#connectors-mcp-server-releases).
 
 Each connector manifest declares that connector's own `metadata.version`. It
 is independent of every other connector's version and of the Connector SDK
@@ -594,6 +597,130 @@ change it. It:
 A candidate never enters the public catalog, and no connector may require a
 candidate: connector dependencies stay exact releases reachable from `main`.
 The Released compatibility canary ignores pre-releases.
+
+## Connectors MCP server releases
+
+The [Connectors MCP server](../connectorsmcp/README.md) (`dex-connectors-mcp`)
+links the agent tools of released connectors, so it is released by the
+Release workflow itself and never by a version bump in a pull request.
+
+**Linked connectors.** A connector is linked when its latest Go release that
+is reachable from `main` and has `connector-release.complete` meets all of
+these:
+
+- its `go.mod` declares the module
+  `github.com/superdurable/dex-connectors-library/<connector directory>/go`;
+- it requires `sdkgo` v0.35.0 or later;
+- it contains the generated `go/zz_generated_agent_tools.go`;
+- its `connector.yaml` has an `agent.exposed: true` operation.
+
+Release candidates and incomplete releases are never linked. Exposing an
+operation to agents therefore reaches the server through a Go minor release of
+that connector.
+
+**Tags and versions.** Tags use `connectorsmcp/vMAJOR.MINOR.PATCH`, and GitHub
+Releases are titled `Connectors MCP vX.Y.Z`; they are never marked latest.
+`connectorsmcp/release.yaml` declares the release `series` as
+`vMAJOR.MINOR`. Each release takes the next patch in the series, and the first
+release of a new series is its `.0`. A release is cut when the linked set
+(connector to version) or the `connectorsmcp/` tree on `main` differs from the
+latest complete release. Tool changes are data, so they are patches. A
+breaking change to the launch contract moves the series in a `(breaking)` pull
+request: the minor before v1, the major from v1.
+
+**Launch contract.** The integer `launchContract` (first `1`) is independent
+of the version. It changes only when the dexcli-facing contract changes: the
+flags, the ready line, `server.json`, `/healthz`, or the state directory
+format. dexcli picks the highest release whose launch contract it supports.
+
+**Release commit.** `main` keeps an empty registry. The workflow generates
+`cmd/dex-connectors-mcp/zz_generated_registry.go` and a `go.mod` that requires
+the exact linked connector versions, commits them on a commit whose parent is
+the run's `main` commit, and pushes only its tag. `go install
+github.com/superdurable/dex-connectors-library/connectorsmcp/cmd/dex-connectors-mcp@vX.Y.Z`
+reproduces the build.
+
+**Hold rule.** Each candidate set is built with `GOWORK=off`: `go mod tidy`,
+a check that every connector resolves to its own version, `go vet`, a build,
+a `version --output json` smoke check of the linked connectors and tools, and
+`go test -race`. If the full set fails:
+
+1. the previously released versions are built alone; if they fail, the job
+   fails, because a release never drops or downgrades a linked connector;
+2. each change is then added in connector ID order and kept only if the set
+   still passes. A newer release that fails is held at its previous version,
+   and a new connector that fails is left out. Both appear in the release
+   notes and as workflow warnings.
+
+A linked connector whose latest complete release no longer offers agent tools
+also fails the job. To remove it on purpose, list its connector ID under
+`withdrawnConnectors` in `connectorsmcp/release.yaml`. A withdrawal always
+cuts a release, even one that links no connector, so the index stops offering
+the withdrawn connector. The release commit may then equal `main`'s files.
+
+**Assets.** Each release has, for `darwin` and `linux` on `arm64` and `amd64`:
+
+- `dex-connectors-mcp_<version>_<os>_<arch>.tar.gz`, holding at its top level
+  the regular file `dex-connectors-mcp` (mode 0755), `LICENSE`, and
+  `README.md`;
+- `checksums.txt` (SHA-256 of the archives and the lock);
+- `connectors-mcp-release.json`, the lock: version, tag, launch contract,
+  source commits, Go, sdkgo, and Dex Go SDK versions, linked connectors with
+  their tools, and each archive's SHA-256;
+- `connectors-mcp-release.complete`, uploaded last after the module downloads
+  with `GOPROXY=direct`.
+
+There is no Windows archive until the call-state lock supports Windows.
+
+**Index.** The catalog job publishes
+`https://connectors.superdurable.io/connectors-mcp/index.json`
+(`schemaVersion: "dex-connectors-mcp/release-index/v1"`) from the releases
+that have the complete marker, newest first. Each entry lists `version`,
+`launchContract`, `tag`, `publishedAt`, the archive `url` and `sha256` per
+platform, and the linked connectors with their tools. dexcli verifies an
+archive against the index `sha256` alone, so each archive must match the
+lock's SHA-256: by GitHub's asset digest, or by downloading and hashing it when
+GitHub has none. The rebuild treats failures by release:
+
+- **Newest release.** Any failure fails the rebuild. The catalog job then
+  republishes the deployed index (`fell_back`), or deploys without one when
+  none is deployed (`omitted`).
+- **Older release, download failed.** It keeps its entry from the deployed
+  index when that entry still names the same assets and SHA-256 values. It
+  was verified when first published. When neither a GitHub digest nor the
+  lock confirms those values in this run, the outcome is `reused_unverified`;
+  dexcli still rejects a replaced archive by its SHA-256.
+- **Older release, asset mismatched or deleted.** It is left out
+  (`dropped_versions`), as is an older release whose download failed and that
+  has no matching deployed entry.
+
+The index never blocks the catalog. After the catalog deploys, the
+`check-connectors-mcp-index` job fails when the outcome is `fell_back`,
+`omitted`, `dropped_versions`, `reused_unverified`, or `empty` (no release
+listed although a complete one exists), so a degraded index shows as a red
+Release run. An empty index is `ok` only before the first release. To repair it:
+
+1. Read the job's warnings in `build-catalog` for the release and the reason.
+2. For a transient download failure, rerun the Release workflow manually with
+   no inputs. That rebuilds only the catalog and the index.
+3. For a corrupted or missing archive or lock of the newest release, delete
+   its `connectors-mcp-release.complete` asset. The next run finds the
+   incomplete tag, rebuilds that release from its tag, uploads its assets
+   again, and marks it complete.
+4. For an older release with a mismatched or deleted archive, either upload
+   the original archive again (its SHA-256 is in the lock and
+   `checksums.txt`), or delete that release's
+   `connectors-mcp-release.complete` asset to retire the version from the
+   index on purpose. Then rerun the Release workflow.
+
+**Failures and repair.** The job runs after the Go release shards in every
+Release run, including runs that released nothing, so `GO_RELEASE_LIMIT`
+deferrals need no handling. Its failure never blocks connector releases or the
+catalog. When a pushed tag's release lacks the complete marker, the next run
+rebuilds that tag's release before it plans a new one. A `dry_run` builds,
+packages, and uploads the archives as a workflow artifact without pushing a
+tag or creating a release. CI runs `make test-connectors-mcp` with Go 1.25 for
+changes under `connectorsmcp/` or `sdkgo/`, against this commit's `sdkgo`.
 
 ## npm token rotation
 

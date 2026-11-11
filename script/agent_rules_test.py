@@ -319,6 +319,14 @@ class AgentRulesTest(unittest.TestCase):
                 for rule in rules:
                     self.assertIn(rule, contents)
 
+    def test_connectors_mcp_release_rule_is_mirrored(self) -> None:
+        rule = ("The Release workflow alone releases the Connectors MCP server: it tags `connectorsmcp/vX.Y.Z` on a "
+                "release commit off `main` when the linked connector set or `connectorsmcp/` changes. "
+                "`connectorsmcp/release.yaml` sets the series and lists withdrawn connectors.")
+        for path in (ROOT / "AGENTS.md", ROOT / ".cursor" / "rules" / "release.mdc"):
+            with self.subTest(path=path):
+                self.assertIn(rule, top_level_bullets(path))
+
     def test_cursor_hook_rejects_skipping_git_hooks(self) -> None:
         payload = json.dumps({"command": "git commit --no-verify -m test"})
 
