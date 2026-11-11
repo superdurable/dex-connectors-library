@@ -112,6 +112,13 @@ type callAnswer struct {
 	result     toolResult
 	err        error
 	isReplayed bool
+	// rejectionReason names why a JSON-RPC rejection was sent, for the log.
+	rejectionReason string
+}
+
+// expectedIdentityAnswer refuses a call whose expected-identity guard failed.
+func expectedIdentityAnswer(err error) callAnswer {
+	return callAnswer{err: err, rejectionReason: "expectedIdentityMismatch"}
 }
 
 // recordIdentityMatch says whether a call is the one that first used its key.
@@ -171,7 +178,7 @@ func (call *toolCall) run(ctx context.Context, meta mcp.Meta) callAnswer {
 		return callAnswer{err: unknownToolError(call.name)}
 	}
 	if err := call.expected.mismatchError(call.binding.executionIdentity()); err != nil {
-		return callAnswer{err: err}
+		return expectedIdentityAnswer(err)
 	}
 	switch {
 	case keyProblem != "":
@@ -202,7 +209,7 @@ func (call *toolCall) runKeyed(ctx context.Context, key string) callAnswer {
 	}
 	recordIdentity := executionIdentity{connectorID: record.Request.ConnectorID, connectionName: record.Request.ConnectionName, operationID: record.Request.OperationID}
 	if err := call.expected.mismatchError(recordIdentity); err != nil {
-		return callAnswer{err: err}
+		return expectedIdentityAnswer(err)
 	}
 	return call.resumeRecordedCall(ctx, lock, &record, key)
 }
@@ -231,13 +238,13 @@ func (call *toolCall) runWithoutRecord(ctx context.Context, lock *callstate.KeyL
 			return callAnswer{err: unknownToolError(call.name)}
 		}
 		if err := call.expected.mismatchError(call.binding.executionIdentity()); err != nil {
-			return callAnswer{err: err}
+			return expectedIdentityAnswer(err)
 		}
 		return call.runRead(ctx, key)
 	}
 	defer call.releaseLock(lock)
 	if err := call.expected.mismatchError(call.binding.executionIdentity()); err != nil {
-		return callAnswer{err: err}
+		return expectedIdentityAnswer(err)
 	}
 	return call.startWrite(ctx, lock, key)
 }
@@ -260,7 +267,7 @@ func (call *toolCall) answerLockFailure(ctx context.Context, key string, err err
 		return callAnswer{err: interruptedError("the call was canceled")}
 	case call.binding.effect == sdkgo.AgentToolEffectRead:
 		if mismatchErr := call.expected.mismatchError(call.binding.executionIdentity()); mismatchErr != nil {
-			return callAnswer{err: mismatchErr}
+			return expectedIdentityAnswer(mismatchErr)
 		}
 		return call.runRead(ctx, key)
 	case call.binding.effect == sdkgo.AgentToolEffectIdempotentWrite:
@@ -676,7 +683,12 @@ func (call *toolCall) logAnswer(answer callAnswer) {
 	var rpcErr *jsonrpc.Error
 	switch {
 	case errors.As(answer.err, &rpcErr) && rpcErr.Code == jsonrpc.CodeInvalidParams:
-		outcome = "unknownTool"
+		outcome = outcomeRejected
+		reason := answer.rejectionReason
+		if reason == "" {
+			reason = "unknownTool"
+		}
+		attributes = append(attributes, "reason", reason)
 	case answer.err != nil:
 		outcome = "interrupted"
 	case answer.result.IsError:

@@ -237,6 +237,9 @@ has `openWorldHint: true`. In addition:
 - `idempotent_write`: `idempotentHint: true`.
 - `non_idempotent_write`: `destructiveHint: true`.
 
+Listings (`tools/list` and `server/discover`) carry `cacheScope: "private"`,
+because the tool list depends on the user's authorized connections.
+
 ## Calls and outcomes
 
 A call sends `io.superdurable.dex/idempotencyKey` in the request `_meta`. A
@@ -281,6 +284,9 @@ Results use these shapes:
 - **Error text.** It names the operation and the connector `Failure` kind and
   message, which the connector contract keeps secret-safe. It never includes
   provider bodies or credentials.
+- **`resultType`.** Under MCP 2026-07-28 every `tools/call` result, including
+  error, replayed, and truncated results, carries `resultType: "complete"`, as
+  that version requires. Older protocol versions get no `resultType`.
 
 | Situation | `read` | `idempotent_write` | `non_idempotent_write` |
 | --- | --- | --- | --- |
@@ -578,8 +584,10 @@ after a connector upgrade also change it, and a running key then settles
   never reads, logs, returns, or stores them.
 - **Logs.** One line per call on stderr: tool, connector, operation,
   connection, effect, the first 12 characters of `k`, attempt, branch,
-  outcome, duration, and whether it replayed. Logs never contain arguments,
-  results, or failure messages.
+  outcome, duration, and whether it replayed. A JSON-RPC rejection logs
+  outcome `rejected` with a `reason`: `unknownTool` or
+  `expectedIdentityMismatch`. Logs never contain arguments, results, or
+  failure messages.
 
 ## Development
 

@@ -32,6 +32,8 @@ const (
 	pruneInterval = time.Hour
 	// minimumCallStateRetention is the shortest retention accepted.
 	minimumCallStateRetention = 24 * time.Hour
+	// resultTypeProtocolVersion is the first MCP version whose results carry resultType.
+	resultTypeProtocolVersion = "2026-07-28"
 )
 
 // ToolSetConfig says where tools come from.
@@ -260,6 +262,8 @@ func (server *Server) serveHealth(response http.ResponseWriter, request *http.Re
 func newMCPServer(version string, toolSet *ToolSet, executor *toolCallExecutor) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: ImplementationName, Version: version}, &mcp.ServerOptions{
 		Capabilities: &mcp.ServerCapabilities{Tools: &mcp.ToolCapabilities{}},
+		// Listings depend on the user's authorized connections, so no shared cache may keep them.
+		SetCacheable: func(_ context.Context, _ mcp.Request, cacheable *mcp.Cacheable) { cacheable.CacheScope = "private" },
 	})
 	for _, binding := range toolSet.tools {
 		server.AddTool(binding.mcpTool, refuseDirectToolCall)
@@ -274,10 +278,47 @@ func newMCPServer(version string, toolSet *ToolSet, executor *toolCallExecutor) 
 			if err != nil {
 				return nil, err
 			}
+			if isResultTypeRequired(callRequest.Session) {
+				result = withCompleteResultType(result)
+			}
 			return result, nil
 		}
 	})
 	return server
+}
+
+// completeCallToolResult holds resultType "complete", which only UnmarshalJSON can set.
+var completeCallToolResult = mustDecodeCompleteCallToolResult()
+
+func mustDecodeCompleteCallToolResult() mcp.CallToolResult {
+	var result mcp.CallToolResult
+	if err := json.Unmarshal([]byte(`{"resultType":"complete","content":[]}`), &result); err != nil {
+		panic(fmt.Sprintf("decode the complete tools/call result: %v", err))
+	}
+	return result
+}
+
+// withCompleteResultType copies result into a value marked complete, keeping
+// structuredContent bytes untouched.
+func withCompleteResultType(result *mcp.CallToolResult) *mcp.CallToolResult {
+	marked := completeCallToolResult
+	marked.Meta = result.Meta
+	marked.Content = result.Content
+	marked.StructuredContent = result.StructuredContent
+	marked.IsError = result.IsError
+	return &marked
+}
+
+// isResultTypeRequired mirrors go-sdk: MCP 2026-07-28 and later require
+// resultType; a session without parameters counts as the latest version.
+func isResultTypeRequired(session *mcp.ServerSession) bool {
+	protocolVersion := resultTypeProtocolVersion
+	if session != nil {
+		if parameters := session.InitializeParams(); parameters != nil {
+			protocolVersion = parameters.ProtocolVersion
+		}
+	}
+	return protocolVersion >= resultTypeProtocolVersion
 }
 
 func refuseDirectToolCall(context.Context, *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
