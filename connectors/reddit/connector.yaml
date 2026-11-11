@@ -10,12 +10,12 @@ spec:
   provider: reddit
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-reddit
       operations: [getPost]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-reddit'
       operations: [getPost]
       triggers: []
@@ -111,6 +111,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Reddit conclusively rejected the read or app access., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Reddit returned malformed or oversized post JSON., optional: true}
         - {id: defect, goName: Defect, description: "The ID, username, or OAuth credentials are invalid.", optional: true}
+      agent:
+        exposed: true
+        # missing and providerRejected follow a complete Reddit reply; invalidResponse stays unlisted.
+        branches: {missing: rejected, providerRejected: rejected, defect: rejected}
+        description: Read one Reddit post's title, subreddit, permalink, and score. Supply the post's full ID, which starts with t3_.
       mocks:
         - name: foundDefault
           branch: found
