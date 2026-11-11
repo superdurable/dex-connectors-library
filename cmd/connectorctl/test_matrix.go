@@ -35,6 +35,8 @@ type ciJobSelection struct {
 	SDKGoIntegration bool
 	React            bool
 	Site             bool
+	// ConnectorsMCP tests the connectorsmcp module against the repository's sdkgo.
+	ConnectorsMCP bool
 }
 
 func testMatrixCommand(args []string) error {
@@ -101,7 +103,7 @@ func testMatrixCommand(args []string) error {
 		return err
 	}
 	ciJobs := selectCIJobsForPaths(*scope, changedPaths)
-	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\ncommon=%t\nsdkpython=%t\nsdkts=%t\nsdkgo_integration=%t\nreact=%t\nsite=%t\n", encoded, len(directories), len(matrix.Include), ciJobs.Common, ciJobs.SDKPython, ciJobs.SDKTypeScript, ciJobs.SDKGoIntegration, ciJobs.React, ciJobs.Site)
+	contents := fmt.Sprintf("matrix=%s\ncount=%d\njobs=%d\ncommon=%t\nsdkpython=%t\nsdkts=%t\nsdkgo_integration=%t\nreact=%t\nsite=%t\nconnectors_mcp=%t\n", encoded, len(directories), len(matrix.Include), ciJobs.Common, ciJobs.SDKPython, ciJobs.SDKTypeScript, ciJobs.SDKGoIntegration, ciJobs.React, ciJobs.Site, ciJobs.ConnectorsMCP)
 	if err := os.WriteFile(*githubOutputPath, []byte(contents), 0o644); err != nil {
 		return fmt.Errorf("write GitHub output: %w", err)
 	}
@@ -211,13 +213,17 @@ func includeConnectorDependents(repositoryRoot string, catalogDirectories []stri
 
 func selectCIJobsForPaths(scope string, changedPaths []string) ciJobSelection {
 	if scope == "all" {
-		return ciJobSelection{true, true, true, true, true, true}
+		return selectAllCIJobs()
 	}
 	jobs := ciJobSelection{}
 	for _, path := range changedPaths {
 		switch {
 		case strings.HasPrefix(path, "sdkgo/"):
 			jobs.Common, jobs.SDKPython, jobs.SDKTypeScript, jobs.SDKGoIntegration = true, true, true, true
+			// The server links sdkgo, so an SDK change is tested against the server before release.
+			jobs.ConnectorsMCP = true
+		case strings.HasPrefix(path, connectorsMCPServerDirectory+"/"):
+			jobs.ConnectorsMCP = true
 		case strings.HasPrefix(path, "sdkpython/"):
 			jobs.SDKPython = true
 		case strings.HasPrefix(path, "sdkts/"):
@@ -235,10 +241,14 @@ func selectCIJobsForPaths(scope string, changedPaths []string) ciJobSelection {
 		case path == ".gitignore" || path == "CODE_OF_CONDUCT.md" || path == "CONTRIBUTING.md":
 			continue
 		default:
-			return ciJobSelection{true, true, true, true, true, true}
+			return selectAllCIJobs()
 		}
 	}
 	return jobs
+}
+
+func selectAllCIJobs() ciJobSelection {
+	return ciJobSelection{Common: true, SDKPython: true, SDKTypeScript: true, SDKGoIntegration: true, React: true, Site: true, ConnectorsMCP: true}
 }
 
 func selectConnectorDirectoriesForPaths(
@@ -302,7 +312,7 @@ func longestConnectorDirectoryPrefix(directories []string, changedPath string) s
 }
 
 func isConnectorTestNeutralPath(changedPath string) bool {
-	for _, prefix := range []string{"docs/", "site/", ".cursor/", ".codex/", "examples/"} {
+	for _, prefix := range []string{"docs/", "site/", ".cursor/", ".codex/", "examples/", connectorsMCPServerDirectory + "/"} {
 		if strings.HasPrefix(changedPath, prefix) {
 			return true
 		}

@@ -978,13 +978,175 @@ jobs:
             --results-directory "${RUNNER_TEMP}/language-results" \
             --github-output "${GITHUB_OUTPUT}"
 
+  release-connectors-mcp:
+    needs: [plan, release]
+    # Runs after every Go release shard, also when none ran, and reconciles to the complete releases of this
+    # moment. build-catalog waits for it so the index lists its release, but never requires its success.
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Connector tags created minutes earlier come straight from GitHub, as the Go release check does.
+      GONOPROXY: github.com/superdurable/dex-connectors-library
+      GONOSUMDB: github.com/superdurable/dex-connectors-library
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          # The server's MCP SDK requires Go 1.25.
+          go-version: '1.25'
+          check-latest: false
+          token: ''
+          cache-dependency-path: |
+            go.sum
+            connectorsmcp/go.sum
+      - name: Find the latest complete and an incomplete Connectors MCP release
+        id: state
+        run: |
+          work="${RUNNER_TEMP}/connectors-mcp"
+          # A repair checks out the tagged release commit, so the tooling runs from main's copy.
+          mkdir -p "${work}/tooling"
+          cp script/release/connectors_mcp_release.py script/release/github_release_inventory.py "${work}/tooling/"
+          python3 "${work}/tooling/github_release_inventory.py" --output "${work}/release-inventory.json"
+          python3 "${work}/tooling/connectors_mcp_release.py" state \
+            --release-inventory "${work}/release-inventory.json" --github-output "${GITHUB_OUTPUT}"
+      - name: Plan the Connectors MCP release from complete Go releases
+        id: plan
+        if: steps.state.outputs.repair_tag == ''
+        env:
+          PREVIOUS_TAG: ${{ steps.state.outputs.previous_tag }}
+        run: |
+          work="${RUNNER_TEMP}/connectors-mcp"
+          GOWORK=off go run ./cmd/connectorctl connectors-mcp-inventory --catalog catalog.yaml \
+            --release-inventory "${work}/release-inventory.json" --release-config connectorsmcp/release.yaml \
+            --output "${work}/inventory.json"
+          previous_arguments=()
+          if [ -n "${PREVIOUS_TAG}" ]; then
+            gh release download "${PREVIOUS_TAG}" --repo "${GITHUB_REPOSITORY}" \
+              --pattern connectors-mcp-release.json --dir "${work}/previous"
+            previous_arguments+=(--previous-tag "${PREVIOUS_TAG}" --previous-lock "${work}/previous/connectors-mcp-release.json")
+          fi
+          python3 "${work}/tooling/connectors_mcp_release.py" plan --inventory "${work}/inventory.json" \
+            "${previous_arguments[@]}" --output "${work}/plan.json" --github-output "${GITHUB_OUTPUT}"
+      - name: Build the connector set with the hold rule
+        id: build
+        if: steps.plan.outputs.release_required == 'true'
+        run: |
+          work="${RUNNER_TEMP}/connectors-mcp"
+          python3 "${work}/tooling/connectors_mcp_release.py" build --plan "${work}/plan.json" \
+            --module-directory connectorsmcp --work-directory "${work}/build" \
+            --result "${work}/build.json" --github-output "${GITHUB_OUTPUT}"
+      - name: Create the release commit off main and tag it
+        if: steps.build.outputs.release_required == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          generated=(connectorsmcp/go.mod connectorsmcp/go.sum connectorsmcp/cmd/dex-connectors-mcp/zz_generated_registry.go)
+          git add "${generated[@]}"
+          unexpected="$(git diff --cached --name-only | grep -vxF "${generated[@]/#/-e}" || true)"
+          if ! git diff --quiet || [ -n "${unexpected}" ]; then
+            git status --porcelain --untracked-files=no >&2
+            echo 'The release build changed files outside the registry and go.mod' >&2
+            exit 1
+          fi
+          # A server-only change or the last withdrawal leaves the generated files equal to main's.
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --quiet --allow-empty -m "connectorsmcp: release v${RELEASE_VERSION}"
+          git tag "${RELEASE_TAG}"
+      - name: Check out the incomplete release for repair
+        if: steps.state.outputs.repair_tag != ''
+        env:
+          REPAIR_TAG: ${{ steps.state.outputs.repair_tag }}
+        run: git checkout --detach "${REPAIR_TAG}"
+      - name: Build the release archives, lock, and checksums
+        id: package
+        if: steps.build.outputs.release_required == 'true' || steps.state.outputs.repair_tag != ''
+        env:
+          RELEASE_TAG: ${{ steps.state.outputs.repair_tag || steps.plan.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.state.outputs.repair_version || steps.plan.outputs.version }}
+        run: |
+          work="${RUNNER_TEMP}/connectors-mcp"
+          build_arguments=()
+          if [ -f "${work}/build.json" ]; then build_arguments+=(--build-result "${work}/build.json"); fi
+          python3 "${work}/tooling/connectors_mcp_release.py" package --module-directory connectorsmcp \
+            --version "${RELEASE_VERSION}" --tag "${RELEASE_TAG}" --output-directory "${work}/dist" \
+            --work-directory "${work}/package" "${build_arguments[@]}"
+          printf 'tag=%s\nversion=%s\n' "${RELEASE_TAG}" "${RELEASE_VERSION}" >> "${GITHUB_OUTPUT}"
+      - uses: actions/upload-artifact@v4
+        if: steps.package.outcome == 'success' && inputs.dry_run == true
+        with:
+          name: connectors-mcp-dry-run
+          path: |
+            ${{ runner.temp }}/connectors-mcp/dist
+            ${{ runner.temp }}/connectors-mcp/package/release-notes.md
+          retention-days: 7
+      - name: Push the release tag and create or repair the GitHub release
+        if: steps.package.outcome == 'success' && inputs.dry_run != true
+        env:
+          RELEASE_TAG: ${{ steps.package.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          work="${RUNNER_TEMP}/connectors-mcp"
+          if ! git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            # The release commit is on no branch, so only its tag is pushed.
+            authorization="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${authorization}" \
+              push origin "refs/tags/${RELEASE_TAG}"
+          fi
+          remote_commit="$(git ls-remote origin "refs/tags/${RELEASE_TAG}" | cut -f1)"
+          if [ "${remote_commit}" != "$(git rev-parse "${RELEASE_TAG}^{commit}")" ]; then
+            echo "The remote ${RELEASE_TAG} names another commit" >&2
+            exit 1
+          fi
+          assets=("${work}"/dist/*.tar.gz "${work}/dist/checksums.txt" "${work}/dist/connectors-mcp-release.json")
+          title="Connectors MCP v${RELEASE_VERSION}"
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --title "${title}" \
+              --notes-file "${work}/package/release-notes.md" --latest=false
+            gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --clobber "${assets[@]}"
+          else
+            gh release create "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --verify-tag --latest=false \
+              --title "${title}" --notes-file "${work}/package/release-notes.md" "${assets[@]}"
+          fi
+      - name: Verify the published server module
+        if: steps.package.outcome == 'success' && inputs.dry_run != true
+        env:
+          RELEASE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          deadline=$((SECONDS + 120))
+          until GOWORK=off GOPROXY=direct go mod download \
+            "github.com/superdurable/dex-connectors-library/connectorsmcp@v${RELEASE_VERSION}"; do
+            if (( SECONDS >= deadline )); then
+              echo "The released server module did not become downloadable before the deadline" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+      - name: Mark the Connectors MCP release complete
+        if: steps.package.outcome == 'success' && inputs.dry_run != true
+        env:
+          RELEASE_TAG: ${{ steps.package.outputs.tag }}
+        run: |
+          printf '%s\n' "${RELEASE_TAG}" > "${RUNNER_TEMP}/connectors-mcp-release.complete"
+          gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --clobber "${RUNNER_TEMP}/connectors-mcp-release.complete"
+
   build-catalog:
-    needs: [plan, release, build-language, publish-language, publish-language-first, publish-language-github-first, upload-pending-pypi, summarize-language]
+    needs: [plan, release, build-language, publish-language, publish-language-first, publish-language-github-first, upload-pending-pypi, summarize-language, release-connectors-mcp]
     if: always() && needs.plan.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') && (needs.build-language.result == 'success' || needs.build-language.result == 'skipped') && (needs.publish-language.result == 'success' || (needs.plan.outputs.updates_count == '0' && needs.publish-language.result == 'skipped')) && (needs.publish-language-first.result == 'success' || (needs.plan.outputs.first_count == '0' && needs.publish-language-first.result == 'skipped')) && (needs.publish-language-github-first.result == 'success' || (needs.plan.outputs.github_first_count == '0' && needs.publish-language-github-first.result == 'skipped')) && (needs.summarize-language.result == 'success' || (needs.plan.outputs.pending_count == '0' && needs.summarize-language.result == 'skipped')) && inputs.dry_run != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: read
+    outputs:
+      connectors_mcp_index: ${{ steps.connectors-mcp-index.outputs.outcome }}
+      connectors_mcp_index_dropped: ${{ steps.connectors-mcp-index.outputs.dropped }}
+      connectors_mcp_index_unverified: ${{ steps.connectors-mcp-index.outputs.unverified }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -1019,6 +1181,36 @@ jobs:
             --pypi-published-language-tags "${RUNNER_TEMP}/pypi-published-language-tags" \
             --output dist/pages/catalog.yaml \
             --json-output dist/pages/catalog.json
+      - name: Generate the Connectors MCP release index
+        id: connectors-mcp-index
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The catalog never waits on this index; check-connectors-mcp-index turns a degraded outcome red.
+          index=dist/pages/connectors-mcp/index.json
+          deployed="${RUNNER_TEMP}/connectors-mcp-deployed-index.json"
+          mkdir -p "$(dirname "${index}")"
+          deployed_arguments=()
+          if curl --fail --silent --show-error --location --retry 3 \
+              https://connectors.superdurable.io/connectors-mcp/index.json --output "${deployed}" \
+            && python3 -c 'import json,sys; index=json.load(open(sys.argv[1])); sys.exit(index.get("schemaVersion") != "dex-connectors-mcp/release-index/v1")' "${deployed}"; then
+            deployed_arguments+=(--deployed-index "${deployed}")
+          else
+            rm -f "${deployed}"
+            echo '::notice::No deployed Connectors MCP index is available'
+          fi
+          if ! python3 script/release/connectors_mcp_release.py index --output "${index}" \
+              "${deployed_arguments[@]}" --github-output "${GITHUB_OUTPUT}"; then
+            rm -f "${index}"
+            if [ -f "${deployed}" ]; then
+              cp "${deployed}" "${index}"
+              echo '::warning::Connectors MCP index rebuild failed; republishing the deployed index'
+              echo 'outcome=fell_back' >> "${GITHUB_OUTPUT}"
+            else
+              echo '::warning::Connectors MCP index rebuild failed and none is deployed; this catalog deploy omits it'
+              echo 'outcome=omitted' >> "${GITHUB_OUTPUT}"
+            fi
+          fi
       - name: Build directory site and preview card
         run: |
           sudo apt-get update
@@ -1052,6 +1244,30 @@ jobs:
       - name: Deploy Connector catalog
         id: deployment
         uses: actions/deploy-pages@v4
+
+  check-connectors-mcp-index:
+    needs: [build-catalog, deploy-catalog]
+    # Runs after the catalog deploy, so a degraded index is visible without blocking the catalog.
+    if: always() && needs.build-catalog.result == 'success'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail when the Connectors MCP index fell back, was omitted, or dropped a version
+        env:
+          INDEX_OUTCOME: ${{ needs.build-catalog.outputs.connectors_mcp_index }}
+          DROPPED_TAGS: ${{ needs.build-catalog.outputs.connectors_mcp_index_dropped }}
+          UNVERIFIED_TAGS: ${{ needs.build-catalog.outputs.connectors_mcp_index_unverified }}
+        run: |
+          repair='See docs/versioning-and-releases.md#connectors-mcp-server-releases for the repair path.'
+          case "${INDEX_OUTCOME}" in
+            ok) echo 'The Connectors MCP index lists every complete release.' ;;
+            fell_back) echo "::error::The newest Connectors MCP release could not be indexed; the deployed index was republished. ${repair}"; exit 1 ;;
+            omitted) echo "::error::The Connectors MCP index could not be built and none was deployed. ${repair}"; exit 1 ;;
+            dropped_versions) echo "::error::The Connectors MCP index left out ${DROPPED_TAGS}. ${repair}"; exit 1 ;;
+            reused_unverified) echo "::error::The Connectors MCP index reused deployed entries it could not verify: ${UNVERIFIED_TAGS}. ${repair}"; exit 1 ;;
+            empty) echo "::error::The Connectors MCP index lists no release although complete releases exist. ${repair}"; exit 1 ;;
+            *) echo "::error::Unknown Connectors MCP index outcome '${INDEX_OUTCOME}'. ${repair}"; exit 1 ;;
+          esac
 
   reject-non-main:
     if: github.ref != 'refs/heads/main'
