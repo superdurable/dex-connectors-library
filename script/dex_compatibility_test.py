@@ -28,6 +28,7 @@ from script.dex_compatibility import (
     build_current_artifacts,
     connector_releases,
     create_module_proxy,
+    definition_without_generation_time,
     dexcli_archive_name,
     dex_go_sdk_version_from_environment,
     dex_release_from_environment,
@@ -755,6 +756,20 @@ class DexReleaseResolutionTest(unittest.TestCase):
         self.assertEqual(urls, ["https://api.github.com/repos/superdurable/dex/releases/tags/cli-v1.6.4"])
         with self.assertRaisesRegex(RuntimeError, "no stable Dex CLI release found for v1.8.0-rc.1"):
             self.resolve("v1.8.0-rc.1", {})
+
+
+class VisualizeDeterminismTest(unittest.TestCase):
+    def test_generation_time_does_not_count_as_a_difference(self) -> None:
+        first = b'{"generatedAt": "2026-11-11T19:53:06Z", "steps": [{"id": "a"}]}'
+        second = b'{"steps": [{"id": "a"}], "generatedAt": "2026-11-11T19:53:07Z"}'
+        self.assertEqual(definition_without_generation_time(first),
+                         definition_without_generation_time(second))
+
+    def test_a_graph_difference_still_counts(self) -> None:
+        first = b'{"generatedAt": "x", "steps": [{"id": "a"}]}'
+        second = b'{"generatedAt": "x", "steps": [{"id": "b"}]}'
+        self.assertNotEqual(definition_without_generation_time(first),
+                            definition_without_generation_time(second))
 
 
 if __name__ == "__main__":
