@@ -7,7 +7,6 @@
       "authMethodIds": [
         "apiKey"
       ],
-      "authorizationId": "3b0f5c8e-6a1d-4f27-9c4e-2d8b7a6f1e05",
       "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
       "provider": "sample",
       "connectionName": "api",
@@ -26,7 +25,6 @@
         "oauth2",
         "apiKey"
       ],
-      "authorizationId": "9d2e4a71-0c3b-4e8f-b5a6-7f1c2d3e4b50",
       "modulePath": "github.com/superdurable/dex-connectors-library/connectors/sample",
       "provider": "sample",
       "connectionName": "oauth",
