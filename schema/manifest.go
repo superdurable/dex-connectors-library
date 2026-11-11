@@ -402,6 +402,8 @@ func validateOperationAgentBranches(operation Operation) []string {
 			problems = append(problems, operation.Name+": agent.branches."+branchID+" unknown is only for mutations")
 		case classification != OperationAgentBranchRejected && classification != OperationAgentBranchUnknown:
 			problems = append(problems, operation.Name+": agent.branches."+branchID+" must be rejected or unknown")
+		case branchID == "uncertain" && classification == OperationAgentBranchRejected:
+			problems = append(problems, operation.Name+": agent.branches.uncertain must be unknown; the write may have taken effect")
 		}
 	}
 	return problems

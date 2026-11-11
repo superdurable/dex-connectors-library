@@ -10,12 +10,12 @@ spec:
   provider: spotify
   languages:
     python:
-      version: v0.1.0
+      version: v0.2.0
       package: dex-connector-spotify
       operations: [listPlaylistTracks]
       triggers: []
     typescript:
-      version: v0.1.0
+      version: v0.2.0
       package: '@superdurable/connector-spotify'
       operations: [listPlaylistTracks]
       triggers: []
@@ -109,6 +109,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Spotify conclusively rejected the playlist query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Spotify returned an invalid or oversized playlist response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      agent:
+        exposed: true
+        # Each listed branch follows a Spotify 4xx or precedes the request; invalidResponse stays unlisted.
+        branches: {authorizationRevoked: rejected, accessDenied: rejected, notFound: rejected, providerRejected: rejected, defect: rejected}
+        description: List one page of tracks from a Spotify playlist the user owns or can access. Supply the 22-character playlist ID; optionally a page size from 1 through 50, a two-letter market code, and the offset from the previous page's nextOffset.
       execution:
         executeMethodTimeout: 30s
         durability: async

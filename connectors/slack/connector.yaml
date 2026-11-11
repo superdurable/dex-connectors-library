@@ -5,17 +5,17 @@ metadata:
   displayName: Slack
   description: Start and update Dex Flows from Slack threads and exchange thread messages.
   company: Slack
-  version: v1.3.0
+  version: v1.4.0
 spec:
   provider: slack
   languages:
     python:
-      version: v0.2.0
+      version: v0.3.0
       package: dex-connector-slack
       operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
     typescript:
-      version: v0.2.0
+      version: v0.3.0
       package: "@superdurable/connector-slack"
       operations: [listThreadMessages, getThreadReply, postChannelMessage, postThreadReply]
       triggers: []
@@ -190,6 +190,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the thread query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized thread response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      agent:
+        exposed: true
+        # providerRejected follows Slack's definite refusal; invalidResponse is unlisted because corrected input cannot fix it.
+        branches: {providerRejected: rejected, defect: rejected}
+        description: Read one page of messages from a Slack channel thread. Supply the channel ID, the parent message timestamp, a page size from 1 through 15, and the cursor from the previous page to continue.
       execution:
         executeMethodTimeout: 30s
         durability: async
@@ -235,6 +240,11 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the reply query., optional: true}
         - {id: invalidResponse, goName: InvalidResponse, description: Slack returned an invalid or oversized reply response., optional: true}
         - {id: defect, goName: Defect, description: "Local input, connection configuration, or connector definition is invalid.", optional: true}
+      agent:
+        exposed: true
+        # notFound and providerRejected follow a complete Slack reply; invalidResponse stays unlisted.
+        branches: {notFound: rejected, providerRejected: rejected, defect: rejected}
+        description: Read one reply in a Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply's own timestamp.
       execution:
         executeMethodTimeout: 30s
         durability: async
@@ -273,6 +283,13 @@ spec:
         - {id: providerRejected, goName: ProviderRejected, description: Slack conclusively rejected the message., optional: true}
         - {id: uncertain, goName: Uncertain, description: The dispatched message outcome cannot be confirmed., optional: true}
         - {id: defect, goName: Defect, description: "Local input, terminal connection credentials, connection configuration, or connector definition is invalid.", optional: true}
+      agent:
+        exposed: true
+        # No retry claim: client_msg_id dedupe is unverified and the fence relies on host checkpoints.
+        approval: recommended
+        # defect is raised before chat.postMessage is sent; every path that may have posted is uncertain.
+        branches: {providerRejected: rejected, uncertain: unknown, defect: rejected}
+        description: Post one new top-level message to a Slack channel. Supply the channel ID and the message text.
       execution:
         executeMethodTimeout: 30s
         durability: sync
@@ -306,9 +323,11 @@ spec:
       branches: *postBranches
       agent:
         exposed: true
+        # No retry claim: client_msg_id dedupe is unverified and the fence relies on host checkpoints.
+        approval: recommended
         # defect is raised before chat.postMessage is sent; every path that may have posted is uncertain.
         branches: {providerRejected: rejected, uncertain: unknown, defect: rejected}
-        description: Post one reply to an existing Slack channel thread.
+        description: Post one reply to an existing Slack channel thread. Supply the channel ID, the parent message timestamp, and the reply text.
       execution:
         executeMethodTimeout: 30s
         durability: sync
