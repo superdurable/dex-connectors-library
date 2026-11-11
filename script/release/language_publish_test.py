@@ -110,6 +110,15 @@ class SelectReleaseMatricesTests(unittest.TestCase):
         self.assertEqual(["v0.2.0"], [entry["version"] for entry in selection["github_first"]])
         self.assertEqual([tag("acme")], packages)
 
+    def test_zero_first_publish_limit_pauses_new_projects_only(self) -> None:
+        selection = select(
+            [], 0, completed_tags={tag("existing"), tag("fresh")},
+            project_exists=lambda _language, package: package.endswith("existing"),
+            pypi_release_exists=never_on_pypi)
+        self.assertEqual(["existing"], names(selection["pypi_pending"]))
+        self.assertEqual(["fresh"], names(selection["deferred"]))
+        self.assertEqual({"first_publish_cap"}, {entry["defer_reason"] for entry in selection["deferred"]})
+
     def test_pending_pypi_uploads_run_oldest_github_release_first(self) -> None:
         created_at = {tag("alpha"): "2026-11-06T09:00:00Z", tag("zeta"): "2026-11-05T09:00:00Z",
                       tag("beta"): "2026-11-05T09:00:00Z"}
@@ -219,9 +228,9 @@ class SelectReleaseMatricesTests(unittest.TestCase):
             finally:
                 os.chdir(previous_directory)
 
-    def test_rejects_zero_limits(self) -> None:
-        with self.assertRaisesRegex(ValueError, "PyPI first publish limit must be positive"):
-            language_publish.select_release_matrices([], 0)
+    def test_rejects_invalid_limits(self) -> None:
+        with self.assertRaisesRegex(ValueError, "PyPI first publish limit must not be negative"):
+            language_publish.select_release_matrices([], -1)
         with self.assertRaisesRegex(ValueError, "GitHub first release limit must be positive"):
             language_publish.select_release_matrices([], 1, github_release_limit=0)
 

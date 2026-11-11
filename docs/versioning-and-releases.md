@@ -293,7 +293,8 @@ npm.
 The upload job tries at most three new PyPI projects per run by default, one at
 a time; uploads to existing projects are not capped. Set the
 `PYPI_FIRST_PUBLISH_LIMIT` repository variable or the manual workflow's
-`first_publish_limit` input to change that cap. If PyPI responds
+`first_publish_limit` input to change that cap; `0` pauses new PyPI projects
+while uploads to existing projects continue. If PyPI responds
 `429 Too many new projects created`, the job retries after 20, 60, and 120
 seconds, then reports the upload as still pending without failing the run.
 Later new-project uploads in that run defer immediately after the limit is
